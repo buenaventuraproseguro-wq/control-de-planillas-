@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de Planillas — PROSEGUROSNET</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --verde:#173A5E; --rojo:#C0272D; --bg:#f4f6f8; --card:#fff; --borde:#dbe1e8;
+    --texto:#1a2430; --texto-suave:#5b6b7c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--texto);}
+  header{background:var(--verde);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header h1{font-size:17px;margin:0;font-weight:700;}
+  header .sub{font-size:12px;opacity:.8;}
+  #appBar{display:flex;align-items:center;gap:10px;}
+  select,input,button,textarea{font:inherit;}
+  button{cursor:pointer;border:none;border-radius:8px;padding:9px 14px;font-weight:600;}
+  .btn-primary{background:var(--rojo);color:#fff;}
+  .btn-ghost{background:#fff;color:var(--verde);border:1px solid var(--borde);}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+  main{max-width:1100px;margin:0 auto;padding:18px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .toolbar input[type=text]{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--borde);border-radius:8px;}
+  .toolbar select{padding:9px 12px;border:1px solid var(--borde);border-radius:8px;}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  th,td{padding:10px 12px;text-align:left;font-size:13px;border-bottom:1px solid var(--borde);}
+  th{background:#eef1f5;color:var(--texto-suave);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;}
+  .pago{background:#d9f3e1;color:#157347;}
+  .sinpago{background:#fde3e3;color:#b3261e;}
+  .otro{background:#e8ecf1;color:#52606d;}
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--verde);}
+  .loginCard{background:#fff;border-radius:14px;padding:32px;width:100%;max-width:360px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  .loginCard h2{margin:0 0 4px;color:var(--verde);}
+  .loginCard p{margin:0 0 20px;color:var(--texto-suave);font-size:13px;}
+  .loginCard label{display:block;font-size:12px;font-weight:600;margin:12px 0 4px;color:var(--texto-suave);}
+  .loginCard input{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;}
+  .loginCard button{width:100%;margin-top:18px;}
+  .err{color:var(--rojo);font-size:12px;margin-top:10px;}
+  #modalOverlay{position:fixed;inset:0;background:rgba(10,20,30,.5);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 12px;z-index:50;}
+  #modal{background:#fff;border-radius:12px;padding:22px;width:100%;max-width:640px;}
+  #modal h3{margin-top:0;color:var(--verde);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+  .field{margin-bottom:4px;}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--texto-suave);margin-bottom:3px;text-transform:uppercase;letter-spacing:.02em;}
+  .field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:7px;}
+  .modalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+  .hidden{display:none !important;}
+  #syncDot{font-size:12px;opacity:.85;}
+  .empty{padding:30px;text-align:center;color:var(--texto-suave);}
+  footer{text-align:center;color:var(--texto-suave);font-size:12px;padding:20px;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="loginCard">
+    <h2>Control de Planillas</h2>
+    <p>PROSEGUROSNET — inicia sesión con el correo que te invitaron.</p>
+    <label>Correo</label>
+    <input id="loginEmail" type="email" autocomplete="username">
+    <label>Contraseña</label>
+    <input id="loginPass" type="password" autocomplete="current-password">
+    <button class="btn-primary" id="loginBtn">Entrar</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <header>
+    <div>
+      <h1>Control de Planillas — PROSEGUROSNET</h1>
+      <div class="sub" id="whoAmI"></div>
+    </div>
+    <div id="appBar">
+      <span id="syncDot">●</span>
+      <select id="monthSelect"></select>
+      <button class="btn-ghost btn-sm" id="newMonthBtn">+ Mes</button>
+      <button class="btn-ghost btn-sm" id="logoutBtn">Salir</button>
+    </div>
+  </header>
+  <main>
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Buscar por nombre o cédula...">
+      <select id="estadoFilter">
+        <option value="">Todos los estados</option>
+        <option>PAGO</option>
+        <option>SIN PAGO</option>
+        <option>AFILIACION</option>
+        <option>RETIRO</option>
+        <option>DIAS PROPORCIONALES</option>
+      </select>
+      <button class="btn-primary" id="addBtn">+ Nuevo cliente</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>No.</th><th>Nombre</th><th>Cédula</th><th>Empresa</th><th>Estado</th><th>EPS</th><th></th></tr>
+      </thead>
+      <tbody id="clientsBody"></tbody>
+    </table>
+    <div id="emptyMsg" class="empty hidden">No hay clientes en este mes todavía.</div>
+  </main>
+  <footer>Datos guardados en Supabase — se sincronizan en vivo entre todo el equipo.</footer>
+</div>
+
+<div id="modalOverlay">
+  <div id="modal">
+    <h3 id="modalTitle">Nuevo cliente</h3>
+    <div class="grid2">
+      <div class="field"><label>Nombre del afiliado *</label><input id="f_nombre"></div>
+      <div class="field"><label>Cédula *</label><input id="f_cedula"></div>
+      <div class="field"><label>Empresa</label><input id="f_empresa"></div>
+      <div class="field"><label>Responsable / Grupo</label><input id="f_responsable_grupo"></div>
+      <div class="field"><label>Estado trámite</label>
+        <select id="f_estado_tramite">
+          <option></option><option>PAGO</option><option>SIN PAGO</option><option>AFILIACION</option>
+          <option>RETIRO</option><option>DIAS PROPORCIONALES</option><option>SIN INICIAR</option>
+        </select>
+      </div>
+      <div class="field"><label>Costo servicio</label><input id="f_costo_servicio" type="number"></div>
+      <div class="field"><label>Teléfono</label><input id="f_telefono"></div>
+      <div class="field"><label>Dirección</label><input id="f_direccion_completa"></div>
+      <div class="field"><label>EPS</label><input id="f_eps"></div>
+      <div class="field"><label>Valor EPS</label><input id="f_valor_eps" type="number"></div>
+      <div class="field"><label>Estado EPS</label><input id="f_estado_eps"></div>
+      <div class="field"><label>ARL (riesgo/código)</label><input id="f_arl"></div>
+      <div class="field"><label>Valor ARL</label><input id="f_valor_arl" type="number"></div>
+      <div class="field"><label>AFP</label><input id="f_afp"></div>
+      <div class="field"><label>Valor pensión (AFP)</label><input id="f_valor_pension" type="number"></div>
+      <div class="field"><label>Caja de compensación</label><input id="f_caja"></div>
+      <div class="field"><label>Valor caja</label><input id="f_valor_caja" type="number"></div>
+      <div class="field"><label>No. planilla pagada</label><input id="f_no_planilla_pagada"></div>
+      <div class="field"><label>Muelle</label><input id="f_muelle"></div>
+      <div class="field" style="grid-column:1 / -1"><label>Observación</label><textarea id="f_observacion" rows="2"></textarea></div>
+    </div>
+    <div class="modalActions">
+      <button class="btn-ghost" id="deleteBtn">Eliminar</button>
+      <button class="btn-ghost" id="cancelBtn">Cancelar</button>
+      <button class="btn-primary" id="saveBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://jjygarfwdmhzspqonvql.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentMonth = null; // { id, name }
+let months = [];
+let clients = [];
+let editingId = null;
+let channel = null;
+
+const el = (id) => document.getElementById(id);
+const FIELDS = ["nombre","cedula","empresa","responsable_grupo","estado_tramite","costo_servicio",
+  "telefono","direccion_completa","eps","valor_eps","estado_eps","arl","valor_arl","afp",
+  "valor_pension","caja","valor_caja","no_planilla_pagada","muelle","observacion"];
+
+/* ---------- Auth ---------- */
+async function initAuth(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await onSignedIn(session);
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_IN" && session) onSignedIn(session);
+    if (event === "SIGNED_OUT") { el("appScreen").classList.add("hidden"); el("loginScreen").classList.remove("hidden"); }
+  });
+}
+el("loginBtn").addEventListener("click", async () => {
+  el("loginErr").textContent = "";
+  const email = el("loginEmail").value.trim();
+  const password = el("loginPass").value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) el("loginErr").textContent = "No se pudo entrar: " + error.message;
+});
+el("logoutBtn").addEventListener("click", () => sb.auth.signOut());
+
+async function onSignedIn(session){
+  el("loginScreen").classList.add("hidden");
+  el("appScreen").classList.remove("hidden");
+  el("whoAmI").textContent = session.user.email;
+  await loadMonths();
+}
+
+/* ---------- Meses ---------- */
+async function loadMonths(){
+  const { data, error } = await sb.from("months").select("*").order("sort_order", { ascending: true }).order("name");
+  if (error){ console.error(error); return; }
+  months = data || [];
+  if (!months.length){
+    // primer uso: crea un mes inicial
+    const nombreMes = new Date().toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+    const capitalizado = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+    const { data: nuevo } = await sb.from("months").insert({ name: capitalizado }).select().single();
+    months = [nuevo];
+  }
+  el("monthSelect").innerHTML = months.map(m => `<option value="${m.id}">${m.name}</option>`).join("");
+  currentMonth = months[months.length - 1];
+  el("monthSelect").value = currentMonth.id;
+  await loadClients();
+}
+el("monthSelect").addEventListener("change", async () => {
+  currentMonth = months.find(m => String(m.id) === el("monthSelect").value);
+  await loadClients();
+});
+el("newMonthBtn").addEventListener("click", async () => {
+  const nombre = prompt("Nombre del nuevo mes (ej. Noviembre 2026):");
+  if (!nombre) return;
+  const { data, error } = await sb.from("months").insert({ name: nombre.trim() }).select().single();
+  if (error){ alert("No se pudo crear: " + error.message); return; }
+  months.push(data);
+  el("monthSelect").innerHTML = months.map(m => `<option value="${m.id}">${m.name}</option>`).join("");
+  currentMonth = data;
+  el("monthSelect").value = data.id;
+  await loadClients();
+});
+
+/* ---------- Clientes ---------- */
+async function loadClients(){
+  if (!currentMonth) return;
+  const { data, error } = await sb.from("clients").select("*").eq("month_id", currentMonth.id).order("row_no", { ascending: true, nullsFirst: false });
+  if (error){ console.error(error); return; }
+  clients = data || [];
+  render();
+  subscribeRealtime();
+}
+
+function subscribeRealtime(){
+  if (channel) sb.removeChannel(channel);
+  channel = sb.channel("clients-" + currentMonth.id)
+    .on("postgres_changes", { event: "*", schema: "public", table: "clients", filter: `month_id=eq.${currentMonth.id}` }, (payload) => {
+      if (payload.eventType === "DELETE"){
+        clients = clients.filter(c => c.id !== payload.old.id);
+      } else {
+        const idx = clients.findIndex(c => c.id === payload.new.id);
+        if (idx > -1) clients[idx] = payload.new; else clients.push(payload.new);
+      }
+      render();
+    })
+    .subscribe((status) => {
+      el("syncDot").style.color = status === "SUBSCRIBED" ? "#8fe3a8" : "#f2c14e";
+      el("syncDot").title = status === "SUBSCRIBED" ? "Sincronizado en vivo" : "Conectando...";
+    });
+}
+
+function pillClass(estado){
+  if (estado === "PAGO") return "pago";
+  if (estado === "SIN PAGO") return "sinpago";
+  return "otro";
+}
+
+function render(){
+  const q = el("searchInput").value.trim().toLowerCase();
+  const estadoF = el("estadoFilter").value;
+  const filtrados = clients.filter(c => {
+    const matchQ = !q || (c.nombre||"").toLowerCase().includes(q) || (c.cedula||"").includes(q);
+    const matchE = !estadoF || c.estado_tramite === estadoF;
+    return matchQ && matchE;
+  });
+  el("emptyMsg").classList.toggle("hidden", filtrados.length > 0);
+  el("clientsBody").innerHTML = filtrados.map((c, i) => `
+    <tr data-id="${c.id}">
+      <td>${c.row_no ?? i+1}</td>
+      <td>${esc(c.nombre)}</td>
+      <td>${esc(c.cedula)}</td>
+      <td>${esc(c.empresa)}</td>
+      <td>${c.estado_tramite ? `<span class="pill ${pillClass(c.estado_tramite)}">${esc(c.estado_tramite)}</span>` : ""}</td>
+      <td>${esc(c.eps)}</td>
+      <td><button class="btn-ghost btn-sm editBtn">Editar</button></td>
+    </tr>
+  `).join("");
+  document.querySelectorAll(".editBtn").forEach(btn => {
+    btn.addEventListener("click", (e) => openModal(e.target.closest("tr").dataset.id));
+  });
+}
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+
+el("searchInput").addEventListener("input", render);
+el("estadoFilter").addEventListener("change", render);
+
+/* ---------- Modal ---------- */
+function openModal(id){
+  editingId = id || null;
+  const c = id ? clients.find(x => x.id === id) : {};
+  el("modalTitle").textContent = id ? "Editar cliente" : "Nuevo cliente";
+  FIELDS.forEach(f => { el("f_"+f).value = (c && c[f] != null) ? c[f] : ""; });
+  el("deleteBtn").classList.toggle("hidden", !id);
+  el("modalOverlay").style.display = "flex";
+}
+el("addBtn").addEventListener("click", () => openModal(null));
+el("cancelBtn").addEventListener("click", () => el("modalOverlay").style.display = "none");
+el("modalOverlay").addEventListener("click", (e) => { if (e.target.id === "modalOverlay") el("modalOverlay").style.display = "none"; });
+
+el("saveBtn").addEventListener("click", async () => {
+  const nombre = el("f_nombre").value.trim();
+  const cedula = el("f_cedula").value.trim();
+  if (!nombre || !cedula){ alert("Nombre y cédula son obligatorios."); return; }
+  const payload = {};
+  FIELDS.forEach(f => {
+    const val = el("f_"+f).value;
+    const isNum = ["costo_servicio","valor_eps","valor_arl","valor_pension","valor_caja"].includes(f);
+    payload[f] = val === "" ? null : (isNum ? Number(val) : val);
+  });
+  payload.month_id = currentMonth.id;
+  const { data: { user } } = await sb.auth.getUser();
+  payload.updated_by = user?.id || null;
+  payload.ultima_edicion = new Date().toISOString();
+
+  let error;
+  if (editingId){
+    ({ error } = await sb.from("clients").update(payload).eq("id", editingId));
+  } else {
+    payload.row_no = clients.length + 1;
+    ({ error } = await sb.from("clients").insert(payload));
+  }
+  if (error){ alert("No se pudo guardar: " + error.message); return; }
+  el("modalOverlay").style.display = "none";
+});
+
+el("deleteBtn").addEventListener("click", async () => {
+  if (!editingId || !confirm("¿Eliminar este cliente?")) return;
+  const { error } = await sb.from("clients").delete().eq("id", editingId);
+  if (error){ alert("No se pudo eliminar: " + error.message); return; }
+  el("modalOverlay").style.display = "none";
+});
+
+initAuth();
+</script>
+</body>
+</html>
