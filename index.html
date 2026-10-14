@@ -760,6 +760,7 @@
         </button>
         <button type="button" class="sidebar-link sub" id="navCobroExtraBtn">➕ Agregar cobro extra</button>
         <button type="button" class="sidebar-link sub" id="navGananciasBtn">💰 Ganancias de gestiones</button>
+        <button type="button" class="sidebar-link sub" id="navMensajeBtn">💬 Mensaje de recordatorio</button>
       </div>
 
       <div class="sidebar-section-title">Enlaces rápidos</div>
@@ -1262,6 +1263,32 @@
 
     <div class="modal-actions">
       <button class="btn ghost" id="cerrarRespBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para configurar el mensaje de recordatorio de cobro -->
+<div class="overlay" id="overlayMensaje">
+  <div class="modal">
+    <h2>Mensaje de recordatorio de cobro</h2>
+    <div class="modal-sub" id="mensajeSub">Este es el mensaje que se envía por WhatsApp a cada cliente. Escribe el texto como quieras y usa estas palabras entre llaves para que la app ponga los datos de cada cliente:
+      <b>{nombre}</b> · <b>{valor}</b> · <b>{mes}</b> · <b>{fecha_limite}</b>.
+      Para poner un texto en <b>negrita</b> en WhatsApp, enciérralo entre asteriscos: *así*.</div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div class="field"><label>Día límite de pago (de cada mes)</label><input type="number" id="fMensajeDia" min="1" max="31"></div>
+    </div>
+    <div class="field">
+      <label>Texto del mensaje</label>
+      <textarea id="fMensajeTexto" rows="16" style="font-family:inherit; font-size:13.5px; padding:10px; border-radius:7px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <label>Vista previa (con un cliente de ejemplo)</label>
+      <div id="mensajeVistaPrevia" style="white-space:pre-wrap; font-size:13px; background:#DCF8C6; color:#111; border-radius:10px; padding:12px 14px; line-height:1.45;"></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="restaurarMensajeBtn">Restaurar mensaje original</button>
+      <button type="button" class="btn ghost" id="cerrarMensajeBtn">Cerrar</button>
+      <button type="button" class="btn primary" id="guardarMensajeBtn">Guardar</button>
     </div>
   </div>
 </div>
@@ -1822,6 +1849,7 @@ async function iniciarAppConSupabase(){
     renderBadgeTareas();
     suscribirMesEnVivo(store.currentMonth);
     suscribirMesesYTareasEnVivo();
+    cargarConfigMensaje();
   }catch(e){
     console.error("No se pudo cargar la información desde Supabase:", e);
     ultimoErrorCloud = (e && e.message) ? e.message : String(e);
@@ -3737,26 +3765,112 @@ function showBreakdown(cedula){
   breakdown.scrollIntoView({behavior:"smooth", block:"nearest"});
 }
 
+/* ---- Mensaje de recordatorio de cobro (configurable por el administrador) ---- */
+const PLANTILLA_RECORDATORIO_ORIGINAL =
+`🛡️ *PROSEGUROSNET* 🛡️
+— _Protegemos lo que más importa_ —
+
+¡Hola 👋😊, {nombre}! Te compartimos el valor a pagar de tu seguridad social correspondiente a {mes}: *{valor}* 💰
+
+📅 Fecha límite de pago: *{fecha_limite}*
+
+💳 Puedes pagar por Bre-B (Bancolombia):
+🔑 Llave: *0078275062*
+🏦 Cuenta de ahorros: *84317568222*
+👤 A nombre de: Nestor Fabian Garzón — prosegurosnet
+
+✅ Si ya realizaste el pago, ignora este mensaje 🙏
+
+Gracias por confiar en nosotros ❤️
+— Equipo PROSEGUROSNET 🛡️`;
+const CONFIG_MENSAJE_KEY = "prosegurosnet_mensaje_recordatorio";
+let configMensaje = { plantilla: PLANTILLA_RECORDATORIO_ORIGINAL, dia: 16 };
+try{
+  const guardada = JSON.parse(localStorage.getItem(CONFIG_MENSAJE_KEY) || "null");
+  if (guardada && guardada.plantilla) configMensaje = guardada;
+}catch(e){}
+
+// Trae de la base de datos el mensaje que configuró el administrador (así todo el equipo envía el mismo).
+async function cargarConfigMensaje(){
+  if (!sb) return;
+  try{
+    const { data, error } = await sb.from("configuracion").select("valor").eq("clave", "mensaje_recordatorio").maybeSingle();
+    if (!error && data && data.valor && data.valor.plantilla){
+      configMensaje = { plantilla: data.valor.plantilla, dia: Number(data.valor.dia) || 16 };
+      try{ localStorage.setItem(CONFIG_MENSAJE_KEY, JSON.stringify(configMensaje)); }catch(e){}
+    }
+  }catch(e){ console.error("No se pudo leer el mensaje de recordatorio:", e); }
+}
+
+function fechaLimiteDelMes(dia){
+  const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
+  return mesInfo ? `${dia} de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : `el ${dia} del mes`;
+}
+function construirMensajeRecordatorio(plantilla, dia, datos){
+  return String(plantilla)
+    .replace(/\{nombre\}/gi, datos.nombre)
+    .replace(/\{valor\}/gi, datos.valor)
+    .replace(/\{mes\}/gi, datos.mes)
+    .replace(/\{fecha_limite\}/gi, fechaLimiteDelMes(dia));
+}
+
+function abrirEditorMensaje(){
+  document.getElementById("fMensajeTexto").value = configMensaje.plantilla;
+  document.getElementById("fMensajeDia").value = configMensaje.dia;
+  const soloLecturaMsg = !esAdmin();
+  document.getElementById("fMensajeTexto").readOnly = soloLecturaMsg;
+  document.getElementById("fMensajeDia").readOnly = soloLecturaMsg;
+  document.getElementById("guardarMensajeBtn").style.display = soloLecturaMsg ? "none" : "";
+  document.getElementById("restaurarMensajeBtn").style.display = soloLecturaMsg ? "none" : "";
+  let aviso = document.getElementById("mensajeAvisoAdmin");
+  if (soloLecturaMsg && !aviso){
+    aviso = document.createElement("div");
+    aviso.id = "mensajeAvisoAdmin"; aviso.className = "aviso-bloqueado"; aviso.style.margin = "0 0 10px";
+    aviso.textContent = "🔒 Solo el administrador puede cambiar este mensaje.";
+    document.getElementById("mensajeSub").after(aviso);
+  } else if (!soloLecturaMsg && aviso){ aviso.remove(); }
+  actualizarVistaPreviaMensaje();
+  document.getElementById("overlayMensaje").classList.add("show");
+}
+function actualizarVistaPreviaMensaje(){
+  const dia = Number(document.getElementById("fMensajeDia").value) || 16;
+  const texto = construirMensajeRecordatorio(document.getElementById("fMensajeTexto").value, dia,
+    { nombre: "Juan Pérez", valor: fmt(578663), mes: store.currentMonth || "Octubre de 2026" });
+  document.getElementById("mensajeVistaPrevia").textContent = texto;
+}
+document.getElementById("navMensajeBtn").addEventListener("click", abrirEditorMensaje);
+document.getElementById("fMensajeTexto").addEventListener("input", actualizarVistaPreviaMensaje);
+document.getElementById("fMensajeDia").addEventListener("input", actualizarVistaPreviaMensaje);
+document.getElementById("cerrarMensajeBtn").addEventListener("click", () => document.getElementById("overlayMensaje").classList.remove("show"));
+document.getElementById("restaurarMensajeBtn").addEventListener("click", () => {
+  document.getElementById("fMensajeTexto").value = PLANTILLA_RECORDATORIO_ORIGINAL;
+  document.getElementById("fMensajeDia").value = 16;
+  actualizarVistaPreviaMensaje();
+});
+document.getElementById("guardarMensajeBtn").addEventListener("click", async () => {
+  if (!esAdmin()){ showToast("Solo el administrador puede cambiar el mensaje."); return; }
+  const plantilla = document.getElementById("fMensajeTexto").value.trim();
+  const dia = Math.min(31, Math.max(1, Number(document.getElementById("fMensajeDia").value) || 16));
+  if (!plantilla){ showToast("Escribe el texto del mensaje."); return; }
+  configMensaje = { plantilla, dia };
+  try{ localStorage.setItem(CONFIG_MENSAJE_KEY, JSON.stringify(configMensaje)); }catch(e){}
+  let guardadoEnNube = false;
+  try{
+    const { error } = await sb.from("configuracion").upsert({ clave: "mensaje_recordatorio", valor: configMensaje, updated_by: currentUserId });
+    guardadoEnNube = !error;
+    if (error) console.error(error);
+  }catch(e){ console.error(e); }
+  document.getElementById("overlayMensaje").classList.remove("show");
+  showToast(guardadoEnNube ? "Mensaje guardado para todo el equipo." : "Mensaje guardado en este equipo (no se pudo compartir con los demás).");
+});
+
 function enviarWhatsapp(r, totalPagar){
   const numero = String(r["Teléfono"] || "").replace(/\D/g, "");
   if (!numero) return;
   const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
 
-  const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
-  const fechaLimite = mesInfo ? `16 de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : "el 16 del mes";
-
-  const mensaje =
-    `🛡️ *PROSEGUROSNET* 🛡️\n— _Protegemos lo que más importa_ —\n\n` +
-    `¡Hola 👋😊, ${r["Nombre del Afiliado"]}! ` +
-    `Te compartimos el valor a pagar de tu seguridad social correspondiente a ${store.currentMonth}: ` +
-    `*${fmt(totalPagar)}* 💰\n\n` +
-    `📅 Fecha límite de pago: *${fechaLimite}*\n\n` +
-    `💳 Puedes pagar por Bre-B (Bancolombia):\n` +
-    `🔑 Llave: *0078275062*\n` +
-    `👤 A nombre de: Nestor Fabian Garzón — prosegurosnet\n\n` +
-    `✅ Si ya realizaste el pago, ignora este mensaje 🙏\n\n` +
-    `Gracias por confiar en nosotros ❤️\n` +
-    `— Equipo PROSEGUROSNET 🛡️`;
+  const mensaje = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
+    { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
 
   const url = `https://wa.me/${conIndicativo}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, "_blank");
