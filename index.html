@@ -1271,7 +1271,7 @@
 <div class="overlay" id="overlayMensaje">
   <div class="modal">
     <h2>Mensaje de recordatorio de cobro</h2>
-    <div class="modal-sub" id="mensajeSub">Este es el mensaje que se envía por WhatsApp a cada cliente. Escribe el texto como quieras y usa estas palabras entre llaves para que la app ponga los datos de cada cliente:
+    <div class="modal-sub" id="mensajeSub">Este es el mensaje que se envía a cada cliente por WhatsApp y por correo. Escribe el texto como quieras y usa estas palabras entre llaves para que la app ponga los datos de cada cliente:
       <b>{nombre}</b> · <b>{valor}</b> · <b>{mes}</b> · <b>{fecha_limite}</b>.
       Para poner un texto en <b>negrita</b> en WhatsApp, enciérralo entre asteriscos: *así*.</div>
     <div class="form-grid" style="margin-bottom:10px;">
@@ -3880,20 +3880,13 @@ function enviarCorreo(r, totalPagar){
   const correo = String(r["Correo"] || "").trim();
   if (!correo) return;
 
-  const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
-  const fechaLimite = mesInfo ? `16 de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : "el 16 del mes";
-
+  // Usa el mismo mensaje configurado para WhatsApp; en el correo se quitan los
+  // asteriscos y guiones bajos que WhatsApp usa para negrita y cursiva.
   const asunto = `PROSEGUROSNET · Pago de seguridad social — ${store.currentMonth}`;
-  const cuerpo =
-    `Hola ${r["Nombre del Afiliado"]},\n\n` +
-    `Te compartimos el valor a pagar de tu seguridad social correspondiente a ${store.currentMonth}: ${fmt(totalPagar)}.\n\n` +
-    `Fecha límite de pago: ${fechaLimite}\n\n` +
-    `Puedes pagar por Bre-B (Bancolombia):\n` +
-    `Llave: 0078275062\n` +
-    `A nombre de: Nestor Fabian Garzón — prosegurosnet\n\n` +
-    `Si ya realizaste el pago, puedes ignorar este mensaje.\n\n` +
-    `Gracias por confiar en nosotros.\n` +
-    `— Equipo PROSEGUROSNET`;
+  const cuerpo = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
+      { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth })
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/(^|[\s—(])_([^_\n]+)_(?=[\s—).,!?]|$)/gm, "$1$2");
 
   const url = `mailto:${encodeURIComponent(correo)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
   window.location.href = url;
