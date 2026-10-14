@@ -323,7 +323,8 @@
     width:64px; height:64px; display:flex; align-items:center; justify-content:center;
     font-size:26px; border-radius:8px; border:1px solid var(--line); background:var(--bg);
   }
-  .doc-thumb span{ font-size:10.5px; color:var(--muted); }
+  .doc-thumb span{ font-size:10.5px; color:var(--muted); text-align:center; }
+  .doc-en-nube{ font-size:11px; color:var(--accent); font-weight:600; text-decoration:none; }
 
   .list{
     background:var(--panel); border:1px solid var(--line); border-top:none;
@@ -2078,6 +2079,46 @@ let store = loadStore();
 let records = (store.currentMonth && store.months[store.currentMonth]) || [];
 let activeCedula = null;
 let documentosParaVer = [];
+const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla pagada" };
+let consultaDocsNube = 0;
+function fechaCortaDoc(iso){
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  try{ return d.toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short", year: "numeric" }); }
+  catch(e){ return d.toLocaleDateString(); }
+}
+async function documentosDeLaNube(cedula){
+  if (!cloudDb || !cedula) return [];
+  const { data: filas, error } = await sb.from("documentos").select("tipo, storage_path, uploaded_at").eq("cedula", String(cedula));
+  if (error || !Array.isArray(filas) || !filas.length) return [];
+  const { data: firmados } = await sb.storage.from("documentos-clientes").createSignedUrls(filas.map(f => f.storage_path), 3600);
+  const porRuta = {};
+  (firmados || []).forEach(x => { if (x && !x.error && x.signedUrl) porRuta[x.path] = x.signedUrl; });
+  return filas.map(f => ({ ...f, url: porRuta[f.storage_path] || null }));
+}
+async function agregarDocumentosDeLaNube(cedula, tiposLocales){
+  const miConsulta = ++consultaDocsNube;
+  let docs = [];
+  try{ docs = await documentosDeLaNube(cedula); }catch(e){ console.error("No se pudieron traer los documentos de la nube:", e); return; }
+  if (miConsulta !== consultaDocsNube) return; // ya se abrió otro cliente
+  const cont = document.getElementById("bDocThumbs");
+  const html = docs.filter(d => d.url && !tiposLocales.has(d.tipo)).map(d => {
+    const etiqueta = ETIQUETA_DOC_NUBE[d.tipo] || d.tipo;
+    const fecha = fechaCortaDoc(d.uploaded_at);
+    const descarga = `${d.url}${d.url.includes("?") ? "&" : "?"}download=${encodeURIComponent(etiqueta.replace(/\s+/g, "_") + ".pdf")}`;
+    return `
+    <div class="doc-thumb">
+      <div class="doc-thumb-pdf" title="Guardado en la nube">📄</div>
+      <span>${etiqueta}${fecha ? `<br><small>${fecha}</small>` : ""}</span>
+      <div class="doc-thumb-acciones">
+        <a href="${d.url}" target="_blank" rel="noopener">Ver</a>
+        <a href="${descarga}">Descargar</a>
+      </div>
+    </div>`;
+  }).join("");
+  if (html) cont.insertAdjacentHTML("beforeend", html);
+}
 
 // Muestra el documento (imagen o PDF) dentro de un visor propio de la app, en vez
 // de intentar abrir una pestaña nueva (que varios navegadores/vistas bloquean).
@@ -3719,6 +3760,11 @@ function showBreakdown(cedula){
     });
   }
   document.getElementById("bDocThumbs").innerHTML = thumbs.join("");
+  // Además de los documentos guardados en este equipo, se traen siempre los que están
+  // en la nube (así se ven desde cualquier computador o después de recargar la app).
+  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"]]
+    .filter(([campo]) => r[campo]).map(([, tipo]) => tipo));
+  agregarDocumentosDeLaNube(r["Cédula"], tiposLocales);
 
   const tareasCliente = getTareas().filter(t => t.cedula && String(t.cedula) === String(r["Cédula"]) && !t.hecha);
   let avisosHtml = tareasCliente.map(t => {
@@ -4429,7 +4475,7 @@ async function subirDocumentosCliente(cedula){
         const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
         if (upErr) throw upErr;
         const { error: dbErr } = await sb.from("documentos").upsert(
-          { cedula, tipo, storage_path: path, uploaded_by: currentUserId },
+          { cedula, tipo, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
           { onConflict: "cedula,tipo" }
         );
         if (dbErr) throw dbErr;
@@ -4489,7 +4535,23 @@ document.querySelectorAll(".doc-upload").forEach(box => {
   });
 });
 
+async function marcarDocumentosEnNubeFormulario(cedula){
+  document.querySelectorAll(".doc-upload .doc-en-nube").forEach(el => el.remove());
+  if (!cedula) return;
+  let docs = [];
+  try{ docs = await documentosDeLaNube(cedula); }catch(e){ return; }
+  if (String(editingCedula) !== String(cedula)) return;
+  const PARTE = { cedula: "Cedula", eps: "Eps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada" };
+  docs.forEach(d => {
+    const box = document.querySelector(`.doc-upload[data-doc="${PARTE[d.tipo]}"]`);
+    if (!box || !d.url) return;
+    const fecha = fechaCortaDoc(d.uploaded_at);
+    box.insertAdjacentHTML("beforeend", `<a class="doc-en-nube" href="${d.url}" target="_blank" rel="noopener">☁️ Ya guardado${fecha ? ` (${fecha})` : ""} — ver</a>`);
+  });
+}
+
 function cargarDocImagenes(record){
+  marcarDocumentosEnNubeFormulario(record ? record["Cédula"] : null);
   docImagenesCambiados = {};
   document.querySelectorAll(".doc-upload").forEach(box => {
     const doc = box.dataset.doc;
