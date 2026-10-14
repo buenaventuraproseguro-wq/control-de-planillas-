@@ -81,6 +81,7 @@
     background:var(--accent-bg); color:var(--accent); text-decoration:none;
     padding:6px 12px; border-radius:7px; font-size:12.5px; font-weight:700;
   }
+  .doc-acciones{ display:flex; gap:8px; flex-shrink:0; }
   .vacio{ color:var(--muted); font-size:13px; text-align:center; padding:14px 0; }
   h2{ font-size:13.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin:0 0 10px; }
   .table-wrap{ overflow-x:auto; }
@@ -191,12 +192,22 @@ async function iniciarSesion(cedula, password){
 
 async function renovarSesion(){
   if (!sesion || !sesion.refresh_token) return false;
+  // Si otra pestaña (o una recarga) ya renovó la sesión, se usa esa en vez de gastar otra vez el permiso.
+  const guardada = leerSesionGuardada();
+  if (guardada && guardada.refresh_token !== sesion.refresh_token && guardada.expires_at - Math.floor(Date.now() / 1000) > 60){
+    sesion = guardada;
+    return true;
+  }
   const r = await pedir(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
     method: "POST",
     headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: sesion.refresh_token }),
   });
-  if (!r.ok || !r.cuerpo || !r.cuerpo.access_token){ guardarSesion(null); return false; }
+  if (!r.ok || !r.cuerpo || !r.cuerpo.access_token){
+    const otra = leerSesionGuardada();
+    if (otra && otra.refresh_token !== sesion.refresh_token){ sesion = otra; return true; }
+    guardarSesion(null); return false;
+  }
   guardarSesion(aSesion(r.cuerpo, sesion.cedula));
   return true;
 }
@@ -365,44 +376,77 @@ async function cargarDatosCliente(cedula){
   await cargarDocumentos(cedula);
 }
 
+// Los enlaces de los documentos se preparan ANTES de que el cliente los toque, como
+// enlaces normales. (Si se abre primero una pestaña vacía y luego se pide el enlace,
+// el iPhone congela el portal al cambiar de pestaña y el documento nunca carga.)
+const EXT_POR_TIPO = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic" };
+let docsCedulaActual = null, docsPreparadosEn = 0, docsTimer = null;
+
 async function cargarDocumentos(cedula){
   const cont = document.getElementById("docsCont");
+  docsCedulaActual = cedula;
   let r;
   try{ r = await consultar(`/rest/v1/documentos?select=tipo,storage_path&cedula=eq.${encodeURIComponent(cedula)}`); }
-  catch(e){ cont.innerHTML = `<div class="vacio">No se pudieron cargar tus documentos.</div>`; return; }
+  catch(e){ cont.innerHTML = `<div class="vacio">No se pudieron cargar tus documentos. Recarga la página.</div>`; return; }
   const docs = r.ok && Array.isArray(r.cuerpo) ? r.cuerpo : [];
   if (!docs.length){
     cont.innerHTML = `<div class="vacio">Todavía no hay documentos cargados para ti.</div>`;
     return;
   }
-  cont.innerHTML = docs.map((d, i) => `
-    <div class="doc-row">
-      <span class="nombre">📄 ${esc(TIPO_LABEL[d.tipo] || d.tipo)}</span>
-      <a href="#" data-idx="${i}">Ver / Descargar</a>
-    </div>
-  `).join("");
-  cont.querySelectorAll("a[data-idx]").forEach(a => {
-    a.addEventListener("click", async (e) => {
-      e.preventDefault();
-      const ruta = docs[Number(a.dataset.idx)].storage_path;
-      // Se abre la ventana en el mismo clic (si no, el celular la bloquea como ventana emergente).
-      const ventana = window.open("", "_blank");
-      a.textContent = "Abriendo…";
-      let url = null;
-      try{
-        const rutaCodificada = String(ruta).split("/").map(encodeURIComponent).join("/");
-        const r2 = await consultar(`/storage/v1/object/sign/documentos-clientes/${rutaCodificada}`, {
-          method: "POST", body: JSON.stringify({ expiresIn: 120 }),
-        });
-        const firmada = r2.ok && r2.cuerpo && (r2.cuerpo.signedURL || r2.cuerpo.signedUrl);
-        if (firmada) url = firmada.startsWith("http") ? firmada : `${SUPABASE_URL}/storage/v1${firmada}`;
-      }catch(err){}
-      a.textContent = "Ver / Descargar";
-      if (!url){ if (ventana) ventana.close(); alert("No se pudo abrir el documento."); return; }
-      if (ventana) ventana.location.href = url; else window.location.href = url;
+  cont.innerHTML = `<div class="vacio">Preparando tus documentos…</div>`;
+
+  // Tipo de archivo de cada documento (para que la descarga tenga la extensión correcta).
+  const tipoArchivo = {};
+  try{
+    const l = await consultar(`/storage/v1/object/list/documentos-clientes`, {
+      method: "POST", body: JSON.stringify({ prefix: `${cedula}`, limit: 100, offset: 0 }),
     });
-  });
+    if (l.ok && Array.isArray(l.cuerpo)) l.cuerpo.forEach(o => { if (o && o.name) tipoArchivo[`${cedula}/${o.name}`] = o.metadata && o.metadata.mimetype; });
+  }catch(e){}
+
+  // Enlaces firmados (válidos 1 hora) para todos los documentos de una sola vez.
+  let firmados = {};
+  try{
+    const s = await consultar(`/storage/v1/object/sign/documentos-clientes`, {
+      method: "POST", body: JSON.stringify({ expiresIn: 3600, paths: docs.map(d => d.storage_path) }),
+    });
+    if (s.ok && Array.isArray(s.cuerpo)){
+      s.cuerpo.forEach(x => {
+        const rel = x && (x.signedURL || x.signedUrl);
+        if (rel && !x.error) firmados[x.path] = rel.startsWith("http") ? rel : `${SUPABASE_URL}/storage/v1${rel}`;
+      });
+    }
+  }catch(e){}
+
+  cont.innerHTML = docs.map(d => {
+    const url = firmados[d.storage_path];
+    const nombre = TIPO_LABEL[d.tipo] || d.tipo;
+    if (!url){
+      return `<div class="doc-row"><span class="nombre">📄 ${esc(nombre)}</span><span class="vacio" style="padding:0;">No disponible</span></div>`;
+    }
+    const ext = EXT_POR_TIPO[tipoArchivo[d.storage_path]] || "pdf";
+    const archivo = `${String(nombre).replace(/[^\wáéíóúñÁÉÍÓÚÑ ]+/g, "").trim().replace(/\s+/g, "_")}.${ext}`;
+    const urlDescarga = `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(archivo)}`;
+    return `
+      <div class="doc-row">
+        <span class="nombre">📄 ${esc(nombre)}</span>
+        <span class="doc-acciones">
+          <a href="${esc(url)}" target="_blank" rel="noopener">Ver</a>
+          <a href="${esc(urlDescarga)}" rel="noopener">Descargar</a>
+        </span>
+      </div>`;
+  }).join("");
+  docsPreparadosEn = Date.now();
+
+  // Los enlaces vencen en 1 hora: se renuevan solos antes de eso.
+  clearTimeout(docsTimer);
+  docsTimer = setTimeout(() => { if (docsCedulaActual) cargarDocumentos(docsCedulaActual); }, 50 * 60 * 1000);
 }
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && docsCedulaActual && sesion && Date.now() - docsPreparadosEn > 50 * 60 * 1000){
+    cargarDocumentos(docsCedulaActual);
+  }
+});
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const errEl = document.getElementById("loginErr");
@@ -431,6 +475,7 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await cerrarSesion();
+  docsCedulaActual = null; clearTimeout(docsTimer);
   document.getElementById("resumenCont").innerHTML = `<div class="vacio">Cargando…</div>`;
   document.getElementById("historialCont").innerHTML = `<div class="vacio">Cargando…</div>`;
   document.getElementById("docsCont").innerHTML = `<div class="vacio">Cargando…</div>`;
