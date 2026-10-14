@@ -1,4 +1,3 @@
-[index (12).html](https://github.com/user-attachments/files/33417271/index.12.html)
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -432,6 +431,12 @@
     margin-bottom:14px; font-size:13px; font-weight:600;
   }
   .list-header h2{ font-size:14px; font-weight:600; color:var(--muted); margin:0; }
+  .recordatorios-bar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .recordatorios-progreso{ font-size:12.5px; color:var(--muted); font-weight:600; }
+  body.rol-operador #deleteMonthBtn{ display:none !important; }
 
   footer{ text-align:center; font-size:12px; color:var(--muted); margin-top:24px; }
   .footer-version{ display:inline-block; margin-top:6px; font-size:10.5px; opacity:.7; }
@@ -787,6 +792,11 @@
 
   <div class="stats-strip" id="statsStrip"></div>
 
+  <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
+    <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">📣 Enviar recordatorio de WhatsApp a pendientes</button>
+    <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
+  </div>
+
   <div class="month-bar">
     <div class="month-select-wrap" id="monthSelectWrap">
       <label for="monthSelect">Mes</label>
@@ -832,6 +842,8 @@
           <button class="btn small" id="editBtn">Editar</button>
           <button class="btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
           <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
+          <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
+          <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           <a class="btn small qr-link" id="qrBtn" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z' fill='%23C0272D'/%3E%3Cpath d='M32 8 L52 16 V30 C52 43 43 52 32 56 C21 52 12 43 12 30 V16 Z' fill='%23ffffff' opacity='0.12'/%3E%3Crect x='18' y='30' width='28' height='12' rx='2' fill='%23ffffff'/%3E%3Crect x='20' y='24' width='10' height='8' rx='1' fill='%23ffffff'/%3E%3Ccircle cx='24' cy='44' r='3' fill='%23173A5E'/%3E%3Ccircle cx='40' cy='44' r='3' fill='%23173A5E'/%3E%3C/svg%3E" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
@@ -921,6 +933,7 @@
         </select>
       </div>
       <div class="field"><label><span class="field-num">9</span>Teléfono</label><input id="fTelefono" type="tel" inputmode="tel"></div>
+      <div class="field"><label>Correo electrónico</label><input id="fCorreo" type="email" inputmode="email" placeholder="cliente@correo.com"></div>
       <div class="field"><label>Nombre del segundo contacto</label><input id="fNombreContacto2" type="text" placeholder="Ej: esposa, hijo, jefe"></div>
       <div class="field"><label>Segundo teléfono</label><input id="fTelefono2" type="tel" inputmode="tel"></div>
       <div class="field"><label><span class="field-num">10</span>Empresa</label>
@@ -1274,6 +1287,8 @@ let soloLectura = false;   // ya no se usa (todo el equipo autenticado puede edi
 let sinNubeCompartida = false; // ya no se usa con Supabase (si falla, simplemente se reintenta)
 let currentUserId = null;
 let currentUserEmail = null;
+let currentUserRole = "operador"; // "admin" o "operador"; se confirma contra Supabase al iniciar sesión
+function esAdmin(){ return currentUserRole === "admin"; }
 let unsubClientesMes = null;
 let _ultimaListaMesesSincronizada = null;
 
@@ -1295,6 +1310,7 @@ function esRecordToDbRow(r, monthId){
     no_planilla_pagada: r["No. Planilla Pagada"] || "",
     muelle: r["Muelle"] || "",
     telefono: r["Teléfono"] || "",
+    correo: r["Correo"] || "",
     nombre_contacto2: r["Nombre Contacto 2"] || "",
     telefono2: r["Teléfono 2"] || "",
     fecha_ingreso: toInputDate(r["Fecha de Ingreso"]) || null,
@@ -1329,6 +1345,7 @@ function dbRowToEsRecord(row){
     "No. Planilla Pagada": row.no_planilla_pagada || "",
     "Muelle": row.muelle || "",
     "Teléfono": row.telefono || "",
+    "Correo": row.correo || "",
     "Nombre Contacto 2": row.nombre_contacto2 || "",
     "Teléfono 2": row.telefono2 || "",
     "Fecha de Ingreso": fromInputDate(row.fecha_ingreso) || "",
@@ -3011,6 +3028,7 @@ function switchToMonth(monthName){
   store.months[monthName] = records;
   activeCedula = null;
   editingCedula = null;
+  colaRecordatorios = [];
   breakdown.classList.remove("show");
   searchInput.value = "";
   seleccionados.clear();
@@ -3116,6 +3134,10 @@ advanceBtn.addEventListener("click", async () => {
 });
 
 deleteMonthBtn.addEventListener("click", async () => {
+  if (!esAdmin()){
+    showToast("Solo un Admin puede eliminar un mes completo.");
+    return;
+  }
   const names = sortedMonthNames();
   if (names.length <= 1){
     showToast("Debe quedar al menos un mes.");
@@ -3424,6 +3446,7 @@ function renderList(filterText){
   totalCount.textContent = records.length + " registros";
   renderMonthTotal();
   renderStatsStrip();
+  actualizarBarraRecordatorios();
   renderFilterPills();
   renderBulkBar();
   renderAvisoMesNoActual();
@@ -3692,6 +3715,17 @@ function showBreakdown(cedula){
     waBtn.style.display = "none";
   }
 
+  // Botón de correo: solo si el cliente tiene correo guardado
+  const correoBtn = document.getElementById("correoBtn");
+  if (r["Correo"]){
+    correoBtn.style.display = "inline-flex";
+    correoBtn.onclick = () => enviarCorreo(r, totalPagar);
+  } else {
+    correoBtn.style.display = "none";
+  }
+
+  document.getElementById("portalBtn").onclick = () => crearAccesoPortal(r);
+
   // Los tres puntos de muelle (S, T, A); solo el asignado al cliente es tocable.
   document.getElementById("muelleDotsBreakdown").innerHTML = puntosMuelle(r, false);
 
@@ -3724,6 +3758,120 @@ function enviarWhatsapp(r, totalPagar){
 
   const url = `https://wa.me/${conIndicativo}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, "_blank");
+}
+
+function enviarCorreo(r, totalPagar){
+  const correo = String(r["Correo"] || "").trim();
+  if (!correo) return;
+
+  const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
+  const fechaLimite = mesInfo ? `16 de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : "el 16 del mes";
+
+  const asunto = `PROSEGUROSNET · Pago de seguridad social — ${store.currentMonth}`;
+  const cuerpo =
+    `Hola ${r["Nombre del Afiliado"]},\n\n` +
+    `Te compartimos el valor a pagar de tu seguridad social correspondiente a ${store.currentMonth}: ${fmt(totalPagar)}.\n\n` +
+    `Fecha límite de pago: ${fechaLimite}\n\n` +
+    `Puedes pagar por Bre-B (Bancolombia):\n` +
+    `Llave: 0078275062\n` +
+    `A nombre de: Nestor Fabian Garzón — prosegurosnet\n\n` +
+    `Si ya realizaste el pago, puedes ignorar este mensaje.\n\n` +
+    `Gracias por confiar en nosotros.\n` +
+    `— Equipo PROSEGUROSNET`;
+
+  const url = `mailto:${encodeURIComponent(correo)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+  window.location.href = url;
+}
+
+function generarPasswordPortal(){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+// Crea (o restablece la contraseña de) el acceso del cliente al portal de autoservicio,
+// llamando a la Edge Function "crear-acceso-portal" (que usa la service_role key para
+// crear el usuario de autenticación; eso nunca puede hacerse desde el navegador directo).
+async function crearAccesoPortal(r){
+  const cedula = String(r["Cédula"] || "").trim();
+  if (!cedula){ showToast("Este cliente no tiene cédula guardada."); return; }
+  if (!sb){ showToast("No hay conexión con la nube en este momento."); return; }
+  if (!(await confirmarApp(`¿Crear o restablecer el acceso al portal para ${r["Nombre del Afiliado"]} (cédula ${cedula})? Si ya tenía acceso, se le asignará una contraseña nueva.`))) return;
+
+  const password = generarPasswordPortal();
+  const btn = document.getElementById("portalBtn");
+  btn.disabled = true; btn.textContent = "Creando acceso…";
+  try {
+    const { data: sesion } = await sb.auth.getSession();
+    const token = sesion && sesion.session ? sesion.session.access_token : null;
+    if (!token) throw new Error("No hay sesión activa.");
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/crear-acceso-portal`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ cedula, password }),
+    });
+    const resultado = await resp.json();
+    if (!resp.ok) throw new Error(resultado.error || "No se pudo crear el acceso.");
+
+    const mensajeCred =
+      `🔐 Acceso al portal de PROSEGUROSNET\n\n` +
+      `Usuario: ${resultado.correo}\n` +
+      `Contraseña: ${password}\n\n` +
+      `Entra en: ${location.origin}${location.pathname.replace(/index\.html$/, "")}portal.html\n\n` +
+      `Ahí puedes ver tu historial de pagos y descargar tus documentos.`;
+
+    await alertApp(`✅ Acceso ${resultado.actualizado ? "restablecido" : "creado"}.\n\nUsuario: ${resultado.correo}\nContraseña: ${password}\n\n(Se copió el mensaje completo para compartir; pégalo por WhatsApp o correo.)`);
+    try { await navigator.clipboard.writeText(mensajeCred); } catch (e){ /* portapapeles no disponible; no es grave */ }
+  } catch (e){
+    console.error("Error creando acceso al portal:", e);
+    await alertApp("⚠️ No se pudo crear el acceso al portal: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "🔐 Acceso al portal";
+  }
+}
+
+// ---- Recordatorio masivo de WhatsApp a clientes pendientes de pago ----
+// Como los navegadores bloquean varias ventanas abiertas de golpe, se hace de una en una:
+// este botón abre el siguiente chat de WhatsApp pendiente y se convierte en "Siguiente".
+let colaRecordatorios = [];
+function clientesPendientesDelMes(){
+  const arr = store.months[store.currentMonth] || [];
+  return arr.filter(r => {
+    const ec = estadoClass(r["Estado Trámite"]);
+    return ec !== "PAGO" && ec !== "PAGO_CONDUCTOR" && ec !== "RETIRO" && String(r["Teléfono"] || "").trim();
+  });
+}
+function actualizarBarraRecordatorios(){
+  const bar = document.getElementById("recordatoriosBar");
+  const btn = document.getElementById("recordarPendientesBtn");
+  const progreso = document.getElementById("recordatoriosProgreso");
+  if (!bar || !btn) return;
+  const pendientes = clientesPendientesDelMes();
+  if (!pendientes.length){
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "flex";
+  if (colaRecordatorios.length){
+    btn.textContent = `📣 Enviar siguiente (${colaRecordatorios.length} restante(s))`;
+    progreso.style.display = "inline";
+    progreso.textContent = `Enviando recordatorios: queda(n) ${colaRecordatorios.length} de ${pendientes.length} pendiente(s).`;
+  } else {
+    btn.textContent = `📣 Enviar recordatorio de WhatsApp a pendientes (${pendientes.length})`;
+    progreso.style.display = "none";
+    progreso.textContent = "";
+  }
+}
+function iniciarOContinuarRecordatorios(){
+  if (!colaRecordatorios.length){
+    colaRecordatorios = clientesPendientesDelMes().slice();
+    if (!colaRecordatorios.length) return;
+  }
+  const r = colaRecordatorios.shift();
+  const totalPagar = calcularTotalPagar(r, store.currentMonth);
+  enviarWhatsapp(r, totalPagar);
+  actualizarBarraRecordatorios();
 }
 
 // Detecta si el mensaje es una advertencia (validación, error) para mostrar un ícono distinto
@@ -3864,6 +4012,7 @@ function openModal(record){
     ? record["No. Planilla Pagada"] || "" : "";
   getField("Muelle").value = (record && record["Muelle"]) ? "Muelle" : "";
   getField("Telefono").value = record ? record["Teléfono"] || "" : "";
+  getField("Correo").value = record ? record["Correo"] || "" : "";
   getField("NombreContacto2").value = record ? record["Nombre Contacto 2"] || "" : "";
   getField("Telefono2").value = record ? record["Teléfono 2"] || "" : "";
   getField("Empresa").value = record ? (record["Empresa"] || "") : "PROSEGUROSNET";
@@ -4087,6 +4236,50 @@ function leerBeneficiarios(){
 
 /* ---- Fotos/PDF de documentos (Cédula, EPS, Fondo de pensión, Caja, Planilla pagada) ---- */
 const docImagenes = { Cedula: null, Eps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null };
+// Marca qué documentos cambió el usuario en esta edición, para solo subir a la nube esos
+// (y no volver a subir cada vez los que ya estaban igual).
+let docImagenesCambiados = {};
+const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada" };
+
+function dataUrlToBlob(dataUrl){
+  const [header, base64] = dataUrl.split(",");
+  const mime = (header.match(/data:(.*?);base64/) || [,"application/octet-stream"])[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+// Sube a Supabase Storage (bucket privado "documentos-clientes") los documentos que el
+// usuario cambió al editar este cliente, y actualiza la tabla "documentos" para que
+// queden disponibles entre computadores y para el portal del cliente. Es "best effort":
+// si falla (por ejemplo sin internet) no bloquea el guardado local, solo se avisa en consola.
+async function subirDocumentosCliente(cedula){
+  if (!cloudDb || !cedula) return;
+  for (const doc of Object.keys(docImagenes)){
+    if (!docImagenesCambiados[doc]) continue;
+    const tipo = DOC_TIPO_DB[doc];
+    const path = `${cedula}/${tipo}`;
+    try {
+      if (docImagenes[doc]){
+        const blob = dataUrlToBlob(docImagenes[doc]);
+        const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
+        if (upErr) throw upErr;
+        const { error: dbErr } = await sb.from("documentos").upsert(
+          { cedula, tipo, storage_path: path, uploaded_by: currentUserId },
+          { onConflict: "cedula,tipo" }
+        );
+        if (dbErr) throw dbErr;
+      } else {
+        await sb.storage.from("documentos-clientes").remove([path]);
+        await sb.from("documentos").delete().eq("cedula", cedula).eq("tipo", tipo);
+      }
+    } catch (e){
+      console.error(`No se pudo sincronizar el documento "${doc}" a la nube:`, e);
+    }
+  }
+  docImagenesCambiados = {};
+}
 
 function mostrarDocPreview(box, dataUrl){
   const preview = box.querySelector(".doc-preview");
@@ -4120,18 +4313,21 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     if (!file) return;
     comprimirImagen(file, (dataUrl) => {
       docImagenes[doc] = dataUrl;
+      docImagenesCambiados[doc] = true;
       mostrarDocPreview(box, dataUrl);
     });
   });
 
   removeBtn.addEventListener("click", () => {
     docImagenes[doc] = null;
+    docImagenesCambiados[doc] = true;
     fileInput.value = "";
     mostrarDocPreview(box, null);
   });
 });
 
 function cargarDocImagenes(record){
+  docImagenesCambiados = {};
   document.querySelectorAll(".doc-upload").forEach(box => {
     const doc = box.dataset.doc;
     const fileInput = box.querySelector(".doc-file");
@@ -4253,6 +4449,7 @@ document.getElementById("editBtn").addEventListener("click", () => {
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (r) openModal(r);
 });
+document.getElementById("recordarPendientesBtn").addEventListener("click", iniciarOContinuarRecordatorios);
 // Dibuja el recibo en un canvas (sin librerías externas) y lo comparte como imagen.
 // En celular, esto abre el menú nativo de compartir donde se puede elegir WhatsApp directo.
 async function compartirReciboComoImagen(){
@@ -4440,6 +4637,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "No. Planilla Pagada": getField("NoPlanillaPagada").value.trim(),
     "Muelle": getField("Muelle").value,
     "Teléfono": getField("Telefono").value.trim(),
+    "Correo": getField("Correo").value.trim(),
     "Nombre Contacto 2": getField("NombreContacto2").value.trim(),
     "Teléfono 2": getField("Telefono2").value.trim(),
     "Empresa": getField("Empresa").value.trim(),
@@ -4478,6 +4676,8 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     await alertApp("⚠️ Este dispositivo no logró conectarse a la base de datos compartida de la app (lo más probable es que no iniciaste sesión en una cuenta de Claude antes de abrir el enlace, o el enlace que abriste no es el enlace publicado por quien administra la app). Si guardas ahora, el cambio se queda SOLO en este dispositivo y tus compañeros NO lo van a ver. Inicia sesión en Claude con tu cuenta, abre de nuevo el enlace que te compartieron y vuelve a intentar. Si el problema sigue, avísale a quien administra la app.");
     return;
   }
+
+  subirDocumentosCliente(cedula);
 
   if (editingCedula){
     const idx = records.findIndex(x => String(x["Cédula"]) === String(editingCedula));
@@ -4597,8 +4797,15 @@ async function mostrarAppPrincipal(user){
   document.getElementById("appRoot").style.display = "";
   currentUserId = user.id;
   currentUserEmail = user.email;
+  currentUserRole = "operador";
+  try {
+    const { data: perfil } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    if (perfil && perfil.role) currentUserRole = perfil.role;
+  } catch (e){ console.error("No se pudo leer el rol del perfil:", e); }
   const quien = document.getElementById("whoAmI");
-  if (quien) quien.textContent = user.email;
+  if (quien) quien.textContent = user.email + (esAdmin() ? " · Admin" : " · Operador");
+  document.body.classList.toggle("rol-admin", esAdmin());
+  document.body.classList.toggle("rol-operador", !esAdmin());
   await iniciarAppConSupabase();
 }
 
