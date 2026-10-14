@@ -1,4 +1,4 @@
-[index (8).html](https://github.com/user-attachments/files/33416489/index.8.html)
+[index (9).html](https://github.com/user-attachments/files/33416923/index.9.html)
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3642,16 +3642,17 @@ function enviarWhatsapp(r, totalPagar){
   const fechaLimite = mesInfo ? `16 de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : "el 16 del mes";
 
   const mensaje =
-    `*PROSEGUROSNET*\n— _Protegemos lo que más importa_ —\n\n` +
-    `¡Hola 👋, ${r["Nombre del Afiliado"]}! ` +
+    `🛡️ *PROSEGUROSNET* 🛡️\n— _Protegemos lo que más importa_ —\n\n` +
+    `¡Hola 👋😊, ${r["Nombre del Afiliado"]}! ` +
     `Te compartimos el valor a pagar de tu seguridad social correspondiente a ${store.currentMonth}: ` +
-    `*${fmt(totalPagar)}*.\n\n` +
+    `*${fmt(totalPagar)}* 💰\n\n` +
     `📅 Fecha límite de pago: *${fechaLimite}*\n\n` +
     `💳 Puedes pagar por Bre-B (Bancolombia):\n` +
-    `Llave: *0078275062*\n` +
-    `A nombre de: Nestor Fabian Garzón — prosegurosnet\n\n` +
-    `Si ya realizaste el pago, ignora este mensaje 🙏\n\n` +
-    `— Equipo PROSEGUROSNET`;
+    `🔑 Llave: *0078275062*\n` +
+    `👤 A nombre de: Nestor Fabian Garzón — prosegurosnet\n\n` +
+    `✅ Si ya realizaste el pago, ignora este mensaje 🙏\n\n` +
+    `Gracias por confiar en nosotros ❤️\n` +
+    `— Equipo PROSEGUROSNET 🛡️`;
 
   const url = `https://wa.me/${conIndicativo}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, "_blank");
