@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal del cliente · PROSEGUROSNET</title>
+<style>
+  :root{
+    --bg:#ECE8E1; --panel:#FFFFFF; --ink:#181512; --muted:#5A534A; --line:#D9D2C4;
+    --accent:#2F6F62; --accent-bg:#DCEAE6;
+    --pago:#2F6F62; --pago-bg:#DCEAE6;
+    --retiro:#9C4A3D; --retiro-bg:#F1DED8;
+    --sinpago:#6A5590; --sinpago-bg:#E8E1F0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0F1720; --panel:#17222D; --ink:#E7ECF1; --muted:#9AA7B4; --line:#2B3A47;
+      --accent:#4CAF7D; --accent-bg:#123425;
+      --pago:#4CAF7D; --pago-bg:#123425;
+      --retiro:#E8746D; --retiro-bg:#3A1917;
+      --sinpago:#A78BFA; --sinpago-bg:#2C2350;
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:20px 14px 60px;
+  }
+  .wrap{ max-width:720px; margin:0 auto; }
+  .brand{ text-align:center; margin-bottom:22px; }
+  .brand .shield{ font-size:34px; }
+  .brand h1{ font-size:17px; margin:4px 0 0; letter-spacing:.02em; }
+  .brand p{ font-size:12.5px; color:var(--muted); margin:2px 0 0; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:20px; margin-bottom:16px; box-shadow:0 2px 10px rgba(15,30,45,.06);
+  }
+  label{ display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin:12px 0 4px; }
+  input{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    background:var(--bg); color:var(--ink); font-size:14px;
+  }
+  button{
+    font-family:inherit; cursor:pointer; border:none; border-radius:8px; font-weight:600;
+    padding:11px 16px; font-size:14px;
+  }
+  .btn-primary{ background:var(--accent); color:#fff; width:100%; margin-top:18px; }
+  .btn-primary:disabled{ opacity:.6; cursor:default; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+  #loginErr{ color:var(--retiro); font-size:12.5px; margin-top:10px; min-height:1px; }
+  .top-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; }
+  .top-row .quien{ font-size:14px; font-weight:700; }
+  .top-row .ced{ font-size:12px; color:var(--muted); }
+  .resumen-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px;
+  }
+  .resumen-row:last-child{ border-bottom:none; }
+  .resumen-row .v{ font-family:"IBM Plex Mono",monospace; font-weight:700; }
+  .v.pendiente{ color:var(--sinpago); }
+  .v.aldia{ color:var(--pago); }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:4px; }
+  th{
+    text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    color:var(--muted); padding:7px 6px; border-bottom:2px solid var(--line); white-space:nowrap;
+  }
+  td{ padding:8px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td.num{ font-family:"IBM Plex Mono",monospace; text-align:right; font-weight:600; }
+  .estado{ font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:5px; white-space:nowrap; }
+  .estado.PAGO, .estado.PAGO_CONDUCTOR{ background:var(--pago-bg); color:var(--pago); }
+  .estado.RETIRO{ background:var(--retiro-bg); color:var(--retiro); }
+  .estado:not(.PAGO):not(.PAGO_CONDUCTOR):not(.RETIRO){ background:var(--sinpago-bg); color:var(--sinpago); }
+  .doc-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:13.5px;
+  }
+  .doc-row:last-child{ border-bottom:none; }
+  .doc-row .nombre{ display:flex; align-items:center; gap:8px; }
+  .doc-row a{
+    background:var(--accent-bg); color:var(--accent); text-decoration:none;
+    padding:6px 12px; border-radius:7px; font-size:12.5px; font-weight:700;
+  }
+  .vacio{ color:var(--muted); font-size:13px; text-align:center; padding:14px 0; }
+  h2{ font-size:13.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin:0 0 10px; }
+  .table-wrap{ overflow-x:auto; }
+  #appScreen{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="brand">
+    <div class="shield">🛡️</div>
+    <h1>PROSEGUROSNET</h1>
+    <p>Portal del cliente</p>
+  </div>
+
+  <div id="loginScreen">
+    <div class="card">
+      <label>Cédula</label>
+      <input id="loginCedula" type="text" inputmode="numeric" placeholder="Tu número de cédula" autocomplete="username">
+      <label>Contraseña</label>
+      <input id="loginPass" type="password" placeholder="La contraseña que te compartieron" autocomplete="current-password">
+      <button class="btn-primary" id="loginBtn">Entrar</button>
+      <div id="loginErr"></div>
+    </div>
+  </div>
+
+  <div id="appScreen">
+    <div class="top-row">
+      <div>
+        <div class="quien" id="quienSoy">—</div>
+        <div class="ced" id="miCedula">—</div>
+      </div>
+      <button class="btn-ghost" id="logoutBtn">Salir</button>
+    </div>
+
+    <div class="card">
+      <h2>Resumen de tu cuenta</h2>
+      <div id="resumenCont"><div class="vacio">Cargando…</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Historial mensual</h2>
+      <div class="table-wrap" id="historialCont"><div class="vacio">Cargando…</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Tus documentos</h2>
+      <div id="docsCont"><div class="vacio">Cargando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://jjygarfwdmhzspqonvql.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto",
+               "Septiembre","Octubre","Noviembre","Diciembre"];
+const COSTO_AFILIACION = 149000;
+const COSTO_MENSUAL = 75000;
+const fmt = (n) => {
+  const num = Number(n);
+  if (n === "" || n === null || n === undefined || isNaN(num)) return "$0";
+  return "$" + num.toLocaleString("es-CO", { maximumFractionDigits: 0 });
+};
+const numOrZero = (n) => { const v = Number(n); return isNaN(v) ? 0 : v; };
+const estadoClass = (estado) => (estado || "SIN_ESTADO").replace(/\s+/g, "_").toUpperCase();
+
+const TIPO_LABEL = {
+  cedula: "Cédula", eps: "EPS", afp: "Fondo de pensión", caja: "Caja de compensación",
+  arl: "ARL", planilla_pagada: "Planilla pagada",
+};
+
+function calcProrrateo(row, mesActual){
+  const fecha = String(row.fecha_ingreso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/); // fecha_ingreso viene en formato YYYY-MM-DD de Supabase
+  const mes = String(mesActual || "").match(/^(\S+)\s+de\s+(\d{4})$/);
+  if (!fecha || !mes) return { factor: 1 };
+  const diaIngreso = parseInt(fecha[3], 10);
+  const mesIngreso = parseInt(fecha[2], 10) - 1;
+  const anioIngreso = parseInt(fecha[1], 10);
+  const mesActualIdx = MESES.indexOf(mes[1]);
+  const anioActual = parseInt(mes[2], 10);
+  if (mesIngreso !== mesActualIdx || anioIngreso !== anioActual) return { factor: 1 };
+  const dias = Math.max(0, 30 - diaIngreso + 1);
+  return { factor: dias / 30 };
+}
+function factorDiasProporcionales(row){
+  if (estadoClass(row.estado_tramite) !== "DIAS_PROPORCIONALES") return 1;
+  const diaIngreso = parseInt(String(row.fecha_ingreso || "").split("-")[2], 10);
+  if (!isNaN(diaIngreso) && diaIngreso >= 1 && diaIngreso <= 30) return Math.max(0, 30 - diaIngreso + 1) / 30;
+  return 1;
+}
+function calcularTotalPagar(row, mesNombre){
+  const prorr = calcProrrateo(row, mesNombre);
+  const esAfiliacion = estadoClass(row.estado_tramite) === "AFILIACION";
+  const esDiasProp = estadoClass(row.estado_tramite) === "DIAS_PROPORCIONALES";
+  const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(row);
+  const sinPension = row.estado_afp === "Pensionado" || row.estado_afp === "No Cumple Semanas";
+  const valAportes = (campo) => Math.round(numOrZero(row[campo]) * factorAportes);
+  const valorPension = sinPension ? 0 : valAportes("valor_pension");
+  if (esAfiliacion) return numOrZero(row.costo_servicio);
+  const costo = (esDiasProp && numOrZero(row.costo_servicio) === COSTO_AFILIACION) ? COSTO_MENSUAL : numOrZero(row.costo_servicio);
+  return costo + valAportes("valor_eps") + valAportes("valor_arl") + valorPension + valAportes("valor_caja");
+}
+
+function mostrarLogin(){
+  document.getElementById("loginScreen").style.display = "";
+  document.getElementById("appScreen").style.display = "none";
+}
+function mostrarApp(){
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("appScreen").style.display = "";
+}
+
+async function cargarDatosCliente(cedula){
+  let filas, error;
+  try {
+    ({ data: filas, error } = await conLimite(
+      sb.from("clients").select("*, months(name, sort_order)").eq("cedula", cedula)
+    ));
+  } catch (e){
+    document.getElementById("historialCont").innerHTML = `<div class="vacio">No se pudo conectar con el servidor. Revisa tu internet y vuelve a entrar.</div>`;
+    document.getElementById("resumenCont").innerHTML = "";
+    document.getElementById("docsCont").innerHTML = "";
+    return;
+  }
+  if (error){
+    document.getElementById("historialCont").innerHTML = `<div class="vacio">No se pudo cargar tu historial.</div>`;
+    return;
+  }
+  filas.sort((a, b) => (a.months?.sort_order ?? 9999) - (b.months?.sort_order ?? 9999));
+
+  document.getElementById("quienSoy").textContent = filas.length ? filas[0].nombre || "Cliente" : "Cliente";
+  document.getElementById("miCedula").textContent = `Cédula ${cedula}`;
+
+  let saldoAcumulado = 0;
+  const apariciones = filas.map(row => {
+    const mesNombre = row.months ? row.months.name : "";
+    const valor = calcularTotalPagar(row, mesNombre);
+    const ec = estadoClass(row.estado_tramite);
+    if (ec !== "PAGO" && ec !== "PAGO_CONDUCTOR" && ec !== "RETIRO") saldoAcumulado += valor;
+    return { mes: mesNombre, estado: row.estado_tramite, planilla: row.no_planilla_pagada, valor, saldo: saldoAcumulado };
+  });
+
+  const totalGeneral = apariciones.reduce((acc, a) => acc + a.valor, 0);
+  const totalPagado = apariciones.filter(a => estadoClass(a.estado) === "PAGO" || estadoClass(a.estado) === "PAGO_CONDUCTOR").reduce((acc, a) => acc + a.valor, 0);
+  const totalPendiente = apariciones.length ? apariciones[apariciones.length - 1].saldo : 0;
+  let mesesAtrasados = 0;
+  for (let i = apariciones.length - 1; i >= 0; i--){
+    const ec = estadoClass(apariciones[i].estado);
+    if (ec === "PAGO" || ec === "PAGO_CONDUCTOR" || ec === "RETIRO") break;
+    mesesAtrasados++;
+  }
+
+  document.getElementById("resumenCont").innerHTML = `
+    <div class="resumen-row"><span>Total cobrado (${apariciones.length} mes(es))</span><span class="v">${fmt(totalGeneral)}</span></div>
+    <div class="resumen-row"><span>Total pagado</span><span class="v">${fmt(totalPagado)}</span></div>
+    <div class="resumen-row"><span>Saldo pendiente actual</span><span class="v ${totalPendiente > 0 ? "pendiente" : "aldia"}">${fmt(totalPendiente)}</span></div>
+    ${mesesAtrasados > 0
+      ? `<div class="resumen-row"><span>Meses seguidos sin pagar</span><span class="v pendiente">${mesesAtrasados}</span></div>`
+      : `<div class="resumen-row"><span>Estado de cuenta</span><span class="v aldia">Al día ✅</span></div>`}
+  `;
+
+  document.getElementById("historialCont").innerHTML = apariciones.length ? `
+    <table>
+      <thead><tr><th>Mes</th><th>Planilla</th><th>Estado</th><th class="num">Valor</th><th class="num">Saldo</th></tr></thead>
+      <tbody>
+        ${apariciones.map(a => `
+          <tr>
+            <td>${a.mes}</td>
+            <td>${a.planilla || "—"}</td>
+            <td><span class="estado ${estadoClass(a.estado)}">${a.estado === "PAGO CONDUCTOR" ? "PAGO" : a.estado}</span></td>
+            <td class="num">${fmt(a.valor)}</td>
+            <td class="num ${a.saldo > 0 ? "pendiente" : ""}">${fmt(a.saldo)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  ` : `<div class="vacio">Todavía no hay historial registrado.</div>`;
+
+  await cargarDocumentos(cedula);
+}
+
+async function cargarDocumentos(cedula){
+  const { data: docs, error } = await sb.from("documentos").select("tipo, storage_path").eq("cedula", cedula);
+  const cont = document.getElementById("docsCont");
+  if (error || !docs || !docs.length){
+    cont.innerHTML = `<div class="vacio">Todavía no hay documentos cargados para ti.</div>`;
+    return;
+  }
+  cont.innerHTML = docs.map(d => `
+    <div class="doc-row">
+      <span class="nombre">📄 ${TIPO_LABEL[d.tipo] || d.tipo}</span>
+      <a href="#" data-path="${d.storage_path}">Ver / Descargar</a>
+    </div>
+  `).join("");
+  cont.querySelectorAll("a[data-path]").forEach(a => {
+    a.addEventListener("click", async (e) => {
+      e.preventDefault();
+      a.textContent = "Abriendo…";
+      const { data, error: urlErr } = await sb.storage.from("documentos-clientes").createSignedUrl(a.dataset.path, 120);
+      a.textContent = "Ver / Descargar";
+      if (urlErr || !data){ alert("No se pudo abrir el documento."); return; }
+      window.open(data.signedUrl, "_blank");
+    });
+  });
+}
+
+// Evita que la página se quede "cargando" para siempre si Supabase no responde
+// (mala conexión, etc.): si una llamada tarda más de 12 segundos, se corta sola.
+function conLimite(promesa, segundos = 12){
+  return Promise.race([
+    promesa,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("tiempo de espera agotado")), segundos * 1000)),
+  ]);
+}
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const errEl = document.getElementById("loginErr");
+  errEl.textContent = "";
+  const cedula = document.getElementById("loginCedula").value.trim();
+  const password = document.getElementById("loginPass").value;
+  if (!cedula || !password){ errEl.textContent = "Escribe tu cédula y tu contraseña."; return; }
+  const btn = document.getElementById("loginBtn");
+  btn.disabled = true; btn.textContent = "Entrando…";
+  try {
+    const correoSintetico = `cliente.${cedula}@portal.prosegurosnet.com`;
+    const { error } = await conLimite(sb.auth.signInWithPassword({ email: correoSintetico, password }));
+    if (error){ errEl.textContent = "No se pudo entrar: revisa tu cédula y contraseña."; return; }
+    mostrarApp();
+    await cargarDatosCliente(cedula);
+  } catch (e){
+    errEl.textContent = "No se pudo conectar (" + e.message + "). Revisa tu internet e intenta de nuevo.";
+  } finally {
+    btn.disabled = false; btn.textContent = "Entrar";
+  }
+});
+document.getElementById("loginPass").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("loginBtn").click(); });
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  mostrarLogin();
+});
+
+(async () => {
+  try {
+    const { data } = await conLimite(sb.auth.getSession(), 8);
+    if (data && data.session){
+      const email = data.session.user.email || "";
+      const m = email.match(/^cliente\.(.+)@portal\.prosegurosnet\.com$/);
+      if (m){
+        mostrarApp();
+        await cargarDatosCliente(m[1]);
+        return;
+      }
+    }
+  } catch (e){
+    console.error("No se pudo verificar la sesión:", e);
+  }
+  mostrarLogin();
+})();
+</script>
+</body>
+</html>
