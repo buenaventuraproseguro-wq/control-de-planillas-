@@ -1,4 +1,4 @@
-[index (9).html](https://github.com/user-attachments/files/33416923/index.9.html)
+[index (11).html](https://github.com/user-attachments/files/33417119/index.11.html)
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2452,12 +2452,19 @@ function buscarHistorialCliente(){
   const meses = sortedMonthNames();
   const apariciones = [];
   let nombreCliente = null;
+  let fechaIngreso = "";
   meses.forEach(mes => {
     const arr = store.months[mes] || [];
     const r = arr.find(x => String(x["Cédula"]) === cedula);
     if (r){
       nombreCliente = r["Nombre del Afiliado"];
-      apariciones.push({ mes, estado: r["Estado Trámite"], valor: calcularTotalPagar(r, mes) });
+      if (r["Fecha de Ingreso"]) fechaIngreso = r["Fecha de Ingreso"]; // se toma la más reciente que tenga el dato
+      apariciones.push({
+        mes,
+        estado: r["Estado Trámite"],
+        valor: calcularTotalPagar(r, mes),
+        planilla: r["No. Planilla Pagada"] || "",
+      });
     }
   });
 
@@ -2468,16 +2475,31 @@ function buscarHistorialCliente(){
     return;
   }
 
+  // ---- Resumen contable: cuánto se le ha cobrado en total, cuánto ya pagó y cuánto debe. ----
+  const totalGeneral = apariciones.reduce((acc, a) => acc + a.valor, 0);
+  const totalPagado = apariciones.filter(a => estadoClass(a.estado) === "PAGO").reduce((acc, a) => acc + a.valor, 0);
+  const totalPendiente = totalGeneral - totalPagado;
+  const promedioMensual = apariciones.length ? totalGeneral / apariciones.length : 0;
+
   let html = `<div class="historial-cliente-header">
     <div class="hc-nombre">${nombreCliente || "(sin nombre de nómina)"}</div>
     <div class="hc-ced">Cédula ${cedula} · ${apariciones.length} mes(es) de nómina · ${tareasCliente.length} tarea(s)</div>
+    ${fechaIngreso ? `<div class="hc-ced">Fecha de ingreso a la empresa: <strong>${fechaIngreso}</strong></div>` : ""}
   </div>`;
 
   if (apariciones.length){
+    html += `
+      <div class="reciente-group-title">Resumen contable</div>
+      <div class="historial-mes-row"><span class="hm-mes">Total cobrado (${apariciones.length} mes(es))</span><span class="hm-valor">${fmt(totalGeneral)}</span></div>
+      <div class="historial-mes-row"><span class="hm-mes">Total pagado</span><span class="hm-valor">${fmt(totalPagado)}</span></div>
+      <div class="historial-mes-row"><span class="hm-mes">Total pendiente</span><span class="hm-valor">${fmt(totalPendiente)}</span></div>
+      <div class="historial-mes-row"><span class="hm-mes">Promedio mensual</span><span class="hm-valor">${fmt(promedioMensual)}</span></div>
+    `;
+
     html += `<div class="reciente-group-title">Historial mensual</div>`;
     html += apariciones.map(a => `
       <div class="historial-mes-row">
-        <span class="hm-mes">${a.mes}</span>
+        <span class="hm-mes">${a.mes}${a.planilla ? ` · Planilla ${a.planilla}` : ""}</span>
         <span class="estado ${estadoClass(a.estado)}">${a.estado === "PAGO CONDUCTOR" ? "PAGO" : a.estado}</span>
         <span class="hm-valor">${fmt(a.valor)}</span>
       </div>
