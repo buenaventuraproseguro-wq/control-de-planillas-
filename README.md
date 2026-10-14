@@ -1,4 +1,4 @@
-[Rename.html](https://github.com/user-attachments/files/33408647/Rename.html)
+[index (8).html](https://github.com/user-attachments/files/33416489/index.8.html)
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1697,7 +1697,7 @@ function suscribirMesesYTareasEnVivo(){
 // extra desde Supabase, y arma el mismo "store" que usa el resto de la app. ----
 function nombreMesActual(){
   const n = new Date();
-  return `${MESES[n.getMonth()]} ${n.getFullYear()}`;
+  return `${MESES[n.getMonth()]} de ${n.getFullYear()}`;
 }
 
 async function cargarStoreDesdeSupabase(){
@@ -1810,7 +1810,7 @@ function mesDeFechaISO(fechaISO){
   if (!fechaISO) return null;
   const [anio, mesNum] = fechaISO.split("-").map(Number);
   if (!anio || !mesNum) return null;
-  return `${MESES[mesNum - 1]} ${anio}`;
+  return `${MESES[mesNum - 1]} de ${anio}`;
 }
 const PENSION_DEFAULT = 280200; // valor de AFP a precargar en "Agregar cliente"
 const EPS_DEFAULT = 70100; // valor EPS estándar de empleado (dependiente)
@@ -1828,14 +1828,14 @@ const estadoClass = (estado) => (estado || "SIN_ESTADO").replace(/\s+/g,"_").toU
 const isRetiro = (r) => estadoClass(r["Estado Trámite"]) === "RETIRO";
 
 function nextMonthName(name){
-  const m = name.match(/^(\S+)\s+(\d{4})$/);
+  const m = name.match(/^(\S+)\s+de\s+(\d{4})$/);
   if (!m) return "Mes siguiente";
   let idx = MESES.indexOf(m[1]);
   let year = parseInt(m[2], 10);
   if (idx === -1) return "Mes siguiente";
   idx += 1;
   if (idx >= MESES.length){ idx = 0; year += 1; }
-  return `${MESES[idx]} ${year}`;
+  return `${MESES[idx]} de ${year}`;
 }
 // Crea meses vacíos hacia atrás, desde justo antes del más antiguo que ya existe,
 // hasta el mes/año objetivo (inclusive), para poder pegar información histórica.
@@ -1861,14 +1861,14 @@ function crearMesesAnterioresHasta(mesObjetivo){
 }
 
 function previousMonthName(name){
-  const m = name.match(/^(\S+)\s+(\d{4})$/);
+  const m = name.match(/^(\S+)\s+de\s+(\d{4})$/);
   if (!m) return "";
   let idx = MESES.indexOf(m[1]);
   let year = parseInt(m[2], 10);
   if (idx === -1) return "";
   idx -= 1;
   if (idx < 0){ idx = MESES.length - 1; year -= 1; }
-  return `${MESES[idx]} ${year}`;
+  return `${MESES[idx]} de ${year}`;
 }
 
 function loadStore(){
@@ -1971,7 +1971,7 @@ function migrateStore(s){
     // heredado) + fecha de ingreso del mes calendario anterior, para los casos
     // que ya habían quedado como SIN PAGO antes de existir esta marca.
     Object.entries(s.months).forEach(([nombreMes, monthRecords]) => {
-      const mesAnterior = previousMonthName(nombreMes).match(/^(\S+)\s+(\d{4})$/);
+      const mesAnterior = previousMonthName(nombreMes).match(/^(\S+)\s+de\s+(\d{4})$/);
       monthRecords.forEach(r => {
         const yaMarcado = r["_prorrateoTransicion"] !== undefined;
         if (yaMarcado && estadoClass(r["Estado Trámite"]) === "SIN_PAGO"){
@@ -2939,7 +2939,8 @@ function renderMonthSelect(){
 
 function switchToMonth(monthName){
   store.currentMonth = monthName;
-  records = store.months[monthName] || [];
+  records = ordenarPorNumero(store.months[monthName] || []);
+  store.months[monthName] = records;
   activeCedula = null;
   editingCedula = null;
   breakdown.classList.remove("show");
@@ -3041,7 +3042,7 @@ advanceBtn.addEventListener("click", async () => {
     if (!(await confirmarApp(`El mes "${next}" ya existe. ¿Deseas reemplazarlo con los ${continuing.length} afiliados que continúan de ${current}?`))) return;
   }
 
-  store.months[next] = continuing;
+  store.months[next] = ordenarPorNumero(continuing);
   switchToMonth(next);
   showToast(`Se creó ${next} con ${continuing.length} afiliados` + (retiradosCount ? ` (se excluyeron ${retiradosCount} en RETIRO).` : "."));
 });
@@ -3174,7 +3175,7 @@ function estaAtrasado(r){
 
 function mesActualReal(){
   const hoy = new Date();
-  return `${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`;
+  return `${MESES[hoy.getMonth()]} de ${hoy.getFullYear()}`;
 }
 
 /* ---- Campana de alertas: tareas vencidas/hoy + clientes atrasados ---- */
@@ -3428,7 +3429,7 @@ document.getElementById("bulkMarkPagoBtn").addEventListener("click", async () =>
 // Colombia usa el mes comercial de 30 días para estos cálculos, sin importar el mes calendario real.
 function calcProrrateo(record, mesActual){
   const fecha = String(record["Fecha de Ingreso"] || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  const mes = String(mesActual || "").match(/^(\S+)\s+(\d{4})$/);
+  const mes = String(mesActual || "").match(/^(\S+)\s+de\s+(\d{4})$/);
   if (!fecha || !mes) return { factor: 1, dias: 30, aplica: false };
 
   const diaIngreso = parseInt(fecha[1], 10);
@@ -3637,7 +3638,7 @@ function enviarWhatsapp(r, totalPagar){
   if (!numero) return;
   const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
 
-  const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+(\d{4})$/);
+  const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
   const fechaLimite = mesInfo ? `16 de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : "el 16 del mes";
 
   const mensaje =
