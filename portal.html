@@ -468,7 +468,12 @@ document.addEventListener("visibilitychange", () => {
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const errEl = document.getElementById("loginErr");
   errEl.textContent = "";
-  const cedula = document.getElementById("loginCedula").value.replace(/[^\d]/g, "");
+  const escrito = document.getElementById("loginCedula").value.trim();
+  if (escrito.includes("@")){
+    errEl.innerHTML = 'Este portal es para clientes y se entra con la <b>cédula</b>. Si eres del equipo de trabajo, entra aquí: <a href="./" style="color:inherit;font-weight:700;">app del equipo</a>.';
+    return;
+  }
+  const cedula = escrito.replace(/[^\d]/g, "");
   const password = document.getElementById("loginPass").value;
   if (!cedula || !password){ errEl.textContent = "Escribe tu cédula y tu contraseña."; return; }
   const btn = document.getElementById("loginBtn");
