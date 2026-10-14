@@ -1,4 +1,4 @@
-[index (11).html](https://github.com/user-attachments/files/33417119/index.11.html)
+[index (12).html](https://github.com/user-attachments/files/33417271/index.12.html)
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -572,6 +572,23 @@
   }
   .historial-mes-row .hm-mes{ font-size:12.5px; font-weight:700; }
   .historial-mes-row .hm-valor{ font-family:"IBM Plex Mono", monospace; font-weight:600; }
+  .historial-mes-row .hm-valor.saldo-pendiente{ color:var(--sinpago); }
+  .historial-mes-row .hm-valor.saldo-al-dia{ color:var(--pago); }
+  .tabla-historial{ width:100%; border-collapse:collapse; margin-bottom:14px; font-size:12.5px; }
+  .tabla-historial th{
+    text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    color:var(--muted); padding:7px 8px; border-bottom:2px solid var(--line); white-space:nowrap;
+  }
+  .tabla-historial td{ padding:8px; border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap; }
+  .tabla-historial tbody tr:nth-child(even){ background:var(--bg); }
+  .tabla-historial tbody tr:hover{ background:var(--accent-bg); }
+  .tabla-historial td.num{ font-family:"IBM Plex Mono", monospace; text-align:right; font-weight:600; }
+  .tabla-historial td.num.saldo-pendiente{ color:var(--sinpago); }
+  .tabla-historial td.num.saldo-al-dia{ color:var(--muted); font-weight:400; }
+  .tabla-historial .estado{ font-size:9.5px; font-weight:600; padding:2px 7px; border-radius:5px; white-space:nowrap; }
+  @media (max-width:600px){
+    .tabla-historial{ display:block; overflow-x:auto; }
+  }
   .historial-tarea-row{
     background:var(--afiliacion-bg); border:1px solid var(--afiliacion); border-radius:8px;
     padding:9px 12px; margin-bottom:6px; font-size:12.5px;
@@ -2449,21 +2466,28 @@ function buscarHistorialCliente(){
   }
 
   // Recorre todos los meses en orden y recoge cada vez que esa cédula aparece.
+  // De paso arma el saldo acumulado tipo libro contable: lo no pagado de un mes
+  // se arrastra como deuda al siguiente (RETIRO no genera deuda, ya que se fue).
   const meses = sortedMonthNames();
   const apariciones = [];
   let nombreCliente = null;
   let fechaIngreso = "";
+  let saldoAcumulado = 0;
   meses.forEach(mes => {
     const arr = store.months[mes] || [];
     const r = arr.find(x => String(x["Cédula"]) === cedula);
     if (r){
       nombreCliente = r["Nombre del Afiliado"];
       if (r["Fecha de Ingreso"]) fechaIngreso = r["Fecha de Ingreso"]; // se toma la más reciente que tenga el dato
+      const valor = calcularTotalPagar(r, mes);
+      const ec = estadoClass(r["Estado Trámite"]);
+      if (ec !== "PAGO" && ec !== "PAGO_CONDUCTOR" && ec !== "RETIRO") saldoAcumulado += valor;
       apariciones.push({
         mes,
         estado: r["Estado Trámite"],
-        valor: calcularTotalPagar(r, mes),
+        valor,
         planilla: r["No. Planilla Pagada"] || "",
+        saldo: saldoAcumulado,
       });
     }
   });
@@ -2477,9 +2501,17 @@ function buscarHistorialCliente(){
 
   // ---- Resumen contable: cuánto se le ha cobrado en total, cuánto ya pagó y cuánto debe. ----
   const totalGeneral = apariciones.reduce((acc, a) => acc + a.valor, 0);
-  const totalPagado = apariciones.filter(a => estadoClass(a.estado) === "PAGO").reduce((acc, a) => acc + a.valor, 0);
-  const totalPendiente = totalGeneral - totalPagado;
+  const totalPagado = apariciones.filter(a => estadoClass(a.estado) === "PAGO" || estadoClass(a.estado) === "PAGO_CONDUCTOR").reduce((acc, a) => acc + a.valor, 0);
+  const totalPendiente = apariciones.length ? apariciones[apariciones.length - 1].saldo : 0;
   const promedioMensual = apariciones.length ? totalGeneral / apariciones.length : 0;
+
+  // Antigüedad: meses seguidos sin pagar, contando desde el más reciente hacia atrás.
+  let mesesAtrasadosSeguidos = 0;
+  for (let i = apariciones.length - 1; i >= 0; i--){
+    const ec = estadoClass(apariciones[i].estado);
+    if (ec === "PAGO" || ec === "PAGO_CONDUCTOR" || ec === "RETIRO") break;
+    mesesAtrasadosSeguidos++;
+  }
 
   let html = `<div class="historial-cliente-header">
     <div class="hc-nombre">${nombreCliente || "(sin nombre de nómina)"}</div>
@@ -2492,18 +2524,32 @@ function buscarHistorialCliente(){
       <div class="reciente-group-title">Resumen contable</div>
       <div class="historial-mes-row"><span class="hm-mes">Total cobrado (${apariciones.length} mes(es))</span><span class="hm-valor">${fmt(totalGeneral)}</span></div>
       <div class="historial-mes-row"><span class="hm-mes">Total pagado</span><span class="hm-valor">${fmt(totalPagado)}</span></div>
-      <div class="historial-mes-row"><span class="hm-mes">Total pendiente</span><span class="hm-valor">${fmt(totalPendiente)}</span></div>
+      <div class="historial-mes-row"><span class="hm-mes">Saldo pendiente actual</span><span class="hm-valor ${totalPendiente > 0 ? "saldo-pendiente" : "saldo-al-dia"}">${fmt(totalPendiente)}</span></div>
       <div class="historial-mes-row"><span class="hm-mes">Promedio mensual</span><span class="hm-valor">${fmt(promedioMensual)}</span></div>
+      ${mesesAtrasadosSeguidos > 0
+        ? `<div class="historial-mes-row"><span class="hm-mes">Antigüedad de la deuda</span><span class="hm-valor saldo-pendiente">${mesesAtrasadosSeguidos} mes(es) seguido(s) sin pagar</span></div>`
+        : `<div class="historial-mes-row"><span class="hm-mes">Estado de cuenta</span><span class="hm-valor saldo-al-dia">Al día ✅</span></div>`}
     `;
 
     html += `<div class="reciente-group-title">Historial mensual</div>`;
-    html += apariciones.map(a => `
-      <div class="historial-mes-row">
-        <span class="hm-mes">${a.mes}${a.planilla ? ` · Planilla ${a.planilla}` : ""}</span>
-        <span class="estado ${estadoClass(a.estado)}">${a.estado === "PAGO CONDUCTOR" ? "PAGO" : a.estado}</span>
-        <span class="hm-valor">${fmt(a.valor)}</span>
-      </div>
-    `).join("");
+    html += `
+      <table class="tabla-historial">
+        <thead>
+          <tr><th>Mes</th><th>Planilla</th><th>Estado</th><th class="num">Valor</th><th class="num">Saldo</th></tr>
+        </thead>
+        <tbody>
+          ${apariciones.map(a => `
+            <tr>
+              <td>${a.mes}</td>
+              <td>${a.planilla || "—"}</td>
+              <td><span class="estado ${estadoClass(a.estado)}">${a.estado === "PAGO CONDUCTOR" ? "PAGO" : a.estado}</span></td>
+              <td class="num">${fmt(a.valor)}</td>
+              <td class="num ${a.saldo > 0 ? "saldo-pendiente" : "saldo-al-dia"}">${fmt(a.saldo)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
   }
 
   if (tareasCliente.length){
