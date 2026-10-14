@@ -806,7 +806,6 @@
       <select id="monthSelect"></select>
     </div>
     <button class="btn primary" id="advanceBtn">Avanzar al siguiente mes →</button>
-    <button class="btn ghost danger" id="deleteMonthBtn">Eliminar este mes</button>
   </div>
 
   <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
@@ -1472,6 +1471,7 @@ async function sincronizarClientesMes(nombreMes){
 }
 
 async function eliminarMesEnSupabase(nombreMes){
+  return; // Los meses ya creados no se borran (protección contra pérdida de información).
   const monthId = monthIdByName[nombreMes];
   if (monthId == null) return;
   try{
@@ -2123,7 +2123,6 @@ const modalTitle = document.getElementById("modalTitle");
 const toast = document.getElementById("toast");
 const monthSelect = document.getElementById("monthSelect");
 const advanceBtn = document.getElementById("advanceBtn");
-const deleteMonthBtn = document.getElementById("deleteMonthBtn");
 
 function sortedMonthNames(){
   // Prioridad 1: el orden cronológico real que viene de Supabase (months.sort_order).
@@ -3105,16 +3104,9 @@ function puntosMuelle(r, cedulaAttr){
 
 monthSelect.addEventListener("change", () => switchToMonth(monthSelect.value));
 
-advanceBtn.addEventListener("click", async () => {
-  const current = store.currentMonth;
-  const next = nextMonthName(current);
-
-  if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN), y los que estén en RETIRO se quitarán.`))) return;
-  if (!(await confirmarApp(`Última confirmación: se creará el mes "${next}" a partir de "${current}". ¿Estás seguro?`))) return;
-
-  const continuing = records
-    .filter(r => !isRetiro(r))
-    .map(r => {
+// Cómo pasa un cliente de un mes al siguiente (lo usa "Avanzar al siguiente mes" y
+// también "agregar a los meses siguientes" cuando se reactiva un cliente).
+function construirRegistroMesSiguiente(r){
       // "Actualización de Conductores" no usa las fases de nómina: cada mes empieza
       // en DEBE con el valor del servicio en cero, para cobrarlo de nuevo ese mes.
       if (esConductorExcluido(r)){
@@ -3151,11 +3143,35 @@ advanceBtn.addEventListener("click", async () => {
         delete nuevo["_prorrateoTransicion"];
       }
       return nuevo;
-    });
+    }
+
+advanceBtn.addEventListener("click", async () => {
+  const current = store.currentMonth;
+  const next = nextMonthName(current);
+
+  if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN), y los que estén en RETIRO se quitarán.`))) return;
+  if (!(await confirmarApp(`Última confirmación: se creará el mes "${next}" a partir de "${current}". ¿Estás seguro?`))) return;
+
+  const continuing = records
+    .filter(r => !isRetiro(r))
+    .map(construirRegistroMesSiguiente);
   const retiradosCount = records.length - continuing.length;
 
   if (store.months[next]){
-    if (!(await confirmarApp(`El mes "${next}" ya existe. ¿Deseas reemplazarlo con los ${continuing.length} afiliados que continúan de ${current}?`))) return;
+    // El mes ya existe y puede tener pagos, planillas y cambios propios: nunca se reemplaza.
+    // Solo se agregan los afiliados de este mes que todavía no están allá.
+    const existentes = new Set(store.months[next].map(x => String(x["Cédula"])));
+    const faltantes = continuing.filter(x => !existentes.has(String(x["Cédula"])));
+    if (!faltantes.length){
+      showToast(`"${next}" ya existe y ya tiene a todos los afiliados de ${current}. No se cambió nada.`);
+      switchToMonth(next);
+      return;
+    }
+    if (!(await confirmarApp(`El mes "${next}" ya existe, así que NO se va a reemplazar (se conserva todo lo que tiene). Solo se agregarán los ${faltantes.length} afiliado(s) de ${current} que todavía no están allá: ${faltantes.slice(0, 5).map(x => x["Nombre del Afiliado"]).join(", ")}${faltantes.length > 5 ? "…" : ""}. ¿Continuar?`))) return;
+    agregarAlFinalDelMes(next, faltantes);
+    switchToMonth(next);
+    showToast(`Se agregaron ${faltantes.length} afiliado(s) a ${next}. Lo que ya tenía ese mes no se tocó.`);
+    return;
   }
 
   store.months[next] = ordenarPorNumero(continuing);
@@ -3163,26 +3179,8 @@ advanceBtn.addEventListener("click", async () => {
   showToast(`Se creó ${next} con ${continuing.length} afiliados` + (retiradosCount ? ` (se excluyeron ${retiradosCount} en RETIRO).` : "."));
 });
 
-deleteMonthBtn.addEventListener("click", async () => {
-  if (!esAdmin()){
-    showToast("Solo un Admin puede eliminar un mes completo.");
-    return;
-  }
-  const names = sortedMonthNames();
-  if (names.length <= 1){
-    showToast("Debe quedar al menos un mes.");
-    return;
-  }
-  const cantidadClientes = records.length;
-  if (!(await confirmarApp(`¿Eliminar todos los registros del mes "${store.currentMonth}" (${cantidadClientes} cliente(s))? Esta acción no se puede deshacer.`))) return;
-  if (!(await confirmarApp(`Última confirmación: se borrará "${store.currentMonth}" por completo. ¿Estás seguro?`))) return;
-  const mesBorrado = store.currentMonth;
-  delete store.months[mesBorrado];
-  if (cloudDb && !soloLectura){ encolarCloud("mesBorrado", mesBorrado); flushColaCloud(); }
-  const remaining = sortedMonthNames();
-  switchToMonth(remaining[remaining.length - 1]);
-  showToast("Mes eliminado.");
-});
+// Los meses ya creados NO se pueden borrar (ni siquiera el administrador): borrar un mes
+// hacía perder pagos, planillas y cambios propios de ese mes.
 
 function renumber(){
   records.forEach((r, i) => r["No."] = i + 1);
@@ -4867,6 +4865,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
       return;
     }
     showToast("Cliente actualizado (y sus datos en los meses siguientes).");
+    ofrecerAgregarAMesesPosteriores(cedula);
   } else {
     records.push(record);
     renumber();
@@ -4888,6 +4887,36 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
 // Aplica los mismos cambios a los registros de la misma cédula en los meses posteriores
 // al que se está editando. No toca "Estado Trámite" ni "Costo Servicio" ni el prorrateo
 // interno, porque esos valores son propios de cada mes (pago, sin pago, días proporcionales...).
+function agregarAlFinalDelMes(nombreMes, nuevos){
+  const arr = store.months[nombreMes] || (store.months[nombreMes] = []);
+  let maxNo = arr.reduce((acc, x) => Math.max(acc, Number(x["No."]) || 0), 0);
+  nuevos.forEach(n => { const copia = { ...n, "No.": ++maxNo }; delete copia._supabaseId; arr.push(copia); });
+  store.months[nombreMes] = ordenarPorNumero(arr);
+}
+
+// Si un cliente activo (no en RETIRO) no aparece en meses posteriores al que se está
+// viendo (por ejemplo, porque estaba en RETIRO cuando se creó el mes siguiente y luego
+// se reactivó), se agrega solo a esos meses con el mismo paso que "Avanzar mes".
+async function ofrecerAgregarAMesesPosteriores(cedula){
+  const actual = (store.months[store.currentMonth] || []).find(x => String(x["Cédula"]) === String(cedula));
+  if (!actual || isRetiro(actual)) return;
+  const meses = sortedMonthNames();
+  const pos = meses.indexOf(store.currentMonth);
+  if (pos === -1) return;
+  const faltan = meses.slice(pos + 1).filter(m => !(store.months[m] || []).some(x => String(x["Cédula"]) === String(cedula)));
+  if (!faltan.length) return;
+  let previo = actual;
+  for (let i = pos + 1; i < meses.length; i++){
+    const enEseMes = (store.months[meses[i]] || []).find(x => String(x["Cédula"]) === String(cedula));
+    if (enEseMes){ previo = enEseMes; continue; }
+    const nuevo = construirRegistroMesSiguiente(previo);
+    agregarAlFinalDelMes(meses[i], [nuevo]);
+    previo = nuevo;
+  }
+  saveStore();
+  showToast(`Cliente actualizado. Como no estaba en ${faltan.join(", ")}, se agregó allí también (como SIN PAGO).`);
+}
+
 function propagarAMesesPosteriores(cedula, cambios, fechaCambio){
   const { "Estado Trámite": _e, "Costo Servicio": _c, ...cambiosSinEstadoNiCosto } = cambios;
   const meses = sortedMonthNames();
