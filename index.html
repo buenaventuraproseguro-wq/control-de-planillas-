@@ -511,6 +511,8 @@
   .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
   @media (max-width:560px){ .form-grid{ grid-template-columns:1fr; } }
   .campo-nomina.oculto{ display:none; }
+  .field input.campo-bloqueado{ background:var(--line); color:var(--muted); cursor:not-allowed; }
+  .aviso-bloqueado{ font-size:10.5px; color:var(--muted); font-weight:600; }
   .field{ display:flex; flex-direction:column; gap:4px; }
   .field.span2{ grid-column:span 2; }
   @media (max-width:560px){ .field.span2{ grid-column:span 1; } }
@@ -4055,10 +4057,36 @@ function openModal(record){
 
   cargarBeneficiarios(record ? record["Beneficiarios"] : null);
   cargarDocImagenes(record);
+  aplicarBloqueoContable(!!record && !esAdmin());
 
   overlay.classList.add("show");
   getField("Cedula").focus();
   formSnapshotInicial = capturarSnapshotFormulario();
+}
+
+
+// Valores contables (costo del servicio, EPS, ARL, pensión y caja): en un cliente ya
+// existente solo el administrador puede cambiarlos. Para los operadores se muestran
+// bloqueados (la base de datos además conserva el valor original si alguien lo intenta).
+const CAMPOS_CONTABLES = ["Costo", "ValorEps", "ValorArl", "ValorTotal", "ValorCaja"];
+function aplicarBloqueoContable(bloquear){
+  CAMPOS_CONTABLES.forEach(id => {
+    const input = getField(id);
+    if (!input) return;
+    input.readOnly = bloquear;
+    input.classList.toggle("campo-bloqueado", bloquear);
+    input.title = bloquear ? "Solo el administrador puede cambiar este valor" : "";
+    const campo = input.closest(".field");
+    let aviso = campo && campo.querySelector(".aviso-bloqueado");
+    if (bloquear && campo && !aviso){
+      aviso = document.createElement("span");
+      aviso.className = "aviso-bloqueado";
+      aviso.textContent = "🔒 Solo el administrador puede cambiar este valor";
+      campo.appendChild(aviso);
+    } else if (!bloquear && aviso){
+      aviso.remove();
+    }
+  });
 }
 
 let formSnapshotInicial = "";
@@ -4344,7 +4372,7 @@ getField("Estado").addEventListener("change", () => {
   if (editingCedula) return; // no tocar el costo al editar un cliente existente
   const costoActual = getField("Costo").value === "" ? null : Number(getField("Costo").value);
   if (costoActual === null || costoActual === COSTO_AFILIACION || costoActual === COSTO_MENSUAL){
-    getField("Costo").value = getField("Estado").value === "AFILIACION" ? COSTO_AFILIACION : COSTO_MENSUAL;
+    if (!getField("Costo").readOnly) getField("Costo").value = getField("Estado").value === "AFILIACION" ? COSTO_AFILIACION : COSTO_MENSUAL;
   }
 });
 
@@ -4353,9 +4381,9 @@ getField("Estado").addEventListener("change", () => {
 getField("EstadoCaja").addEventListener("change", () => {
   const valorActual = getField("ValorCaja").value === "" ? null : Number(getField("ValorCaja").value);
   if (getField("EstadoCaja").value === "Sin Caja"){
-    getField("ValorCaja").value = "";
+    if (!getField("ValorCaja").readOnly) getField("ValorCaja").value = "";
   } else if (valorActual === null || valorActual === CAJA_DEFAULT){
-    getField("ValorCaja").value = CAJA_DEFAULT;
+    if (!getField("ValorCaja").readOnly) getField("ValorCaja").value = CAJA_DEFAULT;
   }
 });
 
@@ -4366,9 +4394,9 @@ getField("EstadoAfp").addEventListener("change", () => {
   const valorActual = getField("ValorTotal").value === "" ? null : Number(getField("ValorTotal").value);
   const estado = getField("EstadoAfp").value;
   if (estado === "Pensionado" || estado === "No Cumple Semanas"){
-    getField("ValorTotal").value = 0;
+    if (!getField("ValorTotal").readOnly) getField("ValorTotal").value = 0;
   } else if (valorActual === null || valorActual === 0 || valorActual === PENSION_DEFAULT){
-    getField("ValorTotal").value = PENSION_DEFAULT;
+    if (!getField("ValorTotal").readOnly) getField("ValorTotal").value = PENSION_DEFAULT;
   }
 });
 
@@ -4389,7 +4417,7 @@ function autocompletarValorArl(riesgo){
   const valorActual = getField("ValorArl").value === "" ? null : Number(getField("ValorArl").value);
   const esValorAutocompletado = valorActual === null || Object.values(ARL_TABLE).includes(valorActual);
   if (esValorAutocompletado){
-    getField("ValorArl").value = ARL_TABLE[riesgo];
+    if (!getField("ValorArl").readOnly) getField("ValorArl").value = ARL_TABLE[riesgo];
   }
 }
 getField("Arl").addEventListener("input", () => {
@@ -4402,7 +4430,7 @@ getField("Resp").addEventListener("input", () => {
   const esValorAutocompletado = actual === null || actual === EPS_DEFAULT || actual === EPS_INDEPENDIENTE_DEFAULT;
   if (!esValorAutocompletado) return;
   const independiente = esIndependiente({ "Responsable / Grupo": getField("Resp").value });
-  getField("ValorEps").value = independiente ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT;
+  if (!getField("ValorEps").readOnly) getField("ValorEps").value = independiente ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT;
 });
 
 getField("ArlNivel").addEventListener("change", () => {
@@ -4666,6 +4694,14 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Imagen Arl": docImagenes.Arl,
     "Imagen PlanillaPagada": docImagenes.PlanillaPagada,
   };
+  // Operador editando un cliente existente: los valores contables no cambian.
+  if (editingCedula && !esAdmin()){
+    const original = records.find(x => String(x["Cédula"]) === String(editingCedula));
+    if (original){
+      ["Costo Servicio", "Valor EPS", "Valor ARL", "Valor Pensión (AFP)", "Valor Caja"]
+        .forEach(k => { record[k] = original[k] == null ? "" : original[k]; });
+    }
+  }
 
   if (soloLectura){
     await alertApp("👀 Este enlace solo te permite VER la información, no editarla. Por eso aunque parezca que el formulario se cierra, el cambio no se guarda ni aquí ni para los demás. Pide a quien administra la app que te dé el enlace con permiso de edición (o te agregue como editor) y vuelve a intentar.");

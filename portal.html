@@ -102,7 +102,7 @@
       <input id="loginCedula" type="text" inputmode="numeric" placeholder="Tu número de cédula" autocomplete="username">
       <label>Contraseña</label>
       <input id="loginPass" type="password" placeholder="La contraseña que te compartieron" autocomplete="current-password">
-      <button class="btn-primary" id="loginBtn" disabled>Cargando…</button>
+      <button class="btn-primary" id="loginBtn">Entrar</button>
       <div id="loginErr"></div>
     </div>
   </div>
@@ -136,40 +136,106 @@
 <script>
 const SUPABASE_URL = "https://jjygarfwdmhzspqonvql.supabase.co";
 const SUPABASE_KEY = "sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s";
-let sb = null;
+const SESSION_KEY = "prosegurosnet_portal_sesion";
 
-// Carga la librería de Supabase desde internet SIN bloquear el dibujo de la página
-// (así el formulario de entrada se ve de inmediato aunque la conexión esté lenta), y
-// si la fuente principal no responde a tiempo, intenta una alternativa antes de avisar
-// con un mensaje claro en vez de dejar la pantalla en blanco para siempre.
-function cargarScript(src){
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = () => reject(new Error("no cargó " + src));
-    document.head.appendChild(s);
+// El portal habla directo con Supabase usando fetch (incluido en todos los navegadores),
+// sin descargar ninguna librería externa: así carga al instante en cualquier red o celular,
+// aunque los servidores de librerías (jsdelivr, unpkg) estén bloqueados o lentos.
+
+let sesion = null; // { access_token, refresh_token, expires_at (segundos), cedula }
+
+function leerSesionGuardada(){
+  try{ const s = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); return s && s.refresh_token ? s : null; }
+  catch(e){ return null; }
+}
+function guardarSesion(s){
+  sesion = s;
+  try{ if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s)); else localStorage.removeItem(SESSION_KEY); }catch(e){}
+}
+
+// fetch con límite de tiempo: si el servidor no responde, se corta y se avisa en vez de quedarse "cargando".
+async function pedir(url, opciones = {}, segundos = 15){
+  const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  const t = setTimeout(() => ctrl && ctrl.abort(), segundos * 1000);
+  try{
+    const r = await fetch(url, Object.assign({}, opciones, ctrl ? { signal: ctrl.signal } : {}));
+    let cuerpo = null;
+    try{ cuerpo = await r.json(); }catch(e){}
+    return { ok: r.ok, status: r.status, cuerpo };
+  }catch(e){
+    throw new Error(e && e.name === "AbortError" ? "el servidor tardó demasiado" : "sin conexión");
+  }finally{ clearTimeout(t); }
+}
+
+function aSesion(cuerpo, cedula){
+  const ahora = Math.floor(Date.now() / 1000);
+  return {
+    access_token: cuerpo.access_token,
+    refresh_token: cuerpo.refresh_token,
+    expires_at: cuerpo.expires_at || (ahora + (cuerpo.expires_in || 3600)),
+    cedula,
+  };
+}
+
+async function iniciarSesion(cedula, password){
+  const email = `cliente.${cedula}@portal.prosegurosnet.com`;
+  const r = await pedir(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
   });
+  if (!r.ok || !r.cuerpo || !r.cuerpo.access_token) return false;
+  guardarSesion(aSesion(r.cuerpo, cedula));
+  return true;
 }
-function conLimiteCarga(promesa, segundos){
-  return Promise.race([
-    promesa,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("tardó demasiado")), segundos * 1000)),
-  ]);
+
+async function renovarSesion(){
+  if (!sesion || !sesion.refresh_token) return false;
+  const r = await pedir(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: sesion.refresh_token }),
+  });
+  if (!r.ok || !r.cuerpo || !r.cuerpo.access_token){ guardarSesion(null); return false; }
+  guardarSesion(aSesion(r.cuerpo, sesion.cedula));
+  return true;
 }
-async function iniciarLibreria(){
-  const fuentes = [
-    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js",
-    "https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js",
-  ];
-  for (const fuente of fuentes){
-    try {
-      await conLimiteCarga(cargarScript(fuente), 10);
-      sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      return true;
-    } catch (e){ console.error("Fuente no disponible:", fuente, e); }
+
+async function tokenVigente(){
+  if (!sesion) return null;
+  const ahora = Math.floor(Date.now() / 1000);
+  if (!sesion.access_token || sesion.expires_at - ahora < 60){
+    if (!(await renovarSesion())) return null;
   }
-  return false;
+  return sesion.access_token;
+}
+
+// Consulta autenticada a la base de datos (si el token venció en el camino, lo renueva y reintenta una vez).
+async function consultar(ruta, opciones = {}){
+  for (let intento = 0; intento < 2; intento++){
+    const token = await tokenVigente();
+    if (!token) return { ok: false, status: 401, cuerpo: null };
+    const r = await pedir(`${SUPABASE_URL}${ruta}`, Object.assign({}, opciones, {
+      headers: Object.assign({ "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, opciones.headers || {}),
+    }));
+    if (r.status === 401 && intento === 0){
+      if (!(await renovarSesion())) return r;
+      continue;
+    }
+    return r;
+  }
+}
+
+async function cerrarSesion(){
+  const token = sesion && sesion.access_token;
+  guardarSesion(null);
+  if (token){
+    try{ await pedir(`${SUPABASE_URL}/auth/v1/logout`, { method: "POST", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${token}` } }, 5); }catch(e){}
+  }
+}
+
+function esc(v){
+  return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 }
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto",
@@ -222,34 +288,34 @@ function calcularTotalPagar(row, mesNombre){
 }
 
 function mostrarLogin(){
-  document.getElementById("loginScreen").style.display = "";
+  document.getElementById("loginScreen").style.display = "block";
   document.getElementById("appScreen").style.display = "none";
 }
 function mostrarApp(){
   document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("appScreen").style.display = "";
+  document.getElementById("appScreen").style.display = "block";
+}
+
+function mostrarErrorDatos(msg){
+  document.getElementById("historialCont").innerHTML = `<div class="vacio">${esc(msg)}</div>`;
+  document.getElementById("resumenCont").innerHTML = "";
+  document.getElementById("docsCont").innerHTML = "";
 }
 
 async function cargarDatosCliente(cedula){
-  let filas, error;
-  try {
-    ({ data: filas, error } = await conLimite(
-      sb.from("clients").select("*, months(name, sort_order)").eq("cedula", cedula)
-    ));
-  } catch (e){
-    document.getElementById("historialCont").innerHTML = `<div class="vacio">No se pudo conectar con el servidor. Revisa tu internet y vuelve a entrar.</div>`;
-    document.getElementById("resumenCont").innerHTML = "";
-    document.getElementById("docsCont").innerHTML = "";
-    return;
-  }
-  if (error){
-    document.getElementById("historialCont").innerHTML = `<div class="vacio">No se pudo cargar tu historial.</div>`;
-    return;
-  }
-  filas.sort((a, b) => (a.months?.sort_order ?? 9999) - (b.months?.sort_order ?? 9999));
-
-  document.getElementById("quienSoy").textContent = filas.length ? filas[0].nombre || "Cliente" : "Cliente";
   document.getElementById("miCedula").textContent = `Cédula ${cedula}`;
+  let r;
+  try{
+    r = await consultar(`/rest/v1/clients?select=*,months(name,sort_order)&cedula=eq.${encodeURIComponent(cedula)}`);
+  }catch(e){
+    mostrarErrorDatos("No se pudo conectar con el servidor. Revisa tu internet y vuelve a entrar.");
+    return;
+  }
+  if (r.status === 401){ mostrarLogin(); document.getElementById("loginErr").textContent = "Tu sesión venció. Vuelve a entrar."; return; }
+  if (!r.ok || !Array.isArray(r.cuerpo)){ mostrarErrorDatos("No se pudo cargar tu historial. Intenta de nuevo en un momento."); return; }
+
+  const filas = r.cuerpo.slice().sort((a, b) => (a.months?.sort_order ?? 9999) - (b.months?.sort_order ?? 9999));
+  document.getElementById("quienSoy").textContent = filas.length ? (filas[0].nombre || "Cliente") : "Cliente";
 
   let saldoAcumulado = 0;
   const apariciones = filas.map(row => {
@@ -261,7 +327,7 @@ async function cargarDatosCliente(cedula){
   });
 
   const totalGeneral = apariciones.reduce((acc, a) => acc + a.valor, 0);
-  const totalPagado = apariciones.filter(a => estadoClass(a.estado) === "PAGO" || estadoClass(a.estado) === "PAGO_CONDUCTOR").reduce((acc, a) => acc + a.valor, 0);
+  const totalPagado = apariciones.filter(a => ["PAGO","PAGO_CONDUCTOR"].includes(estadoClass(a.estado))).reduce((acc, a) => acc + a.valor, 0);
   const totalPendiente = apariciones.length ? apariciones[apariciones.length - 1].saldo : 0;
   let mesesAtrasados = 0;
   for (let i = apariciones.length - 1; i >= 0; i--){
@@ -285,9 +351,9 @@ async function cargarDatosCliente(cedula){
       <tbody>
         ${apariciones.map(a => `
           <tr>
-            <td>${a.mes}</td>
-            <td>${a.planilla || "—"}</td>
-            <td><span class="estado ${estadoClass(a.estado)}">${a.estado === "PAGO CONDUCTOR" ? "PAGO" : a.estado}</span></td>
+            <td>${esc(a.mes)}</td>
+            <td>${esc(a.planilla || "—")}</td>
+            <td><span class="estado ${estadoClass(a.estado)}">${esc(a.estado === "PAGO CONDUCTOR" ? "PAGO" : (a.estado || "—"))}</span></td>
             <td class="num">${fmt(a.valor)}</td>
             <td class="num ${a.saldo > 0 ? "pendiente" : ""}">${fmt(a.saldo)}</td>
           </tr>
@@ -300,94 +366,93 @@ async function cargarDatosCliente(cedula){
 }
 
 async function cargarDocumentos(cedula){
-  const { data: docs, error } = await sb.from("documentos").select("tipo, storage_path").eq("cedula", cedula);
   const cont = document.getElementById("docsCont");
-  if (error || !docs || !docs.length){
+  let r;
+  try{ r = await consultar(`/rest/v1/documentos?select=tipo,storage_path&cedula=eq.${encodeURIComponent(cedula)}`); }
+  catch(e){ cont.innerHTML = `<div class="vacio">No se pudieron cargar tus documentos.</div>`; return; }
+  const docs = r.ok && Array.isArray(r.cuerpo) ? r.cuerpo : [];
+  if (!docs.length){
     cont.innerHTML = `<div class="vacio">Todavía no hay documentos cargados para ti.</div>`;
     return;
   }
-  cont.innerHTML = docs.map(d => `
+  cont.innerHTML = docs.map((d, i) => `
     <div class="doc-row">
-      <span class="nombre">📄 ${TIPO_LABEL[d.tipo] || d.tipo}</span>
-      <a href="#" data-path="${d.storage_path}">Ver / Descargar</a>
+      <span class="nombre">📄 ${esc(TIPO_LABEL[d.tipo] || d.tipo)}</span>
+      <a href="#" data-idx="${i}">Ver / Descargar</a>
     </div>
   `).join("");
-  cont.querySelectorAll("a[data-path]").forEach(a => {
+  cont.querySelectorAll("a[data-idx]").forEach(a => {
     a.addEventListener("click", async (e) => {
       e.preventDefault();
+      const ruta = docs[Number(a.dataset.idx)].storage_path;
+      // Se abre la ventana en el mismo clic (si no, el celular la bloquea como ventana emergente).
+      const ventana = window.open("", "_blank");
       a.textContent = "Abriendo…";
-      const { data, error: urlErr } = await sb.storage.from("documentos-clientes").createSignedUrl(a.dataset.path, 120);
+      let url = null;
+      try{
+        const rutaCodificada = String(ruta).split("/").map(encodeURIComponent).join("/");
+        const r2 = await consultar(`/storage/v1/object/sign/documentos-clientes/${rutaCodificada}`, {
+          method: "POST", body: JSON.stringify({ expiresIn: 120 }),
+        });
+        const firmada = r2.ok && r2.cuerpo && (r2.cuerpo.signedURL || r2.cuerpo.signedUrl);
+        if (firmada) url = firmada.startsWith("http") ? firmada : `${SUPABASE_URL}/storage/v1${firmada}`;
+      }catch(err){}
       a.textContent = "Ver / Descargar";
-      if (urlErr || !data){ alert("No se pudo abrir el documento."); return; }
-      window.open(data.signedUrl, "_blank");
+      if (!url){ if (ventana) ventana.close(); alert("No se pudo abrir el documento."); return; }
+      if (ventana) ventana.location.href = url; else window.location.href = url;
     });
   });
-}
-
-// Evita que la página se quede "cargando" para siempre si Supabase no responde
-// (mala conexión, etc.): si una llamada tarda más de 12 segundos, se corta sola.
-function conLimite(promesa, segundos = 12){
-  return Promise.race([
-    promesa,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("tiempo de espera agotado")), segundos * 1000)),
-  ]);
 }
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const errEl = document.getElementById("loginErr");
   errEl.textContent = "";
-  const cedula = document.getElementById("loginCedula").value.trim();
+  const cedula = document.getElementById("loginCedula").value.replace(/[^\d]/g, "");
   const password = document.getElementById("loginPass").value;
   if (!cedula || !password){ errEl.textContent = "Escribe tu cédula y tu contraseña."; return; }
   const btn = document.getElementById("loginBtn");
+  if (btn.disabled) return;
   btn.disabled = true; btn.textContent = "Entrando…";
-  try {
-    const correoSintetico = `cliente.${cedula}@portal.prosegurosnet.com`;
-    const { error } = await conLimite(sb.auth.signInWithPassword({ email: correoSintetico, password }));
-    if (error){ errEl.textContent = "No se pudo entrar: revisa tu cédula y contraseña."; return; }
+  try{
+    const ok = await iniciarSesion(cedula, password);
+    if (!ok){ errEl.textContent = "No se pudo entrar: revisa tu cédula y contraseña."; return; }
+    document.getElementById("loginPass").value = "";
     mostrarApp();
     await cargarDatosCliente(cedula);
-  } catch (e){
+  }catch(e){
     errEl.textContent = "No se pudo conectar (" + e.message + "). Revisa tu internet e intenta de nuevo.";
-  } finally {
+  }finally{
     btn.disabled = false; btn.textContent = "Entrar";
   }
 });
-document.getElementById("loginPass").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("loginBtn").click(); });
+["loginCedula", "loginPass"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("loginBtn").click(); })
+);
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await sb.auth.signOut();
+  await cerrarSesion();
+  document.getElementById("resumenCont").innerHTML = `<div class="vacio">Cargando…</div>`;
+  document.getElementById("historialCont").innerHTML = `<div class="vacio">Cargando…</div>`;
+  document.getElementById("docsCont").innerHTML = `<div class="vacio">Cargando…</div>`;
   mostrarLogin();
 });
 
+// Arranque: el botón queda listo de inmediato; si ya había una sesión guardada, entra directo.
 (async () => {
   const btn = document.getElementById("loginBtn");
-  const ok = await iniciarLibreria();
-  if (!ok){
-    document.getElementById("loginErr").textContent =
-      "No se pudo cargar el portal (tu conexión a internet puede estar lenta o bloqueando el recurso). Recarga la página o inténtalo desde otra red.";
-    btn.textContent = "No disponible";
-    return;
-  }
   btn.disabled = false;
   btn.textContent = "Entrar";
-
-  try {
-    const { data } = await conLimite(sb.auth.getSession(), 8);
-    if (data && data.session){
-      const email = data.session.user.email || "";
-      const m = email.match(/^cliente\.(.+)@portal\.prosegurosnet\.com$/);
-      if (m){
-        mostrarApp();
-        await cargarDatosCliente(m[1]);
-        return;
-      }
-    }
-  } catch (e){
-    console.error("No se pudo verificar la sesión:", e);
+  const guardada = leerSesionGuardada();
+  if (guardada){
+    sesion = guardada;
+    mostrarApp();
+    try{ await cargarDatosCliente(guardada.cedula); }
+    catch(e){ mostrarErrorDatos("No se pudo conectar con el servidor. Revisa tu internet y recarga la página."); }
+    return;
   }
   mostrarLogin();
 })();
 </script>
+
 </body>
 </html>
