@@ -3872,10 +3872,38 @@ function enviarWhatsapp(r, totalPagar){
   const mensaje = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
     { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
 
-  // Enlace directo (api.whatsapp.com): el atajo wa.me hace un salto intermedio que
-  // en WhatsApp Web/escritorio daña los emojis y los muestra como �.
-  const url = `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${encodeURIComponent(mensaje)}`;
+  // La aplicación de WhatsApp para computador daña los emojis que recibe por enlace
+  // (los muestra como �). Por eso, en computador se abre WhatsApp Web en el navegador,
+  // que sí los respeta; en el celular se abre la app de WhatsApp normalmente.
+  // Además el mensaje se copia al portapapeles, por si hay que pegarlo a mano (Ctrl+V).
+  copiarAlPortapapeles(mensaje);
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  const texto = encodeURIComponent(mensaje);
+  const url = esCelular
+    ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`
+    : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`;
   window.open(url, "_blank");
+  if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
+}
+
+function copiarAlPortapapeles(texto){
+  try{
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).catch(() => copiarConRespaldo(texto));
+    } else {
+      copiarConRespaldo(texto);
+    }
+  }catch(e){ copiarConRespaldo(texto); }
+}
+function copiarConRespaldo(texto){
+  try{
+    const area = document.createElement("textarea");
+    area.value = texto; area.setAttribute("readonly", "");
+    area.style.position = "fixed"; area.style.opacity = "0";
+    document.body.appendChild(area); area.select();
+    document.execCommand("copy");
+    area.remove();
+  }catch(e){}
 }
 
 function enviarCorreo(r, totalPagar){
