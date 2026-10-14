@@ -3872,7 +3872,9 @@ function enviarWhatsapp(r, totalPagar){
   const mensaje = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
     { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
 
-  const url = `https://wa.me/${conIndicativo}?text=${encodeURIComponent(mensaje)}`;
+  // Enlace directo (api.whatsapp.com): el atajo wa.me hace un salto intermedio que
+  // en WhatsApp Web/escritorio daña los emojis y los muestra como �.
+  const url = `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${encodeURIComponent(mensaje)}`;
   window.open(url, "_blank");
 }
 
