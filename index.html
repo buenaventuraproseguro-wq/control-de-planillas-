@@ -129,7 +129,11 @@
   }
 
   @media (max-width:760px){
-    .app-shell{ flex-direction:column; min-height:0; }
+    .app-shell{ flex-direction:column; min-height:0; align-items:stretch; }
+    .main-area{ width:100%; }
+    .wrap{ padding-left:12px; padding-right:12px; }
+    .header-right{ flex-wrap:wrap; justify-content:flex-end; row-gap:6px; }
+    .backup-reminder{ flex-wrap:wrap; }
     .sidebar{
       width:100%; height:auto; position:static; flex-direction:row; overflow-x:auto;
       padding:10px 10px; gap:6px;
@@ -190,8 +194,21 @@
   .bell-empty{ padding:16px; text-align:center; font-size:12.5px; color:var(--muted); }
   .bell-section-title{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; padding:8px 10px 2px; }
 
-  .stats-strip{ display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:10px; }
+  .stats-strip{ display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-bottom:10px; }
+  @media (max-width:1100px){ .stats-strip{ grid-template-columns:repeat(3, 1fr); } }
   @media (max-width:760px){ .stats-strip{ grid-template-columns:repeat(2, 1fr); } }
+  .stat-card.stat-confirmar{ border-top-color:#C98A1B; }
+  .stat-card.stat-confirmar.active{ background:rgba(201,138,27,.12); border-color:#C98A1B; }
+  .stat-card.stat-confirmar.con-demora .stat-value{ color:#B4561E; }
+  .stat-card .stat-detalle{ font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.35; }
+  .tag-confirmar{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
+    background:rgba(201,138,27,.14); color:#8A5A0B; white-space:nowrap; vertical-align:middle; }
+  .tag-confirmar.demorado{ background:var(--retiro-bg); color:var(--retiro); }
+  @media (prefers-color-scheme: dark){ .tag-confirmar{ color:#E6B35A; } }
+  .confirmar-grupos{ display:flex; flex-wrap:wrap; gap:6px; margin:-2px 0 10px; }
+  .confirmar-grupos button{ font:inherit; font-size:12px; border:1px solid var(--line); background:var(--panel); color:var(--ink);
+    border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .confirmar-grupos button.active{ background:rgba(201,138,27,.14); border-color:#C98A1B; font-weight:700; }
   .stat-card{
     background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px;
     box-shadow:0 2px 8px rgba(15,30,45,.05); border-top:3px solid var(--accent);
@@ -268,6 +285,7 @@
     box-shadow:0 4px 16px rgba(15,30,45,0.06);
   }
   .search-row{ display:flex; gap:10px; align-items:center; }
+  .search-row input{ min-width:0; }
   .search-row input{
     flex:1; font-family:inherit; font-size:15px; padding:11px 14px;
     border:1.5px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink);
@@ -358,6 +376,9 @@
   .row .chk{ width:16px; height:16px; cursor:pointer; }
   .row .no{ font-family:"IBM Plex Mono", monospace; font-size:13px; font-weight:700; color:#FF5A1F; }
   .row .name{ font-size:14.5px; font-weight:600; color:var(--navy-deep); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @media (max-width:760px){
+    .row .name .tag-confirmar{ display:table; margin:3px 0 0; }
+  }
   .row .estado{ text-transform:lowercase; }
   .row .ced{ font-family:"IBM Plex Mono", monospace; font-size:12.5px; color:var(--muted); }
   .row .estado{
@@ -1005,11 +1026,18 @@
         </select>
       </div>
 
+      <div class="field campo-nomina"><label>Estado ARL</label>
+        <select id="fEstadoArl">
+          <option value="aceptado">Aceptado</option>
+          <option value="en proceso">En proceso</option>
+        </select>
+      </div>
       <div class="field campo-nomina"><label><span class="field-num">16</span>Valor ARL</label><input id="fValorArl" type="number"></div>
       <div class="field campo-nomina"><label><span class="field-num">17</span>AFP</label><input id="fAfp" type="text"></div>
       <div class="field campo-nomina"><label><span class="field-num">18</span>Estado AFP</label>
         <select id="fEstadoAfp">
           <option value="Activo">Activo (cotizando)</option>
+          <option value="En Proceso">En proceso</option>
           <option value="Pensionado">Pensionado</option>
           <option value="Semanas Cumplidas">Semanas cumplidas</option>
           <option value="No Cumple Semanas">No cumple semanas</option>
@@ -1436,6 +1464,20 @@ function activarModoSoloLectura(){ /* ya no aplica: con Supabase todo el equipo 
 
 // ---- Traducción entre las claves en español que usa toda la lógica de negocio (record)
 // y las columnas en snake_case de la tabla "clients" en Supabase. ----
+// ¿La base ya tiene las columnas "estado_arl" y "en_proceso_desde"? (archivo afiliaciones_por_confirmar.sql)
+// Mientras no las tenga, la app no las envía, para no dañar la sincronización.
+const COLUMNAS_CONFIRMACION_KEY = "prosegurosnet_columnas_confirmacion";
+let columnasConfirmacion = (() => { try{ return localStorage.getItem(COLUMNAS_CONFIRMACION_KEY) === "1"; }catch(e){ return false; } })();
+async function detectarColumnasConfirmacion(){
+  try{
+    const { error } = await sb.from("clients").select("estado_arl,en_proceso_desde").limit(1);
+    if (error){
+      // Solo se apaga si la base dice que la columna no existe (no por falta de internet)
+      if (/estado_arl|en_proceso_desde|column|schema cache/i.test(String(error.message || ""))) columnasConfirmacion = false;
+    } else columnasConfirmacion = true;
+    try{ localStorage.setItem(COLUMNAS_CONFIRMACION_KEY, columnasConfirmacion ? "1" : "0"); }catch(e){}
+  }catch(e){ /* sin internet: se usa lo último que se supo */ }
+}
 function esRecordToDbRow(r, monthId){
   return {
     month_id: monthId,
@@ -1470,6 +1512,10 @@ function esRecordToDbRow(r, monthId){
     recordatorio: r["Recordatorio"] || null,
     beneficiarios: Array.isArray(r["Beneficiarios"]) ? r["Beneficiarios"] : [],
     aceptado_por_muelle: r["AceptadoPorMuelle"] || {},
+    ...(columnasConfirmacion ? {
+      estado_arl: r["Estado ARL"] || "",
+      en_proceso_desde: r["En Proceso Desde"] || null,
+    } : {}),
   };
 }
 function dbRowToEsRecord(row){
@@ -1505,6 +1551,8 @@ function dbRowToEsRecord(row){
     "Recordatorio": row.recordatorio || "",
     "Beneficiarios": Array.isArray(row.beneficiarios) ? row.beneficiarios : [],
     "AceptadoPorMuelle": row.aceptado_por_muelle || {},
+    "Estado ARL": row.estado_arl || "",
+    "En Proceso Desde": row.en_proceso_desde || "",
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
   };
@@ -1973,7 +2021,17 @@ function huella(texto){
   }
   return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
 }
-function huellaCliente(r, monthId){ return huella(JSON.stringify(esRecordToDbRow(r, monthId))); }
+// La huella no cambia por las columnas nuevas mientras estén vacías: así, al activar
+// "Estado ARL / En proceso desde", los clientes no aparecen todos como "cambiados".
+function firmaClienteCanonica(texto){
+  try{
+    const o = JSON.parse(texto);
+    if (o && (o.estado_arl === "" || o.estado_arl == null)) delete o.estado_arl;
+    if (o && (o.en_proceso_desde === "" || o.en_proceso_desde == null)) delete o.en_proceso_desde;
+    return JSON.stringify(o);
+  }catch(e){ return texto; }
+}
+function huellaCliente(r, monthId){ return huella(firmaClienteCanonica(JSON.stringify(esRecordToDbRow(r, monthId)))); }
 
 let _timerEstadoSync = null;
 function guardarEstadoSync(){
@@ -1983,7 +2041,7 @@ function guardarEstadoSync(){
       const clientes = {};
       Object.keys(lastClientSig).forEach(mes => {
         clientes[mes] = {};
-        Object.keys(lastClientSig[mes] || {}).forEach(ced => { clientes[mes][ced] = huella(lastClientSig[mes][ced]); });
+        Object.keys(lastClientSig[mes] || {}).forEach(ced => { clientes[mes][ced] = huella(firmaClienteCanonica(lastClientSig[mes][ced])); });
       });
       const tareas = {}; Object.keys(lastTareaSig).forEach(id => { tareas[id] = huella(lastTareaSig[id]); });
       const cobros = {}; Object.keys(lastCobroSig).forEach(id => { cobros[id] = huella(lastCobroSig[id]); });
@@ -2096,6 +2154,7 @@ async function iniciarAppConSupabase(){
   cloudDb = null;
   cloudReady = false;
   try{
+    await detectarColumnasConfirmacion();
     // Cambios hechos en este equipo sin internet (comparados con la última sincronización).
     const pend = calcularPendientes(store, leerEstadoSync());
     const nuevoStore = await cargarStoreDesdeSupabase();
@@ -3547,6 +3606,7 @@ function renderStatsStrip(){
   const pagados = aplica.filter(r => estadoClass(r["Estado Trámite"]) === "PAGO").length;
   const pendientes = aplica.length - pagados;
   const atrasados = records.filter(estaAtrasado).length;
+  const porConfirmar = records.filter(r => pendientesConfirmacion(r).length);
 
   const activa = (valor) => filtroEstado === valor ? "active" : "";
   document.getElementById("statsStrip").innerHTML = `
@@ -3566,12 +3626,43 @@ function renderStatsStrip(){
       <div class="stat-label">Atrasados</div>
       <div class="stat-value">${atrasados}</div>
     </button>
+    <button type="button" class="stat-card stat-confirmar ${porConfirmar.some(confirmacionDemorada) ? "con-demora" : ""} ${activa("__POR_CONFIRMAR__")}" data-filtro="__POR_CONFIRMAR__" title="Clientes con EPS, pensión, caja o ARL en proceso">
+      <div class="stat-label">⏳ Por confirmar</div>
+      <div class="stat-value">${porConfirmar.length}</div>
+      <div class="stat-detalle">${porConfirmar.length
+        ? ["PSN", "OTRAS", "INDEP"].map(g => `${g === "PSN" ? "PSN" : g === "OTRAS" ? "Otras" : "Indep."} ${porConfirmar.filter(r => grupoConfirmacion(r) === g).length}`).join(" · ")
+        : "EPS · pensión · caja · ARL"}</div>
+    </button>
   `;
+}
+
+function renderGruposConfirmacion(){
+  let cont = document.getElementById("confirmarGrupos");
+  if (!cont){
+    cont = document.createElement("div");
+    cont.id = "confirmarGrupos";
+    cont.className = "confirmar-grupos";
+    document.getElementById("statsStrip").insertAdjacentElement("afterend", cont);
+    cont.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-grupo-conf]");
+      if (!b) return;
+      grupoConfirmacionFiltro = b.dataset.grupoConf;
+      renderList(searchInput.value);
+    });
+  }
+  if (filtroEstado !== "__POR_CONFIRMAR__"){ cont.style.display = "none"; return; }
+  const lista = records.filter(r => pendientesConfirmacion(r).length);
+  const n = (g) => g ? lista.filter(r => grupoConfirmacion(r) === g).length : lista.length;
+  cont.style.display = "flex";
+  cont.innerHTML = ["", "PSN", "OTRAS", "INDEP"].map(g =>
+    `<button type="button" data-grupo-conf="${g}" class="${grupoConfirmacionFiltro === g ? "active" : ""}">${g ? NOMBRES_GRUPO_CONFIRMACION[g] : "Todos"} (${n(g)})</button>`
+  ).join("") + `<span style="font-size:11.5px;color:var(--muted);align-self:center;">En rojo: llevan ${DIAS_ALERTA_CONFIRMACION} días o más sin confirmar.</span>`;
 }
 
 document.getElementById("statsStrip").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-filtro]");
   if (!btn) return;
+  if (btn.dataset.filtro !== "__POR_CONFIRMAR__") grupoConfirmacionFiltro = "";
   filtroEstado = btn.dataset.filtro;
   renderList(searchInput.value);
 });
@@ -3607,6 +3698,48 @@ function renderMonthTotal(){
   renderCobrosExtra();
 }
 
+// ---- Afiliaciones por confirmar (EPS, pensión, caja o ARL "en proceso") ----
+// A veces los sistemas del gobierno no aceptan la afiliación enseguida: se marca "en proceso"
+// y aquí se ve qué falta confirmar y hace cuántos días.
+const DIAS_ALERTA_CONFIRMACION = 8;
+function pendientesConfirmacion(r, incluirRetiro){
+  if (!r || esConductorExcluido(r)) return [];
+  if (!incluirRetiro && estadoClass(r["Estado Trámite"]) === "RETIRO") return [];
+  const enProceso = (v) => String(v || "").trim().toLowerCase() === "en proceso";
+  const f = [];
+  if (enProceso(r["Estado EPS"])) f.push("EPS");
+  if (enProceso(r["Estado AFP"])) f.push("Pensión");
+  if (enProceso(r["Estado Caja"])) f.push("Caja");
+  if (enProceso(r["Estado ARL"])) f.push("ARL");
+  return f;
+}
+function diasEnProceso(r){
+  const d = r["En Proceso Desde"];
+  if (!d) return null;
+  const desde = new Date(String(d).slice(0, 10) + "T00:00:00");
+  const hoy = new Date(fechaHoyISO() + "T00:00:00");
+  const n = Math.round((hoy - desde) / 86400000);
+  return isNaN(n) ? null : Math.max(0, n);
+}
+function confirmacionDemorada(r){
+  const n = diasEnProceso(r);
+  return n !== null && n >= DIAS_ALERTA_CONFIRMACION;
+}
+function grupoConfirmacion(r){
+  if (esIndependiente(r)) return "INDEP";
+  if (esOtraEmpresa(r)) return "OTRAS";
+  return "PSN";
+}
+const NOMBRES_GRUPO_CONFIRMACION = { PSN: "PROSEGUROSNET", OTRAS: "Otras empresas", INDEP: "Independientes" };
+let grupoConfirmacionFiltro = "";
+function tagConfirmacion(r){
+  const f = pendientesConfirmacion(r);
+  if (!f.length) return "";
+  const n = diasEnProceso(r);
+  const dem = confirmacionDemorada(r);
+  return `<span class="tag-confirmar ${dem ? "demorado" : ""}" title="Afiliación en proceso: falta confirmar ${f.join(", ")}">⏳ ${f.join(" · ")}${n !== null ? ` · ${n === 0 ? "hoy" : n + (n === 1 ? " día" : " días")}` : ""}</span>`;
+}
+
 // Un cliente está atrasado si ya pasó el día 16 del mes real y sigue en SIN PAGO.
 function estaAtrasado(r){
   if (estadoClass(r["Estado Trámite"]) !== "SIN_PAGO") return false;
@@ -3628,7 +3761,8 @@ function renderCampana(){
   const tareasVencidas = getTareas().filter(esTareaVencida);
   const clientesAtrasados = records.filter(estaAtrasado);
   const clientesConRecordatorio = records.filter(tieneRecordatorioVencido);
-  const total = tareasVencidas.length + clientesAtrasados.length + clientesConRecordatorio.length;
+  const afiliacionesDemoradas = records.filter(r => pendientesConfirmacion(r).length && confirmacionDemorada(r));
+  const total = tareasVencidas.length + clientesAtrasados.length + clientesConRecordatorio.length + afiliacionesDemoradas.length;
 
   const badge = document.getElementById("bellBadge");
   if (total > 0){
@@ -3662,6 +3796,14 @@ function renderCampana(){
           <div class="bi-sub">${fechaTexto} · ${t.tipo || "Sin tipo"}${t.ejecutor ? ` · Ejecuta: ${t.ejecutor}` : ""}</div>
         </button>`;
       }).join("");
+    }
+    if (afiliacionesDemoradas.length){
+      html += `<div class="bell-section-title">Afiliaciones sin confirmar hace ${DIAS_ALERTA_CONFIRMACION}+ días (${afiliacionesDemoradas.length})</div>`;
+      html += afiliacionesDemoradas.map(r => `
+        <button type="button" class="bell-item" data-bell-cliente="${r["Cédula"]}">
+          <div class="bi-title">⏳ ${r["Nombre del Afiliado"]}</div>
+          <div class="bi-sub">Falta confirmar ${pendientesConfirmacion(r).join(", ")} · ${diasEnProceso(r)} días · ${NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacion(r)]}</div>
+        </button>`).join("");
     }
     if (clientesAtrasados.length){
       html += `<div class="bell-section-title">Clientes atrasados (${clientesAtrasados.length})</div>`;
@@ -3763,6 +3905,11 @@ function renderList(filterText){
       .filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" && estadoClass(r["Estado Trámite"]) !== "PAGO");
   } else if (filtroEstado === "__ATRASADOS__"){
     filtered = filtered.filter(estaAtrasado);
+  } else if (filtroEstado === "__POR_CONFIRMAR__"){
+    filtered = filtered.filter(r => pendientesConfirmacion(r).length)
+      .filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro)
+      // Los que llevan más días esperando, primero
+      .sort((a, b) => (diasEnProceso(b) ?? -1) - (diasEnProceso(a) ?? -1));
   } else if (filtroEstado === "__OTRA_EMPRESA__"){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esOtraEmpresa);
   } else if (filtroEstado === "__INDEPENDIENTES__"){
@@ -3784,6 +3931,7 @@ function renderList(filterText){
     "PAGO": "Pagados este mes",
     "__PENDIENTES__": "Pendientes de pago",
     "__ATRASADOS__": "Atrasados (pasaron el día 16)",
+    "__POR_CONFIRMAR__": `Por confirmar afiliación${grupoConfirmacionFiltro ? " · " + NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacionFiltro] : ""} (EPS, pensión, caja o ARL en proceso)`,
   };
   if (q){
     listLabel.textContent = `Resultados (${filtered.length})`;
@@ -3797,6 +3945,7 @@ function renderList(filterText){
   totalCount.textContent = records.length + " registros";
   renderMonthTotal();
   renderStatsStrip();
+  renderGruposConfirmacion();
   actualizarBarraRecordatorios();
   renderFilterPills();
   renderBulkBar();
@@ -3817,7 +3966,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -3937,7 +4086,7 @@ function showBreakdown(cedula){
 
   activeCedula = cedula;
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
-  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>`;
+  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}`;
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
@@ -4508,6 +4657,7 @@ function openModal(record){
   getField("Arl").value = record ? record["ARL (Riesgo/Código)"] || "" : "";
   getField("ArlNivel").value = record ? (record["ARL Nivel"] || "") : "";
   getField("ValorArl").value = record ? record["Valor ARL"] || "" : "";
+  getField("EstadoArl").value = (record && String(record["Estado ARL"] || "").trim().toLowerCase() === "en proceso") ? "en proceso" : "aceptado";
   getField("Afp").value = record ? record["AFP"] || "" : "";
   getField("EstadoAfp").value = (() => {
     const v = String((record && record["Estado AFP"]) || "").trim().toLowerCase();
@@ -4515,6 +4665,7 @@ function openModal(record){
     if (v.includes("no cumple") || v.includes("no alcanz")) return "No Cumple Semanas";
     if (v.includes("semanas cumplidas") || v.includes("cumplio")) return "Semanas Cumplidas";
     if (v.includes("traslad")) return "Trasladado";
+    if (v === "en proceso") return "En Proceso";
     return "Activo";
   })();
   getField("ValorTotal").value = record ? (record["Valor Pensión (AFP)"] || "") : PENSION_DEFAULT;
@@ -5191,6 +5342,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "ARL (Riesgo/Código)": getField("Arl").value.trim().toLowerCase(),
     "ARL Nivel": getField("ArlNivel").value,
     "Valor ARL": getField("ValorArl").value === "" ? "" : Number(getField("ValorArl").value),
+    "Estado ARL": getField("EstadoArl").value,
     "AFP": getField("Afp").value.trim().toLowerCase(),
     "Estado AFP": getField("EstadoAfp").value,
     "Valor Pensión (AFP)": getField("ValorTotal").value === "" ? "" : Number(getField("ValorTotal").value),
@@ -5208,6 +5360,15 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Imagen PlanillaPagada": docImagenes.PlanillaPagada,
     "Imagen ComprobantePago": docImagenes.ComprobantePago,
   };
+  // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
+  {
+    const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
+    const antes = original ? pendientesConfirmacion(original) : [];
+    const ahora = pendientesConfirmacion(record, true);
+    if (!ahora.length) record["En Proceso Desde"] = "";
+    else if (original && antes.length && original["En Proceso Desde"]) record["En Proceso Desde"] = original["En Proceso Desde"];
+    else record["En Proceso Desde"] = fechaHoyISO();
+  }
   // Operador editando un cliente existente: los valores contables no cambian.
   if (editingCedula && !esAdmin()){
     const original = records.find(x => String(x["Cédula"]) === String(editingCedula));
