@@ -164,6 +164,7 @@
     margin-right:8px; white-space:nowrap;
   }
   .header-right{ display:flex; align-items:center; gap:10px; position:relative; }
+  .sync-chip.sync-offline{ background:var(--afiliacion-bg); color:var(--afiliacion); border-color:var(--afiliacion); font-weight:700; }
   .bell-btn{
     position:relative; border:1px solid var(--line); background:var(--panel); border-radius:999px;
     width:38px; height:38px; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;
@@ -1584,6 +1585,7 @@ async function flushSync(){
     for (const mes of Object.keys(store.cobrosExtra || {})) await sincronizarCobrosExtraMes(mes);
     await sincronizarEmpresasExtra();
     ultimoErrorCloud = null;
+    guardarEstadoSync();
     actualizarIndicadorCloud();
   }catch(e){
     ultimoErrorCloud = (e && (e.message || e.code)) ? `${e.code || ""} ${e.message || ""}`.trim() : String(e);
@@ -1592,6 +1594,7 @@ async function flushSync(){
     setTimeout(flushSync, 8000);
   }finally{
     flushing = false;
+    actualizarIndicadorCloud(); // si no, el aviso se queda en "Sincronizando…" aunque ya terminó
   }
 }
 // Compatibilidad con el resto del código, que ya sabe pedir "encolar y enviar este tipo de cambio".
@@ -1605,6 +1608,15 @@ function flushColaCloud(){ programarSync(0); }
 function actualizarIndicadorCloud(){
   const el = document.getElementById("cloudStatus");
   if (!el) return;
+  if (modoSinConexion || !navigator.onLine){
+    const n = contarPendientes();
+    pendientesSinConexion = n;
+    el.textContent = n ? `📴 Sin internet — ${n} cambio(s) pendiente(s) de enviar` : "📴 Sin internet — todo guardado en este equipo";
+    el.title = "Puedes seguir trabajando. Los cambios quedan guardados en este equipo y se envían solos cuando vuelva la conexión.";
+    el.classList.add("sync-offline");
+    return;
+  }
+  el.classList.remove("sync-offline");
   if (!cloudDb){
     el.textContent = "💾 Conectando…";
     el.title = "Conectando con la base de datos compartida.";
@@ -1621,7 +1633,7 @@ function actualizarIndicadorCloud(){
     el.title = "Todo el equipo ve la misma información actualizada.";
   }
 }
-window.addEventListener("online", () => { actualizarIndicadorCloud(); if (cloudDb) flushSync(); });
+window.addEventListener("online", () => { actualizarIndicadorCloud(); if (cloudDb) flushSync(); else reintentarConexion(); });
 window.addEventListener("offline", () => { actualizarIndicadorCloud(); });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && cloudDb) flushSync();
@@ -1686,6 +1698,7 @@ function suscribirMesEnVivo(nombreMes){
         if (idx > -1) lista[idx] = rec; else lista.push(rec);
         store.months[nombreMes] = ordenarPorNumero(lista);
       }
+      guardarEstadoSync();
       if (store.currentMonth === nombreMes){
         records = store.months[nombreMes] || [];
         saveStoreLocalSolo();
@@ -1833,11 +1846,155 @@ async function cargarStoreDesdeSupabase(){
   return nuevoStore;
 }
 
+/* ===================== Trabajo sin internet =====================
+   Se guarda en este equipo una "huella" de cómo quedó cada cliente la última vez que se
+   sincronizó con la nube. Comparando contra esa huella se sabe exactamente qué se cambió
+   sin internet (y solo eso se envía al volver la conexión; lo demás se toma de la nube). */
+const SYNC_STATE_KEY = "planillas_estado_sync_v1";
+const ROL_CACHE_KEY = "planillas_rol_cache";
+let modoSinConexion = false;
+let pendientesSinConexion = 0;
+
+function huella(texto){
+  let h1 = 5381, h2 = 52711;
+  for (let i = 0; i < texto.length; i++){
+    const c = texto.charCodeAt(i);
+    h1 = (h1 * 33) ^ c; h2 = (h2 * 33) ^ c;
+  }
+  return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
+}
+function huellaCliente(r, monthId){ return huella(JSON.stringify(esRecordToDbRow(r, monthId))); }
+
+let _timerEstadoSync = null;
+function guardarEstadoSync(){
+  clearTimeout(_timerEstadoSync);
+  _timerEstadoSync = setTimeout(() => {
+    try{
+      const clientes = {};
+      Object.keys(lastClientSig).forEach(mes => {
+        clientes[mes] = {};
+        Object.keys(lastClientSig[mes] || {}).forEach(ced => { clientes[mes][ced] = huella(lastClientSig[mes][ced]); });
+      });
+      const tareas = {}; Object.keys(lastTareaSig).forEach(id => { tareas[id] = huella(lastTareaSig[id]); });
+      const cobros = {}; Object.keys(lastCobroSig).forEach(id => { cobros[id] = huella(lastCobroSig[id]); });
+      localStorage.setItem(SYNC_STATE_KEY, JSON.stringify({ meses: { ...monthIdByName }, clientes, tareas, cobros, fecha: Date.now() }));
+    }catch(e){ console.error("No se pudo guardar el estado de sincronización:", e); }
+  }, 300);
+}
+function leerEstadoSync(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_STATE_KEY) || "null"); }catch(e){ return null; }
+}
+
+// Lista de cambios hechos en este equipo que la nube todavía no tiene.
+function calcularPendientes(storeLocal, estado){
+  const res = { clientes: [], tareas: [], cobros: [] };
+  if (!estado || !storeLocal || !storeLocal.months) return res;
+  Object.keys(storeLocal.months).forEach(mes => {
+    const monthId = estado.meses ? estado.meses[mes] : undefined;
+    const sinc = (estado.clientes && estado.clientes[mes]) || {};
+    const vistos = new Set();
+    (storeLocal.months[mes] || []).forEach(r => {
+      const ced = String(r["Cédula"] || "").trim();
+      if (!ced) return;
+      vistos.add(ced);
+      if (monthId === undefined){ res.clientes.push({ mes, ced, tipo: "nuevo", r }); return; }
+      const h = huellaCliente(r, monthId);
+      if (!sinc[ced]) res.clientes.push({ mes, ced, tipo: "nuevo", r });
+      else if (sinc[ced] !== h) res.clientes.push({ mes, ced, tipo: "cambio", r });
+    });
+    Object.keys(sinc).forEach(ced => { if (!vistos.has(ced)) res.clientes.push({ mes, ced, tipo: "borrado" }); });
+  });
+  (storeLocal.tareas || []).forEach(t => {
+    if (!t.id) return;
+    const sincT = estado.tareas || {};
+    if (sincT[t.id] !== huella(firmaTarea(t))) res.tareas.push(t);
+  });
+  Object.keys(storeLocal.cobrosExtra || {}).forEach(mes => {
+    (storeLocal.cobrosExtra[mes] || []).forEach(c => {
+      if (!c.id) return;
+      const sincC = estado.cobros || {};
+      if (sincC[c.id] !== huella(firmaCobro(c))) res.cobros.push({ mes, c });
+    });
+  });
+  return res;
+}
+function contarPendientes(){
+  if (cloudDb){
+    // Con conexión: lo que todavía no coincide con lo último enviado.
+    let n = 0;
+    Object.keys(store.months || {}).forEach(mes => {
+      const monthId = monthIdByName[mes];
+      const firmas = lastClientSig[mes] || {};
+      (store.months[mes] || []).forEach(r => {
+        const ced = String(r["Cédula"] || "").trim();
+        if (!ced) return;
+        if (monthId === undefined || firmas[ced] !== JSON.stringify(esRecordToDbRow(r, monthId))) n++;
+      });
+    });
+    return n;
+  }
+  const p = calcularPendientes(store, leerEstadoSync());
+  return p.clientes.length + p.tareas.length + p.cobros.length;
+}
+
+// Al volver la conexión: la nube manda, salvo en lo que se cambió en este equipo sin internet.
+function aplicarPendientesSobreNube(nuevoStore, pend){
+  pend.clientes.forEach(({ mes, ced, tipo, r }) => {
+    if (!nuevoStore.months[mes]) nuevoStore.months[mes] = [];
+    const lista = nuevoStore.months[mes];
+    const idx = lista.findIndex(x => String(x["Cédula"]) === ced);
+    if (tipo === "borrado"){ if (idx > -1) lista.splice(idx, 1); return; }
+    const copia = { ...r };
+    if (idx > -1){ copia._supabaseId = lista[idx]._supabaseId; lista[idx] = copia; }
+    else { delete copia._supabaseId; lista.push(copia); }
+    nuevoStore.months[mes] = ordenarPorNumero(lista);
+  });
+  if (pend.tareas.length){
+    nuevoStore.tareas = nuevoStore.tareas || [];
+    pend.tareas.forEach(t => {
+      const i = nuevoStore.tareas.findIndex(x => x.id === t.id);
+      if (i > -1) nuevoStore.tareas[i] = t; else nuevoStore.tareas.push(t);
+    });
+  }
+  pend.cobros.forEach(({ mes, c }) => {
+    nuevoStore.cobrosExtra = nuevoStore.cobrosExtra || {};
+    const lista = nuevoStore.cobrosExtra[mes] || (nuevoStore.cobrosExtra[mes] = []);
+    const i = lista.findIndex(x => x.id === c.id);
+    if (i > -1) lista[i] = c; else lista.push(c);
+  });
+}
+
+// Abrir la app con la copia guardada en este equipo (sin internet).
+function entrarSinConexion(){
+  modoSinConexion = true;
+  cloudDb = null; cloudReady = false;
+  records = (store.currentMonth && store.months[store.currentMonth]) || [];
+  renderMonthSelect();
+  renderList("");
+  renderBadgeTareas();
+  actualizarIndicadorCloud();
+  showToast("Sin internet: estás trabajando con la copia guardada en este equipo. Los cambios se enviarán solos cuando vuelva la conexión.");
+}
+let _reintentoConexion = null;
+function reintentarConexion(){
+  if (!modoSinConexion || !currentUserId) return;
+  clearTimeout(_reintentoConexion);
+  _reintentoConexion = setTimeout(() => { if (modoSinConexion && navigator.onLine) iniciarAppConSupabase(); }, 1500);
+}
+
 async function iniciarAppConSupabase(){
   cloudDb = null;
   cloudReady = false;
   try{
+    // Cambios hechos en este equipo sin internet (comparados con la última sincronización).
+    const pend = calcularPendientes(store, leerEstadoSync());
     const nuevoStore = await cargarStoreDesdeSupabase();
+    const hayPendientes = pend.clientes.length + pend.tareas.length + pend.cobros.length;
+    if (hayPendientes){
+      const mesVisto = store.currentMonth;
+      aplicarPendientesSobreNube(nuevoStore, pend);
+      if (mesVisto && nuevoStore.months[mesVisto]) nuevoStore.currentMonth = mesVisto;
+    }
     store = nuevoStore;
     records = store.months[store.currentMonth] || [];
     _ultimaListaMesesSincronizada = Object.keys(store.months).sort().join("|");
@@ -1851,11 +2008,25 @@ async function iniciarAppConSupabase(){
     suscribirMesEnVivo(store.currentMonth);
     suscribirMesesYTareasEnVivo();
     cargarConfigMensaje();
+    const veniaSinConexion = modoSinConexion;
+    modoSinConexion = false;
+    guardarEstadoSync();
+    if (hayPendientes){
+      showToast(`Volvió la conexión: enviando ${hayPendientes} cambio(s) hechos sin internet…`);
+      flushSync();
+    } else if (veniaSinConexion){
+      showToast("Volvió la conexión. Todo está sincronizado.");
+    }
   }catch(e){
     console.error("No se pudo cargar la información desde Supabase:", e);
     ultimoErrorCloud = (e && e.message) ? e.message : String(e);
-    actualizarIndicadorCloud();
-    showToast("No se pudo cargar la información desde la base de datos compartida. Revisa tu conexión y recarga la página.");
+    const tieneCopiaLocal = store && store.months && Object.keys(store.months).some(m => (store.months[m] || []).length);
+    if (tieneCopiaLocal && leerEstadoSync()){
+      entrarSinConexion();
+    } else {
+      actualizarIndicadorCloud();
+      showToast("No se pudo cargar la información desde la base de datos compartida. Revisa tu conexión y recarga la página.");
+    }
   }
 }
 
@@ -1969,6 +2140,7 @@ function saveStore(){
     console.error(e);
   }
   try{ localStorage.setItem("planillas_ultimo_mes_visto", store.currentMonth || ""); }catch(e){}
+  if (modoSinConexion || !navigator.onLine) setTimeout(actualizarIndicadorCloud, 0);
   if (cloudDb && !soloLectura){
     // Se reenvían todos los meses (solo los clientes que realmente cambiaron, gracias
     // a la firma guardada por cada uno) y las tareas/cobros/empresas extra, en segundo plano.
@@ -3209,7 +3381,7 @@ advanceBtn.addEventListener("click", async () => {
       return;
     }
     if (!(await confirmarApp(`El mes "${next}" ya existe, así que NO se va a reemplazar (se conserva todo lo que tiene). Solo se agregarán los ${faltantes.length} afiliado(s) de ${current} que todavía no están allá: ${faltantes.slice(0, 5).map(x => x["Nombre del Afiliado"]).join(", ")}${faltantes.length > 5 ? "…" : ""}. ¿Continuar?`))) return;
-    agregarAlFinalDelMes(next, faltantes);
+    insertarConservandoLugar(next, faltantes, records);
     switchToMonth(next);
     showToast(`Se agregaron ${faltantes.length} afiliado(s) a ${next}. Lo que ya tenía ese mes no se tocó.`);
     return;
@@ -3909,6 +4081,7 @@ document.getElementById("guardarMensajeBtn").addEventListener("click", async () 
 });
 
 function enviarWhatsapp(r, totalPagar){
+  if (!navigator.onLine){ showToast("Sin internet: no se puede abrir WhatsApp ahora. Inténtalo cuando vuelva la conexión."); return; }
   const numero = String(r["Teléfono"] || "").replace(/\D/g, "");
   if (!numero) return;
   const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
@@ -4464,6 +4637,9 @@ function dataUrlToBlob(dataUrl){
 // queden disponibles entre computadores y para el portal del cliente. Es "best effort":
 // si falla (por ejemplo sin internet) no bloquea el guardado local, solo se avisa en consola.
 async function subirDocumentosCliente(cedula){
+  if ((!cloudDb || !navigator.onLine) && Object.keys(docImagenesCambiados || {}).some(k => docImagenesCambiados[k])){
+    showToast("Sin internet: los documentos quedaron solo en este equipo. Vuelve a subirlos cuando haya conexión para que los vea el equipo y el cliente.");
+  }
   if (!cloudDb || !cedula) return;
   for (const doc of Object.keys(docImagenes)){
     if (!docImagenesCambiados[doc]) continue;
@@ -4949,6 +5125,31 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
 // Aplica los mismos cambios a los registros de la misma cédula en los meses posteriores
 // al que se está editando. No toca "Estado Trámite" ni "Costo Servicio" ni el prorrateo
 // interno, porque esos valores son propios de cada mes (pago, sin pago, días proporcionales...).
+// Inserta clientes en un mes conservando su lugar: cada uno queda justo después del
+// cliente que lo antecedía en el mes de referencia (o de primero si no hay ninguno).
+// Luego se renumera ese mes para que la columna "No." siga el orden de la lista.
+function insertarConservandoLugar(nombreMes, nuevos, listaReferencia){
+  const arr = ordenarPorNumero(store.months[nombreMes] || []);
+  const ordenRef = (listaReferencia || []).map(x => String(x["Cédula"]));
+  nuevos.forEach(n => {
+    const ced = String(n["Cédula"]);
+    const copia = { ...n }; delete copia._supabaseId;
+    const posRef = ordenRef.indexOf(ced);
+    let destino = arr.length; // si no aparece en la referencia, al final
+    if (posRef > -1){
+      destino = 0;
+      for (let k = posRef - 1; k >= 0; k--){
+        const j = arr.findIndex(x => String(x["Cédula"]) === ordenRef[k]);
+        if (j > -1){ destino = j + 1; break; }
+      }
+    }
+    arr.splice(destino, 0, copia);
+  });
+  arr.forEach((x, i) => { x["No."] = i + 1; });
+  store.months[nombreMes] = arr;
+  if (nombreMes === store.currentMonth) records = arr;
+}
+
 function agregarAlFinalDelMes(nombreMes, nuevos){
   const arr = store.months[nombreMes] || (store.months[nombreMes] = []);
   let maxNo = arr.reduce((acc, x) => Math.max(acc, Number(x["No."]) || 0), 0);
@@ -4972,7 +5173,7 @@ async function ofrecerAgregarAMesesPosteriores(cedula){
     const enEseMes = (store.months[meses[i]] || []).find(x => String(x["Cédula"]) === String(cedula));
     if (enEseMes){ previo = enEseMes; continue; }
     const nuevo = construirRegistroMesSiguiente(previo);
-    agregarAlFinalDelMes(meses[i], [nuevo]);
+    insertarConservandoLugar(meses[i], [nuevo], store.months[meses[i - 1]] || []);
     previo = nuevo;
   }
   saveStore();
@@ -5062,10 +5263,18 @@ async function mostrarAppPrincipal(user){
   currentUserId = user.id;
   currentUserEmail = user.email;
   currentUserRole = "operador";
+  let rolLeido = false;
   try {
-    const { data: perfil } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-    if (perfil && perfil.role) currentUserRole = perfil.role;
+    const { data: perfil, error: errPerfil } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    if (!errPerfil && perfil && perfil.role){ currentUserRole = perfil.role; rolLeido = true; }
   } catch (e){ console.error("No se pudo leer el rol del perfil:", e); }
+  try{
+    if (rolLeido) localStorage.setItem(ROL_CACHE_KEY, JSON.stringify({ id: user.id, role: currentUserRole }));
+    else {
+      const c = JSON.parse(localStorage.getItem(ROL_CACHE_KEY) || "null");
+      if (c && c.id === user.id && c.role) currentUserRole = c.role;
+    }
+  }catch(e){}
   const quien = document.getElementById("whoAmI");
   if (quien) quien.textContent = user.email + (esAdmin() ? " · Admin" : " · Operador");
   document.body.classList.toggle("rol-admin", esAdmin());
@@ -5094,6 +5303,15 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   await sb.auth.signOut();
 });
 
+function usuarioDeSesionGuardada(){
+  try{
+    const ref = new URL(SUPABASE_URL).hostname.split(".")[0];
+    const s = JSON.parse(localStorage.getItem(`sb-${ref}-auth-token`) || "null");
+    const u = s && (s.user || (s.currentSession && s.currentSession.user));
+    return u && u.id ? u : null;
+  }catch(e){ return null; }
+}
+
 async function initAuth(){
   if (!sb){
     const errBox = document.getElementById("loginErr");
@@ -5101,11 +5319,22 @@ async function initAuth(){
     if (errBox) errBox.textContent = "No se pudo cargar la conexión con la base de datos. Revisa tu internet y vuelve a abrir la página.";
     return;
   }
-  const { data: { session } } = await sb.auth.getSession();
+  let session = null;
+  try{
+    const r = await sb.auth.getSession();
+    session = r && r.data ? r.data.session : null;
+  }catch(e){ console.error(e); }
   if (session && session.user){
     await mostrarAppPrincipal(session.user);
   } else {
-    mostrarPantallaLogin();
+    // Sin internet no se puede renovar la sesión: si ya se había entrado antes en este
+    // equipo, se abre la copia guardada con ese usuario.
+    const guardada = usuarioDeSesionGuardada();
+    if (guardada && !navigator.onLine){
+      await mostrarAppPrincipal(guardada);
+    } else {
+      mostrarPantallaLogin();
+    }
   }
   sb.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session && session.user && !cloudReady){
@@ -5117,6 +5346,11 @@ async function initAuth(){
   });
 }
 initAuth();
+
+// Copia de la app en el navegador para poder abrirla sin internet.
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")){
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(e => console.error("No se pudo activar el modo sin internet:", e)); });
+}
 
 /* ---- Recordatorio de respaldo ---- */
 (function revisarRecordatorioRespaldo(){
