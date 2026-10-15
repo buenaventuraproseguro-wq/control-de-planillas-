@@ -894,8 +894,8 @@
       <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">7</span> ⬇️ Exportar respaldo</button>
       <button type="button" class="sidebar-link" id="navImportBtn">⬆️ Importar respaldo</button>
       <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">8</span> 📊 Exportar cobro del mes</button>
-      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> 📥 Importar planilla PILA (PDF)</button>
-      <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,.csv,text/csv">
+      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> 📥 Subir planilla pagada (planilla + comprobante)</button>
+      <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,image/*,.csv,text/csv" multiple>
 
       <div class="sidebar-section-title">Cartera</div>
       <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">10</span> 📋 Cartera (cobros del mes) ▾</button>
@@ -1713,7 +1713,7 @@
 <!-- Revisión de la planilla PILA importada (PDF) -->
 <div class="overlay" id="overlayPila">
   <div class="modal" style="max-width:760px;">
-    <h2>Importar planilla PILA</h2>
+    <h2>📥 Planilla pagada</h2>
     <div class="modal-sub" id="pilaResumen"></div>
     <div style="overflow-x:auto;">
       <table class="tabla-historial" id="pilaTabla"></table>
@@ -6210,7 +6210,7 @@ async function cargarLectorPDF(){
 function escHtml(v){ return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
 let pilaEnRevision = null; // { archivo, info, filas }
 
-async function importarPlanillaPDF(archivo){
+async function importarPlanillaPDF(archivo, comprobante){
   if (!navigator.onLine && !_pdfjs){ showToast("Sin internet: para leer la planilla en PDF se necesita conexión la primera vez."); return; }
   showToast("Leyendo la planilla…");
   let info;
@@ -6277,6 +6277,7 @@ async function importarPlanillaPDF(archivo){
   aviso.style.display = varios ? "block" : "none";
   aviso.textContent = varios ? `⚠️ Esta planilla tiene ${info.afiliados.length} afiliados. Si la guardas en cada cliente, cada uno podrá ver en su portal los datos de los demás (nombres, salarios y aportes).` : "";
   pilaLimpiarComprobante();
+  if (comprobante) pilaUsarComprobante(comprobante);
   document.getElementById("overlayPila").classList.add("show");
 }
 
@@ -6325,6 +6326,14 @@ async function pilaRevisarComprobante(archivo){
     console.error("No se pudo revisar el comprobante:", e);
   }
 }
+function pilaUsarComprobante(f){
+  pilaComprobante = f;
+  document.getElementById("pilaComprobanteNombre").textContent = f.name;
+  document.getElementById("pilaComprobanteQuitar").style.display = "";
+  const chk = document.getElementById("pilaAdjuntarComp");
+  chk.disabled = false; chk.checked = true;
+  pilaRevisarComprobante(f);
+}
 document.getElementById("pilaComprobanteFile").addEventListener("change", (e) => {
   const f = e.target.files[0];
   if (!f) return;
@@ -6333,12 +6342,7 @@ document.getElementById("pilaComprobanteFile").addEventListener("change", (e) =>
     e.target.value = "";
     return;
   }
-  pilaComprobante = f;
-  document.getElementById("pilaComprobanteNombre").textContent = f.name;
-  document.getElementById("pilaComprobanteQuitar").style.display = "";
-  const chk = document.getElementById("pilaAdjuntarComp");
-  chk.disabled = false; chk.checked = true;
-  pilaRevisarComprobante(f);
+  pilaUsarComprobante(f);
 });
 document.getElementById("pilaComprobanteQuitar").addEventListener("click", pilaLimpiarComprobante);
 // Archivo listo para subir: las fotos se comprimen igual que los demás documentos
@@ -6430,9 +6434,48 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   if (fallidos || compFallidos) alertApp(msg); else showToast(msg);
 });
 
+// Se pueden elegir los DOS archivos que entrega el operador al pagar (la planilla y el comprobante):
+// la app reconoce cuál es la planilla (la que trae los afiliados) y cuál el comprobante.
+const esPdfArchivo = (f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf";
+const esFotoArchivo = (f) => (f.type || "").startsWith("image/") || /\.(jpe?g|png|heic|webp)$/i.test(f.name);
+async function contarAfiliadosPDF(f){
+  try{
+    const pdfjs = await cargarLectorPDF();
+    const info = await LectorPILA.leerPlanillaPDF(pdfjs, new Uint8Array(await f.arrayBuffer()));
+    return info.afiliados.length;
+  }catch(e){ return 0; }
+}
+async function subirDosArchivosPila(archivos){
+  const validos = archivos.filter(f => esPdfArchivo(f) || esFotoArchivo(f));
+  if (validos.length !== archivos.length){ showToast("Elija solo la planilla y el comprobante (PDF o foto)."); return; }
+  if (validos.length > 2){ showToast("Elija solo dos archivos: la planilla y el comprobante de pago."); return; }
+  if (!navigator.onLine && !_pdfjs){ showToast("Sin internet: para leer la planilla en PDF se necesita conexión la primera vez."); return; }
+  showToast("Revisando los dos archivos…");
+  const pdfs = validos.filter(esPdfArchivo);
+  if (!pdfs.length){ showToast("La planilla debe ser el PDF descargado del operador. Las fotos solo sirven como comprobante."); return; }
+  const conteos = await Promise.all(pdfs.map(contarAfiliadosPDF));
+  let iPlanilla = -1, max = 0;
+  conteos.forEach((n, i) => { if (n > max){ max = n; iPlanilla = i; } });
+  if (iPlanilla < 0){ showToast("Ninguno de los dos archivos parece la planilla (no se encontraron afiliados). Revise que uno sea la planilla descargada del operador."); return; }
+  const planilla = pdfs[iPlanilla];
+  const comprobante = validos.find(f => f !== planilla);
+  await importarPlanillaPDF(planilla, comprobante);
+}
+
 document.getElementById("importPilaFile").addEventListener("change", (e) => {
-  const file = e.target.files[0];
+  const lista = Array.from(e.target.files || []);
+  if (lista.length > 1){
+    subirDosArchivosPila(lista);
+    e.target.value = "";
+    return;
+  }
+  const file = lista[0];
   if (!file) return;
+  if (esFotoArchivo(file)){
+    showToast("Primero elija la planilla en PDF (o los dos archivos juntos: planilla y comprobante).");
+    e.target.value = "";
+    return;
+  }
   if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
     importarPlanillaPDF(file);
     e.target.value = "";
