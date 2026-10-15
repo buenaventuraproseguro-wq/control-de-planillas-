@@ -325,7 +325,9 @@
     font-size:26px; border-radius:8px; border:1px solid var(--line); background:var(--bg);
   }
   .doc-thumb span{ font-size:10.5px; color:var(--muted); text-align:center; }
-  .doc-en-nube{ font-size:11px; color:var(--accent); font-weight:600; text-decoration:none; }
+  .doc-en-nube{ font-size:11px; color:var(--accent); font-weight:600; }
+  .doc-en-nube a{ color:inherit; }
+  .doc-quitar-nube{ border:none; background:transparent; color:var(--danger); font:inherit; font-size:11px; font-weight:700; cursor:pointer; padding:0; }
 
   .list{
     background:var(--panel); border:1px solid var(--line); border-top:none;
@@ -4722,9 +4724,26 @@ async function marcarDocumentosEnNubeFormulario(cedula){
     const box = document.querySelector(`.doc-upload[data-doc="${PARTE[d.tipo]}"]`);
     if (!box || !d.url) return;
     const fecha = fechaCortaDoc(d.uploaded_at);
-    box.insertAdjacentHTML("beforeend", `<a class="doc-en-nube" href="${d.url}" target="_blank" rel="noopener">☁️ Ya guardado${fecha ? ` (${fecha})` : ""} — ver</a>`);
+    box.insertAdjacentHTML("beforeend", `<span class="doc-en-nube">☁️ Ya guardado${fecha ? ` (${fecha})` : ""} — <a href="${d.url}" target="_blank" rel="noopener">ver</a> · <button type="button" class="doc-quitar-nube">🗑️ Eliminar</button></span>`);
   });
 }
+
+// Eliminar un documento ya guardado en la nube (se borra al tocar "Guardar").
+document.getElementById("overlay").addEventListener("click", async (e) => {
+  const btn = e.target.closest(".doc-quitar-nube");
+  if (!btn) return;
+  const box = btn.closest(".doc-upload");
+  const doc = box.dataset.doc;
+  const etiqueta = box.querySelector(".doc-label") ? box.querySelector(".doc-label").textContent : doc;
+  if (!(await confirmarApp(`¿Eliminar el documento "${etiqueta}" de este cliente? Se borrará para todo el equipo y del portal del cliente cuando toques "Guardar".`))) return;
+  docImagenes[doc] = null;
+  docImagenesCambiados[doc] = true;
+  const fileInput = box.querySelector(".doc-file");
+  if (fileInput) fileInput.value = "";
+  mostrarDocPreview(box, null);
+  const marca = box.querySelector(".doc-en-nube");
+  if (marca) marca.innerHTML = "🗑️ Se eliminará al tocar <b>Guardar</b>";
+});
 
 function cargarDocImagenes(record){
   marcarDocumentosEnNubeFormulario(record ? record["Cédula"] : null);
