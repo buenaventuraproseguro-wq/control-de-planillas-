@@ -836,6 +836,13 @@
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .toast .toast-icon{ font-size:14px; }
+.pila-comprobante{ border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-top:12px; }
+.pila-comp-titulo{ font-size:13px; font-weight:700; margin-bottom:8px; color:var(--navy-deep); }
+.pila-comp-fila{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.pila-comp-nombre{ font-size:12.5px; color:var(--muted); word-break:break-all; }
+.pila-comp-aviso{ font-size:12px; font-weight:600; margin-left:24px; }
+.pila-comp-aviso.ok{ color:var(--pago); }
+.pila-comp-aviso.alerta{ color:var(--retiro); }
 .pila-detalle td{font-size:12px;color:var(--retiro, #b45309);background:rgba(245,158,11,.08);padding-top:2px;}
 </style>
 </head>
@@ -1713,9 +1720,23 @@
     </div>
     <label style="display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:12px 0 4px;">
       <input type="checkbox" id="pilaAdjuntar" style="margin-top:3px;">
-      <span>Guardar este PDF como <b>"Planilla pagada"</b> de cada cliente marcado (lo verá en su ficha y en su portal).</span>
+      <span>📄 Guardar esta planilla como <b>"Planilla pagada"</b> de cada cliente marcado (lo verá en su ficha y en su portal).</span>
     </label>
     <div class="aviso-pila" id="pilaAvisoVarios" style="display:none; color:var(--afiliacion); font-size:12px; font-weight:600; margin-left:24px;"></div>
+    <div class="pila-comprobante">
+      <div class="pila-comp-titulo">🧾 Comprobante de pago de esta planilla</div>
+      <div class="pila-comp-fila">
+        <label class="btn ghost small" for="pilaComprobanteFile" style="cursor:pointer;">📎 Elegir comprobante (PDF o foto)</label>
+        <input type="file" id="pilaComprobanteFile" class="hidden-file" accept=".pdf,application/pdf,image/*">
+        <span id="pilaComprobanteNombre" class="pila-comp-nombre">Sin archivo</span>
+        <button type="button" class="btn ghost small" id="pilaComprobanteQuitar" style="display:none;">Quitar</button>
+      </div>
+      <label style="display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:8px 0 4px;">
+        <input type="checkbox" id="pilaAdjuntarComp" style="margin-top:3px;" disabled>
+        <span>Guardar el comprobante como <b>"Comprobante de pago"</b> de cada cliente marcado.</span>
+      </label>
+      <div id="pilaComprobanteAviso" class="pila-comp-aviso"></div>
+    </div>
     <div class="modal-actions">
       <button type="button" class="btn ghost" id="pilaCancelarBtn">Cancelar</button>
       <button type="button" class="btn primary" id="pilaAplicarBtn">Aplicar</button>
@@ -6255,11 +6276,82 @@ async function importarPlanillaPDF(archivo){
   const aviso = document.getElementById("pilaAvisoVarios");
   aviso.style.display = varios ? "block" : "none";
   aviso.textContent = varios ? `⚠️ Esta planilla tiene ${info.afiliados.length} afiliados. Si la guardas en cada cliente, cada uno podrá ver en su portal los datos de los demás (nombres, salarios y aportes).` : "";
+  pilaLimpiarComprobante();
   document.getElementById("overlayPila").classList.add("show");
+}
+
+// ---- Comprobante de pago de la planilla (segundo documento) ----
+let pilaComprobante = null; // archivo elegido (PDF o foto)
+function pilaLimpiarComprobante(){
+  pilaComprobante = null;
+  document.getElementById("pilaComprobanteFile").value = "";
+  document.getElementById("pilaComprobanteNombre").textContent = "Sin archivo";
+  document.getElementById("pilaComprobanteQuitar").style.display = "none";
+  const chk = document.getElementById("pilaAdjuntarComp");
+  chk.checked = false; chk.disabled = true;
+  const av = document.getElementById("pilaComprobanteAviso");
+  av.textContent = ""; av.className = "pila-comp-aviso";
+}
+// Si el comprobante es un PDF con texto, revisa que traiga el mismo número de planilla
+async function pilaRevisarComprobante(archivo){
+  const av = document.getElementById("pilaComprobanteAviso");
+  const numero = pilaEnRevision && pilaEnRevision.info && String(pilaEnRevision.info.numeroPlanilla || "").replace(/\D/g, "");
+  av.className = "pila-comp-aviso"; av.textContent = "";
+  if (!numero) return;
+  if (!(/\.pdf$/i.test(archivo.name) || archivo.type === "application/pdf")){
+    av.textContent = `Es una foto: revise que sea el comprobante de la planilla N° ${numero}.`;
+    return;
+  }
+  try{
+    const pdfjs = await cargarLectorPDF();
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await archivo.arrayBuffer()) }).promise;
+    let texto = "";
+    for (let i = 1; i <= Math.min(pdf.numPages, 5); i++){
+      const c = await (await pdf.getPage(i)).getTextContent();
+      texto += " " + c.items.map(it => it.str).join(" ");
+    }
+    if (pilaComprobante !== archivo) return; // eligieron otro archivo mientras se leía
+    const digitos = texto.replace(/\D/g, "");
+    if (!texto.trim()){
+      av.textContent = `No se pudo leer el texto del comprobante: revise que sea el de la planilla N° ${numero}.`;
+    } else if (digitos.includes(numero)){
+      av.className = "pila-comp-aviso ok";
+      av.textContent = `✅ El comprobante corresponde a la planilla N° ${numero}.`;
+    } else {
+      av.className = "pila-comp-aviso alerta";
+      av.textContent = `⚠️ Este comprobante no menciona la planilla N° ${numero}. Revise que sea el correcto antes de aplicar.`;
+    }
+  }catch(e){
+    console.error("No se pudo revisar el comprobante:", e);
+  }
+}
+document.getElementById("pilaComprobanteFile").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (!(/\.pdf$/i.test(f.name) || f.type === "application/pdf" || (f.type || "").startsWith("image/"))){
+    showToast("El comprobante debe ser un PDF o una foto.");
+    e.target.value = "";
+    return;
+  }
+  pilaComprobante = f;
+  document.getElementById("pilaComprobanteNombre").textContent = f.name;
+  document.getElementById("pilaComprobanteQuitar").style.display = "";
+  const chk = document.getElementById("pilaAdjuntarComp");
+  chk.disabled = false; chk.checked = true;
+  pilaRevisarComprobante(f);
+});
+document.getElementById("pilaComprobanteQuitar").addEventListener("click", pilaLimpiarComprobante);
+// Archivo listo para subir: las fotos se comprimen igual que los demás documentos
+function pilaPrepararComprobante(f){
+  return new Promise((resolve) => {
+    if (!(f.type || "").startsWith("image/")){ resolve({ blob: f, tipo: f.type || "application/pdf" }); return; }
+    comprimirImagen(f, (dataUrl) => { const b = dataUrlToBlob(dataUrl); resolve({ blob: b, tipo: b.type }); });
+  });
 }
 
 document.getElementById("pilaCancelarBtn").addEventListener("click", () => {
   pilaEnRevision = null;
+  pilaLimpiarComprobante();
   document.getElementById("overlayPila").classList.remove("show");
 });
 
@@ -6269,6 +6361,9 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   const elegidos = Array.from(document.querySelectorAll("#pilaTabla input[data-pila-idx]:checked")).map(c => filas[Number(c.dataset.pilaIdx)]).filter(f => f.r);
   if (!elegidos.length){ showToast("No marcaste ningún cliente."); return; }
   const adjuntar = document.getElementById("pilaAdjuntar").checked;
+  const adjuntarComp = !!pilaComprobante && document.getElementById("pilaAdjuntarComp").checked;
+  if (adjuntar && !adjuntarComp && !(await confirmarApp("No adjuntó el comprobante de pago de esta planilla. ¿Aplicar solo con la planilla? (El comprobante se puede subir después en la ficha de cada cliente.)"))) return;
+  if (adjuntarComp && document.getElementById("pilaComprobanteAviso").classList.contains("alerta") && !(await confirmarApp("El comprobante no menciona el número de esta planilla. ¿Guardarlo de todas formas?"))) return;
   const btn = document.getElementById("pilaAplicarBtn");
   btn.disabled = true; btn.textContent = "Aplicando…";
 
@@ -6277,6 +6372,7 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
     f.r["Estado Trámite"] = esConductorExcluido(f.r) ? "PAGO CONDUCTOR" : "PAGO";
     f.r["_ultimaEdicion"] = new Date().toISOString();
     if (adjuntar) f.r["Imagen PlanillaPagada"] = null; // la planilla queda en la nube (se ve desde cualquier equipo)
+    if (adjuntarComp) f.r["Imagen ComprobantePago"] = null;
   });
   saveStore();
   renderList(searchInput.value);
@@ -6302,12 +6398,36 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
       }
     }
   }
+  let compSubidos = 0, compFallidos = 0;
+  if (adjuntarComp){
+    if (!cloudDb || !navigator.onLine){
+      compFallidos = elegidos.length;
+    } else {
+      const { blob, tipo } = await pilaPrepararComprobante(pilaComprobante);
+      for (const f of elegidos){
+        const ced = String(f.r["Cédula"]);
+        const path = `${ced}/comprobante_pago`;
+        try{
+          const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: tipo });
+          if (upErr) throw upErr;
+          const { error: dbErr } = await sb.from("documentos").upsert(
+            { cedula: ced, tipo: "comprobante_pago", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
+            { onConflict: "cedula,tipo" }
+          );
+          if (dbErr) throw dbErr;
+          compSubidos++;
+        }catch(err){ console.error("No se pudo guardar el comprobante de", ced, err); compFallidos++; }
+      }
+    }
+  }
   btn.disabled = false; btn.textContent = "Aplicar";
   document.getElementById("overlayPila").classList.remove("show");
   pilaEnRevision = null;
   let msg = `Planilla ${info.numeroPlanilla || ""}: ${elegidos.length} cliente(s) quedaron en PAGO.`;
-  if (adjuntar) msg += fallidos ? ` No se pudo guardar el PDF en ${fallidos} (revisa la conexión).` : ` PDF guardado en ${subidos}.`;
-  showToast(msg);
+  if (adjuntar) msg += fallidos ? ` No se pudo guardar la planilla en ${fallidos} (revisa la conexión).` : ` Planilla guardada en ${subidos}.`;
+  if (adjuntarComp) msg += compFallidos ? ` No se pudo guardar el comprobante en ${compFallidos} (revisa la conexión).` : ` Comprobante guardado en ${compSubidos}.`;
+  pilaLimpiarComprobante();
+  if (fallidos || compFallidos) alertApp(msg); else showToast(msg);
 });
 
 document.getElementById("importPilaFile").addEventListener("change", (e) => {
