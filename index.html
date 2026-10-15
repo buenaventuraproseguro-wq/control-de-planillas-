@@ -441,6 +441,36 @@
   }
   .recordatorios-progreso{ font-size:12.5px; color:var(--muted); font-weight:600; }
   body.rol-operador #deleteMonthBtn{ display:none !important; }
+  body:not(.rol-admin) .solo-admin{ display:none !important; }
+  /* Gastos de la empresa */
+  #overlayGastos .modal{ max-width:920px; }
+  .g-barra{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:12px; }
+  .g-barra .field{ min-width:150px; }
+  .g-resumen{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+  @media (max-width:640px){ .g-resumen{ grid-template-columns:1fr 1fr; } }
+  .g-tarjeta{ border:1px solid var(--line); border-radius:10px; padding:9px 11px; background:var(--bg); }
+  .g-tarjeta small{ display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .g-tarjeta b{ font-size:17px; font-variant-numeric:tabular-nums; }
+  .g-tarjeta.alerta b{ color:var(--retiro); }
+  .g-fijos{ border:1px dashed var(--navy); border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; }
+  .g-tabla-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  .g-tabla{ width:100%; border-collapse:collapse; font-size:13px; }
+  .g-tabla th{ text-align:left; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; padding:8px; border-bottom:1px solid var(--line); background:var(--bg); white-space:nowrap; }
+  .g-tabla td{ padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .g-tabla tr:last-child td{ border-bottom:none; }
+  .g-tabla .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .g-tabla .g-sub{ font-size:11.5px; color:var(--muted); }
+  .g-estado{ display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .g-estado.pagado{ background:var(--pago-bg); color:var(--pago); }
+  .g-estado.pendiente{ background:var(--line); color:var(--ink); }
+  .g-estado.vencido{ background:var(--retiro-bg); color:var(--retiro); }
+  .g-acciones{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+  .g-acciones .btn{ padding:4px 8px; font-size:12px; }
+  .g-categorias{ font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.7; }
+  .g-categorias b{ color:var(--ink); }
+  #gForm{ border:1.5px solid var(--navy); border-radius:12px; padding:14px; margin-bottom:14px; display:none; }
+  #gForm.show{ display:block; }
+  .g-vacio{ padding:22px; text-align:center; color:var(--muted); font-size:13px; }
 
   footer{ text-align:center; font-size:12px; color:var(--muted); margin-top:24px; }
   .footer-version{ display:inline-block; margin-top:6px; font-size:10.5px; opacity:.7; }
@@ -767,6 +797,9 @@
         <button type="button" class="sidebar-link sub" id="navGananciasBtn">💰 Ganancias de gestiones</button>
         <button type="button" class="sidebar-link sub" id="navMensajeBtn">💬 Mensaje de recordatorio</button>
       </div>
+
+      <div class="sidebar-section-title solo-admin">Empresa</div>
+      <button type="button" class="sidebar-link solo-admin" id="navGastosBtn">💸 Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
 
       <div class="sidebar-section-title">Enlaces rápidos</div>
       <a class="sidebar-link" href="https://www.adres.gov.co/consulte-su-eps" target="_blank" rel="noopener">🔗 ADRES — Consultar EPS</a>
@@ -1252,6 +1285,53 @@
     <div id="listaTareas"></div>
     <div class="modal-actions">
       <button class="btn ghost" id="cerrarTareasBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gastos de la empresa (solo administrador) -->
+<div class="overlay" id="overlayGastos">
+  <div class="modal">
+    <h2>💸 Gastos de la empresa</h2>
+    <div class="modal-sub">Gastos ocasionales, facturas, arriendo y pagos de trabajos. Solo el administrador puede ver y cambiar esta lista.</div>
+
+    <div class="g-barra">
+      <div class="field"><label>Mes</label><input type="month" id="gMes"></div>
+      <div class="field"><label>Categoría</label><select id="gFiltroCat"><option value="">Todas</option></select></div>
+      <div class="field"><label>Estado</label><select id="gFiltroEstado"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="pagado">Pagados</option></select></div>
+      <div style="flex:1"></div>
+      <button type="button" class="btn ghost small" id="gExportarBtn">⬇️ Exportar mes</button>
+      <button type="button" class="btn primary" id="gNuevoBtn">➕ Nuevo gasto</button>
+    </div>
+
+    <form id="gForm" autocomplete="off">
+      <h2 id="gFormTitulo" style="font-size:15px;">Nuevo gasto</h2>
+      <div class="form-grid">
+        <div class="field"><label>Fecha del gasto</label><input type="date" id="gFecha" required></div>
+        <div class="field"><label>Categoría</label><select id="gCategoria"></select></div>
+        <div class="field span2"><label>Descripción</label><input type="text" id="gDescripcion" maxlength="200" placeholder="Ej: Arriendo oficina, factura de luz, pago trámite muelle" required></div>
+        <div class="field"><label>A quién se le paga</label><input type="text" id="gProveedor" maxlength="120" placeholder="Persona o empresa"></div>
+        <div class="field"><label>Valor</label><input type="number" id="gValor" min="0" step="1" inputmode="numeric" placeholder="0" required></div>
+        <div class="field"><label>Fecha límite de pago (opcional)</label><input type="date" id="gVence"></div>
+        <div class="field"><label>Estado</label><select id="gEstado"><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option></select></div>
+        <div class="field g-pago"><label>Fecha en que se pagó</label><input type="date" id="gFechaPago"></div>
+        <div class="field g-pago"><label>Medio de pago</label><select id="gMedio"><option value="">—</option><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Tarjeta</option><option>Otro</option></select></div>
+        <div class="field span2"><label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink);"><input type="checkbox" id="gFijo"> Se repite cada mes (arriendo, internet, sueldo fijo…)</label></div>
+        <div class="field span2"><label>Factura o recibo (opcional, PDF o foto)</label><input type="file" id="gArchivo" accept=".pdf,image/*"><span class="g-sub" id="gArchivoActual" style="font-size:12px;color:var(--muted);"></span></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="gCancelarBtn">Cancelar</button>
+        <button type="submit" class="btn primary" id="gGuardarBtn">Guardar</button>
+      </div>
+    </form>
+
+    <div id="gFijos"></div>
+    <div class="g-resumen" id="gResumen"></div>
+    <div class="g-tabla-wrap"><table class="g-tabla" id="gTabla"></table></div>
+    <div class="g-categorias" id="gPorCategoria"></div>
+
+    <div class="modal-actions">
+      <button class="btn ghost" id="gCerrarBtn">Cerrar</button>
     </div>
   </div>
 </div>
@@ -5341,6 +5421,7 @@ async function mostrarAppPrincipal(user){
   document.body.classList.toggle("rol-admin", esAdmin());
   document.body.classList.toggle("rol-operador", !esAdmin());
   await iniciarAppConSupabase();
+  if (esAdmin()) cargarGastos();
 }
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
@@ -5810,6 +5891,398 @@ document.getElementById("exportCsvBtn").addEventListener("click", () => {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast(`Cobro de ${store.currentMonth} exportado.`);
+});
+
+// ================= GASTOS DE LA EMPRESA (solo administrador) =================
+// Se guardan en la tabla "gastos" de Supabase (la base solo se los muestra al administrador).
+// Se guarda una copia en este equipo solo para poder CONSULTARLOS sin internet.
+const GASTOS_CACHE_KEY = "prosegurosnet_gastos_v1";
+const CATEGORIAS_GASTO_BASE = ["Arriendo","Servicios públicos","Internet y teléfono","Pago a trabajadores","Facturas de proveedores","Papelería y oficina","Transporte","Impuestos","Otros"];
+let gastos = [];
+let categoriasGasto = CATEGORIAS_GASTO_BASE.slice();
+let gastoEditando = null;      // id del gasto que se está editando
+let gastoArchivoQuitar = false;
+let gastosCargados = false;
+
+function hoyISO(){ const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function mesDeFecha(f){ return String(f || "").slice(0, 7); }
+function fechaCorta(f){ if (!f) return ""; const [a, m, d] = String(f).slice(0, 10).split("-"); return `${d}/${m}/${a}`; }
+function nombreMesISO(ym){
+  const [a, m] = ym.split("-").map(Number);
+  const MESES_N = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  return `${MESES_N[m - 1]} de ${a}`;
+}
+function estadoVisual(g){
+  if (g.estado === "pagado") return "pagado";
+  if (g.vence && g.vence < hoyISO()) return "vencido";
+  return "pendiente";
+}
+function guardarCacheGastos(){
+  try{ localStorage.setItem(GASTOS_CACHE_KEY, JSON.stringify({ uid: currentUserId, gastos, categoriasGasto })); }catch(e){}
+}
+function leerCacheGastos(){
+  try{
+    const c = JSON.parse(localStorage.getItem(GASTOS_CACHE_KEY) || "null");
+    if (c && c.uid === currentUserId){ gastos = c.gastos || []; categoriasGasto = c.categoriasGasto || categoriasGasto; return true; }
+  }catch(e){}
+  return false;
+}
+function sinInternetGastos(){ return !sb || modoSinConexion || (typeof navigator !== "undefined" && navigator.onLine === false); }
+
+async function cargarGastos(){
+  if (!esAdmin()) return;
+  if (sinInternetGastos()){ leerCacheGastos(); gastosCargados = true; return; }
+  try{
+    const [{ data: filas, error: e1 }, { data: cats, error: e2 }] = await Promise.all([
+      sb.from("gastos").select("*").order("fecha", { ascending: true }),
+      sb.from("gastos_categorias").select("*").order("nombre", { ascending: true }),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    gastos = (filas || []).map(g => ({ ...g, valor: Number(g.valor) || 0 }));
+    const nombres = (cats || []).map(c => c.nombre);
+    categoriasGasto = Array.from(new Set([...CATEGORIAS_GASTO_BASE.filter(c => !nombres.length || nombres.includes(c)), ...nombres]));
+    guardarCacheGastos();
+  }catch(e){
+    console.error("No se pudieron cargar los gastos:", e);
+    leerCacheGastos();
+    if (e && /gastos/.test(String(e.message || "")) && /does not exist|schema cache|not find/i.test(String(e.message || ""))){
+      showToast("Falta activar los gastos en la base de datos (archivo gastos_empresa.sql).");
+    }
+  }
+  gastosCargados = true;
+  actualizarBadgeGastos();
+}
+
+function actualizarBadgeGastos(){
+  const b = document.getElementById("gastosBadge");
+  if (!b) return;
+  const limite = new Date(); limite.setDate(limite.getDate() + 3);
+  const lim = new Date(limite.getTime() - limite.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const n = gastos.filter(g => g.estado !== "pagado" && g.vence && g.vence <= lim).length;
+  b.textContent = n;
+  b.style.display = n ? "inline-flex" : "none";
+}
+
+function llenarSelectCategorias(sel, conTodas, valor){
+  const opciones = categoriasGasto.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
+  sel.innerHTML = (conTodas ? `<option value="">Todas</option>` : "") + opciones + (conTodas ? "" : `<option value="__nueva__">➕ Crear otra categoría…</option>`);
+  if (valor !== undefined) sel.value = valor;
+}
+
+// Gastos fijos (que se repiten cada mes) que todavía no están en el mes que se está viendo
+function fijosFaltantes(ym){
+  const inicio = ym + "-01";
+  const delMes = gastos.filter(g => mesDeFecha(g.fecha) === ym);
+  const ultimos = {};
+  gastos.filter(g => g.fecha < inicio && (g.fijo_mensual || g.origen_id)).forEach(g => {
+    const raiz = g.origen_id || g.id;
+    if (!ultimos[raiz] || ultimos[raiz].fecha <= g.fecha) ultimos[raiz] = g;
+  });
+  return Object.entries(ultimos)
+    .filter(([raiz, g]) => g.fijo_mensual && !delMes.some(x => x.id === raiz || x.origen_id === raiz))
+    .map(([raiz, g]) => ({ raiz, g }));
+}
+
+function diaEnMes(fechaBase, ym){
+  const dia = Number(String(fechaBase || "").slice(8, 10)) || 1;
+  const [a, m] = ym.split("-").map(Number);
+  const ultimo = new Date(a, m, 0).getDate();
+  return `${ym}-${String(Math.min(dia, ultimo)).padStart(2, "0")}`;
+}
+
+function renderGastos(){
+  const ym = document.getElementById("gMes").value || mesDeFecha(hoyISO());
+  const fCat = document.getElementById("gFiltroCat").value;
+  const fEst = document.getElementById("gFiltroEstado").value;
+  const delMes = gastos.filter(g => mesDeFecha(g.fecha) === ym);
+  const lista = delMes
+    .filter(g => !fCat || g.categoria === fCat)
+    .filter(g => !fEst || g.estado === fEst)
+    .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || "") || (a.created_at || "").localeCompare(b.created_at || ""));
+
+  const suma = arr => arr.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+  const pagados = delMes.filter(g => g.estado === "pagado");
+  const pendientes = delMes.filter(g => g.estado !== "pagado");
+  const vencidos = pendientes.filter(g => estadoVisual(g) === "vencido");
+  document.getElementById("gResumen").innerHTML = `
+    <div class="g-tarjeta"><small>Total gastos del mes</small><b>${fmt(suma(delMes))}</b></div>
+    <div class="g-tarjeta"><small>Pagado</small><b>${fmt(suma(pagados))}</b></div>
+    <div class="g-tarjeta"><small>Pendiente por pagar</small><b>${fmt(suma(pendientes))}</b></div>
+    <div class="g-tarjeta ${vencidos.length ? "alerta" : ""}"><small>Vencidos</small><b>${vencidos.length ? `${vencidos.length} · ${fmt(suma(vencidos))}` : "0"}</b></div>`;
+
+  const faltan = fijosFaltantes(ym);
+  document.getElementById("gFijos").innerHTML = faltan.length ? `
+    <div class="g-fijos"><span>📌 Pagos fijos que aún no están en <b>${escHtml(nombreMesISO(ym))}</b>: ${faltan.map(f => `${escHtml(f.g.descripcion || f.g.categoria)} (${fmt(f.g.valor)})`).join(", ")}</span>
+    <button type="button" class="btn primary small" id="gAgregarFijosBtn">Agregarlos como pendientes</button></div>` : "";
+
+  const tabla = document.getElementById("gTabla");
+  if (!lista.length){
+    tabla.innerHTML = `<tbody><tr><td class="g-vacio">${delMes.length ? "Ningún gasto coincide con el filtro." : `No hay gastos registrados en ${escHtml(nombreMesISO(ym))}. Toca <b>➕ Nuevo gasto</b> para agregar uno.`}</td></tr></tbody>`;
+  } else {
+    tabla.innerHTML = `<thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Vence</th><th class="num">Valor</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${lista.map(g => {
+      const ev = estadoVisual(g);
+      const etiqueta = ev === "pagado" ? `Pagado${g.fecha_pago ? " " + fechaCorta(g.fecha_pago) : ""}` : ev === "vencido" ? "Vencido" : "Pendiente";
+      return `<tr data-gasto="${escHtml(g.id)}">
+        <td>${fechaCorta(g.fecha)}</td>
+        <td>${escHtml(g.categoria)}${g.fijo_mensual ? ` <span title="Se repite cada mes">🔁</span>` : ""}</td>
+        <td>${escHtml(g.descripcion)}${g.proveedor ? `<div class="g-sub">${escHtml(g.proveedor)}</div>` : ""}${g.medio_pago && g.estado === "pagado" ? `<div class="g-sub">${escHtml(g.medio_pago)}</div>` : ""}</td>
+        <td>${g.vence ? fechaCorta(g.vence) : "—"}</td>
+        <td class="num">${fmt(g.valor)}</td>
+        <td><span class="g-estado ${ev}">${etiqueta}</span></td>
+        <td><div class="g-acciones">
+          ${g.estado !== "pagado" ? `<button type="button" class="btn ghost" data-g-accion="pagar" title="Marcar como pagado">✅ Pagado</button>` : ""}
+          ${g.comprobante_path ? `<a class="btn ghost g-ver" data-g-path="${escHtml(g.comprobante_path)}" target="_blank" rel="noopener" title="Ver factura o recibo" aria-disabled="true">📎</a>` : ""}
+          <button type="button" class="btn ghost" data-g-accion="editar" title="Editar">✏️</button>
+          <button type="button" class="btn ghost danger" data-g-accion="borrar" title="Eliminar">🗑️</button>
+        </div></td>
+      </tr>`;
+    }).join("")}</tbody>`;
+  }
+
+  firmarComprobantesGastos();
+
+  const porCat = {};
+  delMes.forEach(g => { porCat[g.categoria] = (porCat[g.categoria] || 0) + (Number(g.valor) || 0); });
+  const cats = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+  document.getElementById("gPorCategoria").innerHTML = cats.length
+    ? "Por categoría: " + cats.map(([c, v]) => `<b>${escHtml(c)}</b> ${fmt(v)}`).join(" · ")
+    : "";
+}
+
+// Los enlaces a las facturas se preparan antes de tocarlos (así abren bien en iPhone).
+async function firmarComprobantesGastos(){
+  const links = Array.from(document.querySelectorAll("#gTabla a.g-ver"));
+  if (!links.length || sinInternetGastos()) return;
+  try{
+    const rutas = links.map(a => a.dataset.gPath);
+    const { data, error } = await sb.storage.from("gastos-empresa").createSignedUrls(rutas, 3600);
+    if (error) throw error;
+    (data || []).forEach((d, i) => { if (d && d.signedUrl && links[i]){ links[i].href = d.signedUrl; links[i].removeAttribute("aria-disabled"); } });
+  }catch(e){ console.error("No se pudieron preparar los enlaces de las facturas:", e); }
+}
+document.getElementById("gTabla").addEventListener("click", (e) => {
+  const a = e.target.closest("a.g-ver");
+  if (a && !a.getAttribute("href")){ e.preventDefault(); showToast(sinInternetGastos() ? "📴 Sin internet: el archivo no se puede abrir ahora." : "Preparando el archivo… intenta de nuevo en un momento."); }
+});
+
+async function abrirGastos(){
+  if (!esAdmin()){ showToast("Solo el administrador puede ver los gastos de la empresa."); return; }
+  const inp = document.getElementById("gMes");
+  if (!inp.value) inp.value = mesDeFecha(hoyISO());
+  document.getElementById("overlayGastos").classList.add("show");
+  document.getElementById("gTabla").innerHTML = `<tbody><tr><td class="g-vacio">Cargando…</td></tr></tbody>`;
+  await cargarGastos();
+  llenarSelectCategorias(document.getElementById("gFiltroCat"), true, document.getElementById("gFiltroCat").value);
+  renderGastos();
+}
+
+function abrirFormGasto(g){
+  if (sinInternetGastos()){ showToast("📴 Sin internet: los gastos se pueden consultar, pero para crearlos o cambiarlos se necesita conexión."); return; }
+  gastoEditando = g ? g.id : null;
+  gastoArchivoQuitar = false;
+  const ym = document.getElementById("gMes").value || mesDeFecha(hoyISO());
+  document.getElementById("gFormTitulo").textContent = g ? "Editar gasto" : "Nuevo gasto";
+  document.getElementById("gFecha").value = g ? g.fecha : (mesDeFecha(hoyISO()) === ym ? hoyISO() : ym + "-01");
+  llenarSelectCategorias(document.getElementById("gCategoria"), false, g ? g.categoria : categoriasGasto[0]);
+  document.getElementById("gDescripcion").value = g ? g.descripcion : "";
+  document.getElementById("gProveedor").value = g ? (g.proveedor || "") : "";
+  document.getElementById("gValor").value = g ? g.valor : "";
+  document.getElementById("gVence").value = g ? (g.vence || "") : "";
+  document.getElementById("gEstado").value = g ? g.estado : "pendiente";
+  document.getElementById("gFechaPago").value = g ? (g.fecha_pago || "") : "";
+  document.getElementById("gMedio").value = g ? (g.medio_pago || "") : "";
+  document.getElementById("gFijo").checked = g ? !!g.fijo_mensual : false;
+  document.getElementById("gArchivo").value = "";
+  document.getElementById("gArchivoActual").innerHTML = g && g.comprobante_path
+    ? `Ya tiene un archivo guardado. Si eliges otro, se reemplaza. <button type="button" class="btn ghost small" id="gQuitarArchivoBtn">Quitar archivo</button>` : "";
+  mostrarCamposPago();
+  const form = document.getElementById("gForm");
+  form.classList.add("show");
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("gDescripcion").focus();
+}
+function cerrarFormGasto(){ document.getElementById("gForm").classList.remove("show"); gastoEditando = null; }
+function mostrarCamposPago(){
+  const pagado = document.getElementById("gEstado").value === "pagado";
+  document.querySelectorAll("#gForm .g-pago").forEach(el => el.style.display = pagado ? "" : "none");
+  if (pagado && !document.getElementById("gFechaPago").value) document.getElementById("gFechaPago").value = hoyISO();
+}
+
+async function crearCategoriaGasto(){
+  const nombre = (prompt("Nombre de la nueva categoría (ej: Publicidad, Mantenimiento):") || "").trim().replace(/\s+/g, " ");
+  if (!nombre) return null;
+  if (nombre.length > 60){ showToast("El nombre es muy largo (máximo 60 letras)."); return null; }
+  const existente = categoriasGasto.find(c => c.toLowerCase() === nombre.toLowerCase());
+  if (existente) return existente;
+  const { error } = await sb.from("gastos_categorias").upsert({ nombre });
+  if (error){ showToast("No se pudo crear la categoría: " + error.message); return null; }
+  categoriasGasto.push(nombre);
+  guardarCacheGastos();
+  llenarSelectCategorias(document.getElementById("gFiltroCat"), true, document.getElementById("gFiltroCat").value);
+  showToast(`✅ Categoría "${nombre}" creada.`);
+  return nombre;
+}
+
+function nombreArchivoSeguro(n){
+  return String(n || "archivo").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+}
+
+async function guardarGasto(ev){
+  ev.preventDefault();
+  if (!esAdmin()) return;
+  if (sinInternetGastos()){ showToast("📴 Sin internet: no se puede guardar el gasto ahora."); return; }
+  const anterior = gastoEditando ? gastos.find(x => x.id === gastoEditando) : null;
+  const valor = Math.round(Number(document.getElementById("gValor").value));
+  const desc = document.getElementById("gDescripcion").value.trim();
+  const fecha = document.getElementById("gFecha").value;
+  const categoria = document.getElementById("gCategoria").value;
+  if (!fecha){ showToast("Escribe la fecha del gasto."); return; }
+  if (!desc){ showToast("Escribe una descripción."); return; }
+  if (!(valor >= 0) || document.getElementById("gValor").value === ""){ showToast("Escribe el valor."); return; }
+  if (!categoria || categoria === "__nueva__"){ showToast("Elige una categoría."); return; }
+  const estado = document.getElementById("gEstado").value;
+  const g = {
+    id: anterior ? anterior.id : (crypto.randomUUID ? crypto.randomUUID() : ("g" + Date.now() + Math.random().toString(16).slice(2))),
+    fecha, categoria, descripcion: desc,
+    proveedor: document.getElementById("gProveedor").value.trim() || null,
+    valor,
+    vence: document.getElementById("gVence").value || null,
+    estado,
+    fecha_pago: estado === "pagado" ? (document.getElementById("gFechaPago").value || hoyISO()) : null,
+    medio_pago: estado === "pagado" ? (document.getElementById("gMedio").value || null) : null,
+    fijo_mensual: document.getElementById("gFijo").checked,
+    origen_id: anterior ? (anterior.origen_id || null) : null,
+    comprobante_path: anterior ? (anterior.comprobante_path || null) : null,
+    updated_at: new Date().toISOString(),
+  };
+  const btn = document.getElementById("gGuardarBtn");
+  btn.disabled = true; btn.textContent = "Guardando…";
+  try{
+    const archivo = document.getElementById("gArchivo").files[0];
+    const rutaVieja = anterior && anterior.comprobante_path;
+    if (archivo){
+      if (archivo.size > 15 * 1024 * 1024) throw new Error("El archivo pesa más de 15 MB.");
+      const ruta = `${g.id}/${Date.now()}-${nombreArchivoSeguro(archivo.name)}`;
+      const { error: upErr } = await sb.storage.from("gastos-empresa").upload(ruta, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+      if (upErr) throw upErr;
+      g.comprobante_path = ruta;
+    } else if (gastoArchivoQuitar){
+      g.comprobante_path = null;
+    }
+    const { error } = await sb.from("gastos").upsert(g);
+    if (error) throw error;
+    if (rutaVieja && rutaVieja !== g.comprobante_path){
+      try{ await sb.storage.from("gastos-empresa").remove([rutaVieja]); }catch(e){ console.error(e); }
+    }
+    const i = gastos.findIndex(x => x.id === g.id);
+    if (i > -1) gastos[i] = { ...gastos[i], ...g }; else gastos.push({ ...g, created_at: new Date().toISOString() });
+    guardarCacheGastos();
+    actualizarBadgeGastos();
+    cerrarFormGasto();
+    document.getElementById("gMes").value = mesDeFecha(g.fecha);
+    renderGastos();
+    showToast(anterior ? "✅ Gasto actualizado." : "✅ Gasto guardado.");
+  }catch(e){
+    console.error(e);
+    showToast("No se pudo guardar el gasto: " + (e.message || e));
+  }finally{
+    btn.disabled = false; btn.textContent = "Guardar";
+  }
+}
+
+async function accionGasto(id, accion){
+  const g = gastos.find(x => x.id === id);
+  if (!g) return;
+  if (accion === "editar"){ abrirFormGasto(g); return; }
+  if (sinInternetGastos()){ showToast("📴 Sin internet: para cambiar los gastos se necesita conexión."); return; }
+  if (accion === "pagar"){
+    const cambio = { estado: "pagado", fecha_pago: hoyISO(), updated_at: new Date().toISOString() };
+    const { error } = await sb.from("gastos").update(cambio).eq("id", id);
+    if (error){ showToast("No se pudo marcar como pagado: " + error.message); return; }
+    Object.assign(g, cambio);
+    guardarCacheGastos(); actualizarBadgeGastos(); renderGastos();
+    showToast(`✅ "${g.descripcion}" quedó pagado.`);
+    return;
+  }
+  if (accion === "borrar"){
+    if (!confirm(`¿Eliminar el gasto "${g.descripcion}" por ${fmt(g.valor)}?\n\nEsto no se puede deshacer.`)) return;
+    const { error } = await sb.from("gastos").delete().eq("id", id);
+    if (error){ showToast("No se pudo eliminar: " + error.message); return; }
+    if (g.comprobante_path){ try{ await sb.storage.from("gastos-empresa").remove([g.comprobante_path]); }catch(e){ console.error(e); } }
+    gastos = gastos.filter(x => x.id !== id);
+    guardarCacheGastos(); actualizarBadgeGastos(); renderGastos();
+    showToast("🗑️ Gasto eliminado.");
+  }
+}
+
+async function agregarFijosDelMes(){
+  if (sinInternetGastos()){ showToast("📴 Sin internet: se necesita conexión para agregar los pagos fijos."); return; }
+  const ym = document.getElementById("gMes").value;
+  const faltan = fijosFaltantes(ym);
+  if (!faltan.length) return;
+  const nuevos = faltan.map(({ raiz, g }) => ({
+    id: crypto.randomUUID ? crypto.randomUUID() : ("g" + Date.now() + Math.random().toString(16).slice(2)),
+    fecha: diaEnMes(g.fecha, ym),
+    vence: g.vence ? diaEnMes(g.vence, ym) : null,
+    categoria: g.categoria, descripcion: g.descripcion, proveedor: g.proveedor || null,
+    valor: g.valor, estado: "pendiente", fecha_pago: null, medio_pago: null,
+    fijo_mensual: true, origen_id: raiz, comprobante_path: null,
+  }));
+  const { error } = await sb.from("gastos").insert(nuevos);
+  if (error){ showToast("No se pudieron agregar: " + error.message); return; }
+  gastos.push(...nuevos.map(n => ({ ...n, created_at: new Date().toISOString() })));
+  guardarCacheGastos(); actualizarBadgeGastos(); renderGastos();
+  showToast(`✅ ${nuevos.length} pago(s) fijo(s) agregados a ${nombreMesISO(ym)} como pendientes.`);
+}
+
+function exportarGastosMes(){
+  const ym = document.getElementById("gMes").value;
+  const filas = gastos.filter(g => mesDeFecha(g.fecha) === ym).sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
+  if (!filas.length){ showToast("No hay gastos en este mes para exportar."); return; }
+  const csv = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+  const enc = ["Fecha","Categoría","Descripción","A quién se le paga","Valor","Vence","Estado","Fecha de pago","Medio de pago","Se repite cada mes"];
+  const lineas = [enc.map(csv).join(";")].concat(filas.map(g => [
+    fechaCorta(g.fecha), g.categoria, g.descripcion, g.proveedor || "", g.valor, fechaCorta(g.vence), g.estado === "pagado" ? "Pagado" : (estadoVisual(g) === "vencido" ? "Vencido" : "Pendiente"),
+    fechaCorta(g.fecha_pago), g.medio_pago || "", g.fijo_mensual ? "Sí" : "No",
+  ].map(csv).join(";")));
+  lineas.push(["", "", "TOTAL", "", filas.reduce((s, g) => s + (Number(g.valor) || 0), 0)].map(csv).join(";"));
+  const blob = new Blob(["﻿" + lineas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Gastos PROSEGUROSNET - ${nombreMesISO(ym)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+document.getElementById("navGastosBtn").addEventListener("click", abrirGastos);
+document.getElementById("gCerrarBtn").addEventListener("click", () => { cerrarFormGasto(); document.getElementById("overlayGastos").classList.remove("show"); });
+document.getElementById("overlayGastos").addEventListener("click", (e) => { if (e.target.id === "overlayGastos"){ cerrarFormGasto(); e.target.classList.remove("show"); } });
+document.getElementById("gNuevoBtn").addEventListener("click", () => abrirFormGasto(null));
+document.getElementById("gCancelarBtn").addEventListener("click", cerrarFormGasto);
+document.getElementById("gForm").addEventListener("submit", guardarGasto);
+document.getElementById("gEstado").addEventListener("change", mostrarCamposPago);
+document.getElementById("gMes").addEventListener("change", renderGastos);
+document.getElementById("gFiltroCat").addEventListener("change", renderGastos);
+document.getElementById("gFiltroEstado").addEventListener("change", renderGastos);
+document.getElementById("gExportarBtn").addEventListener("click", exportarGastosMes);
+document.getElementById("gCategoria").addEventListener("change", async (e) => {
+  if (e.target.value !== "__nueva__") return;
+  const nueva = await crearCategoriaGasto();
+  llenarSelectCategorias(e.target, false, nueva || categoriasGasto[0]);
+});
+document.getElementById("gForm").addEventListener("click", (e) => {
+  if (e.target.id === "gQuitarArchivoBtn"){
+    gastoArchivoQuitar = true;
+    document.getElementById("gArchivoActual").textContent = "El archivo se quitará al guardar.";
+  }
+});
+document.getElementById("gFijos").addEventListener("click", (e) => { if (e.target.id === "gAgregarFijosBtn") agregarFijosDelMes(); });
+document.getElementById("gTabla").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-g-accion]");
+  if (!b) return;
+  accionGasto(b.closest("tr").dataset.gasto, b.dataset.gAccion);
 });
 </script>
 </body>
