@@ -691,6 +691,7 @@
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   .toast .toast-icon{ font-size:14px; }
+.pila-detalle td{font-size:12px;color:var(--retiro, #b45309);background:rgba(245,158,11,.08);padding-top:2px;}
 </style>
 </head>
 <body>
@@ -739,8 +740,8 @@
       <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">7</span> ⬇️ Exportar respaldo</button>
       <button type="button" class="sidebar-link" id="navImportBtn">⬆️ Importar respaldo</button>
       <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">8</span> 📊 Exportar cobro del mes</button>
-      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> 📥 Importar planilla PILA (.csv)</button>
-      <input type="file" id="importPilaFile" class="hidden-file" accept=".csv,text/csv">
+      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> 📥 Importar planilla PILA (PDF)</button>
+      <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,.csv,text/csv">
 
       <div class="sidebar-section-title">Cartera</div>
       <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">10</span> 📋 Cartera (cobros del mes) ▾</button>
@@ -1040,6 +1041,13 @@
             <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
             <button type="button" class="doc-remove" style="display:none;">Quitar</button>
           </div>
+          <div class="doc-upload" data-doc="ComprobantePago">
+            <span class="doc-label">Comprobante de pago planilla</span>
+            <input type="file" accept="image/*,application/pdf" class="doc-file">
+            <img class="doc-preview" style="display:none;">
+            <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
+            <button type="button" class="doc-remove" style="display:none;">Quitar</button>
+          </div>
         </div>
       </div>
 
@@ -1292,6 +1300,26 @@
       <button type="button" class="btn ghost" id="restaurarMensajeBtn">Restaurar mensaje original</button>
       <button type="button" class="btn ghost" id="cerrarMensajeBtn">Cerrar</button>
       <button type="button" class="btn primary" id="guardarMensajeBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Revisión de la planilla PILA importada (PDF) -->
+<div class="overlay" id="overlayPila">
+  <div class="modal" style="max-width:760px;">
+    <h2>Importar planilla PILA</h2>
+    <div class="modal-sub" id="pilaResumen"></div>
+    <div style="overflow-x:auto;">
+      <table class="tabla-historial" id="pilaTabla"></table>
+    </div>
+    <label style="display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:12px 0 4px;">
+      <input type="checkbox" id="pilaAdjuntar" style="margin-top:3px;">
+      <span>Guardar este PDF como <b>"Planilla pagada"</b> de cada cliente marcado (lo verá en su ficha y en su portal).</span>
+    </label>
+    <div class="aviso-pila" id="pilaAvisoVarios" style="display:none; color:var(--afiliacion); font-size:12px; font-weight:600; margin-left:24px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="pilaCancelarBtn">Cancelar</button>
+      <button type="button" class="btn primary" id="pilaAplicarBtn">Aplicar</button>
     </div>
   </div>
 </div>
@@ -2253,7 +2281,7 @@ let store = loadStore();
 let records = (store.currentMonth && store.months[store.currentMonth]) || [];
 let activeCedula = null;
 let documentosParaVer = [];
-const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla pagada" };
+const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla pagada", comprobante_pago: "Comprobante de pago" };
 let consultaDocsNube = 0;
 function fechaCortaDoc(iso){
   if (!iso) return "";
@@ -3810,6 +3838,19 @@ function calcularTotalPagar(r, mesActual){
   return costo + valAportes("Valor EPS") + valAportes("Valor ARL") + valorPension + valAportes("Valor Caja");
 }
 
+// Solo los aportes (salud, pensión, ARL, caja), con el mismo prorrateo que el total a pagar,
+// SIN el costo del servicio. Es lo que debe coincidir con la planilla PILA.
+function calcularAportesApp(r, mesActual){
+  const prorr = calcProrrateo(r, mesActual);
+  const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r);
+  const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas";
+  const val = (campo) => Math.round(numOrZero(r[campo]) * factor);
+  const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: val("Valor ARL"), caja: val("Valor Caja") };
+  d.total = d.salud + d.pension + d.arl + d.caja;
+  d.dias = Math.round(factor * 30);
+  return d;
+}
+
 function showBreakdown(cedula){
   const r = records.find(x => String(x["Cédula"]) === String(cedula));
   if (!r){ breakdown.classList.remove("show"); activeCedula = null; return; }
@@ -3925,7 +3966,7 @@ function showBreakdown(cedula){
   };
 
   const thumbs = [];
-  [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"]].forEach(([campo, etiqueta]) => {
+  [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"], ["Imagen ComprobantePago","Comprobante de pago"]].forEach(([campo, etiqueta]) => {
     if (r[campo]) thumbs.push(armarDocumento(r[campo], etiqueta));
   });
   if (Array.isArray(r["Beneficiarios"])){
@@ -3936,7 +3977,7 @@ function showBreakdown(cedula){
   document.getElementById("bDocThumbs").innerHTML = thumbs.join("");
   // Además de los documentos guardados en este equipo, se traen siempre los que están
   // en la nube (así se ven desde cualquier computador o después de recargar la app).
-  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"]]
+  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"],["Imagen ComprobantePago","comprobante_pago"]]
     .filter(([campo]) => r[campo]).map(([, tipo]) => tipo));
   agregarDocumentosDeLaNube(r["Cédula"], tiposLocales);
 
@@ -4619,11 +4660,11 @@ function leerBeneficiarios(){
 }
 
 /* ---- Fotos/PDF de documentos (Cédula, EPS, Fondo de pensión, Caja, Planilla pagada) ---- */
-const docImagenes = { Cedula: null, Eps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null };
+const docImagenes = { Cedula: null, Eps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null, ComprobantePago: null };
 // Marca qué documentos cambió el usuario en esta edición, para solo subir a la nube esos
 // (y no volver a subir cada vez los que ya estaban igual).
 let docImagenesCambiados = {};
-const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada" };
+const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada", ComprobantePago: "comprobante_pago" };
 
 function dataUrlToBlob(dataUrl){
   const [header, base64] = dataUrl.split(",");
@@ -4719,7 +4760,7 @@ async function marcarDocumentosEnNubeFormulario(cedula){
   let docs = [];
   try{ docs = await documentosDeLaNube(cedula); }catch(e){ return; }
   if (String(editingCedula) !== String(cedula)) return;
-  const PARTE = { cedula: "Cedula", eps: "Eps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada" };
+  const PARTE = { cedula: "Cedula", eps: "Eps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada", comprobante_pago: "ComprobantePago" };
   docs.forEach(d => {
     const box = document.querySelector(`.doc-upload[data-doc="${PARTE[d.tipo]}"]`);
     if (!box || !d.url) return;
@@ -5085,6 +5126,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Imagen Caja": docImagenes.Caja,
     "Imagen Arl": docImagenes.Arl,
     "Imagen PlanillaPagada": docImagenes.PlanillaPagada,
+    "Imagen ComprobantePago": docImagenes.ComprobantePago,
   };
   // Operador editando un cliente existente: los valores contables no cambian.
   if (editingCedula && !esAdmin()){
@@ -5436,9 +5478,266 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
   document.getElementById("importPilaFile").click();
 });
 
+/* ---- Importar la planilla PILA original en PDF (Enlace Operativo, Aportes en Línea…) ---- */
+// Lector de planillas PILA en PDF (Enlace Operativo / SuAporte, Aportes en Línea y similares).
+// Se usa igual dentro de la app (navegador) y en las pruebas (Node).
+(function(global){
+  // Une los pedazos de texto del PDF en renglones, según su altura en la página.
+  // "vista" (opcional) es la transformación de la página: corrige las páginas giradas.
+  function renglonesDeItems(items, vista){
+    const filas = [];
+    items.forEach(it => {
+      const t = (it.str || "").trim();
+      if (!t) return;
+      let x = it.transform ? it.transform[4] : 0, y = it.transform ? it.transform[5] : 0;
+      if (vista){
+        // Coordenadas en la página ya girada (y crece hacia abajo)
+        const nx = vista[0] * x + vista[2] * y + vista[4];
+        const ny = vista[1] * x + vista[3] * y + vista[5];
+        x = nx; y = -ny;
+      }
+      let f = filas.find(r => Math.abs(r.y - y) <= 2.5);
+      if (!f){ f = { y, partes: [] }; filas.push(f); }
+      f.partes.push({ x, t });
+    });
+    filas.sort((a, b) => b.y - a.y);
+    return filas.map(f => f.partes.sort((a, b) => a.x - b.x).map(p => p.t).join(" ").replace(/\s+/g, " ").trim());
+  }
+
+  function valorPesos(txt){
+    const n = String(txt).replace(/[^\d]/g, "");
+    return n ? Number(n) : 0;
+  }
+  const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+  function analizarTextoPlanilla(renglones){
+    const texto = renglones.join("\n");
+    const res = { operador: "", numeroPlanilla: "", tipoPlanilla: "", fechaPago: "", periodo: "", aportante: "", afiliados: [] };
+
+    if (/SuAporte|Enlace Operativo/i.test(texto)) res.operador = "Enlace Operativo (SuAporte)";
+    else if (/Planilla Resumen/i.test(texto) && /LIQUIDACION DETALLADA/i.test(texto)) res.operador = "Aportes en Línea";
+
+    let m = texto.match(/N[uú]m[eé]ro\s*(?:de\s*)?Planilla:?\s*(\d{6,})/i);
+    if (m) res.numeroPlanilla = m[1];
+    // Aportes en Línea: "2026-09 2026-09 <clave> <planilla> I 2026/10/07 2026/10/05 BANCO"
+    m = texto.match(/(\d{4}-\d{2})\s+(\d{4}-\d{2})\s+(\d{6,})\s+(\d{6,})\s+([A-Z])\s+(\d{4}\/\d{2}\/\d{2})\s+(\d{4}\/\d{2}\/\d{2})/);
+    if (m){
+      if (!res.numeroPlanilla) res.numeroPlanilla = m[4];
+      res.tipoPlanilla = m[5];
+      res.fechaPago = m[7].replace(/\//g, "-");
+      res.periodo = m[1];
+    }
+    m = texto.match(/PAGADO\s+(\d{2})\/(\d{2})\/(\d{4})/i);
+    if (m && !res.fechaPago) res.fechaPago = `${m[3]}-${m[2]}-${m[1]}`;
+    m = texto.match(/Tipo\s*Planilla:?\s*([A-Z])\b/i);
+    if (m && !res.tipoPlanilla) res.tipoPlanilla = m[1].toUpperCase();
+    m = texto.match(/Periodo\s*Cotizaci[oó]n:?\s*([a-záéíóú]+)\s+de\s+(\d{4})/i);
+    if (m && !res.periodo){
+      const i = MESES.indexOf(m[1].toLowerCase());
+      res.periodo = i > -1 ? `${m[2]}-${String(i + 1).padStart(2, "0")}` : `${m[1]} ${m[2]}`;
+    }
+    m = texto.match(/Documento\s+(?:CC|NIT|CE)\s*(\d{5,12})/i) || texto.match(/(?:CC|NIT|CE)\s+(\d{5,12})\s+[A-ZÁÉÍÓÚÑ ]+\s+(?:INDEPENDIENTE|EMPLEADOR)/);
+    if (m) res.aportante = m[1];
+
+    // Afiliados: renglones con tipo de documento + número y al menos dos valores en pesos.
+    const vistos = new Set();
+    renglones.forEach(r => {
+      if (/^(Documento|Identificaci)/i.test(r)) return;
+      const doc = r.match(/(?:^|\s)(CC|CE|TI|PA|PE|PT|CD|SC)\s*(\d{5,12})\b/);
+      if (!doc) return;
+      const pesos = r.match(/\$\s?[\d.,]+/g) || [];
+      if (pesos.length < 2) return;
+      const ced = doc[2];
+      if (vistos.has(ced)) return;
+      vistos.add(ced);
+      // Nombre: texto en mayúsculas entre el documento y el primer número que sigue
+      const despues = r.slice(r.indexOf(doc[0]) + doc[0].length);
+      const nombre = (despues.match(/^\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ ]{2,}?)(?=\s+\d|\s+\$|$)/) || [, ""])[1].trim();
+      const v = pesos.map(valorPesos);
+      const total = v[v.length - 1];
+      // Desglose por operador (el orden de las columnas cambia de uno a otro)
+      let det = null, dias = null;
+      if (/SuAporte|Enlace Operativo/i.test(texto)){
+        // IBC pensión, aporte pensión, IBC salud, aporte salud, IBC riesgos, aporte riesgos, IBC caja, aporte caja, …, total
+        if (v.length >= 9) det = { pension: v[1], salud: v[3], arl: v[5], caja: v[7] };
+        const d = r.match(/\b\d\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+\(/);
+        if (d) dias = Number(d[1]);
+      } else if (/Planilla Resumen/i.test(texto)){
+        // IBC pensión, aporte pensión, IBC salud, aporte salud, IBC caja, aporte caja, IBC riesgos, aporte riesgos, …, total
+        if (v.length >= 9) det = { pension: v[1], salud: v[3], caja: v[5], arl: v[7] };
+        const d = r.match(/\s(\d{1,2})\s+\$/);
+        if (d) dias = Number(d[1]);
+      }
+      // Solo se confía en el desglose si suma (casi) el total de la planilla
+      if (det){
+        const suma = det.pension + det.salud + det.arl + det.caja;
+        if (Math.abs(suma - total) > 1000) det = null;
+      }
+      res.afiliados.push({ tipoDoc: doc[1], cedula: ced, nombre, total, dias, ...(det ? { detalle: det } : {}) });
+    });
+    return res;
+  }
+
+  async function leerPlanillaPDF(pdfjsLib, datos){
+    const pdf = await pdfjsLib.getDocument({ data: datos }).promise;
+    const renglones = [];
+    for (let i = 1; i <= pdf.numPages; i++){
+      const pagina = await pdf.getPage(i);
+      const contenido = await pagina.getTextContent();
+      const vista = pagina.getViewport({ scale: 1 }).transform;
+      renglones.push(...renglonesDeItems(contenido.items, vista));
+    }
+    const res = analizarTextoPlanilla(renglones);
+    res.paginas = pdf.numPages;
+    res.tieneTexto = renglones.length > 3;
+    return res;
+  }
+
+  global.LectorPILA = { renglonesDeItems, analizarTextoPlanilla, leerPlanillaPDF };
+})(typeof window !== "undefined" ? window : globalThis);
+
+const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.min.mjs";
+const PDFJS_WORKER_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs";
+let _pdfjs = null;
+async function cargarLectorPDF(){
+  if (_pdfjs) return _pdfjs;
+  const m = await import(PDFJS_URL);
+  m.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+  _pdfjs = m;
+  return m;
+}
+function escHtml(v){ return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
+let pilaEnRevision = null; // { archivo, info, filas }
+
+async function importarPlanillaPDF(archivo){
+  if (!navigator.onLine && !_pdfjs){ showToast("Sin internet: para leer la planilla en PDF se necesita conexión la primera vez."); return; }
+  showToast("Leyendo la planilla…");
+  let info;
+  try{
+    const pdfjs = await cargarLectorPDF();
+    const datos = new Uint8Array(await archivo.arrayBuffer());
+    info = await LectorPILA.leerPlanillaPDF(pdfjs, datos);
+  }catch(err){
+    console.error("No se pudo leer la planilla PDF:", err);
+    showToast("No se pudo leer el PDF. Verifica que sea la planilla descargada del operador (no una foto).");
+    return;
+  }
+  if (!info.tieneTexto){ showToast("Este PDF parece una imagen escaneada: no tiene texto que se pueda leer. Descarga la planilla original desde el operador."); return; }
+  if (!info.afiliados.length){ showToast("No se encontraron afiliados en esta planilla. Si es de otro operador, envíame un ejemplo para poder leerla."); return; }
+
+  const filas = info.afiliados.map(a => {
+    const r = records.find(x => String(x["Cédula"]) === String(a.cedula));
+    const app = r ? calcularAportesApp(r, store.currentMonth) : null;
+    return { ...a, r, app, totalApp: app ? app.total : null };
+  });
+  pilaEnRevision = { archivo, info, filas };
+
+  const encontrados = filas.filter(f => f.r).length;
+  const fechaPago = info.fechaPago ? info.fechaPago.split("-").reverse().join("/") : "—";
+  document.getElementById("pilaResumen").innerHTML = `
+    <b>Planilla N° ${escHtml(info.numeroPlanilla || "—")}</b>${info.operador ? ` · ${escHtml(info.operador)}` : ""}<br>
+    Pagada el ${escHtml(fechaPago)}${info.periodo ? ` · Período ${escHtml(info.periodo)}` : ""} · ${info.afiliados.length} afiliado(s), ${encontrados} encontrado(s) en <b>${escHtml(store.currentMonth)}</b>.<br>
+    Los clientes marcados quedarán en <b>PAGO</b> con este número de planilla en el mes que estás viendo. Revisa y toca <b>Aplicar</b>.`;
+
+  document.getElementById("pilaTabla").innerHTML = `
+    <thead><tr><th></th><th>Cédula</th><th>Cliente</th><th>Estado actual</th><th class="num">Aportes planilla</th><th class="num">Aportes en la app</th></tr></thead>
+    <tbody>${filas.map((f, i) => {
+      // El operador redondea cada aporte a la centena: se toleran $100 por concepto.
+      const dif = f.r && f.totalApp !== null && Math.abs(f.totalApp - f.total) > 400;
+      let detalle = "";
+      if (dif){
+        const p = f.detalle, a = f.app, n = [];
+        const linea = (nom, vp, va) => {
+          if (Math.abs((vp || 0) - (va || 0)) <= 100) return;
+          n.push(`<b>${nom}</b>: planilla ${fmt(vp || 0)} · app ${va ? fmt(va) : "<i>vacío</i>"}`);
+        };
+        const difDias = f.dias && f.dias !== a.dias;
+        // Si los días no coinciden, cada valor sale distinto por eso mismo: basta con avisar los días.
+        if (p && !difDias){ linea("Salud", p.salud, a.salud); linea("Pensión", p.pension, a.pension); linea("ARL", p.arl, a.arl); linea("Caja", p.caja, a.caja); }
+        if (difDias) n.unshift(`<b>Días</b>: planilla ${f.dias} · app ${a.dias}${f.dias < 30 && !f.r["Fecha de Ingreso"] ? " (falta la fecha de ingreso)" : ""}`);
+        detalle = `<tr class="pila-detalle"><td></td><td colspan="5">⚠️ ${n.length ? n.join(" &nbsp;|&nbsp; ") : "Los aportes no coinciden con la planilla."}</td></tr>`;
+      }
+      return `<tr>
+        <td><input type="checkbox" data-pila-idx="${i}" ${f.r ? "checked" : "disabled"}></td>
+        <td>${escHtml(f.cedula)}</td>
+        <td>${f.r ? escHtml(f.r["Nombre del Afiliado"]) : `<span style="color:var(--retiro);">No está en ${escHtml(store.currentMonth)}</span>`}</td>
+        <td>${f.r ? `<span class="estado ${estadoClass(f.r["Estado Trámite"])}">${escHtml(f.r["Estado Trámite"] || "—")}</span>` : "—"}</td>
+        <td class="num">${fmt(f.total)}${f.dias && f.dias < 30 ? `<br><small>${f.dias} días</small>` : ""}</td>
+        <td class="num">${f.r ? fmt(f.totalApp) + (dif ? ` <span title="No coincide con la planilla">⚠️</span>` : " ✅") : "—"}</td>
+      </tr>${detalle}`;
+    }).join("")}</tbody>`;
+
+  const hayDif = filas.some(f => f.r && Math.abs(f.totalApp - f.total) > 400);
+  document.getElementById("pilaResumen").insertAdjacentHTML("beforeend", `<br><small>Se comparan solo los aportes (salud, pensión, ARL y caja); el costo del servicio no va en la planilla.${hayDif ? " Las diferencias marcadas con ⚠️ son datos que conviene corregir en el cliente; marcar el pago <b>no cambia</b> esos valores." : ""}</small>`);
+
+  const varios = info.afiliados.length > 1;
+  document.getElementById("pilaAdjuntar").checked = !varios;
+  const aviso = document.getElementById("pilaAvisoVarios");
+  aviso.style.display = varios ? "block" : "none";
+  aviso.textContent = varios ? `⚠️ Esta planilla tiene ${info.afiliados.length} afiliados. Si la guardas en cada cliente, cada uno podrá ver en su portal los datos de los demás (nombres, salarios y aportes).` : "";
+  document.getElementById("overlayPila").classList.add("show");
+}
+
+document.getElementById("pilaCancelarBtn").addEventListener("click", () => {
+  pilaEnRevision = null;
+  document.getElementById("overlayPila").classList.remove("show");
+});
+
+document.getElementById("pilaAplicarBtn").addEventListener("click", async () => {
+  if (!pilaEnRevision) return;
+  const { archivo, info, filas } = pilaEnRevision;
+  const elegidos = Array.from(document.querySelectorAll("#pilaTabla input[data-pila-idx]:checked")).map(c => filas[Number(c.dataset.pilaIdx)]).filter(f => f.r);
+  if (!elegidos.length){ showToast("No marcaste ningún cliente."); return; }
+  const adjuntar = document.getElementById("pilaAdjuntar").checked;
+  const btn = document.getElementById("pilaAplicarBtn");
+  btn.disabled = true; btn.textContent = "Aplicando…";
+
+  elegidos.forEach(f => {
+    if (info.numeroPlanilla) f.r["No. Planilla Pagada"] = info.numeroPlanilla;
+    f.r["Estado Trámite"] = esConductorExcluido(f.r) ? "PAGO CONDUCTOR" : "PAGO";
+    f.r["_ultimaEdicion"] = new Date().toISOString();
+    if (adjuntar) f.r["Imagen PlanillaPagada"] = null; // la planilla queda en la nube (se ve desde cualquier equipo)
+  });
+  saveStore();
+  renderList(searchInput.value);
+
+  let subidos = 0, fallidos = 0;
+  if (adjuntar){
+    if (!cloudDb || !navigator.onLine){
+      fallidos = elegidos.length;
+    } else {
+      for (const f of elegidos){
+        const ced = String(f.r["Cédula"]);
+        const path = `${ced}/planilla_pagada`;
+        try{
+          const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, archivo, { upsert: true, contentType: "application/pdf" });
+          if (upErr) throw upErr;
+          const { error: dbErr } = await sb.from("documentos").upsert(
+            { cedula: ced, tipo: "planilla_pagada", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
+            { onConflict: "cedula,tipo" }
+          );
+          if (dbErr) throw dbErr;
+          subidos++;
+        }catch(err){ console.error("No se pudo guardar la planilla de", ced, err); fallidos++; }
+      }
+    }
+  }
+  btn.disabled = false; btn.textContent = "Aplicar";
+  document.getElementById("overlayPila").classList.remove("show");
+  pilaEnRevision = null;
+  let msg = `Planilla ${info.numeroPlanilla || ""}: ${elegidos.length} cliente(s) quedaron en PAGO.`;
+  if (adjuntar) msg += fallidos ? ` No se pudo guardar el PDF en ${fallidos} (revisa la conexión).` : ` PDF guardado en ${subidos}.`;
+  showToast(msg);
+});
+
 document.getElementById("importPilaFile").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
+    importarPlanillaPDF(file);
+    e.target.value = "";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = (ev) => {
     let filas;
