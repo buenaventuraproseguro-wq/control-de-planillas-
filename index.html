@@ -673,6 +673,25 @@
   .muelle-update-row .mu-nombre{ font-size:13px; font-weight:600; }
   .muelle-update-row .mu-ced{ font-size:11px; color:var(--muted); }
   .muelle-update-row .muelle-dots{ flex-shrink:0; }
+  .ms-resumen{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .ms-resumen div{ border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:var(--bg); }
+  .ms-resumen small{ display:block; font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .ms-resumen b{ font-size:16px; font-variant-numeric:tabular-nums; }
+  #msForm{ border:1.5px solid var(--navy); border-radius:12px; padding:12px; margin-bottom:14px; display:none; }
+  #msForm.show{ display:block; }
+  .ms-row{ display:grid; grid-template-columns:1fr auto auto auto; gap:10px; align-items:center;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:8px; }
+  .ms-row .mu-nombre{ font-size:13px; font-weight:600; cursor:pointer; color:var(--navy-deep); }
+  .ms-row .mu-nombre:hover{ text-decoration:underline; }
+  .ms-row .mu-ced{ font-size:11px; color:var(--muted); }
+  .ms-row .ms-valor{ font-variant-numeric:tabular-nums; font-size:13px; font-weight:600; white-space:nowrap; }
+  .ms-row .ms-pago{ display:flex; gap:6px; align-items:center; }
+  .ms-row .muelle-dots{ display:flex; flex-wrap:nowrap; gap:4px; }
+  .ms-row .estado{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  @media (max-width:560px){
+    .ms-row{ grid-template-columns:1fr auto; }
+    .ms-row .muelle-dots{ grid-column:1 / -1; }
+  }
   .resp-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
   .resp-row input{
     flex:1; font-family:inherit; font-size:13.5px; padding:8px 10px; border-radius:7px;
@@ -783,7 +802,8 @@
     <div class="sidebar-menu-colapsable" id="sidebarMenuColapsable">
       <div class="sidebar-section-title">Clientes</div>
       <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">2</span> ✏️ Editar responsables</button>
-      <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">3</span> 🚢 Actualizaciones en los muelles</button>
+      <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">3</span> 🚢 Muelles · PROSEGUROSNET</button>
+      <button type="button" class="sidebar-link" id="navMuellesServicioBtn">⚓ Muelles · Independientes (otras empresas)</button>
       <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">5</span> 🕒 Trabajados recientemente</button>
       <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">6</span> 📜 Historial de cliente</button>
 
@@ -805,6 +825,10 @@
         <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="conductores">
           <span class="sidebar-total-label">Total Actualización de Conductores</span>
           <span class="sidebar-total-value" id="sidebarTotalConductores">—</span>
+        </button>
+        <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="muelles">
+          <span class="sidebar-total-label">Total Actualización de Muelles (otras empresas)</span>
+          <span class="sidebar-total-value" id="sidebarTotalMuelles">—</span>
         </button>
         <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="gestiones">
           <span class="sidebar-total-label">Total Ganancias de gestiones (tareas)</span>
@@ -1161,12 +1185,41 @@
 <!-- Modal de actualizaciones en los muelles -->
 <div class="overlay" id="overlayMuelles">
   <div class="modal">
-    <h2>Actualizaciones en los muelles</h2>
-    <div class="modal-sub">Clientes con muelle asignado este mes. Toca un punto para marcarlo como Enviado o Aceptado.</div>
+    <h2>🚢 Muelles · PROSEGUROSNET</h2>
+    <div class="modal-sub">Clientes de planilla con muelle asignado este mes. Toca un punto para marcarlo como Enviado o Aceptado.</div>
     <div class="filter-pills" id="empresaPillsMuelles" style="margin-bottom:12px;"></div>
     <div id="listaMuellesUpdate"></div>
     <div class="modal-actions">
       <button class="btn ghost" id="cerrarMuellesBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Muelles de independientes que pagan su seguridad social por otras empresas (solo servicio) -->
+<div class="overlay" id="overlayMuellesServicio">
+  <div class="modal">
+    <h2>⚓ Muelles · Independientes (otras empresas)</h2>
+    <div class="modal-sub">Personas que pagan su seguridad social por otra empresa y a quienes PROSEGUROSNET les presta el servicio de actualización en los muelles. Solo se cobra el valor del servicio; no entran en la cartera de planillas.</div>
+    <div class="modal-actions" style="justify-content:flex-start; margin:0 0 12px;">
+      <button type="button" class="btn primary" id="msNuevoBtn">➕ Agregar persona</button>
+    </div>
+    <form id="msForm" autocomplete="off">
+      <div class="form-grid">
+        <div class="field"><label>Cédula</label><input id="msCedula" type="text" inputmode="numeric" maxlength="12" required></div>
+        <div class="field"><label>Nombre</label><input id="msNombre" type="text" maxlength="120" required></div>
+        <div class="field"><label>Valor del servicio</label><input id="msValor" type="number" min="0" step="1" inputmode="numeric" required></div>
+        <div class="field"><label>Teléfono (opcional)</label><input id="msTelefono" type="tel" inputmode="tel"></div>
+        <div class="field span2"><label>Empresa por la que paga (opcional)</label><input id="msPagaPor" type="text" maxlength="80" placeholder="Ej: la empresa o persona que le paga la seguridad social"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="msCancelarBtn">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+    <div class="ms-resumen" id="msResumen"></div>
+    <div id="listaMuellesServicio"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="cerrarMuellesServicioBtn">Cerrar</button>
     </div>
   </div>
 </div>
@@ -2567,12 +2620,13 @@ function listaEmpresasCompleta(){
   const registrar = (nombre) => {
     const clave = normalizar(nombre);
     if (!clave) return;
-    const esCanonico = nombre === "PROSEGUROSNET" || nombre === NOMBRE_EMPRESA_CONDUCTORES;
+    const esCanonico = nombre === "PROSEGUROSNET" || nombre === NOMBRE_EMPRESA_CONDUCTORES || nombre === NOMBRE_EMPRESA_MUELLES;
     if (!porClave.has(clave) || esCanonico) porClave.set(clave, nombre);
   };
 
   registrar("PROSEGUROSNET");
   registrar(NOMBRE_EMPRESA_CONDUCTORES);
+  registrar(NOMBRE_EMPRESA_MUELLES);
   getEmpresasCreadas().forEach(registrar);
   Object.values(store.months).forEach(mes => {
     mes.forEach(r => registrar(String(r["Empresa"] || "").trim()));
@@ -2589,8 +2643,9 @@ const ESTADOS_NOMINA = ["PAGO","RETIRO","AFILIACION","SIN INICIAR","SIN PAGO","D
 const ESTADOS_CONDUCTOR = ["DEBE","PAGO CONDUCTOR"];
 
 function aplicarVisibilidadNomina(){
-  const esConductores = getField("Empresa").value === NOMBRE_EMPRESA_CONDUCTORES;
+  const esConductores = esNombreEmpresaServicio(getField("Empresa").value);
   document.querySelectorAll(".campo-nomina").forEach(el => el.classList.toggle("oculto", esConductores));
+  if (esServicioMuelles({ "Empresa": getField("Empresa").value })) getField("Muelle").value = "Muelle";
 
   const estadoActual = getField("Estado").value;
   document.getElementById("optgroupNomina").disabled = esConductores;
@@ -2814,7 +2869,7 @@ function renderPillsEmpresaMuelles(conMuelle){
 }
 
 function renderMuellesUpdate(){
-  const conMuelle = records.filter(r => r["Muelle"]);
+  const conMuelle = records.filter(r => r["Muelle"] && !esConductorExcluido(r));
   const cont = document.getElementById("listaMuellesUpdate");
   if (conMuelle.length === 0){
     document.getElementById("empresaPillsMuelles").innerHTML = "";
@@ -3124,8 +3179,24 @@ function construirInformeProsegurosnet(){
   return html;
 }
 
+function construirInformeMuelles(){
+  const lista = records.filter(esServicioMuelles);
+  let total = 0, cobrado = 0;
+  let html = `<div class="informe-seccion-title">Personas (${lista.length})</div>`;
+  lista.forEach(r => {
+    const valor = numOrZero(r["Costo Servicio"]);
+    total += valor;
+    if (r["Estado Trámite"] === "PAGO CONDUCTOR") cobrado += valor;
+    html += `<div class="informe-row"><span class="ir-label">${escHtml(r["Nombre del Afiliado"])} — ${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : escHtml(r["Estado Trámite"])}</span><span class="ir-valor">${fmt(valor)}</span></div>`;
+  });
+  if (lista.length === 0) html += `<div class="empty">Nadie en Actualización de Muelles este mes.</div>`;
+  html += filaInforme("Ya pagado", cobrado);
+  html += filaInforme("Total Actualización de Muelles", total, true);
+  return html;
+}
+
 function construirInformeConductores(){
-  const conductores = records.filter(esConductorExcluido);
+  const conductores = records.filter(esEmpresaConductores);
   let total = 0;
   let html = `<div class="informe-seccion-title">Clientes (${conductores.length})</div>`;
   conductores.forEach(r => {
@@ -3168,18 +3239,20 @@ function construirInformeGeneral(){
   totalPrgRecaudado += extra;
   totalPrgGanancia += extra - gastoRetiros;
 
-  const totalCond = records.filter(esConductorExcluido).reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
+  const totalCond = records.filter(esEmpresaConductores).reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
+  const totalMue = records.filter(esServicioMuelles).reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
   const totalGest = getTareas().filter(t => t.valor > 0 && mesDeFechaISO(t.fecha) === store.currentMonth).reduce((acc, t) => acc + t.valor, 0);
 
   let html = `<div class="informe-seccion-title">💰 Tu ganancia real por línea</div>`;
   html += filaInforme("PROSEGUROSNET (solo costo del servicio)", totalPrgGanancia + gastoRetiros);
   if (gastoRetiros) html += `<div class="informe-row"><span class="ir-label">Gasto por retiros (se resta)</span><span class="ir-valor" style="color:var(--retiro);">− ${fmt(gastoRetiros)}</span></div>`;
   html += filaInforme("Actualización de Conductores", totalCond);
+  html += filaInforme("Actualización de Muelles (otras empresas)", totalMue);
   html += filaInforme("Ganancias de gestiones", totalGest);
-  html += filaInforme("Ganancia real total del mes", totalPrgGanancia + totalCond + totalGest, true);
+  html += filaInforme("Ganancia real total del mes", totalPrgGanancia + totalCond + totalMue + totalGest, true);
 
   html += `<div class="informe-seccion-title">Total recaudado (incluye aportes a terceros de PROSEGUROSNET)</div>`;
-  html += filaInforme("Total cobrado a todos los clientes", totalPrgRecaudado + totalCond + totalGest, true);
+  html += filaInforme("Total cobrado a todos los clientes", totalPrgRecaudado + totalCond + totalMue + totalGest, true);
   return html;
 }
 
@@ -3187,12 +3260,14 @@ function abrirInforme(tipo){
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
+    muelles: "Informe — Actualización de Muelles (otras empresas)",
     gestiones: "Informe — Ganancias de gestiones",
     general: "Informe — Suma final del mes",
   };
   const CONSTRUCTORES = {
     prosegurosnet: construirInformeProsegurosnet,
     conductores: construirInformeConductores,
+    muelles: construirInformeMuelles,
     gestiones: construirInformeGestiones,
     general: construirInformeGeneral,
   };
@@ -3489,6 +3564,18 @@ monthSelect.addEventListener("change", () => switchToMonth(monthSelect.value));
 // Cómo pasa un cliente de un mes al siguiente (lo usa "Avanzar al siguiente mes" y
 // también "agregar a los meses siguientes" cuando se reactiva un cliente).
 function construirRegistroMesSiguiente(r){
+      // "Actualización de Muelles": cada mes se vuelve a cobrar el mismo valor del servicio
+      // y los muelles quedan pendientes de actualizar otra vez.
+      if (esServicioMuelles(r)){
+        return {
+          ...r,
+          "Estado Trámite": "DEBE",
+          "No. Planilla Pagada": "",
+          "AceptadoPorMuelle": {},
+          "Enviado": false,
+          "Aprobado": false,
+        };
+      }
       // "Actualización de Conductores" no usa las fases de nómina: cada mes empieza
       // en DEBE con el valor del servicio en cero, para cobrarlo de nuevo ese mes.
       if (esConductorExcluido(r)){
@@ -3682,9 +3769,11 @@ function renderMonthTotal(){
   document.getElementById("sidebarPagosValue").textContent = pagosTexto;
 
   // Total de "Actualización de Conductores" se calcula y muestra aparte.
-  const conductores = records.filter(esConductorExcluido);
+  const conductores = records.filter(esEmpresaConductores);
   const totalConductores = conductores.reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
   document.getElementById("sidebarTotalConductores").textContent = fmt(totalConductores);
+  const totalMuelles = records.filter(esServicioMuelles).reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
+  document.getElementById("sidebarTotalMuelles").textContent = fmt(totalMuelles);
 
   // Total de "Ganancias de gestiones" (tareas con valor, del mes actual) también va aparte.
   const totalGestiones = getTareas()
@@ -3693,7 +3782,7 @@ function renderMonthTotal(){
   document.getElementById("sidebarTotalGestiones").textContent = fmt(totalGestiones);
 
   // Los tres totales (PROSEGUROSNET, Conductores, Gestiones) se suman al final.
-  document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalGestiones);
+  document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
 
   renderCobrosExtra();
 }
@@ -3877,16 +3966,24 @@ const esOtraEmpresa = (r) => {
 // no cuentan en "Todos" ni en Cartera (total, pagos, exportación) mientras tengan
 // esta empresa asignada. Vuelven a contar apenas se les cambie la empresa a PROSEGUROSNET.
 const NOMBRE_EMPRESA_CONDUCTORES = "Actualización de Conductores";
-const esConductorExcluido = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_CONDUCTORES);
+// "Actualización de Muelles": independientes que pagan su seguridad social por otra empresa;
+// PROSEGUROSNET solo les presta el servicio de actualización en los muelles.
+const NOMBRE_EMPRESA_MUELLES = "Actualización de Muelles";
+const esEmpresaConductores = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_CONDUCTORES);
+const esServicioMuelles = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_MUELLES);
+// Clientes de "solo servicio" (conductores o muelles): no entran en la cartera de planillas.
+const esConductorExcluido = (r) => esEmpresaConductores(r) || esServicioMuelles(r);
+const esNombreEmpresaServicio = (nombre) => [NOMBRE_EMPRESA_CONDUCTORES, NOMBRE_EMPRESA_MUELLES].some(n => normalizarEmpresa(n) === normalizarEmpresa(nombre));
 
 function renderFilterPills(){
-  const estados = ["__CONDUCTORES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "SIN INICIAR"];
-  const etiquetas = { "": "Todos", "__CONDUCTORES__": "🚚 Conductores", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "DIAS PROPORCIONALES": "DÍAS PROP.", "AFILIACION": "AFILIACIÓN" };
+  const estados = ["__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "SIN INICIAR"];
+  const etiquetas = { "": "Todos", "__CONDUCTORES__": "🚚 Conductores", "__SERV_MUELLES__": "⚓ Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "DIAS PROPORCIONALES": "DÍAS PROP.", "AFILIACION": "AFILIACIÓN" };
   const sinConductores = records.filter(r => !esConductorExcluido(r));
   document.getElementById("filterPills").innerHTML = estados.map(e => {
     let count;
     if (e === "") count = sinConductores.length;
-    else if (e === "__CONDUCTORES__") count = records.filter(esConductorExcluido).length;
+    else if (e === "__CONDUCTORES__") count = records.filter(esEmpresaConductores).length;
+    else if (e === "__SERV_MUELLES__") count = records.filter(esServicioMuelles).length;
     else if (e === "__OTRA_EMPRESA__") count = sinConductores.filter(esOtraEmpresa).length;
     else if (e === "__INDEPENDIENTES__") count = sinConductores.filter(esIndependiente).length;
     else count = sinConductores.filter(r => estadoClass(r["Estado Trámite"]) === estadoClass(e)).length;
@@ -3899,7 +3996,9 @@ function renderList(filterText){
   const q = (filterText || "").trim().toLowerCase();
   let filtered = records;
   if (filtroEstado === "__CONDUCTORES__"){
-    filtered = filtered.filter(esConductorExcluido);
+    filtered = filtered.filter(esEmpresaConductores);
+  } else if (filtroEstado === "__SERV_MUELLES__"){
+    filtered = filtered.filter(esServicioMuelles);
   } else if (filtroEstado === "__PENDIENTES__"){
     filtered = filtered.filter(r => !esConductorExcluido(r))
       .filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" && estadoClass(r["Estado Trámite"]) !== "PAGO");
@@ -5258,10 +5357,10 @@ document.getElementById("deleteBtn").addEventListener("click", async () => {
   if (!r) return;
   const esConductor = esConductorExcluido(r);
   if (estadoClass(r["Estado Trámite"]) !== "AFILIACION" && !esConductor){
-    showToast("Solo se puede eliminar directamente un registro de afiliación nueva o de Actualización de Conductores.");
+    showToast("Solo se puede eliminar directamente un registro de afiliación nueva o de Actualización de Conductores / Muelles.");
     return;
   }
-  const tipoTexto = esConductor ? "conductor" : "afiliación";
+  const tipoTexto = esServicioMuelles(r) ? "actualización de muelles" : esConductor ? "conductor" : "afiliación";
   if (!(await confirmarApp(`¿Eliminar el registro de ${tipoTexto} de ${r["Nombre del Afiliado"]}? Esta acción no se puede deshacer.`))) return;
   if (!(await confirmarApp(`Última confirmación: se borrará a ${r["Nombre del Afiliado"]} (cédula ${r["Cédula"]}) por completo. ¿Estás seguro?`))) return;
   records = records.filter(x => String(x["Cédula"]) !== String(activeCedula));
@@ -5310,7 +5409,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   }
 
   // Si se marca PAGO sin EPS ni ARL cargados, se avisa (no es nómina de conductores, que no los usa).
-  const esConductorGuardando = getField("Empresa").value === NOMBRE_EMPRESA_CONDUCTORES;
+  const esConductorGuardando = esNombreEmpresaServicio(getField("Empresa").value);
   if (!esConductorGuardando && getField("Estado").value === "PAGO"){
     const faltaEps = !getField("Eps").value.trim();
     const faltaArl = !getField("Arl").value.trim();
@@ -6444,6 +6543,133 @@ document.getElementById("gTabla").addEventListener("click", (e) => {
   const b = e.target.closest("[data-g-accion]");
   if (!b) return;
   accionGasto(b.closest("tr").dataset.gasto, b.dataset.gAccion);
+});
+
+/* ---- Muelles · Independientes (otras empresas): clientes de solo servicio ---- */
+function renderMuellesServicio(){
+  const lista = records.filter(esServicioMuelles);
+  const pagados = lista.filter(r => r["Estado Trámite"] === "PAGO CONDUCTOR");
+  const suma = (arr) => arr.reduce((a, r) => a + numOrZero(r["Costo Servicio"]), 0);
+  document.getElementById("msResumen").innerHTML = `
+    <div><small>Personas</small><b>${lista.length}</b></div>
+    <div><small>Pagado</small><b>${fmt(suma(pagados))}</b></div>
+    <div><small>Por cobrar</small><b>${fmt(suma(lista) - suma(pagados))}</b></div>`;
+  const cont = document.getElementById("listaMuellesServicio");
+  if (!lista.length){
+    cont.innerHTML = `<div class="empty">Todavía no hay nadie en ${escHtml(store.currentMonth)}. Toca <b>➕ Agregar persona</b>.</div>`;
+    return;
+  }
+  cont.innerHTML = lista.map(r => {
+    const pagado = r["Estado Trámite"] === "PAGO CONDUCTOR";
+    const pagaPor = String(r["Responsable / Grupo"] || "").trim();
+    return `<div class="ms-row" data-ms-cedula="${escHtml(r["Cédula"])}">
+      <div>
+        <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])}</div>
+        <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}</div>
+      </div>
+      <div class="ms-valor">${fmt(r["Costo Servicio"])}</div>
+      <div class="ms-pago">
+        <span class="estado ${pagado ? "PAGO_CONDUCTOR" : "DEBE"}">${pagado ? "PAGO" : "DEBE"}</span>
+        <button type="button" class="btn ghost small" data-ms-pago="1">${pagado ? "Deshacer" : "✅ Pagó"}</button>
+      </div>
+      <div class="muelle-dots">${puntosMuelle(r, true)}</div>
+    </div>`;
+  }).join("");
+}
+
+function abrirMuellesServicio(){
+  document.getElementById("msForm").classList.remove("show");
+  renderMuellesServicio();
+  document.getElementById("overlayMuellesServicio").classList.add("show");
+}
+function cerrarMuellesServicio(){
+  document.getElementById("overlayMuellesServicio").classList.remove("show");
+}
+
+document.getElementById("navMuellesServicioBtn").addEventListener("click", abrirMuellesServicio);
+document.getElementById("cerrarMuellesServicioBtn").addEventListener("click", cerrarMuellesServicio);
+document.getElementById("overlayMuellesServicio").addEventListener("click", (e) => {
+  if (e.target.id === "overlayMuellesServicio") cerrarMuellesServicio();
+});
+document.getElementById("msNuevoBtn").addEventListener("click", () => {
+  const f = document.getElementById("msForm");
+  f.reset();
+  f.classList.add("show");
+  document.getElementById("msCedula").focus();
+});
+document.getElementById("msCancelarBtn").addEventListener("click", () => document.getElementById("msForm").classList.remove("show"));
+
+document.getElementById("msForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const cedula = document.getElementById("msCedula").value.replace(/\D/g, "");
+  const nombre = document.getElementById("msNombre").value.trim().toLowerCase().replace(/\s+/g, " ");
+  const valorTxt = document.getElementById("msValor").value;
+  if (cedula.length < 6 || cedula.length > 12){ showToast("La cédula debe tener entre 6 y 12 números."); return; }
+  if (!nombre){ showToast("Escribe el nombre."); return; }
+  if (valorTxt === "" || !(Number(valorTxt) >= 0)){ showToast("Escribe el valor del servicio."); return; }
+  const existente = records.find(x => String(x["Cédula"]) === cedula);
+  if (existente){
+    showToast(esServicioMuelles(existente)
+      ? "Esa persona ya está en esta lista."
+      : `Esa cédula ya está en ${store.currentMonth} como cliente de ${existente["Empresa"] || "PROSEGUROSNET"}.`);
+    return;
+  }
+  const nuevo = {
+    "_ultimaEdicion": new Date().toISOString(),
+    "Cédula": cedula,
+    "Nombre del Afiliado": nombre,
+    "Empresa": NOMBRE_EMPRESA_MUELLES,
+    "Responsable / Grupo": document.getElementById("msPagaPor").value.trim().toLowerCase(),
+    "Costo Servicio": Math.round(Number(valorTxt)),
+    "Estado Trámite": "DEBE",
+    "Muelle": "Muelle",
+    "AceptadoPorMuelle": {},
+    "Teléfono": document.getElementById("msTelefono").value.trim(),
+    "Beneficiarios": [],
+  };
+  records.push(nuevo);
+  renumber();
+  if (!saveStore()){
+    records.pop(); renumber();
+    showToast("No se pudo guardar. Intenta de nuevo.");
+    return;
+  }
+  document.getElementById("msForm").classList.remove("show");
+  renderMuellesServicio();
+  renderList(searchInput.value);
+  showToast(`✅ ${nombre} agregado a Muelles · otras empresas.`);
+});
+
+document.getElementById("listaMuellesServicio").addEventListener("click", (e) => {
+  const fila = e.target.closest("[data-ms-cedula]");
+  if (!fila) return;
+  const r = records.find(x => String(x["Cédula"]) === String(fila.dataset.msCedula));
+  if (!r) return;
+  const dot = e.target.closest("button.muelle-id-dot");
+  if (dot){
+    const nombreMuelle = dot.dataset.muelleNombre;
+    if (!r["AceptadoPorMuelle"]) r["AceptadoPorMuelle"] = {};
+    r["AceptadoPorMuelle"][nombreMuelle] = !r["AceptadoPorMuelle"][nombreMuelle];
+    r["_ultimaEdicion"] = new Date().toISOString();
+    saveStore();
+    showToast(`${nombreMuelle}: ${r["AceptadoPorMuelle"][nombreMuelle] ? "Aceptado" : "Pendiente"}`);
+    renderMuellesServicio();
+    renderList(searchInput.value);
+    return;
+  }
+  if (e.target.closest("[data-ms-pago]")){
+    r["Estado Trámite"] = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "DEBE" : "PAGO CONDUCTOR";
+    r["_ultimaEdicion"] = new Date().toISOString();
+    saveStore();
+    showToast(r["Estado Trámite"] === "PAGO CONDUCTOR" ? `✅ ${r["Nombre del Afiliado"]}: pagó` : `${r["Nombre del Afiliado"]}: vuelve a DEBE`);
+    renderMuellesServicio();
+    renderList(searchInput.value);
+    return;
+  }
+  if (e.target.closest("[data-ms-abrir]")){
+    cerrarMuellesServicio();
+    showBreakdown(r["Cédula"]);
+  }
 });
 </script>
 </body>
