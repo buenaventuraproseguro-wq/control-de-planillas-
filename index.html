@@ -2103,17 +2103,75 @@ function actualizarIndicadorCloud(){
     el.title = "Todo el equipo ve la misma información actualizada.";
   }
 }
-window.addEventListener("online", () => { actualizarIndicadorCloud(); if (cloudDb) flushSync(); else reintentarConexion(); });
+window.addEventListener("online", () => { actualizarIndicadorCloud(); if (cloudDb){ flushSync(); setTimeout(() => sincronizarDocumentosLocales().catch(e => console.error(e)), 1500); } else reintentarConexion(); });
 window.addEventListener("offline", () => { actualizarIndicadorCloud(); });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && cloudDb) flushSync();
 });
 
+// ---- Documentos: la copia principal está en la nube ----
+// En este equipo solo se guardan los documentos que todavía NO están en la nube (para no perderlos
+// sin internet). Antes se guardaban todos como texto dentro de la copia local y el navegador se llenaba
+// ("No se pudo guardar: el almacenamiento del navegador está lleno").
+const CAMPO_A_TIPO_DOC = { "Imagen Cedula": "cedula", "Imagen Eps": "eps", "Imagen Afp": "afp", "Imagen Caja": "caja", "Imagen Arl": "arl", "Imagen PlanillaPagada": "planilla_pagada", "Imagen ComprobantePago": "comprobante_pago" };
+let docsEnNube = null; // Set "cedula|tipo"; null = todavía no se sabe (entonces no se quita nada)
+function claveDocNube(cedula, tipo){ return `${String(cedula || "").trim()}|${tipo}`; }
+function serializarStore(){
+  return JSON.stringify(store, function(k, v){
+    if (typeof v === "string" && CAMPO_A_TIPO_DOC[k] && v.startsWith("data:") && docsEnNube
+        && docsEnNube.has(claveDocNube(this && this["Cédula"], CAMPO_A_TIPO_DOC[k]))) return undefined;
+    return v;
+  });
+}
+function escribirStoreLocal(){
+  try{ localStorage.setItem(STORAGE_KEY, serializarStore()); return true; }
+  catch(e){ console.error("No se pudo guardar la copia en este equipo:", e); return false; }
+}
+
+// Sube a la nube los documentos que solo existen en este equipo (de versiones anteriores de la app)
+// y, cuando ya están en la nube, los quita de la copia local para liberar espacio.
+let _docsLocalesEnCurso = false;
+async function sincronizarDocumentosLocales(){
+  if (!cloudDb || _docsLocalesEnCurso) return;
+  _docsLocalesEnCurso = true;
+  try{ await _sincronizarDocumentosLocales(); } finally { _docsLocalesEnCurso = false; }
+}
+async function _sincronizarDocumentosLocales(){
+  const { data, error } = await sb.from("documentos").select("cedula, tipo");
+  if (error){ console.error("No se pudo leer la lista de documentos:", error); return; }
+  const enNube = new Set((data || []).map(d => claveDocNube(d.cedula, d.tipo)));
+  const pendientes = new Map(); // del mes más antiguo al más reciente: queda la versión más nueva
+  const meses = (typeof sortedMonthNames === "function" ? sortedMonthNames() : Object.keys(store.months));
+  meses.forEach(mes => (store.months[mes] || []).forEach(r => {
+    Object.entries(CAMPO_A_TIPO_DOC).forEach(([campo, tipo]) => {
+      const v = r[campo];
+      const clave = claveDocNube(r["Cédula"], tipo);
+      if (typeof v === "string" && v.startsWith("data:") && String(r["Cédula"] || "").trim() && !enNube.has(clave)) pendientes.set(clave, { cedula: String(r["Cédula"]).trim(), tipo, dataUrl: v });
+    });
+  }));
+  let subidos = 0;
+  for (const p of pendientes.values()){
+    try{
+      const blob = dataUrlToBlob(p.dataUrl);
+      const path = `${p.cedula}/${p.tipo}`;
+      const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
+      if (upErr) throw upErr;
+      const { error: dbErr } = await sb.from("documentos").upsert(
+        { cedula: p.cedula, tipo: p.tipo, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
+        { onConflict: "cedula,tipo" });
+      if (dbErr) throw dbErr;
+      enNube.add(claveDocNube(p.cedula, p.tipo));
+      subidos++;
+    }catch(e){ console.error("No se pudo subir un documento guardado en este equipo:", p.cedula, p.tipo, e); }
+  }
+  docsEnNube = enNube;
+  saveStoreLocalSolo(); // la copia local queda sin los documentos que ya están en la nube
+  if (subidos) showToast(`☁️ ${subidos} documento(s) que estaban solo en este equipo se guardaron en la nube.`);
+}
+
 function saveStoreLocalSolo(){
-  try{
-    store.months[store.currentMonth] = records;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  }catch(e){ console.error(e); }
+  store.months[store.currentMonth] = records;
+  escribirStoreLocal();
 }
 
 // Trae de Supabase, fresco, todos los clientes de un mes (se usa al cambiar de mes, por
@@ -2489,6 +2547,7 @@ async function iniciarAppConSupabase(){
     suscribirMesEnVivo(store.currentMonth);
     suscribirMesesYTareasEnVivo();
     cargarConfigMensaje();
+    sincronizarDocumentosLocales().catch(e => console.error(e));
     const veniaSinConexion = modoSinConexion;
     modoSinConexion = false;
     guardarEstadoSync();
@@ -2612,14 +2671,10 @@ function loadStore(){
 }
 
 function saveStore(){
-  let ok = true;
-  try{
-    store.months[store.currentMonth] = records;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  }catch(e){
-    ok = false;
-    console.error(e);
-  }
+  store.months[store.currentMonth] = records;
+  let ok = escribirStoreLocal();
+  // Si el equipo se llenó pero hay conexión, el cambio igual se guarda en la nube: no es un error.
+  if (!ok && cloudDb && navigator.onLine && !modoSinConexion) ok = true;
   try{ localStorage.setItem("planillas_ultimo_mes_visto", store.currentMonth || ""); }catch(e){}
   if (modoSinConexion || !navigator.onLine) setTimeout(actualizarIndicadorCloud, 0);
   if (cloudDb && !soloLectura){
@@ -5287,15 +5342,18 @@ async function subirDocumentosCliente(cedula){
           { onConflict: "cedula,tipo" }
         );
         if (dbErr) throw dbErr;
+        (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, tipo));
       } else {
         await sb.storage.from("documentos-clientes").remove([path]);
         await sb.from("documentos").delete().eq("cedula", cedula).eq("tipo", tipo);
+        if (docsEnNube) docsEnNube.delete(claveDocNube(cedula, tipo));
       }
     } catch (e){
       console.error(`No se pudo sincronizar el documento "${doc}" a la nube:`, e);
     }
   }
   docImagenesCambiados = {};
+  saveStoreLocalSolo(); // libera en el equipo los documentos que ya quedaron en la nube
 }
 
 function mostrarDocPreview(box, dataUrl){
