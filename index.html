@@ -16,7 +16,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#ECE8E1; --panel:#FFFFFF; --ink:#181512; --muted:#5A534A; --line:#D9D2C4;
@@ -64,7 +64,8 @@
   html{scroll-padding-top: calc(env(safe-area-inset-top,0px) + 8px);}
   body{
     margin:0; background:var(--bg); color:var(--ink);
-    font-family:"IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    font-family:"Inter", -apple-system, "Segoe UI", sans-serif;
+    font-feature-settings:"cv11","ss01"; -webkit-font-smoothing:antialiased;
     font-weight:500;
     -webkit-font-smoothing:antialiased;
   }
@@ -115,7 +116,7 @@
   }
   .sidebar-total:hover{ background:rgba(255,255,255,.14); border-color:rgba(212,184,115,.4); }
   .sidebar-total-label{ font-size:10px; opacity:.8; }
-  .sidebar-total-value{ font-family:"IBM Plex Mono", monospace; font-size:15px; font-weight:700; color:var(--gold); }
+  .sidebar-total-value{ font-family:inherit; font-variant-numeric:tabular-nums; font-size:15px; font-weight:700; color:var(--gold); }
   .sidebar-total-pagos{ font-size:10px; opacity:.85; font-weight:600; }
   #navMenuBtn{ background:rgba(255,255,255,.08); margin-top:4px; }
   .sidebar-menu-colapsable{ display:none; flex-direction:column; gap:1px; }
@@ -153,7 +154,7 @@
   header.top h1{ font-size:20px; font-weight:700; letter-spacing:-0.01em; margin:0; color:var(--navy-deep); }
   header.top .sub{ font-size:12px; color:#C0272D; font-weight:600; margin-top:2px; letter-spacing:.01em; }
   header.top .count{
-    font-family:"IBM Plex Mono", monospace; font-size:13px; color:var(--muted);
+    font-family:inherit; font-variant-numeric:tabular-nums; font-size:13px; color:var(--muted);
     background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 12px;
   }
   .user-chip{
@@ -249,7 +250,7 @@
   .stat-card:hover{ box-shadow:0 4px 14px rgba(15,30,45,.1); transform:translateY(-1px); }
   .stat-card.active{ background:var(--accent-bg); border-color:var(--accent); }
   .stat-card .stat-label{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
-  .stat-card .stat-value{ font-family:"IBM Plex Mono", monospace; font-size:19px; font-weight:700; color:var(--navy-deep); margin-top:3px; }
+  .stat-card .stat-value{ font-family:inherit; font-variant-numeric:tabular-nums; font-size:19px; font-weight:700; color:var(--navy-deep); margin-top:3px; }
   .stat-card.stat-pago{ border-top-color:var(--pago); }
   .stat-card.stat-pago.active{ background:var(--pago-bg); border-color:var(--pago); }
   .stat-card.stat-pendiente{ border-top-color:var(--sinpago); }
@@ -346,7 +347,7 @@
   .card .label{ font-size:11px; color:var(--muted); margin-bottom:4px; }
   .card-detalle{ display:block; font-size:10.5px; font-weight:600; color:var(--navy); margin-top:1px; }
   .card-detalle.inline{ display:inline; margin-top:0; margin-left:3px; }
-  .card .value{ font-family:"IBM Plex Mono", monospace; font-size:15px; font-weight:600; }
+  .card .value{ font-family:inherit; font-variant-numeric:tabular-nums; font-size:15px; font-weight:600; }
   .card.total{ background:var(--accent-bg); border-color:var(--accent); grid-column: span 5; }
   #cardCosto.servicio-conductor{ background:var(--pago-bg); border-color:var(--pago); }
   #cardCosto.servicio-conductor .value{ color:var(--pago); }
@@ -405,13 +406,13 @@
   .row.pagado{ background:var(--pago-bg); box-shadow:inset 3px 0 0 var(--pago); }
   .row.pagado:hover{ background:var(--pago-bg); }
   .row .chk{ width:16px; height:16px; cursor:pointer; }
-  .row .no{ font-family:"IBM Plex Mono", monospace; font-size:13px; font-weight:700; color:#FF5A1F; }
+  .row .no{ font-family:inherit; font-variant-numeric:tabular-nums; font-size:13px; font-weight:600; color:var(--muted); }
   .row .name{ font-size:14.5px; font-weight:600; color:var(--navy-deep); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   @media (max-width:760px){
     .row .name .tag-confirmar{ display:table; margin:3px 0 0; }
   }
   .row .estado{ text-transform:lowercase; }
-  .row .ced{ font-family:"IBM Plex Mono", monospace; font-size:12.5px; color:var(--muted); }
+  .row .ced{ font-family:inherit; font-variant-numeric:tabular-nums; font-size:12.5px; color:var(--muted); }
   .row .estado{
     font-size:9.5px; font-weight:600; text-align:center; padding:2px 5px; border-radius:5px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -462,11 +463,11 @@
     border-radius:8px; padding:8px 12px; margin-bottom:6px; font-size:13px;
   }
   .cobro-extra-row .desc{ flex:1; }
-  .cobro-extra-row .valor, .tarea-row .valor{ font-family:"IBM Plex Mono", monospace; font-weight:600; color:var(--navy); white-space:nowrap; }
+  .cobro-extra-row .valor, .tarea-row .valor{ font-family:inherit; font-variant-numeric:tabular-nums; font-weight:600; color:var(--navy); white-space:nowrap; }
   .cobro-extra-row .quitar{
     border:none; background:transparent; color:var(--danger); cursor:pointer; font-size:14px; padding:2px 4px;
   }
-  .month-total-value{ font-family:"IBM Plex Mono", monospace; font-size:20px; font-weight:700; }
+  .month-total-value{ font-family:inherit; font-variant-numeric:tabular-nums; font-size:20px; font-weight:700; }
 
 
   .filter-pills{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
@@ -637,7 +638,7 @@
   .recibo-imprimir{ display:none; }
   @media print{
     body > *:not(#reciboImprimir){ display:none !important; }
-    #reciboImprimir{ display:block !important; max-width:480px; margin:0 auto; font-family:"IBM Plex Sans", sans-serif; color:#1a1a1a; }
+    #reciboImprimir{ display:block !important; max-width:480px; margin:0 auto; font-family:"Inter", sans-serif; color:#1a1a1a; }
     .recibo-header{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
     .recibo-logo{ width:48px; height:48px; border-radius:8px; object-fit:cover; }
     .recibo-empresa{ font-size:18px; font-weight:700; }
@@ -730,7 +731,7 @@
   }
   .informe-row:last-child{ border-bottom:none; }
   .informe-row .ir-label{ color:var(--muted); }
-  .informe-row .ir-valor{ font-family:"IBM Plex Mono", monospace; font-weight:600; }
+  .informe-row .ir-valor{ font-family:inherit; font-variant-numeric:tabular-nums; font-weight:600; }
   .informe-row.total{ font-weight:700; font-size:14.5px; color:var(--navy-deep); border-top:2px solid var(--navy); margin-top:4px; padding-top:10px; }
   .informe-row.total .ir-valor{ color:var(--pago); font-size:16px; }
   .historial-mes-row{
@@ -739,7 +740,7 @@
     padding:9px 12px; margin-bottom:6px;
   }
   .historial-mes-row .hm-mes{ font-size:12.5px; font-weight:700; }
-  .historial-mes-row .hm-valor{ font-family:"IBM Plex Mono", monospace; font-weight:600; }
+  .historial-mes-row .hm-valor{ font-family:inherit; font-variant-numeric:tabular-nums; font-weight:600; }
   .historial-mes-row .hm-valor.saldo-pendiente{ color:var(--sinpago); }
   .historial-mes-row .hm-valor.saldo-al-dia{ color:var(--pago); }
   .tabla-historial{ width:100%; border-collapse:collapse; margin-bottom:14px; font-size:12.5px; }
@@ -750,7 +751,7 @@
   .tabla-historial td{ padding:8px; border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap; }
   .tabla-historial tbody tr:nth-child(even){ background:var(--bg); }
   .tabla-historial tbody tr:hover{ background:var(--accent-bg); }
-  .tabla-historial td.num{ font-family:"IBM Plex Mono", monospace; text-align:right; font-weight:600; }
+  .tabla-historial td.num{ font-family:inherit; font-variant-numeric:tabular-nums; text-align:right; font-weight:600; }
   .tabla-historial td.num.saldo-pendiente{ color:var(--sinpago); }
   .tabla-historial td.num.saldo-al-dia{ color:var(--muted); font-weight:400; }
   .tabla-historial .estado{ font-size:9.5px; font-weight:600; padding:2px 7px; border-radius:5px; white-space:nowrap; }
@@ -769,7 +770,7 @@
   .reciente-row:hover{ background:var(--accent-bg); }
   .reciente-row .rc-nombre{ font-size:13px; font-weight:600; }
   .reciente-row .rc-ced{ font-size:11px; color:var(--muted); }
-  .reciente-row .rc-hora{ font-size:11.5px; color:var(--muted); font-family:"IBM Plex Mono", monospace; white-space:nowrap; }
+  .reciente-row .rc-hora{ font-size:11.5px; color:var(--muted); font-family:inherit; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .reciente-group-title{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; padding:4px 2px 6px; letter-spacing:.03em; }
   .muelle-update-row{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -5787,10 +5788,10 @@ async function compartirReciboComoImagen(){
   ctx.drawImage(logo, 40, 36, 64, 64);
 
   ctx.fillStyle = "#173A5E";
-  ctx.font = "bold 30px 'IBM Plex Sans', sans-serif";
+  ctx.font = "bold 30px 'Inter', sans-serif";
   ctx.fillText("PROSEGUROSNET", 118, 65);
   ctx.fillStyle = "#C0272D";
-  ctx.font = "bold 14px 'IBM Plex Sans', sans-serif";
+  ctx.font = "bold 14px 'Inter', sans-serif";
   ctx.fillText("Protegemos lo que más importa", 118, 86);
 
   ctx.strokeStyle = "#173A5E";
@@ -5798,7 +5799,7 @@ async function compartirReciboComoImagen(){
   ctx.beginPath(); ctx.moveTo(40, 130); ctx.lineTo(860, 130); ctx.stroke();
 
   ctx.fillStyle = "#173A5E";
-  ctx.font = "bold 22px 'IBM Plex Sans', sans-serif";
+  ctx.font = "bold 22px 'Inter', sans-serif";
   ctx.fillText("Comprobante de pago", 40, 168);
 
   const filas = [
@@ -5811,10 +5812,10 @@ async function compartirReciboComoImagen(){
   let y = 220;
   filas.forEach(([label, valor]) => {
     ctx.fillStyle = "#555555";
-    ctx.font = "bold 15px 'IBM Plex Sans', sans-serif";
+    ctx.font = "bold 15px 'Inter', sans-serif";
     ctx.fillText(label, 40, y);
     ctx.fillStyle = "#1a1a1a";
-    ctx.font = "15px 'IBM Plex Sans', sans-serif";
+    ctx.font = "15px 'Inter', sans-serif";
     ctx.fillText(String(valor), 320, y);
     ctx.strokeStyle = "#dddddd"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(40, y + 14); ctx.lineTo(860, y + 14); ctx.stroke();
@@ -5827,15 +5828,15 @@ async function compartirReciboComoImagen(){
   ctx.strokeStyle = "#2E7D5B"; ctx.lineWidth = 2;
   ctx.strokeRect(40, y, 820, 70);
   ctx.fillStyle = "#173A5E";
-  ctx.font = "bold 17px 'IBM Plex Sans', sans-serif";
+  ctx.font = "bold 17px 'Inter', sans-serif";
   ctx.fillText("Total pagado", 60, y + 44);
-  ctx.font = "bold 26px 'IBM Plex Mono', monospace";
+  ctx.font = "bold 26px 'Inter', sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(fmt(total), 840, y + 46);
   ctx.textAlign = "left";
 
   ctx.fillStyle = "#999999";
-  ctx.font = "12px 'IBM Plex Sans', sans-serif";
+  ctx.font = "12px 'Inter', sans-serif";
   ctx.fillText("Este comprobante fue generado por la app de control de planillas de PROSEGUROSNET.", 40, canvas.height - 24);
 
   canvas.toBlob(async (blob) => {
