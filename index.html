@@ -8271,14 +8271,14 @@ function normalizarTexto(s){ return String(s || "").normalize("NFD").replace(/[�
 function leerMensajeBanco(texto){
   const t = String(texto || "").replace(/\s+/g, " ").trim();
   const r = { banco: "", valor: null, nombre: "", cuenta: "", fecha: "", hora: "", lugar: "", entrada: false };
-  r.banco = /nequi/i.test(t) ? "Nequi" : /bancolombia/i.test(t) ? "Bancolombia" : /daviplata/i.test(t) ? "Daviplata" : "";
+  r.banco = /nequi/i.test(t) ? "Nequi" : /bancolombia/i.test(t) ? "Bancolombia" : /daviplata/i.test(t) ? "Daviplata" : /davivienda/i.test(t) ? "Davivienda" : "";
   r.entrada = /(recibiste|recibi[oó]|recibida|consignaci[oó]n|te envi[oó]|te lleg|abono)/i.test(t);
   const m = t.match(/\$\s?([\d][\d.,]*)/);
   if (m) r.valor = valorPesosBanco(m[1]);
   let n = t.match(/\bde\s+([A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'-]{1,60}?)\s+(?:en tu|en su|a tu|a su|el \d|por|,|\.)/);
   if (!n) n = t.match(/(?:^|:\s*|\.\s+)([A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'-]{2,60}?)\s+te (?:envi|consign|transfiri)/i);
   if (n && !/^(BANCOLOMBIA|NEQUI)$/i.test(n[1].trim())) r.nombre = n[1].trim();
-  const c = t.match(/\*{1,2}\s?(\d{4})/) || t.match(/cuenta[^\d]{0,25}(\d{4})\b/i);
+  const c = t.match(/\*{1,2}\s?(\d{4})/) || t.match(/terminada en\s?(\d{4})\b/i) || t.match(/cuenta[^\d]{0,25}(\d{4})\b/i);
   if (c) r.cuenta = c[1];
   const f = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
   if (f){ const a = f[3].length === 2 ? "20" + f[3] : f[3]; r.fecha = `${f[1].padStart(2,"0")}/${f[2].padStart(2,"0")}/${a}`; }
@@ -8286,7 +8286,15 @@ function leerMensajeBanco(texto){
   const l = t.match(/corresponsal\s+(.+?)\s+en\s+([A-ZÁÉÍÓÚÑ][^,]+),/i); if (l) r.lugar = `${l[1]} (${l[2]})`;
   return r;
 }
-function esOtraCuenta(info){ return info.banco === "Bancolombia" && info.cuenta && info.cuenta !== CUENTA_SEGUROS; }
+// ¿Llegó a la cuenta de los seguros (Bancolombia *8222)? Lo demás (Nequi, Davivienda, otra cuenta)
+// solo se guarda en la base si tiene relación exacta con un cliente de planillas.
+function esCuentaSeguros(info){ return info.cuenta === CUENTA_SEGUROS; }
+function esOtraCuenta(info){ return !esCuentaSeguros(info); }
+function textoOrigenCuenta(info){
+  if (info.cuenta) return `la cuenta *${info.cuenta}${info.banco ? " de " + info.banco : ""}`;
+  if (info.banco === "Nequi" || info.banco === "Daviplata") return info.banco;
+  return info.lugar ? "un corresponsal (el mensaje no dice la cuenta)" : (info.banco || "otra cuenta");
+}
 
 function totalEsperado(r){
   return esConductorExcluido(r) ? numOrZero(r["Costo Servicio"]) : calcularTotalPagar(r, store.currentMonth);
@@ -8336,7 +8344,7 @@ async function cargarConsignaciones(){
   }finally{ csCargando = false; }
 }
 function actualizarBadgeConsig(){
-  const n = consignaciones.filter(c => c.estado === "pendiente" && !esOtraCuenta(leerMensajeBanco(c.texto))).length;
+  const n = consignaciones.filter(c => c.estado === "pendiente").length;
   const b = document.getElementById("consigBadge");
   b.textContent = n; b.style.display = n ? "inline-flex" : "none";
 }
@@ -8375,10 +8383,12 @@ function renderConsignaciones(){
     } else {
       cuerpo = `<div class="cs-acciones"><button type="button" class="btn ghost small" data-cs-deshacer="${c.id}">Volver a revisar</button></div>`;
     }
-    return `<div class="cs-card ${otra ? "otra-cuenta" : ""}" data-cs-id="${c.id}">
+    return `<div class="cs-card ${otra && !c.relacion ? "otra-cuenta" : ""}" data-cs-id="${c.id}">
       <div class="cs-top"><span class="cs-valor">${info.valor != null ? fmt(info.valor) : "—"}</span>
         <span class="cs-meta">${escHtml(info.banco || "Banco")} · ${quien} · ${escHtml(cuando)}${c.origen === "pegado" ? " · pegado" : ""}</span></div>
-      ${otra ? `<div class="cs-meta" style="color:var(--retiro);">⚠️ Llegó a la cuenta *${escHtml(info.cuenta)}, no a la de los seguros (*${CUENTA_SEGUROS}).</div>` : ""}
+      ${otra
+        ? `<div class="cs-meta" style="color:#8A5A0B;">ℹ️ Llegó por ${escHtml(textoOrigenCuenta(info))}, no a la de los seguros (*${CUENTA_SEGUROS}).${c.relacion ? ` Se tomó porque tiene relación con planillas: <b>${escHtml(c.relacion.replace(/\s*\(llegó a la cuenta \*\d{4}\)$/, ""))}</b>.` : ""}</div>`
+        : `<div class="cs-meta" style="color:var(--pago);">🏦 Cuenta de los seguros *${CUENTA_SEGUROS}</div>`}
       <div class="cs-texto">${escHtml(c.texto)}</div>
       ${cuerpo}
     </div>`;
