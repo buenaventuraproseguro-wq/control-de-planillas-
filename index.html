@@ -2803,7 +2803,13 @@ async function documentosDeLaNube(cedula){
   const { data: firmados } = await sb.storage.from("documentos-clientes").createSignedUrls(filas.map(f => f.storage_path), 3600);
   const porRuta = {};
   (firmados || []).forEach(x => { if (x && !x.error && x.signedUrl) porRuta[x.path] = x.signedUrl; });
-  return filas.map(f => ({ ...f, url: porRuta[f.storage_path] || null }));
+  // Tipo de archivo (PDF o imagen) para descargarlo con la extensión correcta
+  const mimes = {};
+  try{
+    const { data: lista } = await sb.storage.from("documentos-clientes").list(String(cedula));
+    (lista || []).forEach(o => { mimes[`${cedula}/${o.name}`] = (o.metadata && o.metadata.mimetype) || ""; });
+  }catch(e){ /* si no se puede saber, se asume PDF */ }
+  return filas.map(f => ({ ...f, url: porRuta[f.storage_path] || null, mime: mimes[f.storage_path] || "" }));
 }
 async function agregarDocumentosDeLaNube(cedula, tiposLocales){
   const miConsulta = ++consultaDocsNube;
@@ -2814,10 +2820,11 @@ async function agregarDocumentosDeLaNube(cedula, tiposLocales){
   const html = docs.filter(d => d.url && !tiposLocales.has(d.tipo)).map(d => {
     const etiqueta = ETIQUETA_DOC_NUBE[d.tipo] || d.tipo;
     const fecha = fechaCortaDoc(d.uploaded_at);
-    const descarga = `${d.url}${d.url.includes("?") ? "&" : "?"}download=${encodeURIComponent(etiqueta.replace(/\s+/g, "_") + ".pdf")}`;
+    const ext = /png/.test(d.mime) ? "png" : /image\//.test(d.mime) ? "jpg" : "pdf";
+    const descarga = `${d.url}${d.url.includes("?") ? "&" : "?"}download=${encodeURIComponent(etiqueta.replace(/\s+/g, "_") + "." + ext)}`;
     return `
     <div class="doc-thumb">
-      <div class="doc-thumb-pdf" title="Guardado en la nube">📄</div>
+      <div class="doc-thumb-pdf" title="Guardado en la nube">${ext === "pdf" ? "📄" : "🖼️"}</div>
       <span>${etiqueta}${fecha ? `<br><small>${fecha}</small>` : ""}</span>
       <div class="doc-thumb-acciones">
         <a href="${d.url}" target="_blank" rel="noopener">Ver</a>
@@ -5155,6 +5162,51 @@ const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn")
 
 // Comprime una imagen antes de guardarla (máx. 1000px de lado, calidad 0.72) para no llenar
 // el almacenamiento del navegador. Los PDF no se pueden comprimir así, se guardan tal cual.
+// ---- PDF → imagen (documentos de identificación y afiliación) ----
+const DOCS_PDF_A_IMAGEN = new Set(["Cedula", "Eps", "Afp", "Caja", "Arl"]);
+const MAX_PAGINAS_PDF_A_IMAGEN = 6;
+function tamanoLegible(bytes){
+  if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1).replace(".", ",") + " MB";
+  return Math.max(1, Math.round(bytes / 1024)) + " KB";
+}
+// Dibuja las páginas del PDF una debajo de otra y las guarda como una sola imagen JPG.
+// Devuelve { dataUrl, bytes } o null si no conviene (no se pudo leer, demasiadas páginas o no pesa menos).
+async function convertirPdfAImagen(file){
+  try{
+    const pdfjs = await cargarLectorPDF();
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    if (pdf.numPages > MAX_PAGINAS_PDF_A_IMAGEN) return null;
+    const ANCHO = 1400; // suficiente para leer bien una cédula o un certificado
+    const lienzos = [];
+    for (let i = 1; i <= pdf.numPages; i++){
+      const pagina = await pdf.getPage(i);
+      const base = pagina.getViewport({ scale: 1 });
+      const vista = pagina.getViewport({ scale: Math.min(3, ANCHO / base.width) });
+      const c = document.createElement("canvas");
+      c.width = Math.round(vista.width); c.height = Math.round(vista.height);
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+      await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
+      lienzos.push(c);
+    }
+    const separacion = 16;
+    const total = document.createElement("canvas");
+    total.width = Math.max(...lienzos.map(c => c.width));
+    total.height = lienzos.reduce((a, c) => a + c.height, 0) + separacion * (lienzos.length - 1);
+    const t = total.getContext("2d");
+    t.fillStyle = "#ffffff"; t.fillRect(0, 0, total.width, total.height);
+    let y = 0;
+    lienzos.forEach(c => { t.drawImage(c, 0, y); y += c.height + separacion; });
+    const dataUrl = total.toDataURL("image/jpeg", 0.72);
+    const bytes = Math.round((dataUrl.length - dataUrl.indexOf(",") - 1) * 3 / 4);
+    if (bytes >= file.size) return null; // si el PDF ya era liviano, se deja como estaba
+    return { dataUrl, bytes };
+  }catch(e){
+    console.error("No se pudo convertir el PDF a imagen:", e);
+    return null;
+  }
+}
+
 function comprimirImagen(file, callback){
   if (!file.type.startsWith("image/")){
     const reader = new FileReader();
@@ -5383,9 +5435,23 @@ document.querySelectorAll(".doc-upload").forEach(box => {
   const fileInput = box.querySelector(".doc-file");
   const removeBtn = box.querySelector(".doc-remove");
 
-  fileInput.addEventListener("change", (e) => {
+  fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    // Documentos de identificación y afiliación en PDF: se convierten a imagen para que pesen poco.
+    // La planilla y el comprobante se dejan en PDF (la app lee su texto).
+    if (DOCS_PDF_A_IMAGEN.has(doc) && esPdfArchivo(file)){
+      showToast("Convirtiendo el PDF a imagen para que pese menos…");
+      const img = await convertirPdfAImagen(file);
+      if (img){
+        docImagenes[doc] = img.dataUrl;
+        docImagenesCambiados[doc] = true;
+        mostrarDocPreview(box, img.dataUrl);
+        showToast(`✅ Listo: pasó de ${tamanoLegible(file.size)} a ${tamanoLegible(img.bytes)}.`);
+        return;
+      }
+      // Si no se pudo convertir (sin internet, PDF protegido o muy largo) se guarda el PDF tal cual.
+    }
     comprimirImagen(file, (dataUrl) => {
       docImagenes[doc] = dataUrl;
       docImagenesCambiados[doc] = true;
