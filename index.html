@@ -203,6 +203,31 @@
   .stat-card .stat-detalle{ font-size:10.5px; color:var(--muted); margin-top:2px; line-height:1.35; }
   .tag-confirmar{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
     background:rgba(201,138,27,.14); color:#8A5A0B; white-space:nowrap; vertical-align:middle; }
+  .tag-consig{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
+    background:var(--pago-bg); color:var(--pago); white-space:nowrap; vertical-align:middle; }
+  @media (max-width:760px){ .row .name .tag-consig{ display:table; margin:3px 0 0; } }
+  #overlayConsig .modal{ max-width:860px; }
+  .cs-tabs{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .cs-tabs button{ font:inherit; font-size:12.5px; border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .cs-tabs button.active{ background:var(--accent-bg); border-color:var(--navy); font-weight:700; }
+  .cs-pegar{ border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+  .cs-pegar textarea{ width:100%; min-height:62px; font:inherit; font-size:13px; padding:8px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); resize:vertical; box-sizing:border-box; }
+  .cs-card{ border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--panel); }
+  .cs-card.otra-cuenta{ opacity:.75; }
+  .cs-top{ display:flex; gap:10px; align-items:baseline; justify-content:space-between; flex-wrap:wrap; }
+  .cs-valor{ font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--navy-deep); }
+  .cs-meta{ font-size:12.5px; color:var(--muted); }
+  .cs-texto{ font-size:11.5px; color:var(--muted); margin:6px 0 8px; line-height:1.4; }
+  .cs-sug{ display:flex; flex-direction:column; gap:6px; margin:8px 0; }
+  .cs-sug label{ display:flex; gap:8px; align-items:center; font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); cursor:pointer; }
+  .cs-sug label:has(input:checked){ border-color:var(--navy); background:var(--accent-bg); }
+  .cs-sug small{ color:var(--muted); }
+  .cs-acciones{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
+  .cs-otro{ flex:1; min-width:180px; font:inherit; font-size:13px; padding:7px 9px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); }
+  .tag-retiro{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
+    background:var(--retiro-bg); color:var(--retiro); white-space:nowrap; vertical-align:middle; }
+  @media (max-width:760px){ .row .name .tag-retiro{ display:table; margin:3px 0 0; } }
+  .pila-retiro{ display:inline-block; margin-left:6px; font-size:11px; font-weight:700; color:var(--retiro); }
   .tag-confirmar.demorado{ background:var(--retiro-bg); color:var(--retiro); }
   @media (prefers-color-scheme: dark){ .tag-confirmar{ color:#E6B35A; } }
   .confirmar-grupos{ display:flex; flex-wrap:wrap; gap:6px; margin:-2px 0 10px; }
@@ -878,6 +903,7 @@
     </div>
     <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span> ➕ Agregar cliente</button>
     <button type="button" class="sidebar-link" id="navCrmBtn">📇 CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
+    <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;">💰 Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span> 📝 Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
 
     <button type="button" class="sidebar-link" id="navMenuBtn">☰ Ver más opciones</button>
@@ -1008,6 +1034,7 @@
         </div>
         <div class="actions">
           <button class="btn small" id="editBtn">Editar</button>
+          <button class="btn small" id="retirarBtn">🚪 Retirar</button>
           <button class="btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
           <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
@@ -1303,6 +1330,51 @@
     <div id="listaMuellesServicio"></div>
     <div class="modal-actions">
       <button class="btn ghost" id="cerrarMuellesServicioBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Consignaciones recibidas (mensajes del banco) -->
+<div class="overlay" id="overlayConsig">
+  <div class="modal">
+    <h2>💰 Consignaciones recibidas</h2>
+    <div class="modal-sub">Mensajes de Bancolombia y Nequi. La app sugiere de qué cliente es cada pago; usted confirma. Nunca se marca nada solo.</div>
+    <div class="cs-tabs" id="csTabs">
+      <button type="button" data-cs-tab="pendiente" class="active">Por revisar</button>
+      <button type="button" data-cs-tab="aplicada">Aplicadas</button>
+      <button type="button" data-cs-tab="descartada">Descartadas</button>
+    </div>
+    <div class="cs-pegar">
+      <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">📋 Pegar un mensaje del banco</div>
+      <textarea id="csPegarTexto" placeholder="Bancolombia: Recibiste una transferencia por $211,280 de ..."></textarea>
+      <div class="modal-actions" style="margin-top:8px;"><button type="button" class="btn primary small" id="csPegarBtn">Agregar</button></div>
+    </div>
+    <div id="csLista"></div>
+    <div class="modal-actions"><button class="btn ghost" id="csCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Retirar cliente -->
+<div class="overlay" id="overlayRetiro">
+  <div class="modal" style="max-width:480px;">
+    <h2>🚪 Retirar cliente</h2>
+    <div class="modal-sub" id="retiroQuien"></div>
+    <div class="form-grid">
+      <div class="field"><label>Fecha de retiro</label><input type="date" id="retiroFecha"></div>
+      <div class="field"><label>Motivo</label>
+        <select id="retiroMotivo">
+          <option>El cliente lo pidió</option>
+          <option>El responsable / empleador lo retiró</option>
+          <option>Reportado en la planilla</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="field span2"><label>Nota (opcional)</label><input type="text" id="retiroNota" maxlength="150" placeholder="Ej: se va a trabajar con otra empresa"></div>
+    </div>
+    <div class="modal-sub" id="retiroAviso" style="margin-top:10px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="retiroCancelarBtn">Cancelar</button>
+      <button type="button" class="btn primary" id="retiroGuardarBtn">Guardar retiro</button>
     </div>
   </div>
 </div>
@@ -1780,6 +1852,9 @@ function activarModoSoloLectura(){ /* ya no aplica: con Supabase todo el equipo 
 // Mientras no las tenga, la app no las envía, para no dañar la sincronización.
 const COLUMNAS_CONFIRMACION_KEY = "prosegurosnet_columnas_confirmacion";
 let columnasConfirmacion = (() => { try{ return localStorage.getItem(COLUMNAS_CONFIRMACION_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene "fecha_retiro" y "motivo_retiro"? (archivo retiros.sql)
+const COLUMNAS_RETIRO_KEY = "prosegurosnet_columnas_retiro";
+let columnasRetiro = (() => { try{ return localStorage.getItem(COLUMNAS_RETIRO_KEY) === "1"; }catch(e){ return false; } })();
 async function detectarColumnasConfirmacion(){
   try{
     const { error } = await sb.from("clients").select("estado_arl,en_proceso_desde").limit(1);
@@ -1789,6 +1864,13 @@ async function detectarColumnasConfirmacion(){
     } else columnasConfirmacion = true;
     try{ localStorage.setItem(COLUMNAS_CONFIRMACION_KEY, columnasConfirmacion ? "1" : "0"); }catch(e){}
   }catch(e){ /* sin internet: se usa lo último que se supo */ }
+  try{
+    const { error } = await sb.from("clients").select("fecha_retiro,motivo_retiro").limit(1);
+    if (error){
+      if (/fecha_retiro|motivo_retiro|column|schema cache/i.test(String(error.message || ""))) columnasRetiro = false;
+    } else columnasRetiro = true;
+    try{ localStorage.setItem(COLUMNAS_RETIRO_KEY, columnasRetiro ? "1" : "0"); }catch(e){}
+  }catch(e){}
 }
 function esRecordToDbRow(r, monthId){
   return {
@@ -1828,6 +1910,10 @@ function esRecordToDbRow(r, monthId){
       estado_arl: r["Estado ARL"] || "",
       en_proceso_desde: r["En Proceso Desde"] || null,
     } : {}),
+    ...(columnasRetiro ? {
+      fecha_retiro: r["Fecha Retiro"] || null,
+      motivo_retiro: r["Motivo Retiro"] || "",
+    } : {}),
   };
 }
 function dbRowToEsRecord(row){
@@ -1865,6 +1951,8 @@ function dbRowToEsRecord(row){
     "AceptadoPorMuelle": row.aceptado_por_muelle || {},
     "Estado ARL": row.estado_arl || "",
     "En Proceso Desde": row.en_proceso_desde || "",
+    "Fecha Retiro": row.fecha_retiro || "",
+    "Motivo Retiro": row.motivo_retiro || "",
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
   };
@@ -2398,6 +2486,8 @@ function firmaClienteCanonica(texto){
     const o = JSON.parse(texto);
     if (o && (o.estado_arl === "" || o.estado_arl == null)) delete o.estado_arl;
     if (o && (o.en_proceso_desde === "" || o.en_proceso_desde == null)) delete o.en_proceso_desde;
+    if (o && (o.fecha_retiro === "" || o.fecha_retiro == null)) delete o.fecha_retiro;
+    if (o && (o.motivo_retiro === "" || o.motivo_retiro == null)) delete o.motivo_retiro;
     return JSON.stringify(o);
   }catch(e){ return texto; }
 }
@@ -2548,6 +2638,7 @@ async function iniciarAppConSupabase(){
     suscribirMesesYTareasEnVivo();
     cargarConfigMensaje();
     sincronizarDocumentosLocales().catch(e => console.error(e));
+    cargarConsignaciones();
     const veniaSinConexion = modoSinConexion;
     modoSinConexion = false;
     guardarEstadoSync();
@@ -3945,6 +4036,8 @@ advanceBtn.addEventListener("click", async () => {
   const continuing = records
     .filter(r => !isRetiro(r))
     .map(construirRegistroMesSiguiente);
+  // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
+  continuing.forEach(x => aplicarRetiroProgramado(x, next));
   const retiradosCount = records.length - continuing.length;
 
   if (store.months[next]){
@@ -4386,7 +4479,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -4505,8 +4598,9 @@ function showBreakdown(cedula){
   if (!r){ breakdown.classList.remove("show"); activeCedula = null; return; }
 
   activeCedula = cedula;
+  actualizarBotonRetiro(r);
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
-  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}`;
+  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}`;
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
@@ -6303,22 +6397,84 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
     return res;
   }
 
+  // Novedades ING / RET: la planilla las marca con una "X" debajo de la columna.
+  // Como el texto se lee por renglones, se usa la POSICIÓN de cada "X" para saber en qué columna está.
+  // Devuelve { cedula: { ing: bool, ret: bool } }.
+  function novedadesPorCedula(items, vista){
+    const piezas = [];
+    items.forEach(it => {
+      const t = (it.str || "").trim();
+      if (!t) return;
+      let x = it.transform ? it.transform[4] : 0, y = it.transform ? it.transform[5] : 0;
+      if (vista){
+        const nx = vista[0] * x + vista[2] * y + vista[4];
+        const ny = vista[1] * x + vista[3] * y + vista[5];
+        x = nx; y = -ny;
+      }
+      // Centro del texto en la dirección en que está escrito (el encabezado suele ir girado)
+      let dx = 1, dy = 0;
+      if (it.transform){
+        const a = it.transform[0], b = it.transform[1];
+        if (vista){ dx = vista[0] * a + vista[2] * b; dy = -(vista[1] * a + vista[3] * b); } else { dx = a; dy = b; }
+        const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+      }
+      const w = Math.abs(it.width || 0);
+      piezas.push({ t, x, y, c: x + dx * w / 2 });
+    });
+    const filas = [];
+    piezas.forEach(p => {
+      let f = filas.find(r => Math.abs(r.y - p.y) <= 2.5);
+      if (!f){ f = { y: p.y, partes: [] }; filas.push(f); }
+      f.partes.push(p);
+    });
+    filas.forEach(f => f.partes.sort((a, b) => a.x - b.x));
+    // Encabezado con las columnas de novedades
+    const enc = filas.find(f => f.partes.some(p => /^ing$/i.test(p.t)) && f.partes.some(p => /^ret$/i.test(p.t)));
+    const res = {};
+    if (!enc) return res;
+    const ing = enc.partes.find(p => /^ing$/i.test(p.t));
+    const ret = enc.partes.find(p => /^ret$/i.test(p.t) && p.x > ing.x);
+    if (!ing || !ret) return res;
+    const ancho = Math.max(4, Math.abs(ret.c - ing.c));
+    filas.forEach(f => {
+      if (f === enc) return;
+      const texto = f.partes.map(p => p.t).join(" ");
+      const doc = texto.match(/(?:^|\s)(?:CC|CE|TI|PA|PE|PT|CD|SC)\s*(\d{5,12})\b/);
+      if (!doc || /^(Documento|Identificaci)/i.test(texto)) return;
+      const marcas = f.partes.filter(p => /^x$/i.test(p.t));
+      if (!marcas.length) return;
+      const n = res[doc[1]] || (res[doc[1]] = { ing: false, ret: false });
+      marcas.forEach(m => {
+        if (Math.abs(m.c - ret.c) < ancho * 0.5) n.ret = true;
+        else if (Math.abs(m.c - ing.c) < ancho * 0.5) n.ing = true;
+      });
+    });
+    return res;
+  }
+
   async function leerPlanillaPDF(pdfjsLib, datos){
     const pdf = await pdfjsLib.getDocument({ data: datos }).promise;
     const renglones = [];
+    const novedades = {};
     for (let i = 1; i <= pdf.numPages; i++){
       const pagina = await pdf.getPage(i);
       const contenido = await pagina.getTextContent();
       const vista = pagina.getViewport({ scale: 1 }).transform;
       renglones.push(...renglonesDeItems(contenido.items, vista));
+      Object.assign(novedades, novedadesPorCedula(contenido.items, vista));
     }
     const res = analizarTextoPlanilla(renglones);
+    res.afiliados.forEach(a => {
+      const n = novedades[a.cedula] || {};
+      a.retiro = !!n.ret;
+      a.ingreso = !!n.ing;
+    });
     res.paginas = pdf.numPages;
     res.tieneTexto = renglones.length > 3;
     return res;
   }
 
-  global.LectorPILA = { renglonesDeItems, analizarTextoPlanilla, leerPlanillaPDF };
+  global.LectorPILA = { renglonesDeItems, analizarTextoPlanilla, leerPlanillaPDF, novedadesPorCedula };
 })(typeof window !== "undefined" ? window : globalThis);
 
 const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.min.mjs";
@@ -6356,6 +6512,10 @@ async function importarPlanillaPDF(archivo, comprobante){
     return { ...a, r, app, totalApp: app ? app.total : null };
   });
   pilaEnRevision = { archivo, info, filas };
+  // ¿La planilla se pagó en el mes que se está viendo? (si no, los retiros NO se aplican solos)
+  const mesPagoIdx = info.fechaPago ? indiceMesDeFecha(info.fechaPago) : null;
+  const mismoMes = mesPagoIdx === null || mesPagoIdx === indiceMes(store.currentMonth);
+  pilaEnRevision.mismoMes = mismoMes;
 
   const encontrados = filas.filter(f => f.r).length;
   const fechaPago = info.fechaPago ? info.fechaPago.split("-").reverse().join("/") : "—";
@@ -6386,7 +6546,7 @@ async function importarPlanillaPDF(archivo, comprobante){
         <td><input type="checkbox" data-pila-idx="${i}" ${f.r ? "checked" : "disabled"}></td>
         <td>${escHtml(f.cedula)}</td>
         <td>${f.r ? escHtml(f.r["Nombre del Afiliado"]) : `<span style="color:var(--retiro);">No está en ${escHtml(store.currentMonth)}</span>`}</td>
-        <td>${f.r ? `<span class="estado ${estadoClass(f.r["Estado Trámite"])}">${escHtml(f.r["Estado Trámite"] || "—")}</span>` : "—"}</td>
+        <td>${f.r ? `<span class="estado ${estadoClass(f.r["Estado Trámite"])}">${escHtml(f.r["Estado Trámite"] || "—")}</span>` : "—"}${f.ingreso && !f.retiro ? `<span class="pila-retiro" style="color:var(--pago);" title="La planilla trae la novedad ING (ingreso)">🟢 INGRESO en la planilla</span>` : ""}${f.retiro ? `<span class="pila-retiro" title="La planilla trae la novedad RET (retiro)">🚪 ${f.ingreso ? "INGRESO y RETIRO" : "RETIRO"} en la planilla${f.dias && f.dias < 30 ? ` (${f.dias} día${f.dias === 1 ? "" : "s"})` : ""}</span>${f.r ? `<label style="display:block;font-size:11.5px;margin-top:3px;"><input type="checkbox" data-pila-ret="${i}" ${mismoMes ? "checked" : ""}> marcar RETIRO</label>` : ""}` : ""}</td>
         <td class="num">${fmt(f.total)}${f.dias && f.dias < 30 ? `<br><small>${f.dias} días</small>` : ""}</td>
         <td class="num">${f.r ? fmt(f.totalApp) + (dif ? ` <span title="No coincide con la planilla">⚠️</span>` : " ✅") : "—"}</td>
       </tr>${detalle}`;
@@ -6395,6 +6555,9 @@ async function importarPlanillaPDF(archivo, comprobante){
   const hayDif = filas.some(f => f.r && Math.abs(f.totalApp - f.total) > 400);
   document.getElementById("pilaResumen").insertAdjacentHTML("beforeend", `<br><small>Se comparan solo los aportes (salud, pensión, ARL y caja); el costo del servicio no va en la planilla.${hayDif ? " Las diferencias marcadas con ⚠️ son datos que conviene corregir en el cliente; marcar el pago <b>no cambia</b> esos valores." : ""}</small>`);
 
+  if (!mismoMes && info.afiliados.some(a => a.retiro)){
+    document.getElementById("pilaResumen").insertAdjacentHTML("beforeend", `<br><span style="color:var(--retiro);font-weight:700;">⚠️ Esta planilla se pagó el ${escHtml(fechaPago)} y usted está viendo ${escHtml(store.currentMonth)}. Los retiros quedan SIN marcar para no retirar a quien ya volvió a afiliarse; márquelos solo si corresponde.</span>`);
+  }
   const varios = info.afiliados.length > 1;
   document.getElementById("pilaAdjuntar").checked = !varios;
   const aviso = document.getElementById("pilaAvisoVarios");
@@ -6495,9 +6658,18 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   const btn = document.getElementById("pilaAplicarBtn");
   btn.disabled = true; btn.textContent = "Aplicando…";
 
+  const conRetiro = new Set(Array.from(document.querySelectorAll("#pilaTabla input[data-pila-ret]:checked")).map(c => filas[Number(c.dataset.pilaRet)]));
   elegidos.forEach(f => {
     if (info.numeroPlanilla) f.r["No. Planilla Pagada"] = info.numeroPlanilla;
-    f.r["Estado Trámite"] = esConductorExcluido(f.r) ? "PAGO CONDUCTOR" : "PAGO";
+    if (f.retiro && conRetiro.has(f) && !esConductorExcluido(f.r)){
+      // La planilla trae la novedad de RETIRO: queda en RETIRO (y no pasa al mes siguiente)
+      f.r["Estado Trámite"] = "RETIRO";
+      f.r["Motivo Retiro"] = "Reportado en la planilla";
+      const nota = `retiro reportado en la planilla N° ${info.numeroPlanilla || ""}`.trim();
+      if (!String(f.r["Observación"] || "").includes(nota)) f.r["Observación"] = f.r["Observación"] ? `${f.r["Observación"]} | ${nota}` : nota;
+    } else {
+      f.r["Estado Trámite"] = esConductorExcluido(f.r) ? "PAGO CONDUCTOR" : "PAGO";
+    }
     f.r["_ultimaEdicion"] = new Date().toISOString();
     if (adjuntar) f.r["Imagen PlanillaPagada"] = null; // la planilla queda en la nube (se ve desde cualquier equipo)
     if (adjuntarComp) f.r["Imagen ComprobantePago"] = null;
@@ -8031,6 +8203,294 @@ function crmPedirDias(){
 }
 // Revisa cada 30 minutos si hay prospectos que ya toca contactar (para el número en la barra lateral)
 setInterval(() => { if (currentUserId) cargarCRM(); }, 30 * 60 * 1000);
+
+/* ================= CONSIGNACIONES RECIBIDAS (mensajes del banco) ================= */
+var CUENTA_SEGUROS = "8222"; // cuenta Bancolombia de los seguros
+var consignaciones = []; // "var": la lista principal puede dibujarse antes de llegar a esta línea
+let csTab = "pendiente";
+let csCargando = false;
+
+function valorPesosBanco(txt){
+  // "$211,280" · "$1.250.000" · "$211,280.00" · "$ 50.000,00"
+  let s = String(txt || "").replace(/[^\d.,]/g, "");
+  s = s.replace(/[.,]\d{2}$/, "");          // quita centavos
+  s = s.replace(/[.,]/g, "");
+  return s ? Number(s) : null;
+}
+function normalizarTexto(s){ return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim(); }
+
+// Lee el texto de una notificación del banco
+function leerMensajeBanco(texto){
+  const t = String(texto || "").replace(/\s+/g, " ").trim();
+  const r = { banco: "", valor: null, nombre: "", cuenta: "", fecha: "", hora: "", lugar: "", entrada: false };
+  r.banco = /nequi/i.test(t) ? "Nequi" : /bancolombia/i.test(t) ? "Bancolombia" : /daviplata/i.test(t) ? "Daviplata" : "";
+  r.entrada = /(recibiste|recibi[oó]|recibida|consignaci[oó]n|te envi[oó]|te lleg|abono)/i.test(t);
+  const m = t.match(/\$\s?([\d][\d.,]*)/);
+  if (m) r.valor = valorPesosBanco(m[1]);
+  let n = t.match(/\bde\s+([A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'-]{1,60}?)\s+(?:en tu|en su|a tu|a su|el \d|por|,|\.)/);
+  if (!n) n = t.match(/(?:^|:\s*|\.\s+)([A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'-]{2,60}?)\s+te (?:envi|consign|transfiri)/i);
+  if (n && !/^(BANCOLOMBIA|NEQUI)$/i.test(n[1].trim())) r.nombre = n[1].trim();
+  const c = t.match(/\*{1,2}\s?(\d{4})/) || t.match(/cuenta[^\d]{0,25}(\d{4})\b/i);
+  if (c) r.cuenta = c[1];
+  const f = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (f){ const a = f[3].length === 2 ? "20" + f[3] : f[3]; r.fecha = `${f[1].padStart(2,"0")}/${f[2].padStart(2,"0")}/${a}`; }
+  const ho = t.match(/(\d{1,2}:\d{2})/); if (ho) r.hora = ho[1];
+  const l = t.match(/corresponsal\s+(.+?)\s+en\s+([A-ZÁÉÍÓÚÑ][^,]+),/i); if (l) r.lugar = `${l[1]} (${l[2]})`;
+  return r;
+}
+function esOtraCuenta(info){ return info.banco === "Bancolombia" && info.cuenta && info.cuenta !== CUENTA_SEGUROS; }
+
+function totalEsperado(r){
+  return esConductorExcluido(r) ? numOrZero(r["Costo Servicio"]) : calcularTotalPagar(r, store.currentMonth);
+}
+// Sugiere de qué cliente es el pago: por nombre y por valor
+function sugerirClientes(info){
+  const palabras = normalizarTexto(info.nombre).split(" ").filter(w => w.length >= 3);
+  return records.filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO").map(r => {
+    let puntos = 0, motivos = [];
+    const nom = normalizarTexto(r["Nombre del Afiliado"]).split(" ");
+    const coinciden = palabras.filter(w => nom.includes(w)).length;
+    if (coinciden){ puntos += coinciden >= 2 ? 60 : 25; motivos.push(coinciden >= 2 ? "mismo nombre" : "nombre parecido"); }
+    if (info.valor){
+      const dif = Math.abs(totalEsperado(r) - info.valor);
+      if (dif <= 300){ puntos += 50; motivos.push("mismo valor"); }
+      else if (dif <= info.valor * 0.03){ puntos += 15; motivos.push("valor parecido"); }
+    }
+    if (consignacionesDe(r["Cédula"]).length) puntos -= 10; // ya tiene otra consignación este mes
+    return { r, puntos, motivos };
+  }).filter(x => x.puntos >= 25).sort((a, b) => b.puntos - a.puntos).slice(0, 3);
+}
+function consignacionesDe(cedula){
+  if (!Array.isArray(consignaciones)) return [];
+  return consignaciones.filter(c => c.estado === "aplicada" && String(c.cedula) === String(cedula) && c.mes === store.currentMonth);
+}
+function tagConsignacion(r){
+  const cs = consignacionesDe(r["Cédula"]);
+  if (!cs.length) return "";
+  const total = cs.reduce((a, c) => a + numOrZero(c.valor), 0);
+  return `<span class="tag-consig" title="Consignó este mes">💰 Consignó ${fmt(total)}</span>`;
+}
+
+async function cargarConsignaciones(){
+  if (!cloudDb || csCargando) return;
+  csCargando = true;
+  try{
+    const desde = new Date(Date.now() - 120 * 86400000).toISOString();
+    const { data, error } = await sb.from("consignaciones").select("*").gte("recibido_at", desde).order("recibido_at", { ascending: false });
+    if (error) throw error;
+    consignaciones = data || [];
+    document.getElementById("navConsigBtn").style.display = "";
+    actualizarBadgeConsig();
+    if (document.getElementById("overlayConsig").classList.contains("show")) renderConsignaciones();
+    if (typeof renderList === "function" && typeof searchInput !== "undefined") renderList(searchInput.value);
+  }catch(e){
+    if (!/consignaciones|schema cache|does not exist/i.test(String(e.message || ""))) console.error("No se pudieron cargar las consignaciones:", e);
+  }finally{ csCargando = false; }
+}
+function actualizarBadgeConsig(){
+  const n = consignaciones.filter(c => c.estado === "pendiente" && !esOtraCuenta(leerMensajeBanco(c.texto))).length;
+  const b = document.getElementById("consigBadge");
+  b.textContent = n; b.style.display = n ? "inline-flex" : "none";
+}
+
+function renderConsignaciones(){
+  document.querySelectorAll("#csTabs [data-cs-tab]").forEach(b => b.classList.toggle("active", b.dataset.csTab === csTab));
+  const lista = consignaciones.filter(c => c.estado === csTab);
+  const cont = document.getElementById("csLista");
+  if (!cloudDb){ cont.innerHTML = `<div class="empty">📴 Se necesita internet para ver las consignaciones.</div>`; return; }
+  if (!lista.length){
+    cont.innerHTML = `<div class="empty">${csTab === "pendiente" ? "No hay consignaciones por revisar. 🎉" : "No hay nada aquí todavía."}</div>`;
+    return;
+  }
+  cont.innerHTML = lista.map(c => {
+    const info = leerMensajeBanco(c.texto);
+    const otra = esOtraCuenta(info);
+    const cuando = info.fecha ? `${info.fecha}${info.hora ? " " + info.hora : ""}` : new Date(c.recibido_at).toLocaleString("es-CO");
+    const quien = info.nombre ? `de <b>${escHtml(info.nombre)}</b>` : info.lugar ? `consignación en ${escHtml(info.lugar)}` : "sin nombre";
+    let cuerpo = "";
+    if (c.estado === "pendiente"){
+      const sug = sugerirClientes(info);
+      const opciones = sug.map((s, i) => `<label><input type="radio" name="cs-${c.id}" value="${escHtml(s.r["Cédula"])}" ${i === 0 ? "checked" : ""}>
+          <span><b>${escHtml(s.r["Nombre del Afiliado"])}</b> · ${escHtml(s.r["Estado Trámite"])} · debe ${fmt(totalEsperado(s.r))}<br><small>${s.motivos.join(" + ")}</small></span></label>`).join("");
+      cuerpo = `
+        <div class="cs-sug">${opciones || `<div class="cs-meta">No encontré un cliente que coincida${info.nombre ? "" : " (el mensaje no trae nombre)"}. Elíjalo abajo.</div>`}</div>
+        <div class="cs-acciones">
+          <input class="cs-otro" list="csClientesLista" placeholder="Otro cliente: escriba nombre o cédula" data-cs-otro="${c.id}">
+          <label style="font-size:12.5px;display:flex;gap:6px;align-items:center;"><input type="checkbox" data-cs-pago="${c.id}"> Marcar también PAGO</label>
+          <button type="button" class="btn ghost small" data-cs-descartar="${c.id}">Descartar</button>
+          <button type="button" class="btn primary small" data-cs-aplicar="${c.id}">✅ Aplicar</button>
+        </div>`;
+    } else if (c.estado === "aplicada"){
+      const r = records.find(x => String(x["Cédula"]) === String(c.cedula));
+      cuerpo = `<div class="cs-meta">✅ Aplicada a <b>${escHtml(r ? r["Nombre del Afiliado"] : c.cedula)}</b> en ${escHtml(c.mes || "")}</div>
+        <div class="cs-acciones"><button type="button" class="btn ghost small" data-cs-deshacer="${c.id}">Deshacer</button></div>`;
+    } else {
+      cuerpo = `<div class="cs-acciones"><button type="button" class="btn ghost small" data-cs-deshacer="${c.id}">Volver a revisar</button></div>`;
+    }
+    return `<div class="cs-card ${otra ? "otra-cuenta" : ""}" data-cs-id="${c.id}">
+      <div class="cs-top"><span class="cs-valor">${info.valor != null ? fmt(info.valor) : "—"}</span>
+        <span class="cs-meta">${escHtml(info.banco || "Banco")} · ${quien} · ${escHtml(cuando)}${c.origen === "pegado" ? " · pegado" : ""}</span></div>
+      ${otra ? `<div class="cs-meta" style="color:var(--retiro);">⚠️ Llegó a la cuenta *${escHtml(info.cuenta)}, no a la de los seguros (*${CUENTA_SEGUROS}).</div>` : ""}
+      <div class="cs-texto">${escHtml(c.texto)}</div>
+      ${cuerpo}
+    </div>`;
+  }).join("") + `<datalist id="csClientesLista">${records.map(r => `<option value="${escHtml(r["Cédula"])} · ${escHtml(r["Nombre del Afiliado"])}">`).join("")}</datalist>`;
+}
+
+async function aplicarConsignacion(id){
+  const c = consignaciones.find(x => x.id === id);
+  if (!c) return;
+  const card = document.querySelector(`[data-cs-id="${id}"]`);
+  const otro = card.querySelector("[data-cs-otro]").value.trim();
+  const elegido = card.querySelector(`input[name="cs-${id}"]:checked`);
+  const ced = otro ? (otro.match(/^\d{5,12}/) || [""])[0] : (elegido ? elegido.value : "");
+  const r = records.find(x => String(x["Cédula"]) === String(ced));
+  if (!r){ showToast("Elija a qué cliente corresponde la consignación."); return; }
+  const info = leerMensajeBanco(c.texto);
+  const cambio = { estado: "aplicada", cedula: String(r["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || info.lugar || null,
+    banco: info.banco || null, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
+  const { error } = await sb.from("consignaciones").update(cambio).eq("id", id);
+  if (error){ showToast("No se pudo aplicar: " + error.message); return; }
+  Object.assign(c, cambio);
+  // Nota en el cliente y, si se pidió, estado PAGO
+  const nota = `consignó ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}${info.banco ? " (" + info.banco.toLowerCase() + ")" : ""}`;
+  r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${nota}` : nota;
+  if (card.querySelector("[data-cs-pago]").checked) r["Estado Trámite"] = esConductorExcluido(r) ? "PAGO CONDUCTOR" : "PAGO";
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore();
+  actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
+  showToast(`✅ ${fmt(info.valor)} aplicado a ${r["Nombre del Afiliado"]}.`);
+}
+async function cambiarEstadoConsignacion(id, estado){
+  const cambio = estado === "pendiente"
+    ? { estado, cedula: null, mes: null, aplicado_por: null, aplicado_at: null }
+    : { estado, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
+  const { error } = await sb.from("consignaciones").update(cambio).eq("id", id);
+  if (error){ showToast("No se pudo cambiar: " + error.message); return; }
+  Object.assign(consignaciones.find(x => x.id === id) || {}, cambio);
+  actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
+}
+
+document.getElementById("navConsigBtn").addEventListener("click", async () => {
+  document.getElementById("overlayConsig").classList.add("show");
+  renderConsignaciones();
+  await cargarConsignaciones();
+  renderConsignaciones();
+});
+document.getElementById("csCerrarBtn").addEventListener("click", () => document.getElementById("overlayConsig").classList.remove("show"));
+document.getElementById("overlayConsig").addEventListener("click", (e) => {
+  if (e.target.id === "overlayConsig"){ e.target.classList.remove("show"); return; }
+  const tab = e.target.closest("[data-cs-tab]");
+  if (tab){ csTab = tab.dataset.csTab; renderConsignaciones(); return; }
+  const a = e.target.closest("[data-cs-aplicar]"); if (a){ aplicarConsignacion(a.dataset.csAplicar); return; }
+  const d = e.target.closest("[data-cs-descartar]"); if (d){ cambiarEstadoConsignacion(d.dataset.csDescartar, "descartada"); return; }
+  const u = e.target.closest("[data-cs-deshacer]"); if (u){ cambiarEstadoConsignacion(u.dataset.csDeshacer, "pendiente"); return; }
+});
+document.getElementById("csPegarBtn").addEventListener("click", async () => {
+  const texto = document.getElementById("csPegarTexto").value.trim();
+  if (!texto){ showToast("Pegue el mensaje del banco."); return; }
+  if (!cloudDb){ showToast("📴 Se necesita internet."); return; }
+  const info = leerMensajeBanco(texto);
+  if (!info.valor){ showToast("No encontré el valor en ese mensaje. Revise que sea la notificación del banco."); return; }
+  const { data, error } = await sb.rpc("registrar_consignacion_equipo", { p_texto: texto });
+  if (error){ showToast("No se pudo agregar: " + error.message); return; }
+  document.getElementById("csPegarTexto").value = "";
+  showToast(data === "repetido" ? "Ese mensaje ya estaba registrado." : "✅ Mensaje agregado.");
+  csTab = "pendiente";
+  await cargarConsignaciones();
+  renderConsignaciones();
+});
+// Se revisan solas cada minuto (las que manda el celular)
+setInterval(() => { if (cloudDb && document.visibilityState === "visible") cargarConsignaciones(); }, 60000);
+
+/* ================= RETIROS ================= */
+function indiceMes(nombre){
+  const m = String(nombre || "").match(/^(\S+)\s+de\s+(\d{4})$/);
+  if (!m) return null;
+  const i = MESES.findIndex(x => x.toLowerCase() === m[1].toLowerCase());
+  return i < 0 ? null : Number(m[2]) * 12 + i;
+}
+function indiceMesDeFecha(iso){
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})/);
+  return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
+}
+function fechaCortaRetiro(iso){ const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; }
+function retiroProgramado(r){
+  if (!r["Fecha Retiro"] || isRetiro(r)) return false;
+  const a = indiceMesDeFecha(r["Fecha Retiro"]), b = indiceMes(store.currentMonth);
+  return a !== null && b !== null && a > b;
+}
+function tagRetiro(r){
+  if (!r) return "";
+  if (retiroProgramado(r)) return `<span class="tag-retiro" title="${escHtml(r["Motivo Retiro"] || "")}">🚪 Se retira el ${fechaCortaRetiro(r["Fecha Retiro"])}</span>`;
+  if (isRetiro(r) && (r["Fecha Retiro"] || r["Motivo Retiro"])){
+    const f = fechaCortaRetiro(r["Fecha Retiro"]);
+    return `<span class="tag-retiro" title="${escHtml(r["Motivo Retiro"] || "")}">🚪 Retiro${f ? " " + f : ""}${r["Motivo Retiro"] === "Reportado en la planilla" ? " (planilla)" : ""}</span>`;
+  }
+  return "";
+}
+// Al crear el mes siguiente: si la fecha de retiro cae en ese mes (o antes), queda en RETIRO
+function aplicarRetiroProgramado(r, nombreMes){
+  if (!r["Fecha Retiro"] || esConductorExcluido(r)) return;
+  const a = indiceMesDeFecha(r["Fecha Retiro"]), b = indiceMes(nombreMes);
+  if (a !== null && b !== null && a <= b) r["Estado Trámite"] = "RETIRO";
+}
+
+function actualizarBotonRetiro(r){
+  const btn = document.getElementById("retirarBtn");
+  if (!btn) return;
+  btn.textContent = r && (isRetiro(r) || retiroProgramado(r)) ? "↩️ Quitar retiro" : "🚪 Retirar";
+}
+function avisoRetiro(){
+  const f = document.getElementById("retiroFecha").value;
+  const a = indiceMesDeFecha(f), b = indiceMes(store.currentMonth);
+  const av = document.getElementById("retiroAviso");
+  if (a === null || b === null){ av.textContent = ""; return; }
+  av.innerHTML = a > b
+    ? `📅 La fecha es de un mes siguiente: en <b>${escHtml(store.currentMonth)}</b> sigue igual y queda en <b>RETIRO</b> automáticamente en el mes de la fecha.`
+    : `Queda en <b>RETIRO</b> en <b>${escHtml(store.currentMonth)}</b> y <b>no pasa</b> al mes siguiente.`;
+}
+document.getElementById("retirarBtn").addEventListener("click", async () => {
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  if (!r) return;
+  if (isRetiro(r) || retiroProgramado(r)){
+    if (!(await confirmarApp(`¿Quitar el retiro de ${r["Nombre del Afiliado"]}? ${isRetiro(r) ? "Vuelve a SIN PAGO en este mes." : "Se cancela el retiro programado."}`))) return;
+    if (isRetiro(r)) r["Estado Trámite"] = "SIN PAGO";
+    r["Fecha Retiro"] = ""; r["Motivo Retiro"] = "";
+    r["_ultimaEdicion"] = new Date().toISOString();
+    saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
+    showToast("Retiro quitado.");
+    return;
+  }
+  document.getElementById("retiroQuien").textContent = `${r["Nombre del Afiliado"]} · Cédula ${r["Cédula"]} · ${store.currentMonth}`;
+  document.getElementById("retiroFecha").value = fechaHoyISO();
+  document.getElementById("retiroMotivo").selectedIndex = 0;
+  document.getElementById("retiroNota").value = "";
+  avisoRetiro();
+  document.getElementById("overlayRetiro").classList.add("show");
+});
+document.getElementById("retiroFecha").addEventListener("change", avisoRetiro);
+document.getElementById("retiroCancelarBtn").addEventListener("click", () => document.getElementById("overlayRetiro").classList.remove("show"));
+document.getElementById("overlayRetiro").addEventListener("click", (e) => { if (e.target.id === "overlayRetiro") e.target.classList.remove("show"); });
+document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  if (!r) return;
+  const fecha = document.getElementById("retiroFecha").value;
+  if (!fecha){ showToast("Elija la fecha de retiro."); return; }
+  const motivo = document.getElementById("retiroMotivo").value;
+  const nota = document.getElementById("retiroNota").value.trim();
+  r["Fecha Retiro"] = fecha;
+  r["Motivo Retiro"] = nota ? `${motivo}: ${nota}` : motivo;
+  const programado = indiceMesDeFecha(fecha) > indiceMes(store.currentMonth);
+  if (!programado) r["Estado Trámite"] = "RETIRO";
+  const obs = `retiro ${fechaCortaRetiro(fecha)}: ${r["Motivo Retiro"].toLowerCase()}`;
+  r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${obs}` : obs;
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore();
+  document.getElementById("overlayRetiro").classList.remove("show");
+  renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  showToast(programado ? `📅 Retiro programado para el ${fechaCortaRetiro(fecha)}.` : `🚪 ${r["Nombre del Afiliado"]} quedó en RETIRO y no pasará al mes siguiente.`);
+});
 </script>
 </body>
 </html>
