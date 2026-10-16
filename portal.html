@@ -125,6 +125,7 @@
 
     <div class="card">
       <h2>Historial mensual</h2>
+      <div style="font-size:12px;color:var(--muted);margin:-4px 0 10px;">Información desde octubre de 2026.</div>
       <div class="table-wrap" id="historialCont"><div class="vacio">Cargando…</div></div>
     </div>
 
@@ -314,6 +315,15 @@ function mostrarErrorDatos(msg){
   document.getElementById("docsCont").innerHTML = "";
 }
 
+const PORTAL_DESDE = 202610; // año*100 + mes
+const MESES_PORTAL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+function fechaDeMes(nombre){
+  const m = String(nombre || "").trim().toLowerCase().match(/^(\S+)\s+de\s+(\d{4})$/);
+  if (!m) return 0;
+  const i = MESES_PORTAL.indexOf(m[1]);
+  return i < 0 ? 0 : Number(m[2]) * 100 + (i + 1);
+}
+
 async function cargarDatosCliente(cedula){
   document.getElementById("miCedula").textContent = `Cédula ${cedula}`;
   let r;
@@ -326,8 +336,11 @@ async function cargarDatosCliente(cedula){
   if (r.status === 401){ mostrarLogin(); document.getElementById("loginErr").textContent = "Tu sesión venció. Vuelve a entrar."; return; }
   if (!r.ok || !Array.isArray(r.cuerpo)){ mostrarErrorDatos("No se pudo cargar tu historial. Intenta de nuevo en un momento."); return; }
 
-  const filas = r.cuerpo.slice().sort((a, b) => (a.months?.sort_order ?? 9999) - (b.months?.sort_order ?? 9999));
-  document.getElementById("quienSoy").textContent = filas.length ? (filas[0].nombre || "Cliente") : "Cliente";
+  // El cliente ve su información desde octubre de 2026 (la base de datos tampoco entrega meses anteriores).
+  const filas = r.cuerpo
+    .filter(row => row.months && fechaDeMes(row.months.name) >= PORTAL_DESDE)
+    .sort((a, b) => fechaDeMes(a.months.name) - fechaDeMes(b.months.name));
+  document.getElementById("quienSoy").textContent = filas.length ? (filas[filas.length - 1].nombre || "Cliente") : "Cliente";
 
   let saldoAcumulado = 0;
   const apariciones = filas.map(row => {
@@ -372,7 +385,7 @@ async function cargarDatosCliente(cedula){
         `).join("")}
       </tbody>
     </table>
-  ` : `<div class="vacio">Todavía no hay historial registrado.</div>`;
+  ` : `<div class="vacio">Todavía no hay historial registrado desde octubre de 2026.</div>`;
 
   await cargarDocumentos(cedula);
 }
