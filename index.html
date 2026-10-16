@@ -194,7 +194,13 @@
   .bell-empty{ padding:16px; text-align:center; font-size:12.5px; color:var(--muted); }
   .bell-section-title{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; padding:8px 10px 2px; }
 
-  .stats-strip{ display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-bottom:10px; }
+  .stats-strip{ display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; margin-bottom:10px; }
+  .stat-card.stat-caja{ border-top-color:#2E7D8C; }
+  .stat-card.stat-caja.active{ background:rgba(46,125,140,.12); border-color:#2E7D8C; }
+  .tag-caja{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
+    background:rgba(46,125,140,.13); color:#1F6270; white-space:nowrap; vertical-align:middle; }
+  @media (prefers-color-scheme: dark){ .tag-caja{ color:#7CC4D1; } }
+  @media (max-width:760px){ .row .name .tag-caja{ display:table; margin:3px 0 0; } }
   @media (max-width:1100px){ .stats-strip{ grid-template-columns:repeat(3, 1fr); } }
   @media (max-width:760px){ .stats-strip{ grid-template-columns:repeat(2, 1fr); } }
   .stat-card.stat-confirmar{ border-top-color:#C98A1B; }
@@ -4108,6 +4114,7 @@ function renderStatsStrip(){
   const pendientes = aplica.length - pagados;
   const atrasados = records.filter(estaAtrasado).length;
   const porConfirmar = records.filter(r => pendientesConfirmacion(r).length);
+  const conCaja = records.filter(tieneCaja);
 
   const activa = (valor) => filtroEstado === valor ? "active" : "";
   document.getElementById("statsStrip").innerHTML = `
@@ -4134,6 +4141,11 @@ function renderStatsStrip(){
         ? ["PSN", "OTRAS", "INDEP"].map(g => `${g === "PSN" ? "PSN" : g === "OTRAS" ? "Otras" : "Indep."} ${porConfirmar.filter(r => grupoConfirmacion(r) === g).length}`).join(" · ")
         : "EPS · pensión · caja · ARL"}</div>
     </button>
+    <button type="button" class="stat-card stat-caja ${activa("__CAJA__")}" data-filtro="__CAJA__" title="Clientes que pagan caja de compensación este mes">
+      <div class="stat-label">🏦 Caja de compensación</div>
+      <div class="stat-value">${conCaja.length}</div>
+      <div class="stat-detalle">${["PSN", "OTRAS", "INDEP"].map(g => `${g === "PSN" ? "PSN" : g === "OTRAS" ? "Otras" : "Indep."} ${conCaja.filter(r => grupoConfirmacion(r) === g).length}`).join(" · ")}</div>
+    </button>
   `;
 }
 
@@ -4145,25 +4157,29 @@ function renderGruposConfirmacion(){
     cont.className = "confirmar-grupos";
     document.getElementById("statsStrip").insertAdjacentElement("afterend", cont);
     cont.addEventListener("click", (e) => {
+      if (e.target.closest("#exportarCajaBtn")){ exportarListaCaja(); return; }
       const b = e.target.closest("[data-grupo-conf]");
       if (!b) return;
       grupoConfirmacionFiltro = b.dataset.grupoConf;
       renderList(searchInput.value);
     });
   }
-  if (filtroEstado !== "__POR_CONFIRMAR__"){ cont.style.display = "none"; return; }
-  const lista = records.filter(r => pendientesConfirmacion(r).length);
+  if (filtroEstado !== "__POR_CONFIRMAR__" && filtroEstado !== "__CAJA__"){ cont.style.display = "none"; return; }
+  const esCaja = filtroEstado === "__CAJA__";
+  const lista = esCaja ? records.filter(tieneCaja) : records.filter(r => pendientesConfirmacion(r).length);
   const n = (g) => g ? lista.filter(r => grupoConfirmacion(r) === g).length : lista.length;
   cont.style.display = "flex";
   cont.innerHTML = ["", "PSN", "OTRAS", "INDEP"].map(g =>
     `<button type="button" data-grupo-conf="${g}" class="${grupoConfirmacionFiltro === g ? "active" : ""}">${g ? NOMBRES_GRUPO_CONFIRMACION[g] : "Todos"} (${n(g)})</button>`
-  ).join("") + `<span style="font-size:11.5px;color:var(--muted);align-self:center;">En rojo: llevan ${DIAS_ALERTA_CONFIRMACION} días o más sin confirmar.</span>`;
+  ).join("") + (esCaja
+    ? `<span style="font-size:11.5px;color:var(--muted);align-self:center;">Total caja del mes: <b>${fmt(lista.filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro).reduce((a, r) => a + numOrZero(r["Valor Caja"]), 0))}</b> · <button type="button" id="exportarCajaBtn" style="border:none;background:none;padding:0;color:var(--navy);text-decoration:underline;cursor:pointer;font:inherit;font-size:11.5px;">Descargar lista</button></span>`
+    : `<span style="font-size:11.5px;color:var(--muted);align-self:center;">En rojo: llevan ${DIAS_ALERTA_CONFIRMACION} días o más sin confirmar.</span>`);
 }
 
 document.getElementById("statsStrip").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-filtro]");
   if (!btn) return;
-  if (btn.dataset.filtro !== "__POR_CONFIRMAR__") grupoConfirmacionFiltro = "";
+  if (btn.dataset.filtro !== filtroEstado) grupoConfirmacionFiltro = "";
   filtroEstado = btn.dataset.filtro;
   renderList(searchInput.value);
 });
@@ -4241,6 +4257,33 @@ function tagConfirmacion(r){
   const n = diasEnProceso(r);
   const dem = confirmacionDemorada(r);
   return `<span class="tag-confirmar ${dem ? "demorado" : ""}" title="Afiliación en proceso: falta confirmar ${f.join(", ")}">⏳ ${f.join(" · ")}${n !== null ? ` · ${n === 0 ? "hoy" : n + (n === 1 ? " día" : " días")}` : ""}</span>`;
+}
+
+// ---- Caja de compensación ----
+// Paga caja si tiene valor de caja o la caja está Activa / En proceso. Sin retirados ni clientes solo de servicio.
+function tieneCaja(r){
+  if (!r || esConductorExcluido(r)) return false;
+  if (estadoClass(r["Estado Trámite"]) === "RETIRO") return false;
+  const est = String(r["Estado Caja"] || "").trim().toLowerCase();
+  return numOrZero(r["Valor Caja"]) > 0 || est === "activo" || est === "en proceso";
+}
+function tagCaja(r){
+  if (filtroEstado !== "__CAJA__" || !tieneCaja(r)) return "";
+  const est = String(r["Estado Caja"] || "").trim();
+  const v = numOrZero(r["Valor Caja"]);
+  return `<span class="tag-caja">🏦 ${v ? fmt(v) : "sin valor"}${est && est.toLowerCase() !== "activo" ? " · " + escHtml(est) : ""}</span>`;
+}
+function exportarListaCaja(){
+  const lista = records.filter(tieneCaja).filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro);
+  const c = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const filas = [["Cédula", "Nombre", "Grupo", "Empresa", "Caja", "Estado caja", "Valor caja", "Estado trámite"].map(c).join(";")]
+    .concat(lista.map(r => [r["Cédula"], r["Nombre del Afiliado"], NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacion(r)], r["Empresa"], r["Caja de Compensación"], r["Estado Caja"], numOrZero(r["Valor Caja"]), r["Estado Trámite"]].map(c).join(";")));
+  const blob = new Blob(["\ufeff" + filas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `caja_compensacion_${store.currentMonth.replace(/\s+/g, "_")}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 // Un cliente está atrasado si ya pasó el día 16 del mes real y sigue en SIN PAGO.
@@ -4423,6 +4466,9 @@ function renderList(filterText){
       .filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro)
       // Los que llevan más días esperando, primero
       .sort((a, b) => (diasEnProceso(b) ?? -1) - (diasEnProceso(a) ?? -1));
+  } else if (filtroEstado === "__CAJA__"){
+    filtered = filtered.filter(tieneCaja)
+      .filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro);
   } else if (filtroEstado === "__OTRA_EMPRESA__"){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esOtraEmpresa);
   } else if (filtroEstado === "__INDEPENDIENTES__"){
@@ -4444,6 +4490,7 @@ function renderList(filterText){
     "PAGO": "Pagados este mes",
     "__PENDIENTES__": "Pendientes de pago",
     "__ATRASADOS__": "Atrasados (pasaron el día 16)",
+    "__CAJA__": `Con caja de compensación${grupoConfirmacionFiltro ? " · " + NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacionFiltro] : ""}`,
     "__POR_CONFIRMAR__": `Por confirmar afiliación${grupoConfirmacionFiltro ? " · " + NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacionFiltro] : ""} (EPS, pensión, caja o ARL en proceso)`,
   };
   if (q){
@@ -4479,7 +4526,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
