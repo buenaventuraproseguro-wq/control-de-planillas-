@@ -974,8 +974,8 @@
         <button type="button" class="sidebar-link sub" id="navMensajeBtn">💬 Mensaje de recordatorio</button>
       </div>
 
-      <div class="sidebar-section-title solo-admin">Empresa</div>
-      <button type="button" class="sidebar-link solo-admin" id="navGastosBtn">💸 Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+      <div class="sidebar-section-title">Empresa</div>
+      <button type="button" class="sidebar-link" id="navGastosBtn">💸 Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
 
       <div class="sidebar-section-title">Enlaces rápidos</div>
       <a class="sidebar-link" href="https://www.adres.gov.co/consulte-su-eps" target="_blank" rel="noopener">🔗 ADRES — Consultar EPS</a>
@@ -1559,7 +1559,7 @@
 <div class="overlay" id="overlayGastos">
   <div class="modal">
     <h2>💸 Gastos de la empresa</h2>
-    <div class="modal-sub">Gastos ocasionales, facturas, arriendo y pagos de trabajos. Solo el administrador puede ver y cambiar esta lista.</div>
+    <div class="modal-sub">Gastos ocasionales, facturas, arriendo y pagos de trabajos. Todo el equipo puede ver y agregar gastos y marcarlos como pagados; solo el administrador puede cambiar o eliminar un gasto ya guardado.</div>
 
     <div class="g-barra">
       <div class="field"><label>Mes</label><input type="month" id="gMes"></div>
@@ -6389,7 +6389,7 @@ async function mostrarAppPrincipal(user){
   document.body.classList.toggle("rol-admin", esAdmin());
   document.body.classList.toggle("rol-operador", !esAdmin());
   await iniciarAppConSupabase();
-  if (esAdmin()) cargarGastos();
+  cargarGastos();
   cargarCRM();
 }
 
@@ -7119,7 +7119,6 @@ function leerCacheGastos(){
 function sinInternetGastos(){ return !sb || modoSinConexion || (typeof navigator !== "undefined" && navigator.onLine === false); }
 
 async function cargarGastos(){
-  if (!esAdmin()) return;
   if (sinInternetGastos()){ leerCacheGastos(); gastosCargados = true; return; }
   try{
     const [{ data: filas, error: e1 }, { data: cats, error: e2 }] = await Promise.all([
@@ -7223,8 +7222,8 @@ function renderGastos(){
         <td><div class="g-acciones">
           ${g.estado !== "pagado" ? `<button type="button" class="btn ghost" data-g-accion="pagar" title="Marcar como pagado">✅ Pagado</button>` : ""}
           ${g.comprobante_path ? `<a class="btn ghost g-ver" data-g-path="${escHtml(g.comprobante_path)}" target="_blank" rel="noopener" title="Ver factura o recibo" aria-disabled="true">📎</a>` : ""}
-          <button type="button" class="btn ghost" data-g-accion="editar" title="Editar">✏️</button>
-          <button type="button" class="btn ghost danger" data-g-accion="borrar" title="Eliminar">🗑️</button>
+          ${esAdmin() ? `<button type="button" class="btn ghost" data-g-accion="editar" title="Editar">✏️</button>
+          <button type="button" class="btn ghost danger" data-g-accion="borrar" title="Eliminar">🗑️</button>` : ""}
         </div></td>
       </tr>`;
     }).join("")}</tbody>`;
@@ -7257,7 +7256,6 @@ document.getElementById("gTabla").addEventListener("click", (e) => {
 });
 
 async function abrirGastos(){
-  if (!esAdmin()){ showToast("Solo el administrador puede ver los gastos de la empresa."); return; }
   const inp = document.getElementById("gMes");
   if (!inp.value) inp.value = mesDeFecha(hoyISO());
   document.getElementById("overlayGastos").classList.add("show");
@@ -7320,7 +7318,8 @@ function nombreArchivoSeguro(n){
 
 async function guardarGasto(ev){
   ev.preventDefault();
-  if (!esAdmin()) return;
+  // Los trabajadores agregan gastos nuevos; cambiar uno ya guardado es solo del administrador.
+  if (gastoEditando && !esAdmin()){ showToast("Solo el administrador puede cambiar un gasto ya guardado."); return; }
   if (sinInternetGastos()){ showToast("📴 Sin internet: no se puede guardar el gasto ahora."); return; }
   const anterior = gastoEditando ? gastos.find(x => x.id === gastoEditando) : null;
   const valor = Math.round(Number(document.getElementById("gValor").value));
@@ -7362,7 +7361,7 @@ async function guardarGasto(ev){
     }
     const { error } = await sb.from("gastos").upsert(g);
     if (error) throw error;
-    if (rutaVieja && rutaVieja !== g.comprobante_path){
+    if (rutaVieja && rutaVieja !== g.comprobante_path && esAdmin()){
       try{ await sb.storage.from("gastos-empresa").remove([rutaVieja]); }catch(e){ console.error(e); }
     }
     const i = gastos.findIndex(x => x.id === g.id);
@@ -7384,7 +7383,7 @@ async function guardarGasto(ev){
 async function accionGasto(id, accion){
   const g = gastos.find(x => x.id === id);
   if (!g) return;
-  if (accion === "editar"){ abrirFormGasto(g); return; }
+  if (accion === "editar"){ if (esAdmin()) abrirFormGasto(g); return; }
   if (sinInternetGastos()){ showToast("📴 Sin internet: para cambiar los gastos se necesita conexión."); return; }
   if (accion === "pagar"){
     const cambio = { estado: "pagado", fecha_pago: hoyISO(), updated_at: new Date().toISOString() };
@@ -7396,6 +7395,7 @@ async function accionGasto(id, accion){
     return;
   }
   if (accion === "borrar"){
+    if (!esAdmin()){ showToast("Solo el administrador puede eliminar gastos."); return; }
     if (!confirm(`¿Eliminar el gasto "${g.descripcion}" por ${fmt(g.valor)}?\n\nEsto no se puede deshacer.`)) return;
     const { error } = await sb.from("gastos").delete().eq("id", id);
     if (error){ showToast("No se pudo eliminar: " + error.message); return; }
