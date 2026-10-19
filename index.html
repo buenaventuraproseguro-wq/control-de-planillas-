@@ -150,6 +150,17 @@
   .guia-edit input, .guia-edit textarea{ width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:7px 9px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); }
   .guia-edit textarea{ min-height:64px; resize:vertical; }
   .guia-acciones{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; }
+  .guia-archivos{ margin-top:12px; border-top:1px dashed var(--line); padding-top:10px; }
+  .guia-archivos h4{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
+  .guia-archivo{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:6px; background:var(--bg); }
+  .guia-archivo .nom{ flex:1; min-width:160px; font-weight:600; }
+  .guia-archivo .nom small{ display:block; font-weight:400; color:var(--muted); font-size:11.5px; }
+  .guia-archivo .btns{ display:flex; gap:6px; flex-wrap:wrap; }
+  .guia-subir{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; border:1px dashed var(--line); border-radius:8px; padding:10px; }
+  .guia-subir > *{ min-width:0; }
+  .guia-subir label{ font-size:11.5px; font-weight:700; color:var(--muted); display:block; }
+  .guia-subir select, .guia-subir input[type=text], .guia-subir input[type=file]{ width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:6px 8px; border-radius:8px; border:1.5px solid var(--line); background:var(--panel); color:var(--ink); }
+  @media (max-width:560px){ .guia-subir{ grid-template-columns:1fr; } }
   .enlace-edit-row{ display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--panel); }
   .enlace-edit-row .info{ flex:1; min-width:0; }
   .enlace-edit-row .info b{ display:block; font-size:13.5px; }
@@ -5222,6 +5233,7 @@ function limpiarItemGuia(x){
   const o = { eps: String(x.eps) };
   CAMPOS_GUIA.forEach(([k]) => { o[k] = String(x[k] || ""); });
   if (!o.activacion && x.tiempo) o.activacion = String(x.tiempo); // versión anterior
+  o.archivos = Array.isArray(x.archivos) ? x.archivos.filter(a => a && Array.isArray(a.partes) && a.partes.length) : [];
   return o;
 }
 let guiaEps = (() => {
@@ -5254,6 +5266,135 @@ async function guardarGuiaEps(){
 function enlazarTexto(t){
   return escHtml(t).replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/g, (m) => `<a href="${m.startsWith("http") ? m : "https://" + m}" target="_blank" rel="noopener">${m}</a>`);
 }
+// ---- Archivos de cada EPS (formularios, carta de derechos…) ----
+// Se guardan en la carpeta privada "guia-eps". Los PDF se convierten a imágenes (una por página) para que pesen poco.
+const TIPOS_ARCHIVO_GUIA = { formulario: "Formulario de afiliación", carta: "Carta de derechos y deberes", otro: "Otro documento" };
+const MAX_PAGINAS_GUIA = 15;
+function slugGuia(t){ return String(t || "eps").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "eps"; }
+function htmlArchivosGuia(x){
+  const archivos = x.archivos || [];
+  const lista = archivos.map((a, k) => `
+    <div class="guia-archivo">
+      <div class="nom">📄 ${escHtml(a.nombre)}<small>${escHtml(TIPOS_ARCHIVO_GUIA[a.tipo] || "Documento")} · ${a.partes.length > 1 ? a.partes.length + " páginas" : "1 página"}${a.peso ? " · " + tamanoLegible(a.peso) : ""}${a.original ? " · con PDF original" : ""}</small></div>
+      <div class="btns">
+        ${a.partes.map((pt, n) => `<button type="button" class="btn small" data-guia-descargar="${x._i}|${k}|${n}">⬇️ ${a.partes.length > 1 ? "Pág. " + (n + 1) : "Descargar"}</button>`).join("")}
+        ${a.original ? `<button type="button" class="btn small ghost" data-guia-descargar="${x._i}|${k}|orig">⬇️ PDF original</button>` : ""}
+        ${esAdmin() ? `<button type="button" class="btn small ghost danger" data-guia-borrar-archivo="${x._i}|${k}" title="Borrar">🗑️</button>` : ""}
+      </div>
+    </div>`).join("");
+  const subir = esAdmin() ? `
+    <div class="guia-subir" data-guia-subir="${x._i}">
+      <div><label>Tipo</label><select data-guia-subir-tipo>${Object.entries(TIPOS_ARCHIVO_GUIA).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></div>
+      <div><label>Nombre (opcional)</label><input type="text" data-guia-subir-nombre placeholder="Ej: Formulario único 2026"></div>
+      <div style="grid-column:1 / -1;"><label>Archivo (PDF o foto)</label><input type="file" accept="application/pdf,image/*" data-guia-subir-archivo></div>
+      <label style="grid-column:1 / -1; display:flex; gap:6px; align-items:center; font-weight:500; text-transform:none; letter-spacing:0; color:var(--ink);"><input type="checkbox" data-guia-subir-original> Guardar también el PDF original (si el formulario se llena en el computador)</label>
+      <div style="grid-column:1 / -1; display:flex; justify-content:flex-end;"><button type="button" class="btn small primary" data-guia-subir-btn="${x._i}">⬆️ Subir archivo</button></div>
+    </div>` : "";
+  if (!archivos.length && !esAdmin()) return `<div class="guia-archivos"><h4>📎 Formularios y documentos</h4><span class="sin-dato">Esta EPS todavía no tiene archivos.</span></div>`;
+  return `<div class="guia-archivos"><h4>📎 Formularios y documentos</h4>${lista || `<div class="sin-dato" style="margin-bottom:6px;">Todavía no hay archivos. Súbalos aquí para que el equipo los descargue.</div>`}${subir}</div>`;
+}
+async function pdfAPaginasJpg(file){
+  const pdfjs = await cargarLectorPDF();
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  if (pdf.numPages > MAX_PAGINAS_GUIA) throw new Error(`El PDF tiene ${pdf.numPages} páginas (máximo ${MAX_PAGINAS_GUIA}).`);
+  const paginas = [];
+  for (let i = 1; i <= pdf.numPages; i++){
+    const pagina = await pdf.getPage(i);
+    const base = pagina.getViewport({ scale: 1 });
+    const vista = pagina.getViewport({ scale: Math.min(3, 1400 / base.width) });
+    const c = document.createElement("canvas");
+    c.width = Math.round(vista.width); c.height = Math.round(vista.height);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+    await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
+    paginas.push(dataUrlToBlob(c.toDataURL("image/jpeg", 0.75)));
+  }
+  return paginas;
+}
+function imagenAJpg(file){
+  return new Promise((resolve) => comprimirImagen(file, (dataUrl) => resolve(dataUrlToBlob(dataUrl))));
+}
+async function subirArchivoGuia(i, box){
+  if (!esAdmin()) return;
+  const x = guiaEps[i];
+  const input = box.querySelector("[data-guia-subir-archivo]");
+  const file = input.files[0];
+  if (!file){ showToast("Elija el archivo (PDF o foto)."); return; }
+  if (file.size > 15 * 1024 * 1024){ showToast("El archivo pesa más de 15 MB."); return; }
+  const esPdf = /pdf$/i.test(file.type) || /\.pdf$/i.test(file.name);
+  if (!esPdf && !/^image\//.test(file.type)){ showToast("Solo se aceptan PDF o fotos."); return; }
+  const tipo = box.querySelector("[data-guia-subir-tipo]").value;
+  const nombre = (box.querySelector("[data-guia-subir-nombre]").value.trim() || TIPOS_ARCHIVO_GUIA[tipo]).slice(0, 80);
+  const conOriginal = esPdf && box.querySelector("[data-guia-subir-original]").checked;
+  const btn = box.querySelector("[data-guia-subir-btn]");
+  btn.disabled = true; btn.textContent = esPdf ? "Convirtiendo a imagen…" : "Subiendo…";
+  try{
+    const blobs = esPdf ? await pdfAPaginasJpg(file) : [await imagenAJpg(file)];
+    btn.textContent = "Subiendo…";
+    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    const carpeta = `${slugGuia(x.eps)}/${id}`;
+    const base = slugGuia(nombre);
+    const partes = [];
+    for (let n = 0; n < blobs.length; n++){
+      const path = `${carpeta}/${base}${blobs.length > 1 ? "-pag" + (n + 1) : ""}.jpg`;
+      const { error } = await sb.storage.from("guia-eps").upload(path, blobs[n], { contentType: "image/jpeg", upsert: false });
+      if (error) throw error;
+      partes.push({ path, nombre: path.split("/").pop() });
+    }
+    let original = null;
+    if (conOriginal){
+      const path = `${carpeta}/${base}-original.pdf`;
+      const { error } = await sb.storage.from("guia-eps").upload(path, file, { contentType: "application/pdf", upsert: false });
+      if (error) throw error;
+      original = { path, nombre: path.split("/").pop() };
+    }
+    const peso = blobs.reduce((a, b) => a + b.size, 0) + (conOriginal ? file.size : 0);
+    x.archivos = (x.archivos || []).concat([{ id, tipo, nombre, partes, original, peso, fecha: new Date().toISOString().slice(0, 10) }]);
+    renderGuiaEps();
+    abrirEpsGuia(i);
+    const ok = await guardarGuiaEps();
+    showToast(ok ? `✅ "${nombre}" guardado (${blobs.length} página(s) en imagen, ${tamanoLegible(blobs.reduce((a, b) => a + b.size, 0))}${esPdf ? ` en vez de ${tamanoLegible(file.size)}` : ""}).` : "El archivo se subió, pero no se pudo guardar en la guía.");
+  }catch(e){
+    console.error(e);
+    const m = String(e && e.message || e);
+    showToast(/bucket|not found/i.test(m) ? "Falta activar la carpeta de archivos (archivo guia_eps_archivos.sql)." : "No se pudo subir: " + m);
+    btn.disabled = false; btn.textContent = "⬆️ Subir archivo";
+  }
+}
+function abrirEpsGuia(i){
+  const d = document.querySelector(`.guia-eps[data-guia-i="${i}"]`);
+  if (d) d.open = true;
+}
+async function descargarArchivoGuia(i, k, n){
+  const a = (guiaEps[i] && guiaEps[i].archivos || [])[k];
+  if (!a) return;
+  const parte = n === "orig" ? a.original : a.partes[Number(n)];
+  if (!parte) return;
+  if (sinInternetGastos()){ showToast("📴 Se necesita internet para descargar el archivo."); return; }
+  const ventana = window.open("", "_blank");
+  try{
+    const { data, error } = await sb.storage.from("guia-eps").createSignedUrl(parte.path, 600, { download: parte.nombre });
+    if (error) throw error;
+    if (ventana) ventana.location.href = data.signedUrl; else location.href = data.signedUrl;
+  }catch(e){
+    if (ventana) ventana.close();
+    showToast("No se pudo descargar: " + (e.message || e));
+  }
+}
+async function borrarArchivoGuia(i, k){
+  if (!esAdmin()) return;
+  const x = guiaEps[i];
+  const a = (x.archivos || [])[k];
+  if (!a) return;
+  if (!(await confirmarApp(`¿Seguro que quiere borrar "${a.nombre}" de ${x.eps}? El equipo ya no lo podrá descargar.`))) return;
+  const rutas = a.partes.map(pt => pt.path).concat(a.original ? [a.original.path] : []);
+  try{ await sb.storage.from("guia-eps").remove(rutas); }catch(e){ console.error(e); }
+  x.archivos.splice(k, 1);
+  renderGuiaEps();
+  abrirEpsGuia(i);
+  if (await guardarGuiaEps()) showToast("Archivo borrado.");
+}
+
 function renderGuiaEps(){
   const q = normalizarTexto(document.getElementById("guiaBuscar").value);
   const lista = guiaEps.map((x, i) => ({ ...x, _i: i })).filter(x => !q || normalizarTexto(x.eps).includes(q))
@@ -5276,6 +5417,7 @@ function renderGuiaEps(){
         <button type="button" class="btn small primary" data-guia-guardar="${x._i}">Guardar</button>
       </div>` : `
       <dl>${CAMPOS_GUIA.map(([k, t]) => `<dt>${t}</dt><dd>${x[k] ? enlazarTexto(x[k]) : `<span class="sin-dato">Sin información todavía</span>`}</dd>`).join("")}</dl>
+      ${htmlArchivosGuia(x)}
       ${esAdmin() ? `<div class="guia-acciones"><button type="button" class="btn small" data-guia-editar="${x._i}">✏️ Editar</button></div>` : ""}`;
     return `<details class="guia-eps" ${editando ? "open" : ""} data-guia-i="${x._i}">
       <summary>🏥 ${escHtml(x.eps)}<span class="guia-tiempo ${x.radicacion || x.activacion ? "" : "vacio"}">${x.radicacion || x.activacion
@@ -5307,6 +5449,12 @@ document.getElementById("guiaAgregarBtn").addEventListener("click", () => {
   if (el){ el.scrollIntoView({ block: "center" }); el.select(); }
 });
 document.getElementById("guiaLista").addEventListener("click", async (e) => {
+  const dsc = e.target.closest("[data-guia-descargar]");
+  if (dsc){ e.preventDefault(); const [i, k, n] = dsc.dataset.guiaDescargar.split("|"); descargarArchivoGuia(Number(i), Number(k), n); return; }
+  const ba = e.target.closest("[data-guia-borrar-archivo]");
+  if (ba){ e.preventDefault(); const [i, k] = ba.dataset.guiaBorrarArchivo.split("|").map(Number); borrarArchivoGuia(i, k); return; }
+  const sub = e.target.closest("[data-guia-subir-btn]");
+  if (sub){ e.preventDefault(); subirArchivoGuia(Number(sub.dataset.guiaSubirBtn), sub.closest("[data-guia-subir]")); return; }
   const ed = e.target.closest("[data-guia-editar]");
   if (ed){ e.preventDefault(); guiaEditando = Number(ed.dataset.guiaEditar); renderGuiaEps(); return; }
   if (e.target.closest("[data-guia-cancelar]")){
@@ -5709,7 +5857,7 @@ function alertApp(mensaje){
 function showToast(msg){
   const esAdvertencia = msg.startsWith("⚠️") || PALABRAS_ADVERTENCIA.some(p => msg.toLowerCase().includes(p));
   const icono = esAdvertencia ? "⚠️" : "✅";
-  const textoLimpio = msg.startsWith("⚠️") ? msg.slice(2).trim() : msg;
+  const textoLimpio = msg.replace(/^\s*(⚠️|✅)\s*/u, "");
   toast.innerHTML = `<span class="toast-icon">${icono}</span><span>${textoLimpio}</span>`;
   toast.classList.add("show");
   clearTimeout(showToast._t);
