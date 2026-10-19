@@ -376,6 +376,10 @@
   }
   .breakdown .meta{ font-size:12.5px; color:var(--muted); margin-bottom:12px; }
   .meta-resaltado{ color:var(--navy-deep); background:var(--accent-bg); padding:1px 6px; border-radius:5px; }
+  .ced-copiar{ font:inherit; font-weight:700; border:none; cursor:pointer; line-height:inherit; vertical-align:baseline; }
+  .ced-copiar span{ font-size:.85em; opacity:.75; }
+  .ced-copiar:hover{ filter:brightness(.95); }
+  .ced-copiar.copiado{ outline:2px solid var(--pago); }
   .breakdown .actions{ display:flex; gap:8px; flex-wrap:wrap; min-width:0; max-width:100%; }
   .cards{ display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; }
   @media (max-width:760px){ .cards{ grid-template-columns:repeat(2, 1fr); } }
@@ -5004,7 +5008,7 @@ function showBreakdown(cedula){
   const tieneRecordatorioMeta = tieneRecordatorioVencido(r);
 
   document.getElementById("bMeta").innerHTML =
-    `<b class="meta-resaltado">Cédula ${r["Cédula"]}</b> · ${r["Responsable / Grupo"] || "—"} · ${ubicacion}` +
+    `<button type="button" class="meta-resaltado ced-copiar" data-copiar-cedula="${escHtml(r["Cédula"])}" title="Tocar para copiar la cédula">Cédula ${escHtml(r["Cédula"])} <span aria-hidden="true">📋</span></button> · ${r["Responsable / Grupo"] || "—"} · ${ubicacion}` +
     (planillaVigente ? ` · Planilla pagada: ${planillaVigente}` : "") +
     (r["Muelle"] ? ` · Muelle: ${r["Muelle"]}` : "") +
     (tieneNovedadMuelle ? ` · <b class="meta-resaltado">⚠️ Novedad pendiente en muelle</b>` : "") +
@@ -5863,6 +5867,28 @@ function showToast(msg){
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => toast.classList.remove("show"), 2400);
 }
+
+// Copiar texto al portapapeles (con plan B para navegadores viejos)
+async function copiarTexto(texto){
+  try{ await navigator.clipboard.writeText(texto); return true; }catch(e){}
+  try{
+    const t = document.createElement("textarea");
+    t.value = texto; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select(); t.setSelectionRange(0, texto.length);
+    const ok = document.execCommand("copy"); t.remove(); return ok;
+  }catch(e){ return false; }
+}
+document.getElementById("bMeta").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copiar-cedula]");
+  if (!b) return;
+  const ced = b.dataset.copiarCedula;
+  if (await copiarTexto(ced)){
+    showToast(`Cédula ${ced} copiada. Ya la puede pegar donde la necesite.`);
+    b.classList.add("copiado"); setTimeout(() => b.classList.remove("copiado"), 1200);
+  } else {
+    showToast("⚠️ No se pudo copiar. Mantenga presionado el número para copiarlo.");
+  }
+});
 
 /* ---- Eventos de lista y búsqueda ---- */
 listEl.addEventListener("click", (e) => {
