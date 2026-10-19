@@ -723,6 +723,9 @@
   .traslado-campos{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; margin-top:10px; }
   @media (max-width:560px){ .traslado-campos{ grid-template-columns:1fr; } }
   .traslado-campos label{ font-size:12px; font-weight:600; color:var(--muted); display:block; margin-bottom:4px; }
+  .tag-recargo{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
+    background:var(--retiro-bg); color:var(--retiro); white-space:nowrap; vertical-align:middle; }
+  @media (max-width:760px){ .row .name .tag-recargo{ display:table; margin:3px 0 0; } }
   .stat-card.stat-traslado{ border-top-color:#7A6FC4; }
   .stat-card.stat-traslado.active{ background:rgba(122,111,196,.12); border-color:#7A6FC4; }
   .tag-traslado{ display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px; margin-left:6px;
@@ -1885,6 +1888,9 @@ let columnasConfirmacion = (() => { try{ return localStorage.getItem(COLUMNAS_CO
 // ¿La base ya tiene "fecha_retiro" y "motivo_retiro"? (archivo retiros.sql)
 const COLUMNAS_RETIRO_KEY = "prosegurosnet_columnas_retiro";
 let columnasRetiro = (() => { try{ return localStorage.getItem(COLUMNAS_RETIRO_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene "recargo_mora"? (archivo recargo_mora.sql)
+const COLUMNAS_RECARGO_KEY = "prosegurosnet_columnas_recargo";
+let columnasRecargo = (() => { try{ return localStorage.getItem(COLUMNAS_RECARGO_KEY) === "1"; }catch(e){ return false; } })();
 async function detectarColumnasConfirmacion(){
   try{
     const { error } = await sb.from("clients").select("estado_arl,en_proceso_desde").limit(1);
@@ -1900,6 +1906,13 @@ async function detectarColumnasConfirmacion(){
       if (/fecha_retiro|motivo_retiro|column|schema cache/i.test(String(error.message || ""))) columnasRetiro = false;
     } else columnasRetiro = true;
     try{ localStorage.setItem(COLUMNAS_RETIRO_KEY, columnasRetiro ? "1" : "0"); }catch(e){}
+  }catch(e){}
+  try{
+    const { error } = await sb.from("clients").select("recargo_mora").limit(1);
+    if (error){
+      if (/recargo_mora|column|schema cache/i.test(String(error.message || ""))) columnasRecargo = false;
+    } else columnasRecargo = true;
+    try{ localStorage.setItem(COLUMNAS_RECARGO_KEY, columnasRecargo ? "1" : "0"); }catch(e){}
   }catch(e){}
 }
 function esRecordToDbRow(r, monthId){
@@ -1944,6 +1957,9 @@ function esRecordToDbRow(r, monthId){
       fecha_retiro: r["Fecha Retiro"] || null,
       motivo_retiro: r["Motivo Retiro"] || "",
     } : {}),
+    ...(columnasRecargo ? {
+      recargo_mora: r["Recargo Mora"] === "" || r["Recargo Mora"] == null ? null : Number(r["Recargo Mora"]),
+    } : {}),
   };
 }
 function dbRowToEsRecord(row){
@@ -1983,6 +1999,7 @@ function dbRowToEsRecord(row){
     "En Proceso Desde": row.en_proceso_desde || "",
     "Fecha Retiro": row.fecha_retiro || "",
     "Motivo Retiro": row.motivo_retiro || "",
+    "Recargo Mora": row.recargo_mora == null ? "" : row.recargo_mora,
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
   };
@@ -2518,6 +2535,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.en_proceso_desde === "" || o.en_proceso_desde == null)) delete o.en_proceso_desde;
     if (o && (o.fecha_retiro === "" || o.fecha_retiro == null)) delete o.fecha_retiro;
     if (o && (o.motivo_retiro === "" || o.motivo_retiro == null)) delete o.motivo_retiro;
+    if (o && o.recargo_mora == null) delete o.recargo_mora;
     return JSON.stringify(o);
   }catch(e){ return texto; }
 }
@@ -3335,7 +3353,9 @@ document.getElementById("bTareasCliente").addEventListener("click", (e) => {
   const a = e.target.closest("[data-traslado-aprobar]");
   if (a){ aprobarTraslado(a.dataset.trasladoAprobar); return; }
   const b = e.target.closest("[data-traslado-borrar]");
-  if (b){ borrarTraslado(b.dataset.trasladoBorrar); }
+  if (b){ borrarTraslado(b.dataset.trasladoBorrar); return; }
+  const q = e.target.closest("[data-quitar-recargo]");
+  if (q){ quitarRecargoMora(q.dataset.quitarRecargo); }
 });
 async function borrarTraslado(id){
   const t = getTareas().find(x => x.id === id);
@@ -4197,6 +4217,7 @@ advanceBtn.addEventListener("click", async () => {
   const continuing = records
     .filter(r => !isRetiro(r))
     .map(construirRegistroMesSiguiente);
+  continuing.forEach(x => { x["Recargo Mora"] = ""; }); // el recargo por mora es de cada mes
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
   const retiradosCount = records.length - continuing.length;
@@ -4289,6 +4310,11 @@ function renderStatsStrip(){
     <button type="button" class="stat-card stat-atrasado ${activa("__ATRASADOS__")}" data-filtro="__ATRASADOS__">
       <div class="stat-label">Atrasados</div>
       <div class="stat-value">${atrasados}</div>
+      <div class="stat-detalle">${(() => {
+        const conRecargo = records.filter(r => numOrZero(r["Recargo Mora"]) > 0);
+        if (conRecargo.length) return `💸 ${conRecargo.length} con mora · ${fmt(conRecargo.reduce((a, r) => a + numOrZero(r["Recargo Mora"]), 0))}`;
+        return store.currentMonth === mesActualReal() ? `Mora ${fmt(RECARGO_MORA_VALOR)} desde el día ${DIA_LIMITE_RECARGO + 1}` : "";
+      })()}</div>
     </button>
     <button type="button" class="stat-card stat-confirmar ${porConfirmar.some(confirmacionDemorada) ? "con-demora" : ""} ${activa("__POR_CONFIRMAR__")}" data-filtro="__POR_CONFIRMAR__" title="Clientes con EPS, pensión, caja o ARL en proceso">
       <div class="stat-label">⏳ Por confirmar</div>
@@ -4459,6 +4485,51 @@ function mesActualReal(){
   return `${MESES[hoy.getMonth()]} de ${hoy.getFullYear()}`;
 }
 
+/* ---- Recargo por mora ----
+   Después del día 21 del mes, a cada cliente que siga en SIN PAGO se le suman $5.000.
+   Queda guardado en el cliente (aunque pague después) y solo el administrador lo puede quitar. */
+const RECARGO_MORA_VALOR = 5000;
+const DIA_LIMITE_RECARGO = 21;
+function recargoMoraActivo(){
+  return store.currentMonth === mesActualReal() && new Date().getDate() > DIA_LIMITE_RECARGO;
+}
+function aplicaRecargoMora(r){
+  if (!r || esConductorExcluido(r)) return false;
+  if (r["Recargo Mora"] !== "" && r["Recargo Mora"] != null) return false; // ya tiene recargo (o el admin lo quitó)
+  return estadoClass(r["Estado Trámite"]) === "SIN_PAGO";
+}
+let _aplicandoRecargos = false;
+function aplicarRecargosMora(){
+  if (_aplicandoRecargos || !columnasRecargo || soloLectura || !recargoMoraActivo()) return 0;
+  const pendientes = records.filter(aplicaRecargoMora);
+  if (!pendientes.length) return 0;
+  _aplicandoRecargos = true;
+  try{
+    const ahora = new Date().toISOString();
+    pendientes.forEach(r => { r["Recargo Mora"] = RECARGO_MORA_VALOR; r["_ultimaEdicion"] = ahora; });
+    saveStore();
+    showToast(`💸 Se sumó el recargo por mora de ${fmt(RECARGO_MORA_VALOR)} a ${pendientes.length} cliente(s) atrasado(s).`);
+  }finally{ _aplicandoRecargos = false; }
+  return pendientes.length;
+}
+function tagRecargo(r){
+  const v = numOrZero(r && r["Recargo Mora"]);
+  if (!v) return "";
+  return `<span class="tag-recargo" title="Recargo por mora: no pagó antes del día ${DIA_LIMITE_RECARGO + 1}">💸 Mora ${fmt(v)}</span>`;
+}
+async function quitarRecargoMora(cedula){
+  if (!esAdmin()){ showToast("Solo el administrador puede quitar el recargo por mora."); return; }
+  const r = records.find(x => String(x["Cédula"]) === String(cedula));
+  if (!r || !numOrZero(r["Recargo Mora"])) return;
+  if (!(await confirmarApp(`¿Quitar el recargo por mora de ${fmt(numOrZero(r["Recargo Mora"]))} a ${r["Nombre del Afiliado"]}? Este mes ya no se le volverá a cobrar.`))) return;
+  r["Recargo Mora"] = 0;
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore();
+  renderList(searchInput.value);
+  showBreakdown(cedula);
+  showToast("Recargo por mora quitado.");
+}
+
 /* ---- Campana de alertas: tareas vencidas/hoy + clientes atrasados ---- */
 function tieneRecordatorioVencido(r){
   return !!r["Recordatorio"] && r["Recordatorio"] <= fechaHoyISO();
@@ -4611,6 +4682,7 @@ function renderFilterPills(){
 }
 
 function renderList(filterText){
+  aplicarRecargosMora();
   const q = (filterText || "").trim().toLowerCase();
   let filtered = records;
   if (filtroEstado === "__CONDUCTORES__"){
@@ -4690,7 +4762,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -4784,11 +4856,12 @@ function calcularTotalPagar(r, mesActual){
   const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas";
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("Valor Pensión (AFP)");
-  if (esAfiliacion) return numOrZero(r["Costo Servicio"]);
+  const recargo = numOrZero(r["Recargo Mora"]);
+  if (esAfiliacion) return numOrZero(r["Costo Servicio"]) + recargo;
   // Si quedó un costo de afiliación atascado en un registro que ya es "días proporcionales"
   // (datos de una versión anterior), se corrige aquí para el cálculo sin perder el dato guardado.
   const costo = (esDiasProp && numOrZero(r["Costo Servicio"]) === COSTO_AFILIACION) ? COSTO_MENSUAL : numOrZero(r["Costo Servicio"]);
-  return costo + valAportes("Valor EPS") + valAportes("Valor ARL") + valorPension + valAportes("Valor Caja");
+  return costo + valAportes("Valor EPS") + valAportes("Valor ARL") + valorPension + valAportes("Valor Caja") + recargo;
 }
 
 // Solo los aportes (salud, pensión, ARL, caja), con el mismo prorrateo que el total a pagar,
@@ -4950,6 +5023,9 @@ function showBreakdown(cedula){
     const fechaTexto = t.fecha ? t.fecha.split("-").reverse().join("/") : "Sin fecha";
     return `<div class="cliente-tarea-aviso ${vencida}">📝 ${t.descripcion} (${t.tipo || "Sin tipo"}) — ${fechaTexto}${t.ejecutor ? ` · Ejecuta: ${t.ejecutor}` : ""}${t.valor ? ` · ${fmt(t.valor)}` : ""}${esTareaVencida(t) ? " · ⚠️ Vencida/Hoy" : ""}</div>`;
   }).join("");
+  if (numOrZero(r["Recargo Mora"])){
+    avisosHtml += `<div class="cliente-tarea-aviso vencida">💸 Este mes tiene recargo por mora de ${fmt(numOrZero(r["Recargo Mora"]))} (no pagó antes del día ${DIA_LIMITE_RECARGO + 1}). Ya está sumado en el total a pagar.${esAdmin() ? `<div class="traslado-acciones"><button type="button" class="btn small ghost" data-quitar-recargo="${escHtml(r["Cédula"])}">Quitar recargo</button></div>` : ""}</div>`;
+  }
   if (tieneRecordatorioVencido(r)){
     const fechaTexto = r["Recordatorio"].split("-").reverse().join("/");
     avisosHtml += `<div class="cliente-tarea-aviso vencida">🔔 Recordatorio para hoy/vencido: ${fechaTexto}</div>`;
@@ -6242,7 +6318,7 @@ function insertarConservandoLugar(nombreMes, nuevos, listaReferencia){
   const ordenRef = (listaReferencia || []).map(x => String(x["Cédula"]));
   nuevos.forEach(n => {
     const ced = String(n["Cédula"]);
-    const copia = { ...n }; delete copia._supabaseId;
+    const copia = { ...n, "Recargo Mora": "" }; delete copia._supabaseId;
     const posRef = ordenRef.indexOf(ced);
     let destino = arr.length; // si no aparece en la referencia, al final
     if (posRef > -1){
@@ -6262,7 +6338,7 @@ function insertarConservandoLugar(nombreMes, nuevos, listaReferencia){
 function agregarAlFinalDelMes(nombreMes, nuevos){
   const arr = store.months[nombreMes] || (store.months[nombreMes] = []);
   let maxNo = arr.reduce((acc, x) => Math.max(acc, Number(x["No."]) || 0), 0);
-  nuevos.forEach(n => { const copia = { ...n, "No.": ++maxNo }; delete copia._supabaseId; arr.push(copia); });
+  nuevos.forEach(n => { const copia = { ...n, "No.": ++maxNo, "Recargo Mora": "" }; delete copia._supabaseId; arr.push(copia); });
   store.months[nombreMes] = ordenarPorNumero(arr);
 }
 

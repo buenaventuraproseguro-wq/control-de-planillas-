@@ -298,9 +298,10 @@ function calcularTotalPagar(row, mesNombre){
   const sinPension = row.estado_afp === "Pensionado" || row.estado_afp === "No Cumple Semanas";
   const valAportes = (campo) => Math.round(numOrZero(row[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("valor_pension");
-  if (esAfiliacion) return numOrZero(row.costo_servicio);
+  const recargo = numOrZero(row.recargo_mora); // recargo por mora (después del día 21)
+  if (esAfiliacion) return numOrZero(row.costo_servicio) + recargo;
   const costo = (esDiasProp && numOrZero(row.costo_servicio) === COSTO_AFILIACION) ? COSTO_MENSUAL : numOrZero(row.costo_servicio);
-  return costo + valAportes("valor_eps") + valAportes("valor_arl") + valorPension + valAportes("valor_caja");
+  return costo + valAportes("valor_eps") + valAportes("valor_arl") + valorPension + valAportes("valor_caja") + recargo;
 }
 
 function mostrarLogin(){
