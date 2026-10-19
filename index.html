@@ -125,6 +125,13 @@
   .sidebar-sub.show{ display:flex; }
   .sidebar-link.sub{ font-size:11.5px; font-weight:500; color:rgba(255,255,255,.7); padding:6px 8px; text-decoration:none; }
   .sidebar-link.sub:hover{ color:#fff; background:rgba(255,255,255,.08); }
+  #enlacesFlecha{ display:inline-block; transition:transform .15s ease; margin-left:2px; }
+  #navEnlacesBtn[aria-expanded="true"] #enlacesFlecha{ transform:rotate(90deg); }
+  .enlaces-edit-lista{ display:flex; flex-direction:column; gap:6px; }
+  .enlace-edit-row{ display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--panel); }
+  .enlace-edit-row .info{ flex:1; min-width:0; }
+  .enlace-edit-row .info b{ display:block; font-size:13.5px; }
+  .enlace-edit-row .info small{ display:block; color:var(--muted); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   @media (max-width:760px){
     .sidebar-sub{ flex-direction:row; border-left:none; margin:0; padding-left:0; }
   }
@@ -980,10 +987,8 @@
       <div class="sidebar-section-title">Empresa</div>
       <button type="button" class="sidebar-link" id="navGastosBtn">💸 Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
 
-      <div class="sidebar-section-title">Enlaces rápidos</div>
-      <a class="sidebar-link" href="https://www.adres.gov.co/consulte-su-eps" target="_blank" rel="noopener">🔗 ADRES — Consultar EPS</a>
-      <a class="sidebar-link" href="https://www.bancolombia.com" target="_blank" rel="noopener">🔗 Bancolombia</a>
-      <a class="sidebar-link" href="https://web.whatsapp.com" target="_blank" rel="noopener">🔗 WhatsApp Web</a>
+      <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false">🔗 Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
+      <div class="sidebar-sub" id="enlacesLista"></div>
     </div>
   </nav>
 
@@ -1790,6 +1795,22 @@
 </div>
 
 <!-- Modal para configurar el mensaje de recordatorio de cobro -->
+<div class="overlay" id="overlayEnlaces">
+  <div class="modal" style="max-width:560px;">
+    <h2>🔗 Enlaces rápidos</h2>
+    <div class="modal-sub">Los enlaces que todo el equipo ve en el menú. Agregue los que necesite y quite los que ya no use.</div>
+    <div id="enlacesEditLista" class="enlaces-edit-lista"></div>
+    <form id="enlacesForm" class="form-grid" autocomplete="off" style="margin-top:12px;">
+      <div class="field"><label for="enlNombre">Nombre</label><input id="enlNombre" type="text" maxlength="40" placeholder="Ej: Nueva EPS"></div>
+      <div class="field"><label for="enlUrl">Dirección (enlace)</label><input id="enlUrl" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="Ej: www.nuevaeps.com.co"></div>
+      <div style="grid-column:1 / -1; display:flex; gap:8px; justify-content:flex-end;">
+        <button type="button" class="btn ghost" id="enlacesCerrarBtn">Cerrar</button>
+        <button type="submit" class="btn primary">➕ Agregar enlace</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="overlay" id="overlayMensaje">
   <div class="modal">
     <h2>Mensaje de recordatorio de cobro</h2>
@@ -2685,6 +2706,7 @@ async function iniciarAppConSupabase(){
     suscribirMesEnVivo(store.currentMonth);
     suscribirMesesYTareasEnVivo();
     cargarConfigMensaje();
+    cargarEnlacesRapidos();
     sincronizarDocumentosLocales().catch(e => console.error(e));
     cargarConsignaciones();
     const veniaSinConexion = modoSinConexion;
@@ -5116,6 +5138,101 @@ async function cargarConfigMensaje(){
   }catch(e){ console.error("No se pudo leer el mensaje de recordatorio:", e); }
 }
 
+/* ---- Enlaces rápidos (menú lateral) ----
+   Se guardan en la base (configuracion → "enlaces_rapidos") para que todo el equipo vea los mismos.
+   Están escondidos: se muestran al tocar "🔗 Enlaces rápidos". Solo el administrador agrega o quita. */
+const ENLACES_KEY = "prosegurosnet_enlaces_rapidos";
+const ENLACES_INICIALES = [
+  { nombre: "ADRES — Consultar EPS", url: "https://www.adres.gov.co/consulte-su-eps" },
+  { nombre: "WhatsApp Web", url: "https://web.whatsapp.com" },
+];
+let enlacesRapidos = (() => {
+  try{ const g = JSON.parse(localStorage.getItem(ENLACES_KEY) || "null"); if (Array.isArray(g)) return g; }catch(e){}
+  return ENLACES_INICIALES.slice();
+})();
+function urlSegura(u){
+  let s = String(u || "").trim();
+  if (!s) return "";
+  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+  try{ const x = new URL(s); return /^https?:$/.test(x.protocol) ? x.href : ""; }catch(e){ return ""; }
+}
+function renderEnlacesRapidos(){
+  const cont = document.getElementById("enlacesLista");
+  if (!cont) return;
+  cont.innerHTML = enlacesRapidos.map(e => `<a class="sidebar-link sub" href="${escHtml(e.url)}" target="_blank" rel="noopener">🔗 ${escHtml(e.nombre)}</a>`).join("")
+    + (enlacesRapidos.length ? "" : `<span class="sidebar-link sub" style="cursor:default;opacity:.7;">No hay enlaces</span>`)
+    + (esAdmin() ? `<button type="button" class="sidebar-link sub" id="enlacesEditarBtn">⚙️ Agregar o quitar enlaces</button>` : "");
+}
+async function cargarEnlacesRapidos(){
+  if (!sb) return;
+  try{
+    const { data, error } = await sb.from("configuracion").select("valor").eq("clave", "enlaces_rapidos").maybeSingle();
+    if (!error && data && data.valor && Array.isArray(data.valor.lista)){
+      enlacesRapidos = data.valor.lista.filter(e => e && e.nombre && urlSegura(e.url)).map(e => ({ nombre: String(e.nombre), url: urlSegura(e.url) }));
+      try{ localStorage.setItem(ENLACES_KEY, JSON.stringify(enlacesRapidos)); }catch(e){}
+    }
+  }catch(e){ console.error("No se pudieron leer los enlaces rápidos:", e); }
+  renderEnlacesRapidos();
+}
+async function guardarEnlacesRapidos(){
+  try{ localStorage.setItem(ENLACES_KEY, JSON.stringify(enlacesRapidos)); }catch(e){}
+  renderEnlacesRapidos();
+  renderEditorEnlaces();
+  try{
+    const { error } = await sb.from("configuracion").upsert({ clave: "enlaces_rapidos", valor: { lista: enlacesRapidos }, updated_by: currentUserId });
+    if (error) throw error;
+    return true;
+  }catch(e){
+    console.error(e);
+    showToast("Se guardó en este equipo, pero no se pudo compartir con los demás (revise la conexión).");
+    return false;
+  }
+}
+function renderEditorEnlaces(){
+  const cont = document.getElementById("enlacesEditLista");
+  cont.innerHTML = enlacesRapidos.length ? enlacesRapidos.map((e, i) => `
+    <div class="enlace-edit-row">
+      <div class="info"><b>${escHtml(e.nombre)}</b><small>${escHtml(e.url)}</small></div>
+      <button type="button" class="btn small ghost danger" data-borrar-enlace="${i}" title="Borrar">🗑️</button>
+    </div>`).join("") : `<div class="empty">No hay enlaces. Agregue uno abajo.</div>`;
+}
+document.getElementById("navEnlacesBtn").addEventListener("click", (e) => {
+  const lista = document.getElementById("enlacesLista");
+  const abierto = lista.classList.toggle("show");
+  e.currentTarget.setAttribute("aria-expanded", abierto ? "true" : "false");
+});
+document.getElementById("enlacesLista").addEventListener("click", (e) => {
+  if (!e.target.closest("#enlacesEditarBtn")) return;
+  if (!esAdmin()){ showToast("Solo el administrador puede cambiar los enlaces."); return; }
+  renderEditorEnlaces();
+  document.getElementById("overlayEnlaces").classList.add("show");
+  document.getElementById("enlNombre").focus();
+});
+document.getElementById("enlacesEditLista").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-borrar-enlace]");
+  if (!b) return;
+  const i = Number(b.dataset.borrarEnlace);
+  const en = enlacesRapidos[i];
+  if (!en) return;
+  if (!(await confirmarApp(`¿Seguro que quiere borrar el enlace "${en.nombre}"? Se quita del menú para todo el equipo.`))) return;
+  enlacesRapidos.splice(i, 1);
+  if (await guardarEnlacesRapidos()) showToast("Enlace borrado.");
+});
+document.getElementById("enlacesForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!esAdmin()) return;
+  const nombre = document.getElementById("enlNombre").value.trim().replace(/\s+/g, " ");
+  const url = urlSegura(document.getElementById("enlUrl").value);
+  if (!nombre){ showToast("Escriba el nombre del enlace."); return; }
+  if (!url){ showToast("Escriba una dirección válida (ej: www.pagina.com)."); return; }
+  enlacesRapidos.push({ nombre: nombre.slice(0, 40), url });
+  document.getElementById("enlNombre").value = ""; document.getElementById("enlUrl").value = "";
+  if (await guardarEnlacesRapidos()) showToast(`✅ Enlace "${nombre}" agregado.`);
+});
+document.getElementById("enlacesCerrarBtn").addEventListener("click", () => document.getElementById("overlayEnlaces").classList.remove("show"));
+document.getElementById("overlayEnlaces").addEventListener("click", (e) => { if (e.target.id === "overlayEnlaces") e.target.classList.remove("show"); });
+renderEnlacesRapidos();
+
 function fechaLimiteDelMes(dia){
   const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
   return mesInfo ? `${dia} de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : `el ${dia} del mes`;
@@ -6488,6 +6605,7 @@ async function mostrarAppPrincipal(user){
   if (quien) quien.textContent = user.email + (esAdmin() ? " · Admin" : " · Operador");
   document.body.classList.toggle("rol-admin", esAdmin());
   document.body.classList.toggle("rol-operador", !esAdmin());
+  renderEnlacesRapidos();
   await iniciarAppConSupabase();
   cargarGastos();
   cargarCRM();
