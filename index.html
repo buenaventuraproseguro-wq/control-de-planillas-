@@ -3376,7 +3376,7 @@ async function borrarTraslado(id){
 }
 
 function renderBadgeTareas(){
-  const pendientes = getTareas().filter(t => !t.hecha).length;
+  const pendientes = getTareas().filter(t => !t.hecha && !esTraslado(t)).length; // los traslados tienen su propio recuadro
   const badge = document.getElementById("tareasBadge");
   badge.textContent = pendientes;
   badge.style.display = "inline-flex"; // siempre visible, aunque sea 0
@@ -3404,6 +3404,7 @@ function armarFilaTarea(t){
 function renderListaTareas(){
   const todas = getTareas()
     .map((t, i) => ({...t, _i: i}))
+    .filter(t => !esTraslado(t)) // los traslados de EPS solo se ven en "🔁 Traslados EPS"
     .sort((a, b) => (a.fecha || "9999").localeCompare(b.fecha || "9999"));
   const pendientes = todas.filter(t => !t.hecha);
   const historial = todas.filter(t => t.hecha);
@@ -3970,12 +3971,21 @@ document.getElementById("agregarTareaBtn").addEventListener("click", () => {
 document.getElementById("listaTareas").addEventListener("click", (e) => {
   const quitar = e.target.closest("[data-quitar-tarea]");
   if (quitar){
-    getTareas().splice(Number(quitar.dataset.quitarTarea), 1);
-    saveStore();
-    renderListaTareas();
+    borrarTareaConAviso(Number(quitar.dataset.quitarTarea));
     return;
   }
 });
+async function borrarTareaConAviso(idx){
+  const t = getTareas()[idx];
+  if (!t) return;
+  if (t.valor && !esAdmin()){ await alertApp("Esta tarea tiene un valor en las ganancias de gestiones: solo el administrador la puede borrar. Si ya se hizo, márquela como hecha."); return; }
+  if (!(await confirmarApp(`¿Seguro que quiere borrar la tarea "${t.descripcion}"${t.nombre ? ` de ${t.nombre}` : ""}?${t.valor ? ` También se quita su valor (${fmt(t.valor)}) de las ganancias de gestiones.` : ""} Esta acción no se puede deshacer.`))) return;
+  getTareas().splice(idx, 1);
+  saveStore();
+  renderListaTareas();
+  renderMonthTotal();
+  showToast("Tarea borrada.");
+}
 document.getElementById("listaTareas").addEventListener("change", (e) => {
   const chk = e.target.closest(".chkTarea");
   if (!chk) return;
@@ -4276,12 +4286,18 @@ function renderCobrosExtra(){
 document.getElementById("cobrosExtraList").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-quitar-cobro]");
   if (!btn) return;
-  const idx = Number(btn.dataset.quitarCobro);
+  quitarCobroExtraConAviso(Number(btn.dataset.quitarCobro));
+});
+async function quitarCobroExtraConAviso(idx){
   const lista = getCobrosExtraDelMes();
+  const c = lista[idx];
+  if (!c) return;
+  if (!(await confirmarApp(`¿Seguro que quiere borrar el cobro "${c.descripcion}" por ${fmt(c.valor)}? Se quita del total del mes. Esta acción no se puede deshacer.`))) return;
   lista.splice(idx, 1);
   saveStore();
   renderList(searchInput.value);
-});
+  showToast("Cobro borrado.");
+}
 
 function renderStatsStrip(){
   const parteDeCartera = records.filter(r => !esConductorExcluido(r));
@@ -5647,7 +5663,11 @@ function crearFilaBeneficiario(ben){
     </div>
   `;
   if (ben && ben.parentesco) row.querySelector(".ben-parentesco").value = ben.parentesco;
-  row.querySelector(".ben-remove").addEventListener("click", () => row.remove());
+  row.querySelector(".ben-remove").addEventListener("click", async () => {
+    const nom = (row.querySelector(".ben-nombre") || {}).value || "este beneficiario";
+    if (!(await confirmarApp(`¿Seguro que quiere quitar a ${nom}? Se borra al tocar "Guardar".`))) return;
+    row.remove();
+  });
   row.querySelector(".ben-file").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -5672,7 +5692,10 @@ function crearFilaDocTarea(doc){
     <a class="doc-pdf-badge" style="${row._docDataUrl && row._docDataUrl.startsWith("data:application/pdf") ? "display:inline-block;" : ""}" target="_blank" rel="noopener" href="${row._docDataUrl && row._docDataUrl.startsWith("data:application/pdf") ? row._docDataUrl : "#"}">📄 PDF</a>
     <button type="button" class="tarea-doc-remove" title="Quitar">×</button>
   `;
-  row.querySelector(".tarea-doc-remove").addEventListener("click", () => row.remove());
+  row.querySelector(".tarea-doc-remove").addEventListener("click", async () => {
+    if (!(await confirmarApp("¿Seguro que quiere quitar este documento de la tarea?"))) return;
+    row.remove();
+  });
   row.querySelector(".tarea-doc-file").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -5850,7 +5873,8 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     });
   });
 
-  removeBtn.addEventListener("click", () => {
+  removeBtn.addEventListener("click", async () => {
+    if (!(await confirmarApp("¿Seguro que quiere quitar este documento? Se borra al tocar \"Guardar\"."))) return;
     docImagenes[doc] = null;
     docImagenesCambiados[doc] = true;
     fileInput.value = "";
@@ -6938,7 +6962,10 @@ document.getElementById("pilaComprobanteFile").addEventListener("change", (e) =>
   }
   pilaUsarComprobante(f);
 });
-document.getElementById("pilaComprobanteQuitar").addEventListener("click", pilaLimpiarComprobante);
+document.getElementById("pilaComprobanteQuitar").addEventListener("click", async () => {
+  if (!(await confirmarApp("¿Seguro que quiere quitar el comprobante que eligió?"))) return;
+  pilaLimpiarComprobante();
+});
 // Archivo listo para subir: las fotos se comprimen igual que los demás documentos
 function pilaPrepararComprobante(f){
   return new Promise((resolve) => {
@@ -7472,7 +7499,7 @@ async function accionGasto(id, accion){
   }
   if (accion === "borrar"){
     if (!esAdmin()){ showToast("Solo el administrador puede eliminar gastos."); return; }
-    if (!confirm(`¿Eliminar el gasto "${g.descripcion}" por ${fmt(g.valor)}?\n\nEsto no se puede deshacer.`)) return;
+    if (!(await confirmarApp(`¿Seguro que quiere borrar el gasto "${g.descripcion}" por ${fmt(g.valor)}?\n\nEsta acción no se puede deshacer.`))) return;
     const { error } = await sb.from("gastos").delete().eq("id", id);
     if (error){ showToast("No se pudo eliminar: " + error.message); return; }
     if (g.comprobante_path){ try{ await sb.storage.from("gastos-empresa").remove([g.comprobante_path]); }catch(e){ console.error(e); } }
@@ -7539,8 +7566,11 @@ document.getElementById("gCategoria").addEventListener("change", async (e) => {
 });
 document.getElementById("gForm").addEventListener("click", (e) => {
   if (e.target.id === "gQuitarArchivoBtn"){
-    gastoArchivoQuitar = true;
-    document.getElementById("gArchivoActual").textContent = "El archivo se quitará al guardar.";
+    confirmarApp("¿Seguro que quiere quitar la factura o recibo de este gasto? Se borra al tocar \"Guardar\".").then(ok => {
+      if (!ok) return;
+      gastoArchivoQuitar = true;
+      document.getElementById("gArchivoActual").textContent = "El archivo se quitará al guardar.";
+    });
   }
 });
 document.getElementById("gFijos").addEventListener("click", (e) => { if (e.target.id === "gAgregarFijosBtn") agregarFijosDelMes(); });
@@ -8700,7 +8730,10 @@ document.getElementById("overlayConsig").addEventListener("click", (e) => {
   const tab = e.target.closest("[data-cs-tab]");
   if (tab){ csTab = tab.dataset.csTab; renderConsignaciones(); return; }
   const a = e.target.closest("[data-cs-aplicar]"); if (a){ aplicarConsignacion(a.dataset.csAplicar); return; }
-  const d = e.target.closest("[data-cs-descartar]"); if (d){ cambiarEstadoConsignacion(d.dataset.csDescartar, "descartada"); return; }
+  const d = e.target.closest("[data-cs-descartar]"); if (d){
+    confirmarApp("¿Seguro que quiere descartar esta consignación? Pasa a la pestaña \"Descartadas\" (de ahí se puede volver a revisar).").then(ok => { if (ok) cambiarEstadoConsignacion(d.dataset.csDescartar, "descartada"); });
+    return;
+  }
   const u = e.target.closest("[data-cs-deshacer]"); if (u){ cambiarEstadoConsignacion(u.dataset.csDeshacer, "pendiente"); return; }
 });
 document.getElementById("csPegarBtn").addEventListener("click", async () => {
