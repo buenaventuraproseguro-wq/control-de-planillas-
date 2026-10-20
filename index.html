@@ -6028,7 +6028,7 @@ function openModal(record){
 
   cargarBeneficiarios(record ? record["Beneficiarios"] : null);
   cargarDocImagenes(record);
-  aplicarBloqueoContable(!!record && !esAdmin());
+  aplicarBloqueoContable(false); // todo el equipo puede editar los valores del cliente
   cargarTrasladoEnFormulario(record);
 
   overlay.classList.add("show");
@@ -6037,9 +6037,8 @@ function openModal(record){
 }
 
 
-// Valores contables (costo del servicio, EPS, ARL, pensión y caja): en un cliente ya
-// existente solo el administrador puede cambiarlos. Para los operadores se muestran
-// bloqueados (la base de datos además conserva el valor original si alguien lo intenta).
+// Valores del cliente (costo del servicio, EPS, ARL, pensión y caja): todo el equipo los puede
+// cambiar en "Editar cliente". La función queda por si algún día se vuelven a bloquear.
 const CAMPOS_CONTABLES = ["Costo", "ValorEps", "ValorArl", "ValorTotal", "ValorCaja"];
 function aplicarBloqueoContable(bloquear){
   CAMPOS_CONTABLES.forEach(id => {
@@ -6793,14 +6792,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     else if (original && antes.length && original["En Proceso Desde"]) record["En Proceso Desde"] = original["En Proceso Desde"];
     else record["En Proceso Desde"] = fechaHoyISO();
   }
-  // Operador editando un cliente existente: los valores contables no cambian.
-  if (editingCedula && !esAdmin()){
-    const original = records.find(x => String(x["Cédula"]) === String(editingCedula));
-    if (original){
-      ["Costo Servicio", "Valor EPS", "Valor ARL", "Valor Pensión (AFP)", "Valor Caja"]
-        .forEach(k => { record[k] = original[k] == null ? "" : original[k]; });
-    }
-  }
+  // Los trabajadores también pueden cambiar los valores del cliente (costo, EPS, ARL, pensión y caja).
 
   if (soloLectura){
     await alertApp("👀 Este enlace solo te permite VER la información, no editarla. Por eso aunque parezca que el formulario se cierra, el cambio no se guarda ni aquí ni para los demás. Pide a quien administra la app que te dé el enlace con permiso de edición (o te agregue como editor) y vuelve a intentar.");

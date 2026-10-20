@@ -11,7 +11,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 
 ## Reglas que siempre se respetan
 - Cada cliente solo ve sus propias planillas y documentos.
-- Los trabajadores editan clientes, pero no la contabilidad. Los valores de EPS, ARL, AFP y caja, y el costo del servicio, solo los cambia el administrador.
+- Los trabajadores editan clientes, incluidos el costo del servicio y los valores de EPS, ARL, AFP y caja. El recargo por mora y la contabilidad general (gastos, informes) son del administrador.
 - Gastos: los trabajadores ven y agregan, pero no borran.
 - Toda acción de borrar pide confirmación.
 - Consignaciones: nunca se usan claves del banco y la app nunca aplica pagos sola. Se lee solo la cuenta *8222; otras cuentas solo cuando hay relación exacta con una planilla.
