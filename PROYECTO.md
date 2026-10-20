@@ -21,7 +21,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Importar PILA, incluido ingreso/retiro
 - Caja de compensación
 - Traslados de EPS (no van en Lista de tareas)
-- Recargo por mora: $5.000 después del día 21, solo SIN PAGO
+- Recargo por mora: $5.000 después del día 21, SIN PAGO y DÍAS PROPORCIONALES
 - Enlaces rápidos
 - Guía de afiliaciones por EPS con archivos
 - Copiar cédula
@@ -29,5 +29,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Consignaciones desde el celular (MacroDroid)
 
 ## Pendiente por decidir
-- ¿El recargo por mora aplica también a DÍAS PROPORCIONALES?
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
