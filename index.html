@@ -4604,7 +4604,7 @@ function mesActualReal(){
 }
 
 /* ---- Recargo por mora ----
-   Después del día 21 del mes, a cada cliente que siga en SIN PAGO se le suman $5.000.
+   Después del día 21 del mes, a cada cliente que siga en SIN PAGO o DÍAS PROPORCIONALES se le suman $5.000.
    Queda guardado en el cliente (aunque pague después) y solo el administrador lo puede quitar. */
 const RECARGO_MORA_VALOR = 5000;
 const DIA_LIMITE_RECARGO = 21;
@@ -4614,7 +4614,8 @@ function recargoMoraActivo(){
 function aplicaRecargoMora(r){
   if (!r || esConductorExcluido(r)) return false;
   if (r["Recargo Mora"] !== "" && r["Recargo Mora"] != null) return false; // ya tiene recargo (o el admin lo quitó)
-  return estadoClass(r["Estado Trámite"]) === "SIN_PAGO";
+  const est = estadoClass(r["Estado Trámite"]);
+  return est === "SIN_PAGO" || est === "DIAS_PROPORCIONALES";
 }
 let _aplicandoRecargos = false;
 function aplicarRecargosMora(){
