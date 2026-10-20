@@ -2427,6 +2427,67 @@ async function leerMesDesdeNube(nombreMes){
   return ordenarPorNumero(registros);
 }
 
+// Vuelve a leer de la nube el mes que se está viendo y trae los cambios de los compañeros.
+// Sirve de respaldo a los avisos en vivo: si el computador se durmió, se perdió la conexión
+// o el aviso no llegó, igual se ven los cambios. Nunca pisa un cambio de este equipo que
+// todavía no se haya enviado.
+let _refrescandoMes = false;
+async function refrescarMesDesdeNube(){
+  if (!cloudDb || !cloudReady || _refrescandoMes || flushing || !navigator.onLine) return 0;
+  const mes = store.currentMonth;
+  const monthId = monthIdByName[mes];
+  if (monthId == null) return 0;
+  _refrescandoMes = true;
+  try{
+    const { data, error } = await sb.from("clients").select("*").eq("month_id", monthId);
+    if (error || !data || store.currentMonth !== mes || flushing) return 0;
+    const idsMes = clientIdByMonthCedula[mes] || (clientIdByMonthCedula[mes] = {});
+    const firmas = lastClientSig[mes] || (lastClientSig[mes] = {});
+    const lista = store.months[mes] || (store.months[mes] = []);
+    const enNube = new Set();
+    let cambios = 0;
+    data.forEach(row => {
+      const rec = dbRowToEsRecord(row);
+      const ced = String(rec["Cédula"] || "").trim();
+      if (!ced) return;
+      enNube.add(ced);
+      const firmaNube = JSON.stringify(esRecordToDbRow(rec, monthId));
+      const idx = lista.findIndex(r => String(r["Cédula"]) === ced);
+      if (idx > -1){
+        const firmaLocal = JSON.stringify(esRecordToDbRow(lista[idx], monthId));
+        if (firmas[ced] != null && firmaLocal !== firmas[ced]) return; // cambio propio sin enviar
+        if (firmaLocal === firmaNube){ firmas[ced] = firmaNube; idsMes[ced] = row.id; return; }
+        lista[idx] = rec;
+      } else {
+        if (idsMes[ced] === row.id) return; // se borró aquí y todavía no se envió
+        lista.push(rec);
+      }
+      idsMes[ced] = row.id; firmas[ced] = firmaNube; cambios++;
+    });
+    // Clientes que un compañero quitó de este mes
+    for (let i = lista.length - 1; i >= 0; i--){
+      const ced = String(lista[i]["Cédula"] || "").trim();
+      if (!ced || enNube.has(ced) || !idsMes[ced]) continue;
+      if (JSON.stringify(esRecordToDbRow(lista[i], monthId)) !== firmas[ced]) continue;
+      lista.splice(i, 1); delete idsMes[ced]; delete firmas[ced]; cambios++;
+    }
+    if (cambios){
+      store.months[mes] = ordenarPorNumero(lista);
+      records = store.months[mes];
+      guardarEstadoSync();
+      saveStoreLocalSolo();
+      renderList(searchInput.value);
+    }
+    return cambios;
+  }catch(e){ console.error("No se pudo refrescar el mes:", e); return 0; }
+  finally{ _refrescandoMes = false; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") setTimeout(() => refrescarMesDesdeNube(), 1200);
+});
+window.addEventListener("online", () => setTimeout(() => refrescarMesDesdeNube(), 2500));
+setInterval(() => { if (document.visibilityState === "visible") refrescarMesDesdeNube(); }, 30000);
+
 // Suscribe los avisos en vivo (Supabase Realtime) SOLO del mes que se está viendo ahora
 // mismo, para que los cambios de un compañero aparezcan solos en la pantalla.
 function suscribirMesEnVivo(nombreMes){
@@ -2468,7 +2529,7 @@ function suscribirMesEnVivo(nombreMes){
         renderMonthSelect();
       }
     })
-    .subscribe();
+    .subscribe((estado) => { if (estado === "SUBSCRIBED") setTimeout(() => refrescarMesDesdeNube(), 800); });
 }
 
 function suscribirMesesYTareasEnVivo(){
@@ -6550,8 +6611,14 @@ document.getElementById("navCarteraBtn").addEventListener("click", () => {
   document.querySelector(".main-area").scrollTo({top:0, behavior:"smooth"});
   window.scrollTo({top:0, behavior:"smooth"});
 });
-document.getElementById("editBtn").addEventListener("click", () => {
-  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+document.getElementById("editBtn").addEventListener("click", async () => {
+  // Antes de editar se traen los cambios más recientes del equipo, para no guardar
+  // encima de lo que un compañero acaba de cambiar con una copia vieja.
+  const ced = activeCedula;
+  if (cloudDb && cloudReady && navigator.onLine){
+    try{ await Promise.race([refrescarMesDesdeNube(), new Promise(res => setTimeout(res, 2500))]); }catch(e){}
+  }
+  const r = records.find(x => String(x["Cédula"]) === String(ced));
   if (r) openModal(r);
 });
 document.getElementById("recordarPendientesBtn").addEventListener("click", iniciarOContinuarRecordatorios);
