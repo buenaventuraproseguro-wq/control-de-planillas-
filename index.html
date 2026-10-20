@@ -1242,6 +1242,10 @@
           <option value="en proceso">En proceso</option>
         </select>
       </div>
+      <div class="field campo-nomina"><label>📍 Lugar de trabajo (ciudad)</label>
+        <input id="fLugarTrabajo" type="text" list="listaCiudades" placeholder="Solo si es distinta a la de la empresa" autocomplete="off">
+        <datalist id="listaCiudades"><option value="Buenaventura"><option value="Cali"><option value="Bogotá"><option value="Medellín"><option value="Barranquilla"><option value="Cartagena"><option value="Santa Marta"><option value="Palmira"><option value="Tuluá"><option value="Buga"><option value="Jamundí"><option value="Yumbo"><option value="Popayán"><option value="Pasto"><option value="Pereira"><option value="Manizales"><option value="Armenia"><option value="Ibagué"><option value="Bucaramanga"><option value="Cúcuta"></datalist>
+      </div>
       <div class="field campo-nomina"><label><span class="field-num">16</span>Valor ARL</label><input id="fValorArl" type="number"></div>
       <div class="field campo-nomina"><label><span class="field-num">17</span>AFP</label><input id="fAfp" type="text"></div>
       <div class="field campo-nomina"><label><span class="field-num">18</span>Estado AFP</label>
@@ -1971,6 +1975,9 @@ let columnasConfirmacion = (() => { try{ return localStorage.getItem(COLUMNAS_CO
 // ¿La base ya tiene "fecha_retiro" y "motivo_retiro"? (archivo retiros.sql)
 const COLUMNAS_RETIRO_KEY = "prosegurosnet_columnas_retiro";
 let columnasRetiro = (() => { try{ return localStorage.getItem(COLUMNAS_RETIRO_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene "lugar_trabajo"? (archivo lugar_trabajo.sql)
+const COLUMNAS_LUGAR_KEY = "prosegurosnet_columnas_lugar";
+let columnasLugar = (() => { try{ return localStorage.getItem(COLUMNAS_LUGAR_KEY) === "1"; }catch(e){ return false; } })();
 // ¿La base ya tiene "recargo_mora"? (archivo recargo_mora.sql)
 const COLUMNAS_RECARGO_KEY = "prosegurosnet_columnas_recargo";
 let columnasRecargo = (() => { try{ return localStorage.getItem(COLUMNAS_RECARGO_KEY) === "1"; }catch(e){ return false; } })();
@@ -1989,6 +1996,13 @@ async function detectarColumnasConfirmacion(){
       if (/fecha_retiro|motivo_retiro|column|schema cache/i.test(String(error.message || ""))) columnasRetiro = false;
     } else columnasRetiro = true;
     try{ localStorage.setItem(COLUMNAS_RETIRO_KEY, columnasRetiro ? "1" : "0"); }catch(e){}
+  }catch(e){}
+  try{
+    const { error } = await sb.from("clients").select("lugar_trabajo").limit(1);
+    if (error){
+      if (/lugar_trabajo|column|schema cache/i.test(String(error.message || ""))) columnasLugar = false;
+    } else columnasLugar = true;
+    try{ localStorage.setItem(COLUMNAS_LUGAR_KEY, columnasLugar ? "1" : "0"); }catch(e){}
   }catch(e){}
   try{
     const { error } = await sb.from("clients").select("recargo_mora").limit(1);
@@ -2040,6 +2054,7 @@ function esRecordToDbRow(r, monthId){
       fecha_retiro: r["Fecha Retiro"] || null,
       motivo_retiro: r["Motivo Retiro"] || "",
     } : {}),
+    ...(columnasLugar ? { lugar_trabajo: r["Lugar Trabajo"] || "" } : {}),
     ...(columnasRecargo ? {
       recargo_mora: r["Recargo Mora"] === "" || r["Recargo Mora"] == null ? null : Number(r["Recargo Mora"]),
     } : {}),
@@ -2083,6 +2098,7 @@ function dbRowToEsRecord(row){
     "Fecha Retiro": row.fecha_retiro || "",
     "Motivo Retiro": row.motivo_retiro || "",
     "Recargo Mora": row.recargo_mora == null ? "" : row.recargo_mora,
+    "Lugar Trabajo": row.lugar_trabajo || "",
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
   };
@@ -2618,6 +2634,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.en_proceso_desde === "" || o.en_proceso_desde == null)) delete o.en_proceso_desde;
     if (o && (o.fecha_retiro === "" || o.fecha_retiro == null)) delete o.fecha_retiro;
     if (o && (o.motivo_retiro === "" || o.motivo_retiro == null)) delete o.motivo_retiro;
+    if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
     return JSON.stringify(o);
   }catch(e){ return texto; }
@@ -5042,7 +5059,7 @@ function showBreakdown(cedula){
   document.getElementById("bArl").textContent = fmt(valAportes("Valor ARL"));
   const ROMANOS_NIVEL = { "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V" };
   const nivelTexto = r["ARL Nivel"] ? ` · Nivel ${ROMANOS_NIVEL[r["ARL Nivel"]] || r["ARL Nivel"]}` : "";
-  document.getElementById("bArlNombre").textContent = (r["ARL (Riesgo/Código)"] || "") + nivelTexto;
+  document.getElementById("bArlNombre").textContent = (r["ARL (Riesgo/Código)"] || "") + nivelTexto + (r["Lugar Trabajo"] ? ` · 📍 ${r["Lugar Trabajo"]}` : "");
   document.getElementById("bAfpNombre").textContent = r["AFP"] || "";
   document.getElementById("bCajaNombre").textContent = r["Caja de Compensación"] || "";
   document.getElementById("bTotal").textContent = fmt(valorPension) +
@@ -5982,6 +5999,7 @@ function openModal(record){
   getField("ArlNivel").value = record ? (record["ARL Nivel"] || "") : "";
   getField("ValorArl").value = record ? record["Valor ARL"] || "" : "";
   getField("EstadoArl").value = (record && String(record["Estado ARL"] || "").trim().toLowerCase() === "en proceso") ? "en proceso" : "aceptado";
+  getField("LugarTrabajo").value = record ? (record["Lugar Trabajo"] || "") : "";
   getField("Afp").value = record ? record["AFP"] || "" : "";
   getField("EstadoAfp").value = (() => {
     const v = String((record && record["Estado AFP"]) || "").trim().toLowerCase();
@@ -6747,6 +6765,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "ARL Nivel": getField("ArlNivel").value,
     "Valor ARL": getField("ValorArl").value === "" ? "" : Number(getField("ValorArl").value),
     "Estado ARL": getField("EstadoArl").value,
+    "Lugar Trabajo": getField("LugarTrabajo").value.trim().replace(/\s+/g, " "),
     "AFP": getField("Afp").value.trim().toLowerCase(),
     "Estado AFP": getField("EstadoAfp").value,
     "Valor Pensión (AFP)": getField("ValorTotal").value === "" ? "" : Number(getField("ValorTotal").value),
