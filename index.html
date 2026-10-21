@@ -761,6 +761,10 @@
   .cliente-tarea-aviso.traslado{ background:rgba(91,79,168,.10); color:#4A3F94; border-color:#7A6FC4; }
   @media (prefers-color-scheme: dark){ .cliente-tarea-aviso.traslado{ color:#B9B0F0; } }
   .cliente-tarea-aviso .traslado-acciones{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .reingreso-aviso{ margin-top:6px; padding:8px 10px; border-radius:8px; background:#eef6ff; border:1px solid #bcd8f5; color:#1d4f80; font-size:12.5px; line-height:1.4; }
+  .reingreso-aviso b{ color:#123a63; }
+  .reingreso-aviso button{ margin-top:6px; padding:6px 10px; border-radius:7px; border:0; background:#1f6fb8; color:#fff; font-weight:600; font-size:12.5px; cursor:pointer; }
+  .reingreso-aviso.ya{ background:#fff4e5; border-color:#f3c98b; color:#7a4a00; }
   .field-traslado{ grid-column:1 / -1; border:1px dashed var(--line); border-radius:10px; padding:10px 12px; }
   .field-traslado .chk-traslado{ display:flex; gap:8px; align-items:center; font-weight:700; cursor:pointer; }
   .field-traslado .chk-traslado input{ width:17px; height:17px; }
@@ -1159,6 +1163,7 @@
         <label><span class="field-num">1</span>Cédula *</label>
         <input id="fCedula" type="text" inputmode="numeric">
         <a id="consultarAdresLink" href="https://www.adres.gov.co/consulte-su-eps" target="_blank" rel="noopener" class="adres-link">Consultar EPS en ADRES ↗</a>
+        <div id="reingresoAviso" class="reingreso-aviso" hidden></div>
       </div>
       <div class="field"><label><span class="field-num">2</span>Nombre del afiliado *</label><input id="fNombre" type="text"></div>
 
@@ -6028,6 +6033,7 @@ function fromInputDate(yyyymmdd){
 
 function openModal(record){
   editingCedula = record ? record["Cédula"] : null;
+  ocultarAvisoReingreso(); _reingresoCedula = "";
   modalTitle.textContent = record ? "Editar cliente" : "Agregar cliente";
   renderListaResponsables();
   renderListaEmpresas();
@@ -6546,6 +6552,92 @@ getField("Cedula").addEventListener("input", () => {
   const limpio = getField("Cedula").value.replace(/[^0-9]/g, "");
   if (limpio !== getField("Cedula").value) getField("Cedula").value = limpio;
 });
+// ---- Reingreso: al agregar una cédula que ya estuvo en meses anteriores (por ejemplo,
+// alguien que se retiró y vuelve), se ofrece traer sus datos: nombre, dirección, teléfono,
+// EPS, ARL, pensión, caja, documentos, etc. Nada se llena sin que la persona lo acepte.
+let _reingresoTimer = null, _reingresoCedula = "", _reingresoRegistro = null;
+function ocultarAvisoReingreso(){ const a = document.getElementById("reingresoAviso"); if (a){ a.hidden = true; a.innerHTML = ""; } _reingresoRegistro = null; }
+async function buscarRegistroAnterior(cedula){
+  // 1) En los meses que ya están en este equipo, del más reciente al más antiguo
+  const meses = sortedMonthNames().slice().reverse();
+  for (const mes of meses){
+    if (mes === store.currentMonth) continue;
+    const r = (store.months[mes] || []).find(x => String(x["Cédula"]).trim() === cedula);
+    if (r) return { r, mes };
+  }
+  // 2) En la nube, por si ese mes no está cargado aquí
+  if (cloudDb && navigator.onLine){
+    try{
+      const { data } = await sb.from("clients").select("*").eq("cedula", cedula);
+      if (data && data.length){
+        const ordenMes = new Map((monthsRows || []).map(m => [m.id, m.sort_order ?? 0]));
+        const nombreMes = new Map((monthsRows || []).map(m => [m.id, m.name]));
+        const filas = data.filter(row => nombreMes.get(row.month_id) !== store.currentMonth)
+          .sort((a, b) => (ordenMes.get(b.month_id) ?? 0) - (ordenMes.get(a.month_id) ?? 0));
+        if (filas.length) return { r: dbRowToEsRecord(filas[0]), mes: nombreMes.get(filas[0].month_id) || "un mes anterior" };
+      }
+    }catch(e){ console.error(e); }
+  }
+  return null;
+}
+async function revisarReingreso(){
+  if (editingCedula) return; // solo al AGREGAR
+  const cedula = getField("Cedula").value.trim();
+  const aviso = document.getElementById("reingresoAviso");
+  if (!aviso) return;
+  if (cedula.length < 6){ ocultarAvisoReingreso(); _reingresoCedula = ""; return; }
+  if (cedula === _reingresoCedula) return;
+  _reingresoCedula = cedula;
+  const yaEsteMes = records.find(x => String(x["Cédula"]).trim() === cedula);
+  if (yaEsteMes){
+    aviso.className = "reingreso-aviso ya";
+    aviso.innerHTML = `⚠️ <b>${escHtml(yaEsteMes["Nombre del Afiliado"] || "")}</b> ya está en ${escHtml(store.currentMonth)}. Búsquelo en la lista para editarlo.`;
+    aviso.hidden = false; _reingresoRegistro = null; return;
+  }
+  const hallado = await buscarRegistroAnterior(cedula);
+  if (getField("Cedula").value.trim() !== cedula || editingCedula) return;
+  if (!hallado){ ocultarAvisoReingreso(); return; }
+  _reingresoRegistro = hallado.r;
+  const r = hallado.r;
+  const estado = String(r["Estado Trámite"] || "").toUpperCase();
+  aviso.className = "reingreso-aviso";
+  aviso.innerHTML = `🔁 Esta cédula ya estuvo con nosotros: <b>${escHtml(r["Nombre del Afiliado"] || "")}</b> — ${escHtml(hallado.mes)}${estado ? " (" + escHtml(estado) + ")" : ""}.<br>
+    <button type="button" id="reingresoTraerBtn">Traer sus datos</button>`;
+  aviso.hidden = false;
+}
+function traerDatosReingreso(){
+  const base = _reingresoRegistro;
+  if (!base) return;
+  const copia = JSON.parse(JSON.stringify(base));
+  // Lo que es propio de cada mes o del retiro anterior empieza en limpio
+  ["No. Planilla Pagada", "Fecha de Ingreso", "Fecha Retiro", "Motivo Retiro", "Recargo Mora", "En Proceso Desde",
+   "Recordatorio", "_supabaseId", "_ultimaEdicion"].forEach(k => { if (k in copia) copia[k] = ""; });
+  copia["Imagen PlanillaPagada"] = null;
+  copia["Imagen ComprobantePago"] = null;
+  const cedula = getField("Cedula").value.trim();
+  openModal(copia);
+  // Sigue siendo un cliente NUEVO en este mes
+  editingCedula = null;
+  modalTitle.textContent = "Agregar cliente (reingreso)";
+  getField("Cedula").value = cedula;
+  getField("Estado").value = "AFILIACION";
+  _reingresoCedula = cedula;
+  const aviso = document.getElementById("reingresoAviso");
+  if (aviso){
+    aviso.className = "reingreso-aviso";
+    aviso.innerHTML = `✅ Se trajeron los datos de <b>${escHtml(base["Nombre del Afiliado"] || "")}</b>. Revise que sigan vigentes (dirección, teléfono, EPS, ARL, valores) y complete la fecha de ingreso.`;
+    aviso.hidden = false;
+  }
+  formSnapshotInicial = "";   // hay datos sin guardar: pedir confirmación si se cierra
+  showToast("Datos del cliente traídos. Revíselos y guarde.");
+}
+getField("Cedula").addEventListener("input", () => {
+  clearTimeout(_reingresoTimer);
+  _reingresoTimer = setTimeout(revisarReingreso, 600);
+});
+getField("Cedula").addEventListener("blur", () => { clearTimeout(_reingresoTimer); revisarReingreso(); });
+document.addEventListener("click", (e) => { if (e.target && e.target.id === "reingresoTraerBtn") traerDatosReingreso(); });
+
 getField("Nombre").addEventListener("input", () => {
   const limpio = getField("Nombre").value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
   if (limpio !== getField("Nombre").value) getField("Nombre").value = limpio;

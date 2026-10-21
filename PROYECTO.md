@@ -27,6 +27,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Copiar cédula
 - Lugar de trabajo junto a Estado ARL
 - Consignaciones desde el celular (MacroDroid)
+- Reingreso: al agregar una cédula que ya estuvo en meses anteriores, ofrece traer sus datos
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
