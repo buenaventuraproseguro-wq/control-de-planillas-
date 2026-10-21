@@ -4652,9 +4652,10 @@ function exportarListaCaja(){
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-// Un cliente está atrasado si ya pasó el día 16 del mes real y sigue en SIN PAGO.
+// Un cliente está atrasado si ya pasó el día 16 del mes real y sigue en SIN PAGO o DÍAS PROPORCIONALES.
 function estaAtrasado(r){
-  if (estadoClass(r["Estado Trámite"]) !== "SIN_PAGO") return false;
+  const est = estadoClass(r["Estado Trámite"]);
+  if (est !== "SIN_PAGO" && est !== "DIAS_PROPORCIONALES") return false;
   if (store.currentMonth !== mesActualReal()) return false;
   return new Date().getDate() > 16;
 }
