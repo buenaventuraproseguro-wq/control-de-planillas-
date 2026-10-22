@@ -1042,6 +1042,21 @@
     text-transform:none; letter-spacing:0; font-size:12px; font-weight:600;
   }
   .sidebar-section-title{ padding-top:14px; }
+
+  /* ===== Números del menú lateral bien visibles ===== */
+  .sidebar-link{ display:flex; align-items:center; }
+  .sidebar-link .sidebar-badge{ margin-left:auto; }
+  .sidebar-num{ display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    min-width:22px; width:auto; height:20px; padding:0 5px; margin-right:9px; border-radius:6px;
+    font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1;
+    background:#2B2B28; color:#FFFFFF; opacity:1; vertical-align:middle; }
+  .sidebar-link.sub .sidebar-num{ min-width:30px; height:18px; font-size:10.5px; background:#E2E2DD; color:#2B2B28; }
+  .sidebar-link.active .sidebar-num{ background:var(--gold); }
+  .sidebar-num + .ico{ margin-right:7px; }
+  @media (prefers-color-scheme: dark){
+    .sidebar-num{ background:rgba(255,255,255,.88); color:#14201B; }
+    .sidebar-link.sub .sidebar-num{ background:rgba(255,255,255,.18); color:#fff; }
+  }
 </style>
 </head>
 <body>
@@ -1075,31 +1090,31 @@
         <small>Control de planillas</small>
       </div>
     </div>
-    <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span> <svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
-    <button type="button" class="sidebar-link" id="navCrmBtn"><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
-    <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg>Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
-    <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span> <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
+    <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
+    <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;"><span class="sidebar-num">3</span><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg>Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
 
     <button type="button" class="sidebar-link" id="navMenuBtn"><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>Ver más opciones</button>
 
     <div class="sidebar-menu-colapsable" id="sidebarMenuColapsable">
       <div class="sidebar-section-title">Clientes</div>
-      <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">2</span> <svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
-      <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">3</span> <svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
-      <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
-      <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">5</span> <svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Trabajados recientemente</button>
-      <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">6</span> <svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Historial de cliente</button>
-      <button type="button" class="sidebar-link" id="navGuiaEpsBtn"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía de afiliaciones por EPS</button>
+      <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">5</span><svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
+      <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">6</span><svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
+      <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><span class="sidebar-num">7</span><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
+      <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">8</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Trabajados recientemente</button>
+      <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">9</span><svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Historial de cliente</button>
+      <button type="button" class="sidebar-link" id="navGuiaEpsBtn"><span class="sidebar-num">10</span><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía de afiliaciones por EPS</button>
 
       <div class="sidebar-section-title">Reportes</div>
-      <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">7</span> <svg class="ico" aria-hidden="true"><use href="#i-bajar"/></svg>Exportar respaldo</button>
-      <button type="button" class="sidebar-link" id="navImportBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Importar respaldo</button>
-      <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">8</span> <svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Exportar cobro del mes</button>
-      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> <svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Subir planilla pagada (planilla + comprobante)</button>
+      <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">11</span><svg class="ico" aria-hidden="true"><use href="#i-bajar"/></svg>Exportar respaldo</button>
+      <button type="button" class="sidebar-link" id="navImportBtn"><span class="sidebar-num">12</span><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Importar respaldo</button>
+      <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">13</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Exportar cobro del mes</button>
+      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">14</span><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Subir planilla pagada (planilla + comprobante)</button>
       <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,image/*,.csv,text/csv" multiple>
 
       <div class="sidebar-section-title">Cartera</div>
-      <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">10</span> <svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
+      <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">15</span><svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
       <div class="sidebar-sub" id="carteraSub">
         <button type="button" class="sidebar-total" id="btnInformeProsegurosnet" data-informe="prosegurosnet">
           <span class="sidebar-total-label">Total a cobrar este mes (PROSEGUROSNET)</span>
@@ -1122,15 +1137,15 @@
           <span class="sidebar-total-label">Suma final (todas las empresas)</span>
           <span class="sidebar-total-value" id="sidebarTotalGeneral">—</span>
         </button>
-        <button type="button" class="sidebar-link sub" id="navCobroExtraBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cobro extra</button>
-        <button type="button" class="sidebar-link sub" id="navGananciasBtn"><svg class="ico" aria-hidden="true"><use href="#i-monedas"/></svg>Ganancias de gestiones</button>
-        <button type="button" class="sidebar-link sub" id="navMensajeBtn"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Mensaje de recordatorio</button>
+        <button type="button" class="sidebar-link sub" id="navCobroExtraBtn"><span class="sidebar-num">15.1</span><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cobro extra</button>
+        <button type="button" class="sidebar-link sub" id="navGananciasBtn"><span class="sidebar-num">15.2</span><svg class="ico" aria-hidden="true"><use href="#i-monedas"/></svg>Ganancias de gestiones</button>
+        <button type="button" class="sidebar-link sub" id="navMensajeBtn"><span class="sidebar-num">15.3</span><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Mensaje de recordatorio</button>
       </div>
 
       <div class="sidebar-section-title">Empresa</div>
-      <button type="button" class="sidebar-link" id="navGastosBtn"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+      <button type="button" class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
 
-      <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
+      <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><span class="sidebar-num">17</span><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
       <div class="sidebar-sub" id="enlacesLista"></div>
     </div>
   </nav>
