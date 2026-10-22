@@ -1002,6 +1002,32 @@
     input:focus, select:focus, textarea:focus{ outline:none; border-color:#A3A3A3; box-shadow:0 0 0 3px rgba(0,0,0,.06); }
     .toast{ background:#FAFAF8; color:var(--ink); border:1px solid var(--line); box-shadow:var(--sombra-alta); }
   }
+
+  /* ===== Pulido (revisión de diseño): contraste, tamaños mínimos, foco y toques en celular ===== */
+  .stat-card .stat-label{ font-size:12px; font-weight:600; text-transform:none; letter-spacing:0; }
+  .stat-card .stat-detalle, .stat-card .stat-sub{ font-size:12px; }
+  .sidebar-num{ width:16px; height:16px; font-size:10px; }
+  .sidebar-brand small{ font-size:11px; }
+  .sidebar-badge, .bell-badge{ font-size:11px; min-width:18px; height:18px; }
+  .row .chk{ width:18px; height:18px; accent-color:var(--navy); }
+  :focus-visible{ outline:2px solid var(--gold, #C8202F); outline-offset:2px; border-radius:6px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible{ outline:none; }
+  @media (pointer:coarse){
+    .btn, .filter-pill, .sidebar-link, .bell-btn{ min-height:40px; }
+    .btn.small{ min-height:38px; }
+    .row .chk{ width:22px; height:22px; }
+  }
+  @media not all and (prefers-color-scheme: dark){
+    :root{ --muted:#5C5C55; }
+    .row .no, .row .ced, .row .chev{ color:#55554E; }
+    .backup-reminder{ color:#6E4E12; }
+    .btn.whatsapp{ color:#137A3B; border-color:#137A3B55; }
+  }
+  @media (prefers-color-scheme: dark){
+    .sidebar-badge, .bell-badge{ background:#C2453D; }
+    .btn.primary{ background:#2B68A6; border-color:#2B68A6; }
+    .btn.whatsapp{ color:#4ADE80; border-color:#4ADE8055; }
+  }
 </style>
 </head>
 <body>
@@ -4912,7 +4938,7 @@ const esNombreEmpresaServicio = (nombre) => [NOMBRE_EMPRESA_CONDUCTORES, NOMBRE_
 
 function renderFilterPills(){
   const estados = ["__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "SIN INICIAR"];
-  const etiquetas = { "": "Todos", "__CONDUCTORES__": "🚚 Conductores", "__SERV_MUELLES__": "⚓ Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "DIAS PROPORCIONALES": "DÍAS PROP.", "AFILIACION": "AFILIACIÓN" };
+  const etiquetas = { "": "Todos", "__CONDUCTORES__": "🚚 Conductores", "__SERV_MUELLES__": "⚓ Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "SIN PAGO": "Sin pago", "DIAS PROPORCIONALES": "Días prop.", "AFILIACION": "Afiliación", "RETIRO": "Retiro", "SIN INICIAR": "Sin iniciar" };
   const sinConductores = records.filter(r => !esConductorExcluido(r));
   document.getElementById("filterPills").innerHTML = estados.map(e => {
     let count;
