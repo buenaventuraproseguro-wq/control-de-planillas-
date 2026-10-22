@@ -1105,6 +1105,18 @@
     :root:not([data-tema="minimal"]) .month-select-wrap.mes-es-actual select{ color:var(--accent); }
     :root:not([data-tema="minimal"]) .toast{ background:var(--navy-deep); color:#fff; border-color:transparent; }
   }
+
+  /* ===== Envío de recordatorios en serie ===== */
+  .record-txt{ font-size:14px; margin:6px 0 12px; }
+  .record-opciones{ display:flex; gap:8px; flex-wrap:wrap; }
+  .record-opciones .btn{ flex:1 1 auto; justify-content:center; }
+  .record-nota{ font-size:12.5px; color:var(--muted); margin:12px 0 0; }
+  .record-progreso{ height:6px; background:var(--line); border-radius:999px; overflow:hidden; margin:8px 0 10px; }
+  .record-progreso span{ display:block; height:100%; background:#1DA851; transition:width .3s cubic-bezier(.23,1,.32,1); }
+  .record-cuenta{ font-size:12.5px; color:var(--muted); margin:0; }
+  .record-nombre{ font-size:18px; font-weight:700; margin:2px 0; color:var(--titulo); text-transform:capitalize; }
+  .record-dato{ font-size:13px; color:var(--muted); margin:0 0 14px; font-variant-numeric:tabular-nums; }
+  .btn.whatsapp-lleno{ background:#1DA851; border-color:#1DA851; color:#fff; }
 </style>
 </head>
 <body>
@@ -2037,6 +2049,12 @@
     <div class="modal-sub">Escoja el que le guste. Solo cambia en este celular o computador, para usted; a los demás no les cambia nada. Si su equipo está en modo oscuro, la página se sigue viendo oscura.</div>
     <div class="tema-opciones" id="temaOpciones"></div>
     <div style="display:flex; justify-content:flex-end; margin-top:14px;"><button type="button" class="btn ghost" id="temaCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayRecordatorios">
+  <div class="modal" style="max-width:440px;">
+    <h2>Recordatorios por WhatsApp</h2>
+    <div id="recordCuerpo"></div>
   </div>
 </div>
 <div class="overlay" id="overlayEnlaces">
@@ -5952,8 +5970,18 @@ function enviarWhatsapp(r, totalPagar){
   if (!numero) return;
   const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
 
-  const mensaje = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
+  let mensaje = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
     { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
+  // Si tiene recargo por mora, el mensaje lo dice (o se usa {mora} en la plantilla)
+  const mora = numOrZero(r["Recargo Mora"]);
+  if (/\{mora\}/i.test(mensaje)) mensaje = mensaje.replace(/\{mora\}/gi, mora ? fmt(mora) : "$0");
+  else if (mora > 0){
+    const aviso = `⚠️ Este valor incluye *${fmt(mora)}* de recargo por mora, porque el pago no se hizo antes del día ${DIA_LIMITE_RECARGO + 1}.`;
+    const lineas = mensaje.split("\n");
+    const i = lineas.findIndex(l => l.includes(fmt(totalPagar)));
+    if (i > -1){ lineas.splice(i + 1, 0, aviso); mensaje = lineas.join("\n"); }
+    else mensaje += "\n\n" + aviso;
+  }
 
   // La aplicación de WhatsApp para computador daña los emojis que recibe por enlace
   // (los muestra como �). Por eso, en computador se abre WhatsApp Web en el navegador,
@@ -6076,7 +6104,7 @@ function actualizarBarraRecordatorios(){
   }
   bar.style.display = "flex";
   if (colaRecordatorios.length){
-    btn.textContent = `📣 Enviar siguiente (${colaRecordatorios.length} restante(s))`;
+    btn.textContent = `Continuar recordatorios (${colaRecordatorios.length} restante(s))`;
     progreso.style.display = "inline";
     progreso.textContent = `Enviando recordatorios: queda(n) ${colaRecordatorios.length} de ${pendientes.length} pendiente(s).`;
   } else {
@@ -6085,16 +6113,79 @@ function actualizarBarraRecordatorios(){
     progreso.textContent = "";
   }
 }
+// WhatsApp solo deja abrir UN chat por enlace (no permite mandar a muchos de una vez desde
+// una página). Por eso el envío es en serie: una ventana muestra a quién sigue, se toca
+// "Abrir WhatsApp", se envía, se vuelve a la app y ya está listo el siguiente.
+let totalColaRecordatorios = 0, enviadosRecordatorios = 0, procesadosRecordatorios = 0;
 function iniciarOContinuarRecordatorios(){
-  if (!colaRecordatorios.length){
-    colaRecordatorios = clientesPendientesDelMes().slice();
-    if (!colaRecordatorios.length) return;
-  }
-  const r = colaRecordatorios.shift();
-  const totalPagar = calcularTotalPagar(r, store.currentMonth);
-  enviarWhatsapp(r, totalPagar);
-  actualizarBarraRecordatorios();
+  if (colaRecordatorios.length){ mostrarPanelRecordatorios(); return; }
+  const pendientes = clientesPendientesDelMes();
+  if (!pendientes.length) return;
+  const atrasados = pendientes.filter(estaAtrasado);
+  mostrarPanelRecordatorios({ pendientes, atrasados });
 }
+function empezarColaRecordatorios(lista){
+  colaRecordatorios = lista.slice();
+  totalColaRecordatorios = lista.length; enviadosRecordatorios = 0; procesadosRecordatorios = 0;
+  actualizarBarraRecordatorios();
+  mostrarPanelRecordatorios();
+}
+function mostrarPanelRecordatorios(eleccion){
+  const ov = document.getElementById("overlayRecordatorios");
+  const cuerpo = document.getElementById("recordCuerpo");
+  if (eleccion){
+    const { pendientes, atrasados } = eleccion;
+    cuerpo.innerHTML = `
+      <p class="record-txt">¿A quién le envía el recordatorio?</p>
+      <div class="record-opciones">
+        ${atrasados.length ? `<button type="button" class="btn primary" data-record="atrasados">Solo atrasados (${atrasados.length})</button>` : ""}
+        <button type="button" class="btn ${atrasados.length ? "ghost" : "primary"}" data-record="todos">Todos los pendientes (${pendientes.length})</button>
+      </div>
+      <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente.</p>`;
+    mostrarPanelRecordatorios._eleccion = eleccion;
+  } else {
+    const r = colaRecordatorios[0];
+    if (!r){
+      cuerpo.innerHTML = `<p class="record-txt"><b>Listo.</b> Se abrieron ${enviadosRecordatorios} de ${totalColaRecordatorios} recordatorios.</p>
+        <div class="record-opciones"><button type="button" class="btn primary" data-record="cerrar">Cerrar</button></div>`;
+    } else {
+      const n = procesadosRecordatorios + 1;
+      const total = calcularTotalPagar(r, store.currentMonth);
+      const mora = numOrZero(r["Recargo Mora"]);
+      cuerpo.innerHTML = `
+        <div class="record-progreso"><span style="width:${Math.round(100 * procesadosRecordatorios / Math.max(1, totalColaRecordatorios))}%"></span></div>
+        <p class="record-cuenta">${n} de ${totalColaRecordatorios}</p>
+        <p class="record-nombre">${escHtml(r["Nombre del Afiliado"] || "")}</p>
+        <p class="record-dato">${escHtml(String(r["Teléfono"] || ""))} · ${fmt(total)}${mora ? ` · incluye mora ${fmt(mora)}` : ""}</p>
+        <div class="record-opciones">
+          <button type="button" class="btn primary whatsapp-lleno" data-record="abrir">Abrir WhatsApp</button>
+          <button type="button" class="btn ghost" data-record="saltar">Saltar</button>
+          <button type="button" class="btn ghost" data-record="terminar">Terminar</button>
+        </div>`;
+    }
+  }
+  ov.classList.add("show");
+}
+document.getElementById("overlayRecordatorios").addEventListener("click", (e) => {
+  const ov = e.currentTarget;
+  if (e.target === ov){ ov.classList.remove("show"); return; }
+  const b = e.target.closest("[data-record]");
+  if (!b) return;
+  const acc = b.dataset.record;
+  if (acc === "atrasados") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.atrasados);
+  else if (acc === "todos") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.pendientes);
+  else if (acc === "abrir" || acc === "saltar"){
+    const r = colaRecordatorios.shift();
+    if (r){ procesadosRecordatorios++; if (acc === "abrir"){ enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; } }
+    actualizarBarraRecordatorios();
+    mostrarPanelRecordatorios();
+  } else if (acc === "terminar"){
+    colaRecordatorios = []; actualizarBarraRecordatorios(); ov.classList.remove("show");
+    showToast(`Recordatorios: se abrieron ${enviadosRecordatorios}.`);
+  } else if (acc === "cerrar"){
+    colaRecordatorios = []; actualizarBarraRecordatorios(); ov.classList.remove("show");
+  }
+});
 
 // Detecta si el mensaje es una advertencia (validación, error) para mostrar un ícono distinto
 // al de una acción exitosa (guardar, agregar, eliminar confirmado).
