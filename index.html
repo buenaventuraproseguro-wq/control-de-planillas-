@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script>try{ document.documentElement.dataset.tema = localStorage.getItem("prosegurosnet_tema") || "minimal"; }catch(e){ document.documentElement.dataset.tema = "minimal"; }</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PROSEGUROSNET</title>
 
@@ -1057,10 +1058,57 @@
     .sidebar-num{ background:rgba(255,255,255,.88); color:#14201B; }
     .sidebar-link.sub .sidebar-num{ background:rgba(255,255,255,.18); color:#fff; }
   }
+
+  /* ===== Selector de colores ===== */
+  .tema-opciones{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; }
+  .tema-op{ display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; font:inherit; color:var(--ink);
+    background:var(--panel); border:1.5px solid var(--line); border-radius:12px; padding:10px; cursor:pointer; }
+  .tema-op:hover{ border-color:var(--muted); }
+  .tema-op.activo{ border-color:var(--ink); box-shadow:0 0 0 2px var(--ink) inset; }
+  .tema-op b{ font-size:13.5px; margin-top:4px; }
+  .tema-op small{ font-size:12px; color:var(--muted); }
+  .tema-muestra{ display:flex; width:100%; height:34px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,.08); }
+  .tema-muestra i{ flex:1; }
+
+  /* ===== Temas con menú lateral oscuro (solo modo claro) ===== */
+  @media not all and (prefers-color-scheme: dark){
+    :root[data-tema="verde"]{ --bg:#ECE8E1; --panel:#FFFFFF; --ink:#181512; --muted:#5A534A; --line:#D9D2C4;
+      --navy:#2F6F62; --navy-deep:#17352E; --titulo:#17352E; --accent:#2F6F62; --accent-bg:#DCEAE6;
+      --gold:#B4934C; --gold-deep:#8C6F33; --gold-bg:#F4ECD8; --sb1:#1F4A41; --sb2:#15332C; --sb3:#0F2420; }
+    :root[data-tema="azul"]{ --bg:#F2F5F9; --panel:#FFFFFF; --ink:#0F1B2D; --muted:#55657A; --line:#DCE3EC;
+      --navy:#1F5FAE; --navy-deep:#0E2846; --titulo:#0E2846; --accent:#1F5FAE; --accent-bg:#E1ECFA;
+      --gold:#5B9BE6; --gold-deep:#164A8A; --gold-bg:#E1ECFA; --sb1:#123760; --sb2:#0E2846; --sb3:#0A1E36; }
+    :root[data-tema="rojo"]{ --bg:#F4F4F5; --panel:#FFFFFF; --ink:#16181D; --muted:#5A5E66; --line:#E1E2E5;
+      --navy:#C8202F; --navy-deep:#16181D; --titulo:#16181D; --accent:#C8202F; --accent-bg:#FBE3E5;
+      --gold:#E5484D; --gold-deep:#A31925; --gold-bg:#FBE3E5; --sb1:#24272E; --sb2:#1A1C21; --sb3:#121317; }
+    :root[data-tema="dorado"]{ --bg:#F6F3EE; --panel:#FFFFFF; --ink:#1B1A17; --muted:#625C52; --line:#E4DED3;
+      --navy:#8A6A2F; --navy-deep:#17181B; --titulo:#17181B; --accent:#8A6A2F; --accent-bg:#F2EAD9;
+      --gold:#C9A45C; --gold-deep:#8C6F33; --gold-bg:#F4ECD8; --sb1:#1E2024; --sb2:#17181B; --sb3:#101113; }
+    :root:not([data-tema="minimal"]) .app-shell{ background:var(--sb2); }
+    :root:not([data-tema="minimal"]) .main-area{ border-top-left-radius:16px; }
+    :root:not([data-tema="minimal"]) .sidebar{ background:linear-gradient(180deg,var(--sb1) 0%,var(--sb2) 60%,var(--sb3) 100%); color:#fff; border-right:0; box-shadow:2px 0 16px rgba(0,0,0,.18); }
+    :root:not([data-tema="minimal"]) .sidebar-brand{ border-bottom:1px solid rgba(255,255,255,.14); }
+    :root:not([data-tema="minimal"]) .sidebar-brand small{ color:var(--gold); }
+    :root:not([data-tema="minimal"]) .sidebar-logo{ border:0; box-shadow:0 3px 10px rgba(0,0,0,.25); }
+    :root:not([data-tema="minimal"]) .sidebar-section-title{ color:rgba(255,255,255,.55); }
+    :root:not([data-tema="minimal"]) .sidebar-link, :root:not([data-tema="minimal"]) .sidebar-link.sub{ color:rgba(255,255,255,.86); }
+    :root:not([data-tema="minimal"]) .sidebar-link:hover, :root:not([data-tema="minimal"]) .sidebar-link.sub:hover{ background:rgba(255,255,255,.09); color:#fff; }
+    :root:not([data-tema="minimal"]) .sidebar-link.active{ background:rgba(255,255,255,.15); color:#fff; box-shadow:inset 2px 0 0 var(--gold); }
+    :root:not([data-tema="minimal"]) #navMenuBtn{ background:rgba(255,255,255,.08); }
+    :root:not([data-tema="minimal"]) .sidebar-sub{ border-left-color:rgba(255,255,255,.18); }
+    :root:not([data-tema="minimal"]) .sidebar-total{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.16); color:#fff; }
+    :root:not([data-tema="minimal"]) .sidebar-total:hover{ background:rgba(255,255,255,.14); }
+    :root:not([data-tema="minimal"]) .sidebar-num{ background:rgba(255,255,255,.9); color:#15181C; }
+    :root:not([data-tema="minimal"]) .sidebar-link.sub .sidebar-num{ background:rgba(255,255,255,.2); color:#fff; }
+    :root:not([data-tema="minimal"]) .sidebar-link.active .sidebar-num{ background:var(--gold); color:#15181C; }
+    :root:not([data-tema="minimal"]) .month-select-wrap.mes-es-actual{ border:1.5px solid var(--accent); background:var(--accent-bg); box-shadow:none; }
+    :root:not([data-tema="minimal"]) .month-select-wrap.mes-es-actual select{ color:var(--accent); }
+    :root:not([data-tema="minimal"]) .toast{ background:var(--navy-deep); color:#fff; border-color:transparent; }
+  }
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-paleta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/><circle cx="17" cy="11" r="1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
 
 <div class="pin-lock" id="loginScreen" style="display:none;">
   <div class="pin-lock-box">
@@ -1147,6 +1195,7 @@
 
       <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><span class="sidebar-num">17</span><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
       <div class="sidebar-sub" id="enlacesLista"></div>
+      <button type="button" class="sidebar-link" id="navTemaBtn"><span class="sidebar-num">18</span><svg class="ico" aria-hidden="true"><use href="#i-paleta"/></svg>Colores de la página</button>
     </div>
   </nav>
 
@@ -1982,6 +2031,14 @@
   </div>
 </div>
 
+<div class="overlay" id="overlayTema">
+  <div class="modal" style="max-width:620px;">
+    <h2>Colores de la página</h2>
+    <div class="modal-sub">Escoja el que le guste. Solo cambia en este celular o computador, para usted; a los demás no les cambia nada. Si su equipo está en modo oscuro, la página se sigue viendo oscura.</div>
+    <div class="tema-opciones" id="temaOpciones"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:14px;"><button type="button" class="btn ghost" id="temaCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
 <div class="overlay" id="overlayEnlaces">
   <div class="modal" style="max-width:560px;">
     <h2>🔗 Enlaces rápidos</h2>
@@ -5756,6 +5813,40 @@ function renderEditorEnlaces(){
       <button type="button" class="btn small ghost danger" data-borrar-enlace="${i}" title="Borrar">🗑️</button>
     </div>`).join("") : `<div class="empty">No hay enlaces. Agregue uno abajo.</div>`;
 }
+
+// ---- Colores de la página: cada persona escoge el suyo (se guarda en su propio equipo) ----
+const TEMAS_PAGINA = [
+  { id:"minimal", nombre:"Minimalista", desc:"Gris claro y negro", c:["#E9E9E6","#F2F2EF","#171717","#C8202F"] },
+  { id:"verde",   nombre:"Verde clásico", desc:"El diseño original", c:["#ECE8E1","#1F4A41","#2F6F62","#B4934C"] },
+  { id:"azul",    nombre:"Azul corporativo", desc:"Confianza, estilo bancario", c:["#F2F5F9","#123760","#1F5FAE","#E1ECFA"] },
+  { id:"rojo",    nombre:"Rojo y negro", desc:"Como el logo y el aviso", c:["#F4F4F5","#1A1C21","#C8202F","#FBE3E5"] },
+  { id:"dorado",  nombre:"Negro y dorado", desc:"Sobrio y elegante", c:["#F6F3EE","#17181B","#9C7A3C","#F2EAD9"] },
+];
+function temaActual(){ return document.documentElement.dataset.tema || "minimal"; }
+function aplicarTema(id){
+  document.documentElement.dataset.tema = id;
+  try{ localStorage.setItem("prosegurosnet_tema", id); }catch(e){}
+  renderTemas();
+}
+function renderTemas(){
+  const cont = document.getElementById("temaOpciones");
+  if (!cont) return;
+  cont.innerHTML = TEMAS_PAGINA.map(t => `
+    <button type="button" class="tema-op ${temaActual() === t.id ? "activo" : ""}" data-tema-id="${t.id}" aria-pressed="${temaActual() === t.id}">
+      <span class="tema-muestra">${t.c.map(c => `<i style="background:${c}"></i>`).join("")}</span>
+      <b>${t.nombre}</b><small>${t.desc}</small>
+    </button>`).join("");
+}
+document.getElementById("navTemaBtn").addEventListener("click", () => {
+  renderTemas();
+  document.getElementById("overlayTema").classList.add("show");
+});
+document.getElementById("temaCerrarBtn").addEventListener("click", () => document.getElementById("overlayTema").classList.remove("show"));
+document.getElementById("overlayTema").addEventListener("click", (e) => {
+  if (e.target.id === "overlayTema") e.currentTarget.classList.remove("show");
+  const b = e.target.closest("[data-tema-id]");
+  if (b){ aplicarTema(b.dataset.temaId); showToast("Colores cambiados. Solo se ven así en este equipo."); }
+});
 document.getElementById("navEnlacesBtn").addEventListener("click", (e) => {
   const lista = document.getElementById("enlacesLista");
   const abierto = lista.classList.toggle("show");

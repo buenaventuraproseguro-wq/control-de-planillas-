@@ -28,6 +28,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Lugar de trabajo junto a Estado ARL
 - Consignaciones desde el celular (MacroDroid)
 - Reingreso: al agregar una cédula que ya estuvo en meses anteriores, ofrece traer sus datos
+- Colores de la página (menú 18): cada persona escoge su tema; se guarda en su propio equipo
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
