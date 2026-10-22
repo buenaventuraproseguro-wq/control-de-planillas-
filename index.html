@@ -1028,9 +1028,24 @@
     .btn.primary{ background:#2B68A6; border-color:#2B68A6; }
     .btn.whatsapp{ color:#4ADE80; border-color:#4ADE8055; }
   }
+
+  /* ===== Taste: íconos de línea en vez de emojis en el menú ===== */
+  .ico{ width:16px; height:16px; flex-shrink:0; vertical-align:-3px; margin-right:7px; opacity:.85; }
+  .sidebar-link.sub .ico{ width:14px; height:14px; vertical-align:-2px; margin-right:6px; }
+  .sidebar-link:hover .ico, .sidebar-link.active .ico{ opacity:1; }
+  .sidebar-num{ opacity:.75; }
+
+  /* ===== Taste: sin etiquetas en MAYÚSCULAS; títulos pequeños en minúscula normal y legibles ===== */
+  .sidebar-section-title, .guia-cuerpo dt, .guia-archivos h4, .bell-section-title, .month-select-wrap label,
+  .list-table-head, .g-tarjeta small, .g-tabla th, .crm-tarjeta small, .crm-tabla th, .crm-stats-caja h4,
+  .informe-seccion-title, .tabla-historial th, .reciente-group-title, .ms-resumen small{
+    text-transform:none; letter-spacing:0; font-size:12px; font-weight:600;
+  }
+  .sidebar-section-title{ padding-top:14px; }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
 
 <div class="pin-lock" id="loginScreen" style="display:none;">
   <div class="pin-lock-box">
@@ -1060,31 +1075,31 @@
         <small>Control de planillas</small>
       </div>
     </div>
-    <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span> ➕ Agregar cliente</button>
-    <button type="button" class="sidebar-link" id="navCrmBtn">📇 CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
-    <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;">💰 Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
-    <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span> 📝 Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span> <svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
+    <button type="button" class="sidebar-link" id="navCrmBtn"><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
+    <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg>Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span> <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
 
-    <button type="button" class="sidebar-link" id="navMenuBtn">☰ Ver más opciones</button>
+    <button type="button" class="sidebar-link" id="navMenuBtn"><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>Ver más opciones</button>
 
     <div class="sidebar-menu-colapsable" id="sidebarMenuColapsable">
       <div class="sidebar-section-title">Clientes</div>
-      <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">2</span> ✏️ Editar responsables</button>
-      <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">3</span> 🚢 Muelles · PROSEGUROSNET</button>
-      <button type="button" class="sidebar-link" id="navMuellesServicioBtn">⚓ Muelles · Independientes (otras empresas)</button>
-      <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">5</span> 🕒 Trabajados recientemente</button>
-      <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">6</span> 📜 Historial de cliente</button>
-      <button type="button" class="sidebar-link" id="navGuiaEpsBtn">📘 Guía de afiliaciones por EPS</button>
+      <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">2</span> <svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
+      <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">3</span> <svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
+      <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
+      <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">5</span> <svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Trabajados recientemente</button>
+      <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">6</span> <svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Historial de cliente</button>
+      <button type="button" class="sidebar-link" id="navGuiaEpsBtn"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía de afiliaciones por EPS</button>
 
       <div class="sidebar-section-title">Reportes</div>
-      <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">7</span> ⬇️ Exportar respaldo</button>
-      <button type="button" class="sidebar-link" id="navImportBtn">⬆️ Importar respaldo</button>
-      <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">8</span> 📊 Exportar cobro del mes</button>
-      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> 📥 Subir planilla pagada (planilla + comprobante)</button>
+      <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">7</span> <svg class="ico" aria-hidden="true"><use href="#i-bajar"/></svg>Exportar respaldo</button>
+      <button type="button" class="sidebar-link" id="navImportBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Importar respaldo</button>
+      <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">8</span> <svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Exportar cobro del mes</button>
+      <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">9</span> <svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Subir planilla pagada (planilla + comprobante)</button>
       <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,image/*,.csv,text/csv" multiple>
 
       <div class="sidebar-section-title">Cartera</div>
-      <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">10</span> 📋 Cartera (cobros del mes) ▾</button>
+      <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">10</span> <svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
       <div class="sidebar-sub" id="carteraSub">
         <button type="button" class="sidebar-total" id="btnInformeProsegurosnet" data-informe="prosegurosnet">
           <span class="sidebar-total-label">Total a cobrar este mes (PROSEGUROSNET)</span>
@@ -1107,15 +1122,15 @@
           <span class="sidebar-total-label">Suma final (todas las empresas)</span>
           <span class="sidebar-total-value" id="sidebarTotalGeneral">—</span>
         </button>
-        <button type="button" class="sidebar-link sub" id="navCobroExtraBtn">➕ Agregar cobro extra</button>
-        <button type="button" class="sidebar-link sub" id="navGananciasBtn">💰 Ganancias de gestiones</button>
-        <button type="button" class="sidebar-link sub" id="navMensajeBtn">💬 Mensaje de recordatorio</button>
+        <button type="button" class="sidebar-link sub" id="navCobroExtraBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cobro extra</button>
+        <button type="button" class="sidebar-link sub" id="navGananciasBtn"><svg class="ico" aria-hidden="true"><use href="#i-monedas"/></svg>Ganancias de gestiones</button>
+        <button type="button" class="sidebar-link sub" id="navMensajeBtn"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Mensaje de recordatorio</button>
       </div>
 
       <div class="sidebar-section-title">Empresa</div>
-      <button type="button" class="sidebar-link" id="navGastosBtn">💸 Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+      <button type="button" class="sidebar-link" id="navGastosBtn"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
 
-      <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false">🔗 Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
+      <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
       <div class="sidebar-sub" id="enlacesLista"></div>
     </div>
   </nav>
@@ -1146,7 +1161,7 @@
   <div class="stats-strip" id="statsStrip"></div>
 
   <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
-    <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">📣 Enviar recordatorio de WhatsApp a pendientes</button>
+    <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp a pendientes</button>
     <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
   </div>
 
@@ -1155,7 +1170,7 @@
       <label for="monthSelect">Mes</label>
       <select id="monthSelect"></select>
     </div>
-    <button class="btn primary" id="advanceBtn">Avanzar al siguiente mes →</button>
+    <button class="btn primary" id="advanceBtn">Avanzar al siguiente mes</button>
   </div>
 
   <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
@@ -4587,19 +4602,19 @@ function renderStatsStrip(){
       })()}</div>
     </button>
     <button type="button" class="stat-card stat-confirmar ${porConfirmar.some(confirmacionDemorada) ? "con-demora" : ""} ${activa("__POR_CONFIRMAR__")}" data-filtro="__POR_CONFIRMAR__" title="Clientes con EPS, pensión, caja o ARL en proceso">
-      <div class="stat-label">⏳ Por confirmar</div>
+      <div class="stat-label">Por confirmar</div>
       <div class="stat-value">${porConfirmar.length}</div>
       <div class="stat-detalle">${porConfirmar.length
         ? ["PSN", "OTRAS", "INDEP"].map(g => `${g === "PSN" ? "PSN" : g === "OTRAS" ? "Otras" : "Indep."} ${porConfirmar.filter(r => grupoConfirmacion(r) === g).length}`).join(" · ")
         : "EPS · pensión · caja · ARL"}</div>
     </button>
     <button type="button" class="stat-card stat-traslado ${activa("__TRASLADOS__")}" data-filtro="__TRASLADOS__" title="Traslados de EPS pendientes de aprobación">
-      <div class="stat-label">🔁 Traslados EPS</div>
+      <div class="stat-label">Traslados EPS</div>
       <div class="stat-value">${traslados.length}</div>
       <div class="stat-detalle">${traslados.length ? "por aprobar" : "ninguno pendiente"}</div>
     </button>
     <button type="button" class="stat-card stat-caja ${activa("__CAJA__")}" data-filtro="__CAJA__" title="Clientes que pagan caja de compensación este mes">
-      <div class="stat-label">🏦 Caja de compensación</div>
+      <div class="stat-label">Caja de compensación</div>
       <div class="stat-value">${conCaja.length}</div>
       <div class="stat-detalle">${["PSN", "OTRAS", "INDEP"].map(g => `${g === "PSN" ? "PSN" : g === "OTRAS" ? "Otras" : "Indep."} ${conCaja.filter(r => grupoConfirmacion(r) === g).length}`).join(" · ")}</div>
     </button>
@@ -4938,7 +4953,7 @@ const esNombreEmpresaServicio = (nombre) => [NOMBRE_EMPRESA_CONDUCTORES, NOMBRE_
 
 function renderFilterPills(){
   const estados = ["__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "SIN INICIAR"];
-  const etiquetas = { "": "Todos", "__CONDUCTORES__": "🚚 Conductores", "__SERV_MUELLES__": "⚓ Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "SIN PAGO": "Sin pago", "DIAS PROPORCIONALES": "Días prop.", "AFILIACION": "Afiliación", "RETIRO": "Retiro", "SIN INICIAR": "Sin iniciar" };
+  const etiquetas = { "": "Todos", "__CONDUCTORES__": "Conductores", "__SERV_MUELLES__": "Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "SIN PAGO": "Sin pago", "DIAS PROPORCIONALES": "Días prop.", "AFILIACION": "Afiliación", "RETIRO": "Retiro", "SIN INICIAR": "Sin iniciar" };
   const sinConductores = records.filter(r => !esConductorExcluido(r));
   document.getElementById("filterPills").innerHTML = estados.map(e => {
     let count;
@@ -5689,9 +5704,9 @@ function urlSegura(u){
 function renderEnlacesRapidos(){
   const cont = document.getElementById("enlacesLista");
   if (!cont) return;
-  cont.innerHTML = enlacesRapidos.map(e => `<a class="sidebar-link sub" href="${escHtml(e.url)}" target="_blank" rel="noopener">🔗 ${escHtml(e.nombre)}</a>`).join("")
+  cont.innerHTML = enlacesRapidos.map(e => `<a class="sidebar-link sub" href="${escHtml(e.url)}" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>${escHtml(e.nombre)}</a>`).join("")
     + (enlacesRapidos.length ? "" : `<span class="sidebar-link sub" style="cursor:default;opacity:.7;">No hay enlaces</span>`)
-    + (esAdmin() ? `<button type="button" class="sidebar-link sub" id="enlacesEditarBtn">⚙️ Agregar o quitar enlaces</button>` : "");
+    + (esAdmin() ? `<button type="button" class="sidebar-link sub" id="enlacesEditarBtn"><svg class="ico" aria-hidden="true"><use href="#i-ajustes"/></svg>Agregar o quitar enlaces</button>` : "");
 }
 async function cargarEnlacesRapidos(){
   if (!sb) return;
@@ -5959,7 +5974,7 @@ function actualizarBarraRecordatorios(){
     progreso.style.display = "inline";
     progreso.textContent = `Enviando recordatorios: queda(n) ${colaRecordatorios.length} de ${pendientes.length} pendiente(s).`;
   } else {
-    btn.textContent = `📣 Enviar recordatorio de WhatsApp a pendientes (${pendientes.length})`;
+    btn.textContent = `Enviar recordatorio de WhatsApp a pendientes (${pendientes.length})`;
     progreso.style.display = "none";
     progreso.textContent = "";
   }
