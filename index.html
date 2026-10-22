@@ -967,7 +967,7 @@
   /* ===== Diseño D · colores minimalistas (solo modo claro; el modo oscuro sigue igual) ===== */
   @media not all and (prefers-color-scheme: dark){
     :root{
-      --bg:#FAFAFA; --panel:#FFFFFF; --ink:#0A0A0A; --muted:#6F6F6F; --line:#EBEBEB;
+      --bg:#E9E9E6; --panel:#FAFAF8; --ink:#0A0A0A; --muted:#66665F; --line:#DEDED9;
       --navy:#171717; --navy-deep:#0A0A0A; --titulo:#0A0A0A; --accent:#171717; --accent-bg:#F2F2F2;
       --gold:#C8202F; --gold-deep:#A31925; --gold-bg:#FDECEE; --radius:12px;
       --sombra:0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
@@ -976,20 +976,20 @@
     body{ font-weight:450; letter-spacing:-.006em; }
     .app-shell{ background:var(--bg); }
     .main-area{ border-top-left-radius:0; }
-    .sidebar{ background:#FFFFFF; color:var(--ink); box-shadow:none; border-right:1px solid var(--line); }
+    .sidebar{ background:#F2F2EF; color:var(--ink); box-shadow:none; border-right:1px solid var(--line); }
     .sidebar-brand{ border-bottom:1px solid var(--line); }
     .sidebar-brand small{ color:var(--muted); opacity:1; }
     .sidebar-logo{ box-shadow:none; border:1px solid var(--line); }
     .sidebar-section-title{ color:#A3A3A3; }
     .sidebar-link{ color:#404040; font-weight:500; }
-    .sidebar-link:hover{ background:#F4F4F4; color:var(--ink); }
-    .sidebar-link.active{ background:#F0F0F0; color:var(--ink); box-shadow:inset 2px 0 0 var(--gold); }
+    .sidebar-link:hover{ background:#E7E7E3; color:var(--ink); }
+    .sidebar-link.active{ background:#E4E4DF; color:var(--ink); box-shadow:inset 2px 0 0 var(--gold); }
     .sidebar-link.sub{ color:#6F6F6F; }
-    .sidebar-link.sub:hover{ color:var(--ink); background:#F4F4F4; }
+    .sidebar-link.sub:hover{ color:var(--ink); background:#E7E7E3; }
     .sidebar-sub{ border-left-color:var(--line); }
     .sidebar-num{ background:#EDEDED; color:#525252; }
-    #navMenuBtn{ background:#F4F4F4; }
-    .sidebar-total{ background:#FAFAFA; border-color:var(--line); }
+    #navMenuBtn{ background:#E7E7E3; }
+    .sidebar-total{ background:#ECECE8; border-color:var(--line); }
     .sidebar-total:hover{ background:#F4F4F4; border-color:#DADADA; }
     .stat-card{ box-shadow:var(--sombra); border-top-width:2px; }
     .stat-card:hover{ box-shadow:var(--sombra-alta); }
@@ -1000,7 +1000,7 @@
     .month-select-wrap.mes-es-actual{ border:1px solid var(--line); background:var(--panel); box-shadow:var(--sombra); }
     .month-select-wrap.mes-es-actual select{ color:var(--ink); }
     input:focus, select:focus, textarea:focus{ outline:none; border-color:#A3A3A3; box-shadow:0 0 0 3px rgba(0,0,0,.06); }
-    .toast{ background:#FFFFFF; color:var(--ink); border:1px solid var(--line); box-shadow:var(--sombra-alta); }
+    .toast{ background:#FAFAF8; color:var(--ink); border:1px solid var(--line); box-shadow:var(--sombra-alta); }
   }
 </style>
 </head>
