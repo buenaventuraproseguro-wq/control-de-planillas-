@@ -3414,16 +3414,73 @@ function renderListaEps(){
     Array.from(vistos).sort().map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join("");
 }
 
+// Responsables: se evita crear el mismo dos veces por un espacio de más, mayúsculas o tildes
+// ("doña  sandra", "Doña Sandra", "dona sandra" son el mismo).
+function normResp(v){ return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim(); }
+function limpiarEspacios(v){ return String(v || "").replace(/\s+/g, " ").trim(); }
+function responsablesConocidos(){
+  const conteo = new Map(); // clave normalizada -> Map(variante -> veces)
+  Object.values(store.months).forEach(mes => (mes || []).forEach(r => {
+    const v = limpiarEspacios(r["Responsable / Grupo"]);
+    if (!v) return;
+    const k = normResp(v);
+    if (!conteo.has(k)) conteo.set(k, new Map());
+    const m = conteo.get(k); m.set(v, (m.get(v) || 0) + 1);
+  }));
+  const res = new Map(); // clave -> variante más usada
+  conteo.forEach((m, k) => res.set(k, [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]));
+  return res;
+}
 function renderListaResponsables(){
-  const vistos = new Set(["Independiente", "Empresa"]);
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => {
-      const v = String(r["Responsable / Grupo"] || "").trim();
-      if (v) vistos.add(v);
-    });
-  });
+  const lista = new Map([["independiente", "Independiente"], ["empresa", "Empresa"]]);
+  responsablesConocidos().forEach((v, k) => { if (!lista.has(k)) lista.set(k, v); });
   document.getElementById("listaResponsables").innerHTML =
-    Array.from(vistos).map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join("");
+    Array.from(lista.values()).map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join("");
+}
+function distanciaTexto(a, b){
+  if (Math.abs(a.length - b.length) > 3) return 99;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// Devuelve el responsable ya creado que corresponde a lo escrito (igual o casi igual)
+function sugerirResponsable(texto){
+  const k = normResp(texto);
+  if (!k) return null;
+  const conocidos = responsablesConocidos();
+  if (conocidos.has(k)) return { exacto: true, valor: conocidos.get(k) };
+  if (k.length < 4) return null;
+  let mejor = null, dist = 99;
+  conocidos.forEach((v, ck) => {
+    let dd = distanciaTexto(k, ck);
+    if (dd > 2 && (ck.startsWith(k + " ") || k.startsWith(ck + " "))) dd = 2;
+    if (dd < dist){ dist = dd; mejor = v; }
+  });
+  return (mejor && dist <= 2) ? { exacto: false, valor: mejor } : null;
+}
+function revisarResponsableEscrito(alSalir){
+  const campo = getField("Resp");
+  let aviso = document.getElementById("respSugerencia");
+  if (!aviso){
+    aviso = document.createElement("div"); aviso.id = "respSugerencia"; aviso.className = "reingreso-aviso"; aviso.hidden = true;
+    campo.closest(".field").appendChild(aviso);
+    // mousedown (y no click) para que el campo no pierda el foco antes de usar la sugerencia
+    const usar = (e) => { if (e.target.id !== "respUsarBtn") return; e.preventDefault(); campo.value = aviso.dataset.valor || campo.value; aviso.hidden = true; };
+    aviso.addEventListener("mousedown", usar);
+    aviso.addEventListener("click", usar);
+  }
+  if (alSalir) campo.value = limpiarEspacios(campo.value);
+  const sug = sugerirResponsable(campo.value);
+  if (!sug){ aviso.hidden = true; return; }
+  if (sug.exacto){
+    if (alSalir && campo.value !== sug.valor) campo.value = sug.valor;   // mismo responsable: se usa el ya creado
+    aviso.hidden = true; return;
+  }
+  aviso.dataset.valor = sug.valor;
+  aviso.innerHTML = `¿Es el mismo responsable <b>${escHtml(sug.valor)}</b>? <button type="button" id="respUsarBtn">Sí, usar ese</button>`;
+  aviso.hidden = false;
 }
 
 /* ---- Empresas (crear nuevas, renombrar y propagar a todos los meses) ---- */
@@ -6400,6 +6457,7 @@ function fromInputDate(yyyymmdd){
 function openModal(record){
   editingCedula = record ? record["Cédula"] : null;
   ocultarAvisoReingreso(); _reingresoCedula = "";
+  { const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
   modalTitle.textContent = record ? "Editar cliente" : "Agregar cliente";
   renderListaResponsables();
   renderListaEmpresas();
@@ -7004,6 +7062,12 @@ getField("Cedula").addEventListener("input", () => {
 getField("Cedula").addEventListener("blur", () => { clearTimeout(_reingresoTimer); revisarReingreso(); });
 document.addEventListener("click", (e) => { if (e.target && e.target.id === "reingresoTraerBtn") traerDatosReingreso(); });
 
+getField("Resp").addEventListener("input", () => {
+  const c = getField("Resp"), v = c.value.replace(/^\s+/, "").replace(/\s{2,}/g, " ");
+  if (v !== c.value){ const pos = c.selectionStart; c.value = v; try{ c.setSelectionRange(pos - 1, pos - 1); }catch(e){} }
+  revisarResponsableEscrito(false);
+});
+getField("Resp").addEventListener("blur", () => revisarResponsableEscrito(true));
 getField("Nombre").addEventListener("input", () => {
   const limpio = getField("Nombre").value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
   if (limpio !== getField("Nombre").value) getField("Nombre").value = limpio;
@@ -7270,7 +7334,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
 
   const record = {
     "_ultimaEdicion": new Date().toISOString(),
-    "Responsable / Grupo": getField("Resp").value.trim().toLowerCase(),
+    "Responsable / Grupo": (() => { const v = limpiarEspacios(getField("Resp").value); const sug = sugerirResponsable(v); return ((sug && sug.exacto) ? sug.valor : v).toLowerCase(); })(),
     "Costo Servicio": getField("Costo").value === "" ? "" : Number(getField("Costo").value),
     "Estado Trámite": getField("Estado").value,
     "Dirección Completa": getField("Direccion").value.trim().toLowerCase(),
