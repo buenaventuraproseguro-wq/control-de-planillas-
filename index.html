@@ -6402,8 +6402,7 @@ function clientesPendientesDelMes(){
   const arr = store.months[store.currentMonth] || [];
   return arr.filter(r => {
     const ec = estadoClass(r["Estado Trámite"]);
-    const debeRetiro = ec === "RETIRO" && !esOtraEmpresa(r) && retiroSinSoporte(r);
-    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES" || debeRetiro) && String(r["Teléfono"] || "").trim();
+    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && String(r["Teléfono"] || "").trim();
   });
 }
 function actualizarBarraRecordatorios(){
