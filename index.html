@@ -2388,14 +2388,31 @@ async function sincronizarClientesMes(nombreMes){
     vistos.add(ced);
     const payload = esRecordToDbRow(r, monthId);
     const firma = JSON.stringify(payload);
-    if (firmas[ced] === firma) continue; // sin cambios desde la última vez: no reenviar
-    payload.updated_by = currentUserId;
-    payload.updated_at = new Date().toISOString();
-    payload.ultima_edicion = r["_ultimaEdicion"] || payload.updated_at;
+    if (mismaFirma(firmas[ced], firma)) continue; // sin cambios desde la última vez: no reenviar
+    const ahoraIso = new Date().toISOString();
     if (idsMes[ced]){
-      const { error } = await sb.from("clients").update(payload).eq("id", idsMes[ced]);
+      // Solo se envían los datos que cambiaron en ESTE equipo. Así, si un compañero cambió
+      // otro dato del mismo cliente, no se le borra con la copia vieja de este equipo.
+      let cambios = payload;
+      try{
+        const antes = firmas[ced] ? JSON.parse(firmas[ced]) : null;
+        if (antes){
+          cambios = {};
+          Object.keys(payload).forEach(k => {
+            if (JSON.stringify(payload[k] ?? null) !== JSON.stringify(antes[k] ?? null)) cambios[k] = payload[k];
+          });
+        }
+      }catch(e){ cambios = payload; }
+      if (!Object.keys(cambios).length){ firmas[ced] = firma; continue; }
+      cambios.updated_by = currentUserId;
+      cambios.updated_at = ahoraIso;
+      cambios.ultima_edicion = r["_ultimaEdicion"] || ahoraIso;
+      const { error } = await sb.from("clients").update(cambios).eq("id", idsMes[ced]);
       if (error) throw error;
     } else {
+      payload.updated_by = currentUserId;
+      payload.updated_at = ahoraIso;
+      payload.ultima_edicion = r["_ultimaEdicion"] || ahoraIso;
       const { data, error } = await sb.from("clients").insert(payload).select("id").single();
       if (error) throw error;
       idsMes[ced] = data.id;
@@ -2691,8 +2708,8 @@ async function refrescarMesDesdeNube(){
       const idx = lista.findIndex(r => String(r["Cédula"]) === ced);
       if (idx > -1){
         const firmaLocal = JSON.stringify(esRecordToDbRow(lista[idx], monthId));
-        if (firmas[ced] != null && firmaLocal !== firmas[ced]) return; // cambio propio sin enviar
-        if (firmaLocal === firmaNube){ firmas[ced] = firmaNube; idsMes[ced] = row.id; return; }
+        if (firmas[ced] != null && !mismaFirma(firmaLocal, firmas[ced])) return; // cambio propio sin enviar
+        if (mismaFirma(firmaLocal, firmaNube)){ firmas[ced] = firmaNube; idsMes[ced] = row.id; return; }
         lista[idx] = rec;
       } else {
         if (idsMes[ced] === row.id) return; // se borró aquí y todavía no se envió
@@ -2704,7 +2721,7 @@ async function refrescarMesDesdeNube(){
     for (let i = lista.length - 1; i >= 0; i--){
       const ced = String(lista[i]["Cédula"] || "").trim();
       if (!ced || enNube.has(ced) || !idsMes[ced]) continue;
-      if (JSON.stringify(esRecordToDbRow(lista[i], monthId)) !== firmas[ced]) continue;
+      if (!mismaFirma(JSON.stringify(esRecordToDbRow(lista[i], monthId)), firmas[ced])) continue;
       lista.splice(i, 1); delete idsMes[ced]; delete firmas[ced]; cambios++;
     }
     if (cambios){
@@ -2749,7 +2766,7 @@ function suscribirMesEnVivo(nombreMes){
         const ced = String(rec["Cédula"] || "").trim();
         if (!ced) return;
         const firma = JSON.stringify(esRecordToDbRow(rec, monthId));
-        if (firmas[ced] === firma) return; // es el eco de un cambio que mandamos nosotros mismos
+        if (mismaFirma(firmas[ced], firma)) return; // es el eco de un cambio que mandamos nosotros mismos
         idsMes[ced] = row.id;
         firmas[ced] = firma;
         const lista = store.months[nombreMes] || (store.months[nombreMes] = []);
@@ -2936,6 +2953,13 @@ function firmaClienteCanonica(texto){
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
     return JSON.stringify(o);
   }catch(e){ return texto; }
+}
+// Dos firmas son iguales si solo difieren en columnas nuevas vacías (así, al agregar una
+// columna a la base, la app NO reenvía todos los clientes).
+function mismaFirma(a, b){
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  return firmaClienteCanonica(a) === firmaClienteCanonica(b);
 }
 function huellaCliente(r, monthId){ return huella(firmaClienteCanonica(JSON.stringify(esRecordToDbRow(r, monthId)))); }
 
