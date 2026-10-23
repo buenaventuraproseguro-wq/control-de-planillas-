@@ -1146,6 +1146,7 @@
   #overlay .field.falta input, #overlay .field.falta select, #overlay .field.falta textarea{ border-color:#C8202F !important; box-shadow:0 0 0 3px rgba(200,32,47,.12) !important; }
   #overlay .field.falta > label{ color:#C8202F; }
   #overlay [data-na]{ background:var(--line) !important; color:var(--muted); }
+  .obligatorio-marca{ color:#C8202F; font-weight:700; }
   .faltan-aviso{ margin-right:auto; align-self:center; font-size:12.5px; font-weight:600; color:#C8202F; }
 </style>
 </head>
@@ -7206,6 +7207,11 @@ function camposConfirmables(){
   });
 }
 function controlDe(f){ return f.querySelector("input:not([type=checkbox]):not([type=file]), select, textarea"); }
+// Obligatorios al agregar: no tienen "No aplica"
+const CAMPOS_OBLIGATORIOS = ["fCedula", "fNombre", "fTelefono", "fDireccion", "fArl", "fAfp", "fEps", "fEmpresa", "fCaja"];
+function camposObligatoriosVisibles(){
+  return CAMPOS_OBLIGATORIOS.map(id => document.getElementById(id)).filter(c => c && c.closest(".field") && c.closest(".field").offsetParent !== null).map(c => c.closest(".field"));
+}
 function prepararNoAplica(){
   const agregando = !editingCedula;
   document.getElementById("borrarFormBtn").hidden = !agregando;
@@ -7213,10 +7219,15 @@ function prepararNoAplica(){
   document.querySelectorAll("#overlay .na-btn").forEach(b => b.remove());
   document.querySelectorAll("#overlay .field.falta").forEach(f => f.classList.remove("falta"));
   document.querySelectorAll("#overlay [data-na]").forEach(c => { delete c.dataset.na; c.disabled = false; c.placeholder = c.dataset.phOriginal || ""; });
+  document.querySelectorAll("#overlay .obligatorio-marca").forEach(m => m.remove());
   if (!agregando) return;
+  camposObligatoriosVisibles().forEach(f => {
+    const lab = f.querySelector("label");
+    if (lab && !/\*/.test(lab.textContent)){ const m = document.createElement("span"); m.className = "obligatorio-marca"; m.textContent = " *"; lab.insertBefore(m, lab.querySelector(".na-btn")); }
+  });
   camposConfirmables().forEach(f => {
     const c = controlDe(f);
-    if (c.id === "fCedula" || c.id === "fNombre") return;
+    if (CAMPOS_OBLIGATORIOS.includes(c.id)) return;
     const b = document.createElement("button");
     b.type = "button"; b.className = "na-btn"; b.textContent = "No aplica";
     b.addEventListener("click", () => {
@@ -7242,7 +7253,9 @@ document.getElementById("overlay").addEventListener("input", (e) => {
   actualizarFaltantes(false);
 });
 function recuadrosFaltantes(){
-  return camposConfirmables().filter(f => { const c = controlDe(f); return !c.dataset.na && !String(c.value || "").trim(); });
+  const faltan = camposConfirmables().filter(f => { const c = controlDe(f); return !c.dataset.na && !String(c.value || "").trim(); });
+  camposObligatoriosVisibles().forEach(f => { const c = controlDe(f); if (!String(c.value || "").trim() && !faltan.includes(f)) faltan.push(f); });
+  return faltan;
 }
 function actualizarFaltantes(marcar){
   if (editingCedula) return 0;
