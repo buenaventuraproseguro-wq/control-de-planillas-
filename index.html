@@ -1147,6 +1147,7 @@
   #overlay .field.falta > label{ color:#C8202F; }
   #overlay [data-na]{ background:var(--line) !important; color:var(--muted); }
   .obligatorio-marca{ color:#C8202F; font-weight:700; }
+  .doc-upload.falta-doc{ outline:2px solid #C8202F; outline-offset:2px; border-radius:10px; }
   .faltan-aviso{ margin-right:auto; align-self:center; font-size:12.5px; font-weight:600; color:#C8202F; }
 </style>
 </head>
@@ -7208,7 +7209,7 @@ function camposConfirmables(){
 }
 function controlDe(f){ return f.querySelector("input:not([type=checkbox]):not([type=file]), select, textarea"); }
 // Obligatorios al agregar: no tienen "No aplica"
-const CAMPOS_OBLIGATORIOS = ["fCedula", "fNombre", "fTelefono", "fDireccion", "fArl", "fAfp", "fEps", "fEmpresa", "fCaja"];
+const CAMPOS_OBLIGATORIOS = ["fCedula", "fNombre", "fTelefono", "fDireccion", "fFechaIngreso", "fArl", "fArlNivel", "fAfp", "fEps", "fEmpresa"];
 function camposObligatoriosVisibles(){
   return CAMPOS_OBLIGATORIOS.map(id => document.getElementById(id)).filter(c => c && c.closest(".field") && c.closest(".field").offsetParent !== null).map(c => c.closest(".field"));
 }
@@ -7220,7 +7221,11 @@ function prepararNoAplica(){
   document.querySelectorAll("#overlay .field.falta").forEach(f => f.classList.remove("falta"));
   document.querySelectorAll("#overlay [data-na]").forEach(c => { delete c.dataset.na; c.disabled = false; c.placeholder = c.dataset.phOriginal || ""; });
   document.querySelectorAll("#overlay .obligatorio-marca").forEach(m => m.remove());
+  document.querySelectorAll("#overlay .falta-doc").forEach(b => b.classList.remove("falta-doc"));
   if (!agregando) return;
+  { const cajaCed = document.querySelector('.doc-upload[data-doc="Cedula"]');
+    const t = cajaCed && (cajaCed.querySelector(".doc-label, label, span") || cajaCed);
+    if (t){ const m = document.createElement("span"); m.className = "obligatorio-marca"; m.textContent = " * obligatorio"; t.appendChild(m); } }
   camposObligatoriosVisibles().forEach(f => {
     const lab = f.querySelector("label");
     if (lab && !/\*/.test(lab.textContent)){ const m = document.createElement("span"); m.className = "obligatorio-marca"; m.textContent = " *"; lab.insertBefore(m, lab.querySelector(".na-btn")); }
@@ -7266,6 +7271,10 @@ function actualizarFaltantes(marcar){
   aviso.textContent = faltan.length ? `Faltan ${faltan.length} recuadro${faltan.length === 1 ? "" : "s"}` : "";
   return faltan.length;
 }
+document.getElementById("overlay").addEventListener("change", (e) => {
+  const box = e.target.closest && e.target.closest('.doc-upload[data-doc="Cedula"]');
+  if (box && e.target.files && e.target.files.length) box.classList.remove("falta-doc");
+});
 document.getElementById("borrarFormBtn").addEventListener("click", async () => {
   if (!(await confirmarApp("¿Borrar todo lo escrito en este cliente nuevo? No se guarda nada."))) return;
   openModal(null);
@@ -7508,6 +7517,20 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   if (cedula.length < 6 || cedula.length > 12){
     showToast("La cédula debe tener entre 6 y 12 números. Revísala antes de guardar.");
     return;
+  }
+  if (!editingCedula){
+    const cajaCed = document.querySelector('.doc-upload[data-doc="Cedula"]');
+    let tieneCedula = !!docImagenes.Cedula;
+    if (!tieneCedula && cloudDb && navigator.onLine){
+      try{ tieneCedula = (await documentosDeLaNube(cedula)).some(d => d.tipo === "cedula"); }catch(e){}
+    }
+    if (cajaCed) cajaCed.classList.toggle("falta-doc", !tieneCedula);
+    if (!tieneCedula){
+      const faltanCampos = actualizarFaltantes(true);
+      (document.querySelector("#overlay .field.falta") || cajaCed).scrollIntoView({ behavior: "smooth", block: "center" });
+      showToast(`⚠️ Falta el archivo de la cédula${faltanCampos ? ` y ${faltanCampos} recuadro(s)` : ""}. Súbalo en "Fotos de documentos".`);
+      return;
+    }
   }
   if (!editingCedula && actualizarFaltantes(true)){
     const primero = document.querySelector("#overlay .field.falta");
