@@ -1189,6 +1189,8 @@
   .resp-pie{ padding:6px 10px 4px; font-size:11px; color:var(--muted); border-top:1px solid var(--line); margin-top:4px; }
   @media (prefers-color-scheme: dark){ .resp-op:hover, .resp-op.activa{ background:#0F2E45; } .resp-crear{ color:#7DD3FC; } }
   @media (prefers-reduced-motion: reduce){ .resp-sugerencias{ animation:none; } }
+  .tag-retiro-pend{ display:inline-block; font-size:11px; font-weight:600; color:#9C4A3D; background:#F8E3DE; border:1px solid #E7B9AE; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+  @media (prefers-color-scheme: dark){ .tag-retiro-pend{ background:#3A1917; color:#FFB4A8; border-color:#6B2C26; } }
 </style>
 </head>
 <body>
@@ -4824,16 +4826,26 @@ advanceBtn.addEventListener("click", async () => {
   const current = store.currentMonth;
   const next = nextMonthName(current);
 
-  if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN), y los que estén en RETIRO se quitarán.`))) return;
+  await cargarSoportesRetiro(current);
+  const retirosPendientes = records.filter(retiroSinSoporte);
+  const avisoRet = retirosPendientes.length
+    ? `\n\n⚠️ ${retirosPendientes.length} en RETIRO no tienen soporte (planilla o imagen de la novedad) y pasarán a "${next}" en RETIRO para no olvidarlos: ${retirosPendientes.slice(0, 6).map(x => x["Nombre del Afiliado"]).join(", ")}${retirosPendientes.length > 6 ? "…" : ""}.` : "";
+  if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN). Los que estén en RETIRO con su planilla o soporte se quitarán.${avisoRet}`))) return;
   if (!(await confirmarApp(`Última confirmación: se creará el mes "${next}" a partir de "${current}". ¿Estás seguro?`))) return;
 
   const continuing = records
     .filter(r => !isRetiro(r))
-    .map(construirRegistroMesSiguiente);
+    .map(construirRegistroMesSiguiente)
+    // Retiros sin soporte: pasan igual, en RETIRO, sin planilla, para recordar que falta
+    .concat(retirosPendientes.map(r => {
+      const x = { ...r, "No. Planilla Pagada": "", "Enviado": false, "Aprobado": false };
+      delete x._supabaseId; delete x["_prorrateoTransicion"];
+      return x;
+    }));
   continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; }); // el recargo por mora es de cada mes
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
-  const retiradosCount = records.length - continuing.length;
+  const retiradosCount = records.filter(isRetiro).length - retirosPendientes.length;
 
   if (store.months[next]){
     // El mes ya existe y puede tener pagos, planillas y cambios propios: nunca se reemplaza.
@@ -4854,7 +4866,7 @@ advanceBtn.addEventListener("click", async () => {
 
   store.months[next] = ordenarPorNumero(continuing);
   switchToMonth(next);
-  showToast(`Se creó ${next} con ${continuing.length} afiliados` + (retiradosCount ? ` (se excluyeron ${retiradosCount} en RETIRO).` : "."));
+  showToast(`Se creó ${next} con ${continuing.length} afiliados` + (retiradosCount ? ` (salieron ${retiradosCount} en RETIRO con soporte)` : "") + (retirosPendientes.length ? `; ${retirosPendientes.length} retiro(s) sin soporte siguen en la lista.` : "."));
 });
 
 // Los meses ya creados NO se pueden borrar (ni siquiera el administrador): borrar un mes
@@ -5370,6 +5382,7 @@ function renderList(filterText){
   } else {
     listLabel.textContent = "Todos los afiliados";
   }
+  asegurarSoportesRetiro();
   totalCount.textContent = records.length + " registros";
   renderMonthTotal();
   renderStatsStrip();
@@ -5394,7 +5407,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -5516,7 +5529,7 @@ function showBreakdown(cedula){
   activeCedula = cedula;
   actualizarBotonRetiro(r);
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
-  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}`;
+  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
@@ -6389,7 +6402,8 @@ function clientesPendientesDelMes(){
   const arr = store.months[store.currentMonth] || [];
   return arr.filter(r => {
     const ec = estadoClass(r["Estado Trámite"]);
-    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && String(r["Teléfono"] || "").trim();
+    const debeRetiro = ec === "RETIRO" && !esOtraEmpresa(r) && retiroSinSoporte(r);
+    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES" || debeRetiro) && String(r["Teléfono"] || "").trim();
   });
 }
 function actualizarBarraRecordatorios(){
@@ -10364,6 +10378,47 @@ function retiroProgramado(r){
   if (!r["Fecha Retiro"] || isRetiro(r)) return false;
   const a = indiceMesDeFecha(r["Fecha Retiro"]), b = indiceMes(store.currentMonth);
   return a !== null && b !== null && a > b;
+}
+
+// ---- Retiros sin soporte ----
+// Un afiliado en RETIRO solo sale del mes cuando tiene soporte:
+//  · PROSEGUROSNET: la planilla del retiro (número de planilla o archivo de planilla/comprobante).
+//  · Otra empresa: imagen o planilla de la novedad de retiro.
+// Mientras no lo tenga, pasa al mes siguiente (sigue en RETIRO) para recordar que falta.
+let soportesRetiroNube = { mes: null, cedulas: new Set() };
+function inicioDeMes(nombre){
+  const i = indiceMes(nombre); if (i == null) return null;
+  return new Date(Math.floor(i / 12), i % 12, 1);
+}
+async function cargarSoportesRetiro(mes){
+  const res = new Set();
+  if (!cloudDb || !navigator.onLine){ soportesRetiroNube = { mes, cedulas: res }; return res; }
+  const ini = inicioDeMes(mes);
+  try{
+    const { data } = await sb.from("documentos").select("cedula,tipo,uploaded_at").in("tipo", ["planilla_pagada", "comprobante_pago"]);
+    (data || []).forEach(d => { if (!ini || !d.uploaded_at || new Date(d.uploaded_at) >= ini) res.add(String(d.cedula).trim()); });
+  }catch(e){}
+  soportesRetiroNube = { mes, cedulas: res };
+  return res;
+}
+let _cargandoSoportes = false;
+function asegurarSoportesRetiro(){
+  if (_cargandoSoportes || !cloudDb || soportesRetiroNube.mes === store.currentMonth) return;
+  if (!records.some(isRetiro)) return;
+  _cargandoSoportes = true;
+  cargarSoportesRetiro(store.currentMonth).finally(() => { _cargandoSoportes = false; if (typeof renderList === "function") renderList(searchInput.value); });
+}
+function tieneSoporteRetiro(r){
+  if (String(r["No. Planilla Pagada"] || "").trim()) return true;
+  if (r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return true;
+  return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube.cedulas.has(String(r["Cédula"]).trim());
+}
+function retiroSinSoporte(r){ return isRetiro(r) && !esConductorExcluido(r) && !tieneSoporteRetiro(r); }
+function tagRetiroPendiente(r){
+  if (!retiroSinSoporte(r)) return "";
+  return esOtraEmpresa(r)
+    ? `<span class="tag-retiro-pend" title="Falta cargar la imagen o la planilla de la novedad de retiro">📎 Falta soporte del retiro</span>`
+    : `<span class="tag-retiro-pend" title="Falta la planilla del retiro: todavía debe pagarse">🚪 Retiro sin planilla · debe pagar</span>`;
 }
 function tagRetiro(r){
   if (!r) return "";

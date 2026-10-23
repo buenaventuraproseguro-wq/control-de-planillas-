@@ -29,6 +29,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Consignaciones desde el celular (MacroDroid)
 - Reingreso: al agregar una cédula que ya estuvo en meses anteriores, ofrece traer sus datos
 - Colores de la página (menú 18): cada persona escoge su tema; se guarda en su propio equipo
+- Retiros: al avanzar de mes, el RETIRO sin soporte (PSN: planilla; otra empresa: imagen o planilla de la novedad) pasa al mes siguiente
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
