@@ -1138,6 +1138,15 @@
   .resp-row .resp-txt{ flex:1; min-width:0; font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-transform:capitalize; }
   .resp-row .count{ font-size:12px; }
   .resp-row input{ flex:1; min-width:0; }
+
+  /* ===== Agregar cliente: recuadros por confirmar ===== */
+  .na-btn{ float:right; font:inherit; font-size:11px; font-weight:600; color:var(--muted); background:transparent;
+    border:1px solid var(--line); border-radius:999px; padding:1px 8px; cursor:pointer; margin-left:6px; }
+  .na-btn.on{ color:#fff; background:var(--muted); border-color:var(--muted); }
+  #overlay .field.falta input, #overlay .field.falta select, #overlay .field.falta textarea{ border-color:#C8202F !important; box-shadow:0 0 0 3px rgba(200,32,47,.12) !important; }
+  #overlay .field.falta > label{ color:#C8202F; }
+  #overlay [data-na]{ background:var(--line) !important; color:var(--muted); }
+  .faltan-aviso{ margin-right:auto; align-self:center; font-size:12.5px; font-weight:600; color:#C8202F; }
 </style>
 </head>
 <body>
@@ -1541,6 +1550,8 @@
       <div class="field span2"><label><span class="field-num">24</span>Observación</label><input id="fObs" type="text"></div>
     </div>
     <div class="modal-actions">
+      <span id="faltanAviso" class="faltan-aviso" hidden></span>
+      <button class="btn ghost danger" id="borrarFormBtn" type="button" hidden>Borrar lo escrito</button>
       <button class="btn ghost" id="cancelBtn">Cancelar</button>
       <button class="btn primary" id="saveBtn">Guardar</button>
     </div>
@@ -6630,6 +6641,7 @@ function openModal(record){
   cargarTrasladoEnFormulario(record);
 
   overlay.classList.add("show");
+  prepararNoAplica();
   getField("Cedula").focus();
   formSnapshotInicial = capturarSnapshotFormulario();
 }
@@ -6669,6 +6681,12 @@ function formularioTieneCambiosSinGuardar(){
 
 // skipConfirm=true se usa justo después de guardar con éxito (ya no hay nada que perder).
 async function closeModal(skipConfirm){
+  // Al AGREGAR: si ya se escribió algo, no se puede cerrar sin guardar. Hay que completar
+  // todos los recuadros (o marcar "No aplica") y guardar, o borrar lo escrito.
+  if (skipConfirm !== true && !editingCedula && formularioTieneCambiosSinGuardar()){
+    await alertApp("Este cliente nuevo ya tiene información escrita.\n\nPara salir: complete todos los recuadros (o marque \"No aplica\" en los que no lleven información) y toque Guardar.\n\nSi no lo va a guardar, toque \"Borrar lo escrito\" y luego cierre.");
+    return;
+  }
   if (skipConfirm !== true && formularioTieneCambiosSinGuardar()){
     if (!(await confirmarApp("¿Descartar los cambios sin guardar?"))) return;
   }
@@ -7148,6 +7166,7 @@ function traerDatosReingreso(){
   openModal(copia);
   // Sigue siendo un cliente NUEVO en este mes
   editingCedula = null;
+  prepararNoAplica();
   modalTitle.textContent = "Agregar cliente (reingreso)";
   getField("Cedula").value = cedula;
   getField("Estado").value = "AFILIACION";
@@ -7174,6 +7193,71 @@ getField("Resp").addEventListener("input", () => {
   revisarResponsableEscrito(false);
 });
 getField("Resp").addEventListener("blur", () => revisarResponsableEscrito(true));
+// ---- Agregar cliente: todos los recuadros deben quedar confirmados ----
+// Cada recuadro debe tener información o estar marcado "No aplica" (lo que no aplica no se
+// guarda en la base: queda vacío). Solo al AGREGAR un cliente; al editar no cambia nada.
+function camposConfirmables(){
+  return [...document.querySelectorAll("#overlay .form-grid > .field")].filter(f => {
+    if (f.offsetParent === null) return false;
+    if (f.classList.contains("field-traslado")) return false;
+    if (f.querySelector('input[type="file"]') || f.querySelector("#beneficiariosSection")) return false;
+    const c = controlDe(f);
+    return !!c && c.tagName !== "SELECT";   // las listas siempre tienen una opción escogida
+  });
+}
+function controlDe(f){ return f.querySelector("input:not([type=checkbox]):not([type=file]), select, textarea"); }
+function prepararNoAplica(){
+  const agregando = !editingCedula;
+  document.getElementById("borrarFormBtn").hidden = !agregando;
+  document.getElementById("faltanAviso").hidden = true;
+  document.querySelectorAll("#overlay .na-btn").forEach(b => b.remove());
+  document.querySelectorAll("#overlay .field.falta").forEach(f => f.classList.remove("falta"));
+  document.querySelectorAll("#overlay [data-na]").forEach(c => { delete c.dataset.na; c.disabled = false; c.placeholder = c.dataset.phOriginal || ""; });
+  if (!agregando) return;
+  camposConfirmables().forEach(f => {
+    const c = controlDe(f);
+    if (c.id === "fCedula" || c.id === "fNombre") return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "na-btn"; b.textContent = "No aplica";
+    b.addEventListener("click", () => {
+      if (c.dataset.na){
+        delete c.dataset.na; c.disabled = false; c.placeholder = c.dataset.phOriginal || "";
+        b.textContent = "No aplica"; b.classList.remove("on"); c.focus();
+      } else {
+        c.dataset.phOriginal = c.placeholder || ""; c.dataset.na = "1";
+        if (c.tagName !== "SELECT") c.value = "";
+        c.disabled = true; c.placeholder = "No aplica";
+        b.textContent = "✓ No aplica"; b.classList.add("on");
+        f.classList.remove("falta");
+      }
+      actualizarFaltantes(false);
+    });
+    f.querySelector("label").appendChild(b);
+  });
+}
+document.getElementById("overlay").addEventListener("input", (e) => {
+  if (editingCedula) return;
+  const f = e.target.closest && e.target.closest(".field");
+  if (f && String(e.target.value || "").trim()) f.classList.remove("falta");
+  actualizarFaltantes(false);
+});
+function recuadrosFaltantes(){
+  return camposConfirmables().filter(f => { const c = controlDe(f); return !c.dataset.na && !String(c.value || "").trim(); });
+}
+function actualizarFaltantes(marcar){
+  if (editingCedula) return 0;
+  const faltan = recuadrosFaltantes();
+  const aviso = document.getElementById("faltanAviso");
+  if (marcar) faltan.forEach(f => f.classList.add("falta"));
+  aviso.hidden = !faltan.length || (!marcar && !document.querySelector("#overlay .field.falta"));
+  aviso.textContent = faltan.length ? `Faltan ${faltan.length} recuadro${faltan.length === 1 ? "" : "s"}` : "";
+  return faltan.length;
+}
+document.getElementById("borrarFormBtn").addEventListener("click", async () => {
+  if (!(await confirmarApp("¿Borrar todo lo escrito en este cliente nuevo? No se guarda nada."))) return;
+  openModal(null);
+});
+
 getField("Nombre").addEventListener("input", () => {
   const limpio = getField("Nombre").value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
   if (limpio !== getField("Nombre").value) getField("Nombre").value = limpio;
@@ -7197,7 +7281,7 @@ getField("Resp").addEventListener("input", () => {
   const esValorAutocompletado = actual === null || actual === EPS_DEFAULT || actual === EPS_INDEPENDIENTE_DEFAULT;
   if (!esValorAutocompletado) return;
   const independiente = esIndependiente({ "Responsable / Grupo": getField("Resp").value });
-  if (!getField("ValorEps").readOnly) getField("ValorEps").value = independiente ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT;
+  if (!getField("ValorEps").readOnly && !getField("ValorEps").dataset.na) getField("ValorEps").value = independiente ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT;
 });
 
 getField("ArlNivel").addEventListener("change", () => {
@@ -7410,6 +7494,12 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   }
   if (cedula.length < 6 || cedula.length > 12){
     showToast("La cédula debe tener entre 6 y 12 números. Revísala antes de guardar.");
+    return;
+  }
+  if (!editingCedula && actualizarFaltantes(true)){
+    const primero = document.querySelector("#overlay .field.falta");
+    if (primero){ primero.scrollIntoView({ behavior: "smooth", block: "center" }); const c = controlDe(primero); if (c) setTimeout(() => c.focus(), 300); }
+    showToast(`⚠️ Faltan ${recuadrosFaltantes().length} recuadro(s): escriba la información o toque "No aplica".`);
     return;
   }
   const dup = records.find(x => String(x["Cédula"]) === cedula && cedula !== editingCedula);
