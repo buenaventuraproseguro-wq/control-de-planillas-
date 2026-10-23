@@ -1117,6 +1117,9 @@
   .record-nombre{ font-size:18px; font-weight:700; margin:2px 0; color:var(--titulo); text-transform:capitalize; }
   .record-dato{ font-size:13px; color:var(--muted); margin:0 0 14px; font-variant-numeric:tabular-nums; }
   .btn.whatsapp-lleno{ background:#1DA851; border-color:#1DA851; color:#fff; }
+  .record-lista{ list-style:none; margin:6px 0 8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; max-height:180px; overflow:auto; font-size:13px; }
+  .record-lista li{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; }
+  .record-lista li span{ font-variant-numeric:tabular-nums; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -6116,6 +6119,56 @@ function actualizarBarraRecordatorios(){
 // WhatsApp solo deja abrir UN chat por enlace (no permite mandar a muchos de una vez desde
 // una página). Por eso el envío es en serie: una ventana muestra a quién sigue, se toca
 // "Abrir WhatsApp", se envía, se vuelve a la app y ya está listo el siguiente.
+// ---- Recordatorio agrupado por responsable ----
+// Si varios clientes pendientes tienen el mismo responsable (una persona, no un grupo general
+// como "muelles" o "independiente"), se manda UN solo mensaje con todos y el total, al
+// teléfono del primero de la lista. El saludo va dirigido al responsable.
+const GRUPOS_NO_PERSONA = ["", "muelles", "muelle", "independiente", "independientes", "psn", "prosegurosnet"];
+function claveResponsable(r){
+  return String(r["Responsable / Grupo"] || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+function agruparPorResponsable(lista){
+  const grupos = new Map(), salida = [];
+  lista.forEach(r => {
+    const k = claveResponsable(r);
+    if (GRUPOS_NO_PERSONA.includes(k)){ salida.push(r); return; }
+    if (!grupos.has(k)){ const g = { grupo:true, responsable:String(r["Responsable / Grupo"]).trim(), clientes:[] }; grupos.set(k, g); salida.push(g); }
+    grupos.get(k).clientes.push(r);
+  });
+  // un "grupo" de una sola persona vuelve a ser un recordatorio normal
+  return salida.map(x => (x.grupo && x.clientes.length === 1) ? x.clientes[0] : x);
+}
+function telefonoDeItem(x){ return x.grupo ? String((x.clientes.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "") : String(x["Teléfono"] || ""); }
+function totalDeItem(x){ return x.grupo ? x.clientes.reduce((a, c) => a + calcularTotalPagar(c, store.currentMonth), 0) : calcularTotalPagar(x, store.currentMonth); }
+function moraDeItem(x){ return x.grupo ? x.clientes.reduce((a, c) => a + numOrZero(c["Recargo Mora"]), 0) : numOrZero(x["Recargo Mora"]); }
+function nombrePropio(t){ return String(t || "").toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()); }
+function construirMensajeAgrupado(g){
+  const total = totalDeItem(g);
+  const MARCA = "@@VALOR@@";
+  let base = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
+    { nombre: nombrePropio(g.responsable), valor: MARCA, mes: store.currentMonth });
+  const lineasClientes = g.clientes.map(c => {
+    const v = calcularTotalPagar(c, store.currentMonth), m = numOrZero(c["Recargo Mora"]);
+    return `• ${nombrePropio(c["Nombre del Afiliado"])}: *${fmt(v)}*${m ? ` (incluye ${fmt(m)} de mora)` : ""}`;
+  });
+  const bloque = `¡Hola 👋😊, ${nombrePropio(g.responsable)}! Te compartimos los valores a pagar de seguridad social de tus ${g.clientes.length} afiliados correspondientes a ${store.currentMonth}:\n\n${lineasClientes.join("\n")}\n\n💰 *Total a pagar: ${fmt(total)}*`
+    + (moraDeItem(g) ? `\n⚠️ El total incluye recargo por mora porque el pago no se hizo antes del día ${DIA_LIMITE_RECARGO + 1}.` : "");
+  const lineas = base.split("\n");
+  const i = lineas.findIndex(l => l.includes(MARCA));
+  if (i > -1) lineas[i] = bloque; else lineas.unshift(bloque);
+  return lineas.join("\n").replace(new RegExp(MARCA, "g"), fmt(total));
+}
+function abrirWhatsappConMensaje(telefono, mensaje){
+  if (!navigator.onLine){ showToast("Sin internet: no se puede abrir WhatsApp ahora. Inténtalo cuando vuelva la conexión."); return false; }
+  const numero = String(telefono || "").replace(/\D/g, "");
+  if (!numero) return false;
+  const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
+  copiarAlPortapapeles(mensaje);
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  const texto = encodeURIComponent(mensaje);
+  window.open(esCelular ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}` : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, "_blank");
+  return true;
+}
 let totalColaRecordatorios = 0, enviadosRecordatorios = 0, procesadosRecordatorios = 0;
 function iniciarOContinuarRecordatorios(){
   if (colaRecordatorios.length){ mostrarPanelRecordatorios(); return; }
@@ -6125,8 +6178,8 @@ function iniciarOContinuarRecordatorios(){
   mostrarPanelRecordatorios({ pendientes, atrasados });
 }
 function empezarColaRecordatorios(lista){
-  colaRecordatorios = lista.slice();
-  totalColaRecordatorios = lista.length; enviadosRecordatorios = 0; procesadosRecordatorios = 0;
+  colaRecordatorios = agruparPorResponsable(lista);
+  totalColaRecordatorios = colaRecordatorios.length; enviadosRecordatorios = 0; procesadosRecordatorios = 0;
   actualizarBarraRecordatorios();
   mostrarPanelRecordatorios();
 }
@@ -6141,7 +6194,7 @@ function mostrarPanelRecordatorios(eleccion){
         ${atrasados.length ? `<button type="button" class="btn primary" data-record="atrasados">Solo atrasados (${atrasados.length})</button>` : ""}
         <button type="button" class="btn ${atrasados.length ? "ghost" : "primary"}" data-record="todos">Todos los pendientes (${pendientes.length})</button>
       </div>
-      <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente.</p>`;
+      <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente. Los clientes de un mismo responsable van juntos en un solo mensaje.</p>`;
     mostrarPanelRecordatorios._eleccion = eleccion;
   } else {
     const r = colaRecordatorios[0];
@@ -6150,13 +6203,14 @@ function mostrarPanelRecordatorios(eleccion){
         <div class="record-opciones"><button type="button" class="btn primary" data-record="cerrar">Cerrar</button></div>`;
     } else {
       const n = procesadosRecordatorios + 1;
-      const total = calcularTotalPagar(r, store.currentMonth);
-      const mora = numOrZero(r["Recargo Mora"]);
+      const total = totalDeItem(r);
+      const mora = moraDeItem(r);
       cuerpo.innerHTML = `
         <div class="record-progreso"><span style="width:${Math.round(100 * procesadosRecordatorios / Math.max(1, totalColaRecordatorios))}%"></span></div>
-        <p class="record-cuenta">${n} de ${totalColaRecordatorios}</p>
-        <p class="record-nombre">${escHtml(r["Nombre del Afiliado"] || "")}</p>
-        <p class="record-dato">${escHtml(String(r["Teléfono"] || ""))} · ${fmt(total)}${mora ? ` · incluye mora ${fmt(mora)}` : ""}</p>
+        <p class="record-cuenta">${n} de ${totalColaRecordatorios}${r.grupo ? " · mensaje agrupado" : ""}</p>
+        <p class="record-nombre">${escHtml(r.grupo ? r.responsable : (r["Nombre del Afiliado"] || ""))}</p>
+        ${r.grupo ? `<ul class="record-lista">${r.clientes.map(c => `<li>${escHtml(nombrePropio(c["Nombre del Afiliado"]))} <span>${fmt(calcularTotalPagar(c, store.currentMonth))}</span></li>`).join("")}</ul>` : ""}
+        <p class="record-dato">${escHtml(telefonoDeItem(r))} · ${r.grupo ? "Total " : ""}${fmt(total)}${mora ? ` · incluye mora ${fmt(mora)}` : ""}</p>
         <div class="record-opciones">
           <button type="button" class="btn primary whatsapp-lleno" data-record="abrir">Abrir WhatsApp</button>
           <button type="button" class="btn ghost" data-record="saltar">Saltar</button>
@@ -6176,7 +6230,10 @@ document.getElementById("overlayRecordatorios").addEventListener("click", (e) =>
   else if (acc === "todos") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.pendientes);
   else if (acc === "abrir" || acc === "saltar"){
     const r = colaRecordatorios.shift();
-    if (r){ procesadosRecordatorios++; if (acc === "abrir"){ enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; } }
+    if (r){ procesadosRecordatorios++; if (acc === "abrir"){
+      if (r.grupo){ if (abrirWhatsappConMensaje(telefonoDeItem(r), construirMensajeAgrupado(r))) enviadosRecordatorios++; }
+      else { enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; }
+    } }
     actualizarBarraRecordatorios();
     mostrarPanelRecordatorios();
   } else if (acc === "terminar"){
