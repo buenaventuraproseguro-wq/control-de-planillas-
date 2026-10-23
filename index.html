@@ -1419,7 +1419,7 @@
       <div class="field"><label><span class="field-num">2</span>Nombre del afiliado *</label><input id="fNombre" type="text"></div>
 
       <div class="field campo-nomina"><label><span class="field-num">3</span>Responsable / Grupo</label>
-        <input id="fResp" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="respLista" placeholder="Toque para ver los responsables">
+        <input id="fResp" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="respSugLista" placeholder="Toque para ver los responsables">
         <datalist id="listaResponsables">
           <option value="Independiente">
           <option value="Empresa">
@@ -7379,7 +7379,7 @@ getField("Resp").addEventListener("blur", () => revisarResponsableEscrito(true))
   const field = inp.closest(".field");
   field.style.position = "relative";
   const caja = document.createElement("div");
-  caja.id = "respLista"; caja.className = "resp-sugerencias"; caja.setAttribute("role", "listbox"); caja.hidden = true;
+  caja.id = "respSugLista"; caja.className = "resp-sugerencias"; caja.setAttribute("role", "listbox"); caja.hidden = true;
   inp.insertAdjacentElement("afterend", caja);
   let activo = -1, opciones = [];
   function todos(){
