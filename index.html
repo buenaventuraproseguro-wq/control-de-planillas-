@@ -7535,7 +7535,28 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   closeModal(true);
   renderList(searchInput.value);
   showBreakdown(cedula);
+  verificarGuardadoEnNube(cedula, store.currentMonth);
 });
+
+// Después de guardar un cliente se comprueba que el cambio sí llegó a la base compartida.
+// Si llegó, se avisa; si no, se dice por qué y se sigue intentando solo.
+async function verificarGuardadoEnNube(cedula, mes){
+  if (!cloudDb || soloLectura) return;
+  programarSync(0);
+  const limite = Date.now() + 15000;
+  while (Date.now() < limite){
+    await new Promise(res => setTimeout(res, 600));
+    const monthId = monthIdByName[mes];
+    const r = (store.months[mes] || []).find(x => String(x["Cédula"]) === String(cedula));
+    if (!r || monthId == null) return;
+    const firmas = lastClientSig[mes] || {};
+    if (!flushing && firmas[String(cedula).trim()] && mismaFirma(JSON.stringify(esRecordToDbRow(r, monthId)), firmas[String(cedula).trim()])){
+      showToast("☁️ Guardado en la nube: todo el equipo ya lo ve.");
+      return;
+    }
+  }
+  await alertApp(`⚠️ El cambio quedó guardado en este equipo, pero todavía NO llegó a la base compartida, así que sus compañeros aún no lo ven.${ultimoErrorCloud ? "\nMotivo: " + ultimoErrorCloud : (navigator.onLine ? "" : "\nMotivo: no hay internet.")}\nLa página lo sigue intentando sola. No cierre la página hasta que arriba diga "☁️ Sincronizado".`);
+}
 
 // Aplica los mismos cambios a los registros de la misma cédula en los meses posteriores
 // al que se está editando. No toca "Estado Trámite" ni "Costo Servicio" ni el prorrateo
