@@ -6123,17 +6123,28 @@ function actualizarBarraRecordatorios(){
 // Si varios clientes pendientes tienen el mismo responsable (una persona, no un grupo general
 // como "muelles" o "independiente"), se manda UN solo mensaje con todos y el total, al
 // teléfono del primero de la lista. El saludo va dirigido al responsable.
-const GRUPOS_NO_PERSONA = ["", "muelles", "muelle", "independiente", "independientes", "psn", "prosegurosnet"];
+// Se juntan: responsables que son una persona (don hector, jhon mastercarga…) y empresas
+// distintas a PROSEGUROSNET. NO se juntan los grupos generales: muelles, independientes.
+const GRUPOS_NO_PERSONA = ["", "psn", "prosegurosnet", "conductor", "conductores"];
+function esGrupoGeneral(k){ return GRUPOS_NO_PERSONA.includes(k) || /^muelle/.test(k) || /^independ/.test(k); }
 function claveResponsable(r){
   return String(r["Responsable / Grupo"] || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+function claveAgrupacion(r){
+  const resp = claveResponsable(r);
+  if (!esGrupoGeneral(resp)) return { k: "resp:" + resp, nombre: String(r["Responsable / Grupo"]).trim() };
+  const emp = String(r["Empresa"] || "").trim();
+  const ek = emp.toLowerCase().replace(/\s+/g, " ");
+  if (emp && !esGrupoGeneral(ek)) return { k: "emp:" + ek, nombre: emp };
+  return null;
 }
 function agruparPorResponsable(lista){
   const grupos = new Map(), salida = [];
   lista.forEach(r => {
-    const k = claveResponsable(r);
-    if (GRUPOS_NO_PERSONA.includes(k)){ salida.push(r); return; }
-    if (!grupos.has(k)){ const g = { grupo:true, responsable:String(r["Responsable / Grupo"]).trim(), clientes:[] }; grupos.set(k, g); salida.push(g); }
-    grupos.get(k).clientes.push(r);
+    const c = claveAgrupacion(r);
+    if (!c){ salida.push(r); return; }
+    if (!grupos.has(c.k)){ const g = { grupo:true, responsable:c.nombre, clientes:[] }; grupos.set(c.k, g); salida.push(g); }
+    grupos.get(c.k).clientes.push(r);
   });
   // un "grupo" de una sola persona vuelve a ser un recordatorio normal
   return salida.map(x => (x.grupo && x.clientes.length === 1) ? x.clientes[0] : x);
@@ -6194,7 +6205,7 @@ function mostrarPanelRecordatorios(eleccion){
         ${atrasados.length ? `<button type="button" class="btn primary" data-record="atrasados">Solo atrasados (${atrasados.length})</button>` : ""}
         <button type="button" class="btn ${atrasados.length ? "ghost" : "primary"}" data-record="todos">Todos los pendientes (${pendientes.length})</button>
       </div>
-      <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente. Los clientes de un mismo responsable van juntos en un solo mensaje.</p>`;
+      <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente. Los clientes de un mismo responsable (persona) o de una misma empresa van juntos en un solo mensaje; los de muelles e independientes, uno por uno.</p>`;
     mostrarPanelRecordatorios._eleccion = eleccion;
   } else {
     const r = colaRecordatorios[0];
