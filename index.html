@@ -1134,6 +1134,10 @@
   .tag-recordado{ display:inline-block; font-size:11px; font-weight:600; color:#137A3B; background:#DDF2E6; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
   .record-ya{ font-size:12.5px; background:#DDF2E6; color:#0F5C2E; border-radius:8px; padding:8px 10px; margin:4px 0 10px; }
   @media (prefers-color-scheme: dark){ .tag-recordado{ background:#123425; color:#6EE7A0; } .record-ya{ background:#123425; color:#A7F3C5; } }
+
+  .resp-row .resp-txt{ flex:1; min-width:0; font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-transform:capitalize; }
+  .resp-row .count{ font-size:12px; }
+  .resp-row input{ flex:1; min-width:0; }
 </style>
 </head>
 <body>
@@ -2017,12 +2021,11 @@
 <div class="overlay" id="overlayResp">
   <div class="modal">
     <h2>Editar responsables</h2>
-    <div class="modal-sub">Cambia el nombre de un responsable/grupo y se actualiza en todos los clientes (de todos los meses) que lo tengan.</div>
-    <button type="button" class="btn ghost small danger" id="eliminarTodosRespBtn" style="margin-bottom:10px;">Eliminar todos los responsables</button>
+    <div class="modal-sub" id="respEditSub"></div>
     <div id="listaRespEditar"></div>
 
     <h2 style="margin-top:22px;">Empresas</h2>
-    <div class="modal-sub">Crea una empresa nueva (quedará disponible al agregar clientes) o renombra una existente.</div>
+    <div class="modal-sub">Cuántos clientes tiene cada empresa este mes. Cree una empresa nueva (queda disponible al agregar clientes) o edite una existente.</div>
     <div class="resp-row">
       <input type="text" id="fNuevaEmpresa" placeholder="Nombre de la nueva empresa">
       <button type="button" class="btn small primary" id="crearEmpresaBtn">+ Crear</button>
@@ -3592,20 +3595,18 @@ function contarClientesConEmpresa(nombre){
 }
 
 function renderListaEmpresasEditar(){
-  const nombres = listaEmpresasCompleta();
-  const lista = document.getElementById("listaEmpresasEditar");
-  if (nombres.length === 0){
-    lista.innerHTML = `<div class="empty">Todavía no hay empresas creadas.</div>`;
-  } else {
-    lista.innerHTML = nombres.map(n => `
-      <div class="resp-row" data-original="${n.replace(/"/g,'&quot;')}">
-        <input type="text" value="${n.replace(/"/g,'&quot;')}">
-        <span class="count">${contarClientesConEmpresa(n)} cliente(s)</span>
-        <button type="button" class="btn small" data-guardar-empresa>Guardar</button>
-        <button type="button" class="btn small danger" data-eliminar-empresa>Eliminar</button>
-      </div>
-    `).join("");
-  }
+  const delMes = new Map();
+  (store.months[store.currentMonth] || []).forEach(r => {
+    const e = String(r["Empresa"] || "").trim(); if (!e) return;
+    const k = normalizarEmpresa(e);
+    if (!delMes.has(k)) delMes.set(k, { nombre: e, n: 0 });
+    delMes.get(k).n++;
+  });
+  getEmpresasCreadas().forEach(e => { const k = normalizarEmpresa(e); if (!delMes.has(k)) delMes.set(k, { nombre: e, n: 0 }); });
+  const lista = [...delMes.entries()].sort((a, b) => b[1].n - a[1].n || a[1].nombre.localeCompare(b[1].nombre));
+  document.getElementById("listaEmpresasEditar").innerHTML = lista.length
+    ? lista.map(([k, v]) => filaEditable("emp", k, v.nombre, v.n)).join("")
+    : `<div class="empty">Todavía no hay empresas creadas.</div>`;
 }
 
 document.getElementById("crearEmpresaBtn").addEventListener("click", () => {
@@ -3624,60 +3625,6 @@ document.getElementById("crearEmpresaBtn").addEventListener("click", () => {
   renderListaEmpresasEditar();
   renderListaEmpresas();
   showToast(`Empresa "${nombre}" creada.`);
-});
-
-document.getElementById("listaEmpresasEditar").addEventListener("click", async (e) => {
-  const btnEliminar = e.target.closest("[data-eliminar-empresa]");
-  if (btnEliminar){
-    const row = btnEliminar.closest(".resp-row");
-    const nombre = row.dataset.original;
-    const n = contarClientesConEmpresa(nombre);
-    if (!(await confirmarApp(`¿Eliminar la empresa "${nombre}"?` + (n ? ` Se quitará de ${n} cliente(s) (quedan sin empresa asignada).` : "") + " ¿Estás seguro?"))) return;
-    const claveEliminar = normalizarEmpresa(nombre);
-    Object.values(store.months).forEach(mes => {
-      mes.forEach(r => { if (normalizarEmpresa(r["Empresa"]) === claveEliminar) r["Empresa"] = ""; });
-    });
-    const extra = getEmpresasCreadas();
-    for (let i = extra.length - 1; i >= 0; i--){
-      if (normalizarEmpresa(extra[i]) === claveEliminar) extra.splice(i, 1);
-    }
-    saveStore();
-    renderListaEmpresasEditar();
-    renderListaEmpresas();
-    renderList(searchInput.value);
-    showToast(`Empresa "${nombre}" eliminada.`);
-    return;
-  }
-
-  const btn = e.target.closest("[data-guardar-empresa]");
-  if (!btn) return;
-  const row = btn.closest(".resp-row");
-  const original = row.dataset.original;
-  const nuevo = row.querySelector("input").value.trim();
-  if (!nuevo || nuevo === original){
-    showToast("Sin cambios para guardar.");
-    return;
-  }
-  const claveOriginal = normalizarEmpresa(original);
-  let actualizados = 0;
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => {
-      if (normalizarEmpresa(r["Empresa"]) === claveOriginal){
-        r["Empresa"] = nuevo;
-        actualizados++;
-      }
-    });
-  });
-  const extra = getEmpresasCreadas();
-  for (let i = extra.length - 1; i >= 0; i--){
-    if (normalizarEmpresa(extra[i]) === claveOriginal) extra.splice(i, 1);
-  }
-  extra.push(nuevo);
-  saveStore();
-  renderListaEmpresasEditar();
-  renderListaEmpresas();
-  renderList(searchInput.value);
-  showToast(`"${original}" renombrada a "${nuevo}"` + (actualizados ? ` en ${actualizados} cliente(s).` : "."));
 });
 
 /* ---- Editar responsables (renombrar y propagar a todos los meses) ---- */
@@ -4460,102 +4407,103 @@ document.getElementById("listaTareas").addEventListener("click", (e) => {
   abrirVisorDocumento(doc.dataUrl, `Documento — ${tarea.descripcion}`, `documento_tarea_${dIdx + 1}.${esPdf ? "pdf" : "jpg"}`);
 });
 
-function abrirEditorResponsables(){
-  const conteo = {};
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => {
-      const v = String(r["Responsable / Grupo"] || "").trim();
-      if (v) conteo[v] = (conteo[v] || 0) + 1;
-    });
+// ---- Editar responsables: solo los del mes que se está viendo ----
+// Los cambios (editar o eliminar) se aplican a este mes y a los siguientes; los meses
+// anteriores no se tocan, para no cambiar el historial.
+function mesesDesdeActual(){
+  const nombres = sortedMonthNames();
+  const i = nombres.indexOf(store.currentMonth);
+  return i < 0 ? [store.currentMonth] : nombres.slice(i);
+}
+function clientesDesdeActual(){ return mesesDesdeActual().flatMap(m => store.months[m] || []); }
+function responsablesDelMes(){
+  const m = new Map();
+  (store.months[store.currentMonth] || []).forEach(r => {
+    const v = limpiarEspacios(r["Responsable / Grupo"]);
+    if (!v) return;
+    const k = normResp(v);
+    if (!m.has(k)) m.set(k, { k, nombre: v, n: 0 });
+    m.get(k).n++;
   });
-  const nombres = Object.keys(conteo).sort((a, b) => a.localeCompare(b));
-  const lista = document.getElementById("listaRespEditar");
-  if (nombres.length === 0){
-    lista.innerHTML = `<div class="empty">Todavía no hay responsables registrados.</div>`;
-  } else {
-    lista.innerHTML = nombres.map(n => `
-      <div class="resp-row" data-original="${n.replace(/"/g,'&quot;')}">
-        <input type="text" value="${n.replace(/"/g,'&quot;')}">
-        <span class="count">${conteo[n]} cliente(s)</span>
-        <button type="button" class="btn small" data-guardar-resp>Guardar</button>
-        <button type="button" class="btn small danger" data-eliminar-resp>Eliminar</button>
-      </div>
-    `).join("");
-  }
+  return [...m.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+function filaEditable(tipo, clave, nombre, n){
+  return `<div class="resp-row" data-tipo="${tipo}" data-clave="${escHtml(clave)}" data-original="${escHtml(nombre)}">
+      <span class="resp-txt">${escHtml(nombre)}</span>
+      <span class="count">${n} cliente${n === 1 ? "" : "s"}</span>
+      <button type="button" class="btn small" data-accion="editar">Editar</button>
+      <button type="button" class="btn small danger" data-accion="eliminar">Eliminar</button>
+    </div>`;
+}
+function abrirEditorResponsables(){
+  const lista = responsablesDelMes();
+  document.getElementById("respEditSub").textContent =
+    `Responsables de ${store.currentMonth} (${lista.length}). Al editar o eliminar, el cambio se aplica a ${store.currentMonth} y a los meses siguientes; los meses anteriores quedan como estaban.`;
+  document.getElementById("listaRespEditar").innerHTML = lista.length
+    ? lista.map(g => filaEditable("resp", g.k, g.nombre, g.n)).join("")
+    : `<div class="empty">Este mes no hay clientes con responsable.</div>`;
   renderListaEmpresasEditar();
   document.getElementById("overlayResp").classList.add("show");
 }
-
 document.getElementById("editResponsablesBtn").addEventListener("click", abrirEditorResponsables);
-document.getElementById("eliminarTodosRespBtn").addEventListener("click", async () => {
-  let n = 0;
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => { if (String(r["Responsable / Grupo"] || "").trim()) n++; });
-  });
-  if (n === 0){ showToast("No hay responsables para eliminar."); return; }
-  if (!(await confirmarApp(`¿Eliminar TODOS los responsables? Se quitarán de ${n} cliente(s) en todos los meses (quedan sin responsable asignado). Esta acción no se puede deshacer.`))) return;
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => { r["Responsable / Grupo"] = ""; });
-  });
-  saveStore();
-  renderList(searchInput.value);
-  showToast(`Se eliminaron todos los responsables (${n} cliente(s) afectados).`);
-  abrirEditorResponsables();
-});
 document.getElementById("cerrarRespBtn").addEventListener("click", () => {
   document.getElementById("overlayResp").classList.remove("show");
 });
 document.getElementById("overlayResp").addEventListener("click", (e) => {
   if (e.target.id === "overlayResp") document.getElementById("overlayResp").classList.remove("show");
 });
-
-document.getElementById("listaRespEditar").addEventListener("click", async (e) => {
-  const btnEliminar = e.target.closest("[data-eliminar-resp]");
-  if (btnEliminar){
-    const row = btnEliminar.closest(".resp-row");
-    const nombre = row.dataset.original;
-    let n = 0;
-    Object.values(store.months).forEach(mes => {
-      mes.forEach(r => { if (String(r["Responsable / Grupo"] || "").trim() === nombre) n++; });
-    });
-    if (!(await confirmarApp(`¿Eliminar el responsable "${nombre}"?` + (n ? ` Se quitará de ${n} cliente(s) (quedan sin responsable asignado).` : "") + " ¿Estás seguro?"))) return;
-    Object.values(store.months).forEach(mes => {
-      mes.forEach(r => { if (String(r["Responsable / Grupo"] || "").trim() === nombre) r["Responsable / Grupo"] = ""; });
-    });
+// Botones de cada fila (responsables y empresas): Editar → Confirmar / Cancelar, Eliminar
+document.getElementById("overlayResp").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-accion]");
+  if (!b) return;
+  const row = b.closest(".resp-row");
+  const tipo = row.dataset.tipo, clave = row.dataset.clave, original = row.dataset.original;
+  const accion = b.dataset.accion;
+  const esResp = tipo === "resp";
+  const coincide = esResp ? (r => normResp(r["Responsable / Grupo"]) === clave) : (r => normalizarEmpresa(r["Empresa"]) === clave);
+  const campo = esResp ? "Responsable / Grupo" : "Empresa";
+  const etiqueta = esResp ? "responsable" : "empresa";
+  if (accion === "editar"){
+    row.innerHTML = `<input type="text" value="${escHtml(original)}" aria-label="Nuevo nombre">
+      <button type="button" class="btn small primary" data-accion="confirmar">Confirmar</button>
+      <button type="button" class="btn small ghost" data-accion="cancelar">Cancelar</button>`;
+    const inp = row.querySelector("input"); inp.focus(); inp.select();
+    inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter") row.querySelector('[data-accion="confirmar"]').click(); if (ev.key === "Escape") row.querySelector('[data-accion="cancelar"]').click(); });
+    return;
+  }
+  if (accion === "cancelar"){ esResp ? abrirEditorResponsables() : renderListaEmpresasEditar(); return; }
+  const afectados = clientesDesdeActual().filter(coincide);
+  if (accion === "confirmar"){
+    const nuevo = limpiarEspacios(row.querySelector("input").value);
+    if (!nuevo){ showToast(`Escriba el nombre de la ${etiqueta === "responsable" ? "persona responsable" : "empresa"}.`); return; }
+    if (nuevo === original){ showToast("Sin cambios para guardar."); esResp ? abrirEditorResponsables() : renderListaEmpresasEditar(); return; }
+    if (!(await confirmarApp(`¿Cambiar el ${etiqueta} "${original}" por "${nuevo}"?\nSe actualiza en ${afectados.length} cliente(s) de ${store.currentMonth} y los meses siguientes.`))) return;
+    afectados.forEach(r => { r[campo] = esResp ? nuevo.toLowerCase() : nuevo; });
+    if (!esResp){
+      const extra = getEmpresasCreadas();
+      for (let i = extra.length - 1; i >= 0; i--){ if (normalizarEmpresa(extra[i]) === clave) extra.splice(i, 1); }
+      extra.push(nuevo);
+      renderListaEmpresas();
+    }
     saveStore();
     renderList(searchInput.value);
-    showToast(`Responsable "${nombre}" eliminado.`);
-    abrirEditorResponsables();
+    showToast(`"${original}" cambiado a "${nuevo}" en ${afectados.length} cliente(s).`);
+    esResp ? abrirEditorResponsables() : renderListaEmpresasEditar();
     return;
   }
-
-  const btn = e.target.closest("[data-guardar-resp]");
-  if (!btn) return;
-  const row = btn.closest(".resp-row");
-  const original = row.dataset.original;
-  const nuevo = row.querySelector("input").value.trim();
-  if (!nuevo || nuevo === original){
-    showToast("Sin cambios para guardar.");
-    return;
+  if (accion === "eliminar"){
+    if (!(await confirmarApp(`¿Eliminar el ${etiqueta} "${original}"?` + (afectados.length ? `\nSe quita de ${afectados.length} cliente(s) de ${store.currentMonth} y los meses siguientes (quedan sin ${etiqueta}).` : "") + "\n¿Está seguro?"))) return;
+    afectados.forEach(r => { r[campo] = ""; });
+    if (!esResp){
+      const extra = getEmpresasCreadas();
+      for (let i = extra.length - 1; i >= 0; i--){ if (normalizarEmpresa(extra[i]) === clave) extra.splice(i, 1); }
+      renderListaEmpresas();
+    }
+    saveStore();
+    renderList(searchInput.value);
+    showToast(`${esResp ? "Responsable" : "Empresa"} "${original}" eliminad${esResp ? "o" : "a"}.`);
+    esResp ? abrirEditorResponsables() : renderListaEmpresasEditar();
   }
-  let n = 0;
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => { if (String(r["Responsable / Grupo"] || "").trim() === original) n++; });
-  });
-  if (!(await confirmarApp(`¿Renombrar "${original}" a "${nuevo}"?` + (n ? ` Se actualizará en ${n} cliente(s) de todos los meses.` : "")))) return;
-  let actualizados = 0;
-  Object.values(store.months).forEach(mes => {
-    mes.forEach(r => {
-      if (String(r["Responsable / Grupo"] || "").trim() === original){
-        r["Responsable / Grupo"] = nuevo;
-        actualizados++;
-      }
-    });
-  });
-  saveStore();
-  renderList(searchInput.value);
-  showToast(`"${original}" renombrado a "${nuevo}" en ${actualizados} cliente(s).`);
-  abrirEditorResponsables(); // refresca la lista con los cambios
 });
 
 function renderMonthSelect(){
