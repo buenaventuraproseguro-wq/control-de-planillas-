@@ -1171,6 +1171,10 @@
   .obligatorio-marca{ color:#C8202F; font-weight:700; }
   .doc-upload.falta-doc{ outline:2px solid #C8202F; outline-offset:2px; border-radius:10px; }
   .faltan-aviso{ margin-right:auto; align-self:center; font-size:12.5px; font-weight:600; color:#C8202F; }
+
+  .reingreso-aviso.aviso-no-existe{ background:#FDECEE; border-color:#F2B8BE; color:#7A1621; }
+  .reingreso-aviso.aviso-no-existe button{ background:#C8202F; }
+  @media (prefers-color-scheme: dark){ .reingreso-aviso.aviso-no-existe{ background:#3A1917; border-color:#7A2E2A; color:#FFD0CC; } }
 </style>
 </head>
 <body>
@@ -2058,6 +2062,10 @@
   <div class="modal">
     <h2>Editar responsables</h2>
     <div class="modal-sub" id="respEditSub"></div>
+    <div class="resp-row">
+      <input type="text" id="fNuevoResponsable" placeholder="Nombre del nuevo responsable">
+      <button type="button" class="btn small primary" id="crearResponsableBtn">+ Crear</button>
+    </div>
     <div id="listaRespEditar"></div>
 
     <h2 style="margin-top:22px;">Empresas</h2>
@@ -3529,9 +3537,48 @@ function responsablesConocidos(){
   conteo.forEach((m, k) => res.set(k, [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]));
   return res;
 }
+// Responsables CREADOS (tabla compartida "responsables"). Solo se puede escoger uno de estos;
+// si se escribe uno que no existe, se avisa que primero hay que crearlo.
+let responsablesCreados = null; // Map clave -> nombre (null = todavía no se sabe / sin tabla)
+async function cargarResponsablesCreados(){
+  if (!cloudDb) return;
+  try{
+    const { data, error } = await sb.from("responsables").select("nombre,clave");
+    if (error) return;
+    responsablesCreados = new Map((data || []).map(r => [r.clave || normResp(r.nombre), r.nombre]));
+    renderListaResponsables();
+  }catch(e){}
+}
+function responsableExiste(texto){
+  const k = normResp(texto);
+  if (!k) return true;
+  if (!responsablesCreados) return responsablesConocidos().has(k); // sin la tabla: los que ya están en clientes
+  return responsablesCreados.has(k);
+}
+async function crearResponsable(nombre){
+  const limpio = limpiarEspacios(nombre).toLowerCase();
+  const k = normResp(limpio);
+  if (!k || k.length < 2){ showToast("Escriba el nombre del responsable."); return false; }
+  if (responsablesCreados && responsablesCreados.has(k)){ showToast("Ese responsable ya existe."); return true; }
+  try{
+    const { error } = await sb.from("responsables").insert({ nombre: limpio, clave: k });
+    if (error && !/duplicate|unique/i.test(error.message || "")) throw error;
+    if (!responsablesCreados) responsablesCreados = new Map();
+    responsablesCreados.set(k, limpio);
+    renderListaResponsables();
+    showToast(`Responsable "${limpio}" creado.`);
+    return true;
+  }catch(e){ await alertApp("No se pudo crear el responsable: " + (e.message || e)); return false; }
+}
+async function borrarResponsableCreado(clave){
+  try{ await sb.from("responsables").delete().eq("clave", clave); }catch(e){}
+  if (responsablesCreados) responsablesCreados.delete(clave);
+  renderListaResponsables();
+}
 function renderListaResponsables(){
-  const lista = new Map([["independiente", "Independiente"], ["empresa", "Empresa"]]);
-  responsablesConocidos().forEach((v, k) => { if (!lista.has(k)) lista.set(k, v); });
+  const lista = new Map();
+  if (responsablesCreados) responsablesCreados.forEach((v, k) => lista.set(k, v));
+  else responsablesConocidos().forEach((v, k) => lista.set(k, v));
   document.getElementById("listaResponsables").innerHTML =
     Array.from(lista.values()).map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join("");
 }
@@ -3560,6 +3607,8 @@ function sugerirResponsable(texto){
 }
 function revisarResponsableEscrito(alSalir){
   const campo = getField("Resp");
+  const aviso0 = document.getElementById("respSugerencia");
+  if (aviso0) aviso0.classList.remove("aviso-no-existe");
   let aviso = document.getElementById("respSugerencia");
   if (!aviso){
     aviso = document.createElement("div"); aviso.id = "respSugerencia"; aviso.className = "reingreso-aviso"; aviso.hidden = true;
@@ -3568,14 +3617,31 @@ function revisarResponsableEscrito(alSalir){
     const usar = (e) => { if (e.target.id !== "respUsarBtn") return; e.preventDefault(); campo.value = aviso.dataset.valor || campo.value; aviso.hidden = true; };
     aviso.addEventListener("mousedown", usar);
     aviso.addEventListener("click", usar);
+    aviso.addEventListener("click", async (e) => {
+      if (e.target.id !== "respCrearBtn") return;
+      e.preventDefault();
+      const nombre = limpiarEspacios(campo.value);
+      if (!(await confirmarApp(`¿Crear el responsable "${nombre}"? Quedará disponible para todo el equipo.`))) return;
+      if (await crearResponsable(nombre)){ campo.value = nombre.toLowerCase(); aviso.hidden = true; aviso.classList.remove("aviso-no-existe"); }
+    });
   }
   if (alSalir) campo.value = limpiarEspacios(campo.value);
   const sug = sugerirResponsable(campo.value);
-  if (!sug){ aviso.hidden = true; return; }
-  if (sug.exacto){
+  if (sug && sug.exacto && responsableExiste(sug.valor)){
     if (alSalir && campo.value !== sug.valor) campo.value = sug.valor;   // mismo responsable: se usa el ya creado
     aviso.hidden = true; return;
   }
+  const escrito = limpiarEspacios(campo.value);
+  if (escrito && !responsableExiste(escrito) && alSalir){
+    aviso.classList.add("aviso-no-existe");
+    aviso.dataset.valor = sug && !sug.exacto ? sug.valor : "";
+    aviso.innerHTML = `⚠️ El responsable <b>${escHtml(escrito)}</b> no está creado. Primero hay que crearlo para poder usarlo.<br>`
+      + (sug && !sug.exacto ? `<button type="button" id="respUsarBtn">Usar ${escHtml(sug.valor)}</button> ` : "")
+      + `<button type="button" id="respCrearBtn">Crear responsable "${escHtml(escrito)}"</button>`;
+    aviso.hidden = false;
+    return;
+  }
+  if (!sug){ aviso.hidden = true; return; }
   aviso.dataset.valor = sug.valor;
   aviso.innerHTML = `¿Es el mismo responsable <b>${escHtml(sug.valor)}</b>? <button type="button" id="respUsarBtn">Sí, usar ese</button>`;
   aviso.hidden = false;
@@ -3635,12 +3701,51 @@ function aplicarVisibilidadNomina(){
     getField("Estado").value = "AFILIACION";
   }
 }
-getField("Empresa").addEventListener("change", aplicarVisibilidadNomina);
+getField("Empresa").addEventListener("change", (e) => {
+  if (getField("Empresa").value === "__NUEVA__"){ e.stopImmediatePropagation(); mostrarCrearEmpresa(); return; }
+  aplicarVisibilidadNomina();
+});
+let _empresaAntes = "PROSEGUROSNET";
+getField("Empresa").addEventListener("focus", () => { if (getField("Empresa").value !== "__NUEVA__") _empresaAntes = getField("Empresa").value; });
+function mostrarCrearEmpresa(){
+  const f = getField("Empresa").closest(".field");
+  getField("Empresa").value = _empresaAntes || "";
+  let box = document.getElementById("crearEmpresaInline");
+  if (!box){
+    box = document.createElement("div"); box.id = "crearEmpresaInline"; box.className = "reingreso-aviso";
+    f.appendChild(box);
+  }
+  box.hidden = false;
+  box.innerHTML = `La empresa debe estar creada para poder escogerla. Escriba el nombre y créela:
+    <div style="display:flex;gap:6px;margin-top:6px;"><input type="text" id="fEmpresaNuevaInline" placeholder="Nombre de la empresa" style="flex:1;min-width:0;">
+    <button type="button" id="empresaCrearInlineBtn">Crear</button><button type="button" id="empresaCancelarInlineBtn" style="background:transparent;color:inherit;border:1px solid currentColor;">Cancelar</button></div>`;
+  box.querySelector("#fEmpresaNuevaInline").focus();
+  box.querySelector("#empresaCancelarInlineBtn").onclick = () => { box.hidden = true; };
+  box.querySelector("#empresaCrearInlineBtn").onclick = async () => {
+    const nombre = limpiarEspacios(box.querySelector("#fEmpresaNuevaInline").value);
+    if (!nombre){ showToast("Escriba el nombre de la empresa."); return; }
+    const ya = listaEmpresasCompleta().find(x => normalizarEmpresa(x) === normalizarEmpresa(nombre));
+    if (!ya){
+      if (!(await confirmarApp(`¿Crear la empresa "${nombre}"? Quedará disponible para todo el equipo.`))) return;
+      getEmpresasCreadas().push(nombre);
+      saveStore();
+      showToast(`Empresa "${nombre}" creada.`);
+    }
+    renderListaEmpresas();
+    getField("Empresa").value = ya || nombre;
+    box.hidden = true;
+    aplicarVisibilidadNomina();
+  };
+}
 
 function renderListaEmpresas(){
+  const sel = document.getElementById("fEmpresa");
+  const actual = sel.value;
   const opciones = ['<option value="">Sin empresa</option>']
-    .concat(listaEmpresasCompleta().map(v => `<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`));
-  document.getElementById("fEmpresa").innerHTML = opciones.join("");
+    .concat(listaEmpresasCompleta().map(v => `<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`))
+    .concat(['<option value="__NUEVA__">➕ Crear empresa nueva…</option>']);
+  sel.innerHTML = opciones.join("");
+  if (actual && actual !== "__NUEVA__") sel.value = actual;
 }
 
 function normalizarEmpresa(s){
@@ -4497,8 +4602,11 @@ function filaEditable(tipo, clave, nombre, n){
       <button type="button" class="btn small danger" data-accion="eliminar">Eliminar</button>
     </div>`;
 }
-function abrirEditorResponsables(){
+async function abrirEditorResponsables(){
+  await cargarResponsablesCreados();
   const lista = responsablesDelMes();
+  if (responsablesCreados) responsablesCreados.forEach((v, k) => { if (!lista.some(g => g.k === k)) lista.push({ k, nombre: v, n: 0 }); });
+  lista.sort((a, b) => b.n - a.n || a.nombre.localeCompare(b.nombre));
   document.getElementById("respEditSub").textContent =
     `Responsables de ${store.currentMonth} (${lista.length}). Al editar o eliminar, el cambio se aplica a ${store.currentMonth} y a los meses siguientes; los meses anteriores quedan como estaban.`;
   document.getElementById("listaRespEditar").innerHTML = lista.length
@@ -4508,6 +4616,14 @@ function abrirEditorResponsables(){
   document.getElementById("overlayResp").classList.add("show");
 }
 document.getElementById("editResponsablesBtn").addEventListener("click", abrirEditorResponsables);
+document.getElementById("crearResponsableBtn").addEventListener("click", async () => {
+  const inp = document.getElementById("fNuevoResponsable");
+  const nombre = limpiarEspacios(inp.value);
+  if (!nombre){ showToast("Escriba el nombre del responsable."); return; }
+  const sug = sugerirResponsable(nombre);
+  if (sug && !sug.exacto && !(await confirmarApp(`Ya existe un responsable parecido: "${sug.valor}". ¿Crear "${nombre}" de todas formas?`))) return;
+  if (await crearResponsable(nombre)){ inp.value = ""; abrirEditorResponsables(); }
+});
 document.getElementById("cerrarRespBtn").addEventListener("click", () => {
   document.getElementById("overlayResp").classList.remove("show");
 });
@@ -4541,6 +4657,11 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
     if (nuevo === original){ showToast("Sin cambios para guardar."); esResp ? abrirEditorResponsables() : renderListaEmpresasEditar(); return; }
     if (!(await confirmarApp(`¿Cambiar el ${etiqueta} "${original}" por "${nuevo}"?\nSe actualiza en ${afectados.length} cliente(s) de ${store.currentMonth} y los meses siguientes.`))) return;
     afectados.forEach(r => { r[campo] = esResp ? nuevo.toLowerCase() : nuevo; });
+    if (esResp){
+      await crearResponsable(nuevo);
+      const sigueEnUso = Object.values(store.months).some(m => (m || []).some(r => normResp(r["Responsable / Grupo"]) === clave));
+      if (!sigueEnUso) await borrarResponsableCreado(clave);
+    }
     if (!esResp){
       const extra = getEmpresasCreadas();
       for (let i = extra.length - 1; i >= 0; i--){ if (normalizarEmpresa(extra[i]) === clave) extra.splice(i, 1); }
@@ -4556,6 +4677,10 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
   if (accion === "eliminar"){
     if (!(await confirmarApp(`¿Eliminar el ${etiqueta} "${original}"?` + (afectados.length ? `\nSe quita de ${afectados.length} cliente(s) de ${store.currentMonth} y los meses siguientes (quedan sin ${etiqueta}).` : "") + "\n¿Está seguro?"))) return;
     afectados.forEach(r => { r[campo] = ""; });
+    if (esResp){
+      const sigueEnUso = Object.values(store.months).some(m => (m || []).some(r => normResp(r["Responsable / Grupo"]) === clave));
+      if (!sigueEnUso) await borrarResponsableCreado(clave);
+    }
     if (!esResp){
       const extra = getEmpresasCreadas();
       for (let i = extra.length - 1; i >= 0; i--){ if (normalizarEmpresa(extra[i]) === clave) extra.splice(i, 1); }
@@ -6601,6 +6726,7 @@ function fromInputDate(yyyymmdd){
 function openModal(record){
   editingCedula = record ? record["Cédula"] : null;
   ocultarAvisoReingreso(); _reingresoCedula = "";
+  cargarResponsablesCreados();
   { const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
   modalTitle.textContent = record ? "Editar cliente" : "Agregar cliente";
   renderListaResponsables();
@@ -7543,6 +7669,16 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   if (cedula.length < 6 || cedula.length > 12){
     showToast("La cédula debe tener entre 6 y 12 números. Revísala antes de guardar.");
     return;
+  }
+  {
+    const respEscrito = limpiarEspacios(getField("Resp").value);
+    const original = editingCedula ? limpiarEspacios((records.find(x => String(x["Cédula"]) === String(editingCedula)) || {})["Responsable / Grupo"]) : "";
+    if (respEscrito && !getField("Resp").dataset.na && !responsableExiste(respEscrito) && normResp(respEscrito) !== normResp(original)){
+      revisarResponsableEscrito(true);
+      getField("Resp").closest(".field").scrollIntoView({ behavior: "smooth", block: "center" });
+      showToast(`⚠️ El responsable "${respEscrito}" no está creado. Créelo primero o escoja uno de la lista.`);
+      return;
+    }
   }
   if (!editingCedula){
     const cajaCed = document.querySelector('.doc-upload[data-doc="Cedula"]');
