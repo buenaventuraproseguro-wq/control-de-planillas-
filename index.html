@@ -1175,6 +1175,20 @@
   .reingreso-aviso.aviso-no-existe{ background:#FDECEE; border-color:#F2B8BE; color:#7A1621; }
   .reingreso-aviso.aviso-no-existe button{ background:#C8202F; }
   @media (prefers-color-scheme: dark){ .reingreso-aviso.aviso-no-existe{ background:#3A1917; border-color:#7A2E2A; color:#FFD0CC; } }
+
+  /* ===== Sugerencias de responsables ===== */
+  .resp-sugerencias{ position:absolute; left:0; right:0; top:100%; margin-top:4px; z-index:30; max-height:280px; overflow:auto;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,.08), 0 16px 32px rgba(0,0,0,.10);
+    padding:4px; animation:respAbre .14s cubic-bezier(.23,1,.32,1); }
+  @keyframes respAbre{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }
+  .resp-op{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 10px; border-radius:7px; cursor:pointer; font-size:14px; }
+  .resp-op small{ font-size:11.5px; color:var(--muted); white-space:nowrap; }
+  .resp-op:hover, .resp-op.activa{ background:#E0F2FE; }
+  .resp-crear{ color:#0369A1; font-weight:600; border-top:1px solid var(--line); margin-top:4px; border-radius:0 0 7px 7px; }
+  .resp-vacio{ padding:8px 10px; font-size:13px; color:var(--muted); }
+  .resp-pie{ padding:6px 10px 4px; font-size:11px; color:var(--muted); border-top:1px solid var(--line); margin-top:4px; }
+  @media (prefers-color-scheme: dark){ .resp-op:hover, .resp-op.activa{ background:#0F2E45; } .resp-crear{ color:#7DD3FC; } }
+  @media (prefers-reduced-motion: reduce){ .resp-sugerencias{ animation:none; } }
 </style>
 </head>
 <body>
@@ -1403,7 +1417,7 @@
       <div class="field"><label><span class="field-num">2</span>Nombre del afiliado *</label><input id="fNombre" type="text"></div>
 
       <div class="field campo-nomina"><label><span class="field-num">3</span>Responsable / Grupo</label>
-        <input id="fResp" type="text" list="listaResponsables">
+        <input id="fResp" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="respLista" placeholder="Toque para ver los responsables">
         <datalist id="listaResponsables">
           <option value="Independiente">
           <option value="Empresa">
@@ -7345,6 +7359,71 @@ getField("Resp").addEventListener("input", () => {
   revisarResponsableEscrito(false);
 });
 getField("Resp").addEventListener("blur", () => revisarResponsableEscrito(true));
+// ---- Lista de sugerencias de responsables (propia, se ve igual en celular y computador) ----
+// Al tocar el recuadro se muestran TODOS los responsables creados; al escribir se filtran.
+(function(){
+  const inp = getField("Resp");
+  const field = inp.closest(".field");
+  field.style.position = "relative";
+  const caja = document.createElement("div");
+  caja.id = "respLista"; caja.className = "resp-sugerencias"; caja.setAttribute("role", "listbox"); caja.hidden = true;
+  inp.insertAdjacentElement("afterend", caja);
+  let activo = -1, opciones = [];
+  function todos(){
+    const m = new Map();
+    if (responsablesCreados) responsablesCreados.forEach((v, k) => m.set(k, v));
+    else responsablesConocidos().forEach((v, k) => m.set(k, v));
+    const conteo = {};
+    (store.months[store.currentMonth] || []).forEach(r => { const k = normResp(r["Responsable / Grupo"]); if (k) conteo[k] = (conteo[k] || 0) + 1; });
+    return [...m.entries()].map(([k, v]) => ({ k, v, n: conteo[k] || 0 })).sort((a, b) => a.v.localeCompare(b.v, "es"));
+  }
+  function opciones_coinciden(q, lista){ return lista.some(o => o.k.includes(q)); }
+  function pintar(){
+    const q = normResp(inp.value);
+    const lista = todos();
+    opciones = q ? lista.filter(o => o.k.includes(q)) : lista;
+    const existe = !q || lista.some(o => o.k === q) || opciones_coinciden(q, lista);
+    caja.innerHTML = (opciones.length
+      ? opciones.map((o, i) => `<div class="resp-op ${i === activo ? "activa" : ""}" role="option" data-i="${i}"><span>${escHtml(nombrePropio(o.v))}</span><small>${o.n ? o.n + " este mes" : ""}</small></div>`).join("")
+      : `<div class="resp-vacio">No hay ningún responsable con "${escHtml(inp.value)}".</div>`)
+      + (!existe ? `<div class="resp-op resp-crear" data-crear="1">➕ Crear responsable "${escHtml(limpiarEspacios(inp.value))}"</div>` : "")
+      + `<div class="resp-pie">${lista.length} responsables creados</div>`;
+    caja.style.top = (inp.offsetTop + inp.offsetHeight) + "px";
+    caja.hidden = false; inp.setAttribute("aria-expanded", "true");
+  }
+  function cerrar(){ caja.hidden = true; activo = -1; inp.setAttribute("aria-expanded", "false"); }
+  function escoger(i){
+    const o = opciones[i]; if (!o) return;
+    inp.value = o.v; cerrar();
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+    const a = document.getElementById("respSugerencia"); if (a){ a.hidden = true; a.classList.remove("aviso-no-existe"); }
+  }
+  inp.addEventListener("focus", () => { if (!inp.disabled){ activo = -1; pintar(); } });
+  inp.addEventListener("click", () => { if (!inp.disabled && caja.hidden){ activo = -1; pintar(); } });
+  inp.addEventListener("input", () => { activo = -1; if (document.activeElement === inp) pintar(); });
+  inp.addEventListener("keydown", (e) => {
+    if (caja.hidden && (e.key === "ArrowDown" || e.key === "ArrowUp")){ pintar(); e.preventDefault(); return; }
+    if (e.key === "ArrowDown"){ activo = Math.min(opciones.length - 1, activo + 1); pintar(); e.preventDefault(); }
+    else if (e.key === "ArrowUp"){ activo = Math.max(0, activo - 1); pintar(); e.preventDefault(); }
+    else if (e.key === "Enter" && !caja.hidden && activo > -1){ escoger(activo); e.preventDefault(); }
+    else if (e.key === "Escape"){ cerrar(); }
+  });
+  caja.addEventListener("mousedown", async (e) => {
+    e.preventDefault(); // que el recuadro no pierda el foco antes de escoger
+    const op = e.target.closest(".resp-op");
+    if (!op) return;
+    if (op.dataset.crear){
+      const nombre = limpiarEspacios(inp.value);
+      cerrar();
+      if (!(await confirmarApp(`¿Crear el responsable "${nombre}"? Quedará disponible para todo el equipo.`))) return;
+      if (await crearResponsable(nombre)){ inp.value = nombre.toLowerCase(); const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
+      return;
+    }
+    escoger(Number(op.dataset.i));
+  });
+  inp.addEventListener("blur", () => setTimeout(cerrar, 120));
+})();
+
 // ---- Agregar cliente: todos los recuadros deben quedar confirmados ----
 // Cada recuadro debe tener información o estar marcado "No aplica" (lo que no aplica no se
 // guarda en la base: queda vacío). Solo al AGREGAR un cliente; al editar no cambia nada.
