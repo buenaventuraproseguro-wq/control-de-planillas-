@@ -1258,7 +1258,7 @@
   <div class="stats-strip" id="statsStrip"></div>
 
   <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
-    <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp a pendientes</button>
+    <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
     <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
   </div>
 
@@ -6182,11 +6182,13 @@ async function crearAccesoPortal(r){
 // Como los navegadores bloquean varias ventanas abiertas de golpe, se hace de una en una:
 // este botón abre el siguiente chat de WhatsApp pendiente y se convierte en "Siguiente".
 let colaRecordatorios = [];
+// A quién se le cobra este mes: solo SIN PAGO y DÍAS PROPORCIONALES.
+// Los que se afiliaron este mes (AFILIACIÓN) o están SIN INICIAR todavía no se cobran.
 function clientesPendientesDelMes(){
   const arr = store.months[store.currentMonth] || [];
   return arr.filter(r => {
     const ec = estadoClass(r["Estado Trámite"]);
-    return ec !== "PAGO" && ec !== "PAGO_CONDUCTOR" && ec !== "RETIRO" && String(r["Teléfono"] || "").trim();
+    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && String(r["Teléfono"] || "").trim();
   });
 }
 function actualizarBarraRecordatorios(){
@@ -6205,7 +6207,7 @@ function actualizarBarraRecordatorios(){
     progreso.style.display = "inline";
     progreso.textContent = `Enviando recordatorios: queda(n) ${colaRecordatorios.length} de ${pendientes.length} pendiente(s).`;
   } else {
-    btn.textContent = `Enviar recordatorio de WhatsApp a pendientes (${pendientes.length})`;
+    btn.textContent = `Enviar recordatorio de WhatsApp por cobrar (${pendientes.length})`;
     progreso.style.display = "none";
     progreso.textContent = "";
   }
@@ -6326,7 +6328,7 @@ function mostrarPanelRecordatorios(eleccion){
       <p class="record-txt">¿A quién le envía el recordatorio?</p>
       <div class="record-opciones">
         ${atrasados.length ? `<button type="button" class="btn primary" data-record="atrasados">Solo atrasados (${atrasados.length})</button>` : ""}
-        <button type="button" class="btn ${atrasados.length ? "ghost" : "primary"}" data-record="todos">Todos los pendientes (${pendientes.length})</button>
+        <button type="button" class="btn ${atrasados.length ? "ghost" : "primary"}" data-record="todos">Todos por cobrar (${pendientes.length})</button>
       </div>
       <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente. Los clientes de un mismo responsable (persona) o de una misma empresa van juntos en un solo mensaje; los de muelles e independientes, uno por uno.</p>`;
     mostrarPanelRecordatorios._eleccion = eleccion;
