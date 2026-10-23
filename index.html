@@ -1385,6 +1385,7 @@
       </div>
       <div class="field"><label><span class="field-num">4</span>Estado del trámite</label>
         <select id="fEstado">
+          <option value="" hidden>— Escoja el estado —</option>
           <optgroup label="Nómina PROSEGUROSNET" id="optgroupNomina">
             <option value="PAGO">PAGO</option>
             <option value="RETIRO">RETIRO</option>
@@ -3604,7 +3605,9 @@ function aplicarVisibilidadNomina(){
   const estadoActual = getField("Estado").value;
   document.getElementById("optgroupNomina").disabled = esConductores;
   document.getElementById("optgroupConductor").disabled = !esConductores;
-  if (esConductores && !ESTADOS_CONDUCTOR.includes(estadoActual)){
+  if (!estadoActual && !editingCedula){
+    // Al agregar, el estado se deja sin escoger: es obligatorio escogerlo
+  } else if (esConductores && !ESTADOS_CONDUCTOR.includes(estadoActual)){
     getField("Estado").value = "DEBE";
   } else if (!esConductores && !ESTADOS_NOMINA.includes(estadoActual)){
     getField("Estado").value = "AFILIACION";
@@ -7171,7 +7174,6 @@ function traerDatosReingreso(){
   prepararNoAplica();
   modalTitle.textContent = "Agregar cliente (reingreso)";
   getField("Cedula").value = cedula;
-  getField("Estado").value = "AFILIACION";
   _reingresoCedula = cedula;
   const aviso = document.getElementById("reingresoAviso");
   if (aviso){
@@ -7209,7 +7211,7 @@ function camposConfirmables(){
 }
 function controlDe(f){ return f.querySelector("input:not([type=checkbox]):not([type=file]), select, textarea"); }
 // Obligatorios al agregar: no tienen "No aplica"
-const CAMPOS_OBLIGATORIOS = ["fCedula", "fNombre", "fTelefono", "fDireccion", "fFechaIngreso", "fArl", "fArlNivel", "fAfp", "fEps", "fEmpresa"];
+const CAMPOS_OBLIGATORIOS = ["fCedula", "fNombre", "fEstado", "fTelefono", "fDireccion", "fFechaIngreso", "fArl", "fArlNivel", "fAfp", "fEps", "fEmpresa"];
 function camposObligatoriosVisibles(){
   return CAMPOS_OBLIGATORIOS.map(id => document.getElementById(id)).filter(c => c && c.closest(".field") && c.closest(".field").offsetParent !== null).map(c => c.closest(".field"));
 }
@@ -7223,6 +7225,7 @@ function prepararNoAplica(){
   document.querySelectorAll("#overlay .obligatorio-marca").forEach(m => m.remove());
   document.querySelectorAll("#overlay .falta-doc").forEach(b => b.classList.remove("falta-doc"));
   if (!agregando) return;
+  getField("Estado").value = "";   // obligatorio: se escoge a mano
   { const cajaCed = document.querySelector('.doc-upload[data-doc="Cedula"]');
     const t = cajaCed && (cajaCed.querySelector(".doc-label, label, span") || cajaCed);
     if (t){ const m = document.createElement("span"); m.className = "obligatorio-marca"; m.textContent = " * obligatorio"; t.appendChild(m); } }
