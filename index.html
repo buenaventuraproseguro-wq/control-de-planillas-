@@ -1120,6 +1120,20 @@
   .record-lista{ list-style:none; margin:6px 0 8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; max-height:180px; overflow:auto; font-size:13px; }
   .record-lista li{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; }
   .record-lista li span{ font-variant-numeric:tabular-nums; color:var(--muted); }
+
+  /* ===== Responsables y recordatorios enviados ===== */
+  .stat-card.stat-resp{ border-top-color:#7A6A55; }
+  .resp-lista{ display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow:auto; }
+  .resp-fila{ display:grid; grid-template-columns:1fr auto; gap:2px 12px; text-align:left; font:inherit; color:var(--ink);
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:9px 12px; cursor:pointer; }
+  .resp-fila:hover{ border-color:var(--muted); }
+  .resp-nombre{ font-weight:600; font-size:14px; }
+  .resp-num{ font-size:13px; text-align:right; font-variant-numeric:tabular-nums; }
+  .resp-num b{ font-size:16px; }
+  .resp-det{ grid-column:1 / -1; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tag-recordado{ display:inline-block; font-size:11px; font-weight:600; color:#137A3B; background:#DDF2E6; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+  .record-ya{ font-size:12.5px; background:#DDF2E6; color:#0F5C2E; border-radius:8px; padding:8px 10px; margin:4px 0 10px; }
+  @media (prefers-color-scheme: dark){ .tag-recordado{ background:#123425; color:#6EE7A0; } .record-ya{ background:#123425; color:#A7F3C5; } }
 </style>
 </head>
 <body>
@@ -2060,6 +2074,14 @@
     <div id="recordCuerpo"></div>
   </div>
 </div>
+<div class="overlay" id="overlayResponsables">
+  <div class="modal" style="max-width:560px;">
+    <h2>Responsables</h2>
+    <div class="modal-sub" id="respSub"></div>
+    <div id="respLista" class="resp-lista"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" id="respCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
 <div class="overlay" id="overlayEnlaces">
   <div class="modal" style="max-width:560px;">
     <h2>🔗 Enlaces rápidos</h2>
@@ -2180,6 +2202,9 @@ let columnasLugar = (() => { try{ return localStorage.getItem(COLUMNAS_LUGAR_KEY
 // ¿La base ya tiene "recargo_mora"? (archivo recargo_mora.sql)
 const COLUMNAS_RECARGO_KEY = "prosegurosnet_columnas_recargo";
 let columnasRecargo = (() => { try{ return localStorage.getItem(COLUMNAS_RECARGO_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene "ultimo_recordatorio"? (para no enviar el mismo recordatorio dos veces)
+const COLUMNAS_RECORDATORIO_KEY = "prosegurosnet_columnas_recordatorio";
+let columnasRecordatorio = (() => { try{ return localStorage.getItem(COLUMNAS_RECORDATORIO_KEY) === "1"; }catch(e){ return false; } })();
 async function detectarColumnasConfirmacion(){
   try{
     const { error } = await sb.from("clients").select("estado_arl,en_proceso_desde").limit(1);
@@ -2195,6 +2220,13 @@ async function detectarColumnasConfirmacion(){
       if (/fecha_retiro|motivo_retiro|column|schema cache/i.test(String(error.message || ""))) columnasRetiro = false;
     } else columnasRetiro = true;
     try{ localStorage.setItem(COLUMNAS_RETIRO_KEY, columnasRetiro ? "1" : "0"); }catch(e){}
+  }catch(e){}
+  try{
+    const { error } = await sb.from("clients").select("ultimo_recordatorio").limit(1);
+    if (error){
+      if (/ultimo_recordatorio|column|schema cache/i.test(String(error.message || ""))) columnasRecordatorio = false;
+    } else columnasRecordatorio = true;
+    try{ localStorage.setItem(COLUMNAS_RECORDATORIO_KEY, columnasRecordatorio ? "1" : "0"); }catch(e){}
   }catch(e){}
   try{
     const { error } = await sb.from("clients").select("lugar_trabajo").limit(1);
@@ -2254,6 +2286,7 @@ function esRecordToDbRow(r, monthId){
       motivo_retiro: r["Motivo Retiro"] || "",
     } : {}),
     ...(columnasLugar ? { lugar_trabajo: r["Lugar Trabajo"] || "" } : {}),
+    ...(columnasRecordatorio ? { ultimo_recordatorio: r["Último Recordatorio"] || null } : {}),
     ...(columnasRecargo ? {
       recargo_mora: r["Recargo Mora"] === "" || r["Recargo Mora"] == null ? null : Number(r["Recargo Mora"]),
     } : {}),
@@ -2298,6 +2331,7 @@ function dbRowToEsRecord(row){
     "Motivo Retiro": row.motivo_retiro || "",
     "Recargo Mora": row.recargo_mora == null ? "" : row.recargo_mora,
     "Lugar Trabajo": row.lugar_trabajo || "",
+    "Último Recordatorio": row.ultimo_recordatorio || "",
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
   };
@@ -2896,6 +2930,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.motivo_retiro === "" || o.motivo_retiro == null)) delete o.motivo_retiro;
     if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
+    if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
     return JSON.stringify(o);
   }catch(e){ return texto; }
 }
@@ -4646,7 +4681,7 @@ advanceBtn.addEventListener("click", async () => {
   const continuing = records
     .filter(r => !isRetiro(r))
     .map(construirRegistroMesSiguiente);
-  continuing.forEach(x => { x["Recargo Mora"] = ""; }); // el recargo por mora es de cada mes
+  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; }); // el recargo por mora es de cada mes
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
   const retiradosCount = records.length - continuing.length;
@@ -4763,6 +4798,11 @@ function renderStatsStrip(){
       <div class="stat-value">${traslados.length}</div>
       <div class="stat-detalle">${traslados.length ? "por aprobar" : "ninguno pendiente"}</div>
     </button>
+    <button type="button" class="stat-card stat-resp ${filtroEstado.startsWith("__RESP__:") ? "active" : ""}" id="statResponsablesBtn" title="Cuántos clientes tiene cada responsable">
+      <div class="stat-label">Responsables</div>
+      <div class="stat-value">${resumenResponsables().length}</div>
+      <div class="stat-detalle">ver cuántos tiene cada uno</div>
+    </button>
     <button type="button" class="stat-card stat-caja ${activa("__CAJA__")}" data-filtro="__CAJA__" title="Clientes que pagan caja de compensación este mes">
       <div class="stat-label">Caja de compensación</div>
       <div class="stat-value">${conCaja.length}</div>
@@ -4799,6 +4839,7 @@ function renderGruposConfirmacion(){
 }
 
 document.getElementById("statsStrip").addEventListener("click", (e) => {
+  if (e.target.closest("#statResponsablesBtn")){ abrirResponsables(); return; }
   const btn = e.target.closest("[data-filtro]");
   if (!btn) return;
   if (btn.dataset.filtro !== filtroEstado) grupoConfirmacionFiltro = "";
@@ -4948,6 +4989,9 @@ function aplicarRecargosMora(){
     showToast(`💸 Se sumó el recargo por mora de ${fmt(RECARGO_MORA_VALOR)} a ${pendientes.length} cliente(s) atrasado(s).`);
   }finally{ _aplicandoRecargos = false; }
   return pendientes.length;
+}
+function tagRecordado(r){
+  return recordadoHoy(r) ? `<span class="tag-recordado" title="Recordatorio de WhatsApp enviado hoy a las ${escHtml(horaRecordatorio(r))}">📨 Recordado hoy</span>` : "";
 }
 function tagRecargo(r){
   const v = numOrZero(r && r["Recargo Mora"]);
@@ -5131,6 +5175,9 @@ function renderList(filterText){
       .filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" && estadoClass(r["Estado Trámite"]) !== "PAGO");
   } else if (filtroEstado === "__ATRASADOS__"){
     filtered = filtered.filter(estaAtrasado);
+  } else if (filtroEstado.startsWith("__RESP__:")){
+    const k = filtroEstado.slice(9);
+    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => normResp(r["Responsable / Grupo"]) === k);
   } else if (filtroEstado === "__POR_CONFIRMAR__"){
     filtered = filtered.filter(r => pendientesConfirmacion(r).length)
       .filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro)
@@ -5170,6 +5217,9 @@ function renderList(filterText){
     listLabel.textContent = `Resultados (${filtered.length})`;
   } else if (filtroEstado in TITULOS_TARJETA){
     listLabel.textContent = `${TITULOS_TARJETA[filtroEstado]} (${filtered.length})`;
+  } else if (filtroEstado.startsWith("__RESP__:")){
+    const g = resumenResponsables().find(x => x.k === filtroEstado.slice(9));
+    listLabel.textContent = `Clientes de ${g ? nombrePropio(g.nombre) : "este responsable"} (${filtered.length}) · toque "Total clientes" para ver todos`;
   } else if (filtroEstado){
     listLabel.textContent = `Resultados (${filtered.length})`;
   } else {
@@ -5199,7 +5249,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -5925,6 +5975,49 @@ document.getElementById("overlayTema").addEventListener("click", (e) => {
   const b = e.target.closest("[data-tema-id]");
   if (b){ aplicarTema(b.dataset.temaId); showToast("Colores cambiados. Solo se ven así en este equipo."); }
 });
+
+// ---- Responsables: cuántos clientes tiene cada uno en el mes ----
+function resumenResponsables(){
+  const m = new Map();
+  records.filter(r => !esConductorExcluido(r) && estadoClass(r["Estado Trámite"]) !== "RETIRO").forEach(r => {
+    const v = limpiarEspacios(r["Responsable / Grupo"]);
+    if (!v) return;
+    const k = normResp(v);
+    if (!m.has(k)) m.set(k, { k, nombre: v, clientes: [] });
+    m.get(k).clientes.push(r);
+  });
+  return [...m.values()].sort((a, b) => b.clientes.length - a.clientes.length || a.nombre.localeCompare(b.nombre));
+}
+function abrirResponsables(){
+  const lista = resumenResponsables();
+  const filas = lista.map(g => {
+    const pagados = g.clientes.filter(r => estadoClass(r["Estado Trámite"]) === "PAGO").length;
+    const pend = g.clientes.filter(r => estadoClass(r["Estado Trámite"]) !== "PAGO");
+    const debe = pend.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
+    const hoy = g.clientes.some(recordadoHoy);
+    return `<button type="button" class="resp-fila" data-resp="${escHtml(g.k)}">
+      <span class="resp-nombre">${escHtml(nombrePropio(g.nombre))}${hoy ? ' <span class="tag-recordado">📨 hoy</span>' : ""}</span>
+      <span class="resp-num"><b>${g.clientes.length}</b> cliente${g.clientes.length === 1 ? "" : "s"}</span>
+      <span class="resp-det">${pagados} pagado${pagados === 1 ? "" : "s"} · ${pend.length} pendiente${pend.length === 1 ? "" : "s"}${pend.length ? ` · debe ${fmt(debe)}` : ""}</span>
+    </button>`;
+  }).join("");
+  const sinResp = records.filter(r => !esConductorExcluido(r) && estadoClass(r["Estado Trámite"]) !== "RETIRO" && !limpiarEspacios(r["Responsable / Grupo"])).length;
+  document.getElementById("respLista").innerHTML = (filas || '<p class="record-txt">No hay responsables este mes.</p>')
+    + (sinResp ? `<p class="record-nota">${sinResp} cliente(s) no tienen responsable.</p>` : "");
+  document.getElementById("respSub").textContent = `${store.currentMonth} · ${lista.length} responsables. Toque uno para ver sus clientes en la lista.`;
+  document.getElementById("overlayResponsables").classList.add("show");
+}
+document.getElementById("overlayResponsables").addEventListener("click", (e) => {
+  const ov = e.currentTarget;
+  if (e.target === ov || e.target.closest("#respCerrarBtn")){ ov.classList.remove("show"); return; }
+  const b = e.target.closest("[data-resp]");
+  if (!b) return;
+  filtroEstado = "__RESP__:" + b.dataset.resp;
+  grupoConfirmacionFiltro = "";
+  ov.classList.remove("show");
+  renderList(searchInput.value);
+  showToast(`Mostrando los clientes de ${b.querySelector(".resp-nombre").textContent.replace("📨 hoy","").trim()}. Toque "Total clientes" para ver todos.`);
+});
 document.getElementById("navEnlacesBtn").addEventListener("click", (e) => {
   const lista = document.getElementById("enlacesLista");
   const abierto = lista.classList.toggle("show");
@@ -6238,12 +6331,35 @@ function abrirWhatsappConMensaje(telefono, mensaje){
   return true;
 }
 let totalColaRecordatorios = 0, enviadosRecordatorios = 0, procesadosRecordatorios = 0;
-function iniciarOContinuarRecordatorios(){
+function diaBogota(fechaIso){
+  try{ return new Date(fechaIso).toLocaleDateString("es-CO", { timeZone: "America/Bogota" }); }catch(e){ return ""; }
+}
+function recordadoHoy(r){
+  const f = r && r["Último Recordatorio"];
+  return !!f && diaBogota(f) === diaBogota(new Date().toISOString());
+}
+function horaRecordatorio(r){
+  try{ return new Date(r["Último Recordatorio"]).toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" }); }catch(e){ return ""; }
+}
+function marcarRecordado(clientes){
+  const ahora = new Date().toISOString();
+  clientes.forEach(c => { c["Último Recordatorio"] = ahora; c["_ultimaEdicion"] = ahora; });
+  saveStore();
+  renderList(searchInput.value);
+}
+async function iniciarOContinuarRecordatorios(){
   if (colaRecordatorios.length){ mostrarPanelRecordatorios(); return; }
-  const pendientes = clientesPendientesDelMes();
-  if (!pendientes.length) return;
+  // Antes de armar la lista se traen los cambios del equipo: si un compañero ya envió
+  // recordatorios hoy, aquí se ven y no se repiten.
+  if (cloudDb && cloudReady && navigator.onLine){
+    try{ await Promise.race([refrescarMesDesdeNube(), new Promise(res => setTimeout(res, 2500))]); }catch(e){}
+  }
+  const todos = clientesPendientesDelMes();
+  if (!todos.length) return;
+  const yaHoy = todos.filter(recordadoHoy);
+  const pendientes = todos.filter(r => !recordadoHoy(r));
   const atrasados = pendientes.filter(estaAtrasado);
-  mostrarPanelRecordatorios({ pendientes, atrasados });
+  mostrarPanelRecordatorios({ pendientes, atrasados, yaHoy });
 }
 function empezarColaRecordatorios(lista){
   colaRecordatorios = agruparPorResponsable(lista);
@@ -6255,8 +6371,14 @@ function mostrarPanelRecordatorios(eleccion){
   const ov = document.getElementById("overlayRecordatorios");
   const cuerpo = document.getElementById("recordCuerpo");
   if (eleccion){
-    const { pendientes, atrasados } = eleccion;
-    cuerpo.innerHTML = `
+    const { pendientes, atrasados, yaHoy } = eleccion;
+    const avisoHoy = yaHoy && yaHoy.length
+      ? `<p class="record-ya">📨 ${yaHoy.length} ya recibieron recordatorio hoy y no se vuelven a enviar: ${yaHoy.slice(0, 6).map(r => escHtml(nombrePropio(r["Nombre del Afiliado"]))).join(", ")}${yaHoy.length > 6 ? "…" : ""}.</p>` : "";
+    cuerpo.innerHTML = !pendientes.length
+      ? `${avisoHoy}<p class="record-txt">Hoy ya se le envió el recordatorio a todos los pendientes.</p>
+         <div class="record-opciones"><button type="button" class="btn primary" data-record="cerrar">Cerrar</button></div>`
+      : `
+      ${avisoHoy}
       <p class="record-txt">¿A quién le envía el recordatorio?</p>
       <div class="record-opciones">
         ${atrasados.length ? `<button type="button" class="btn primary" data-record="atrasados">Solo atrasados (${atrasados.length})</button>` : ""}
@@ -6297,10 +6419,24 @@ document.getElementById("overlayRecordatorios").addEventListener("click", (e) =>
   if (acc === "atrasados") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.atrasados);
   else if (acc === "todos") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.pendientes);
   else if (acc === "abrir" || acc === "saltar"){
+    const primero = colaRecordatorios[0];
+    if (acc === "abrir" && primero){
+      const lista = primero.grupo ? primero.clientes : [primero];
+      const repetidos = lista.filter(recordadoHoy);
+      if (repetidos.length === lista.length && !primero._forzar){
+        ov.classList.remove("show");
+        confirmarApp(`A ${primero.grupo ? primero.responsable : nombrePropio(primero["Nombre del Afiliado"])} ya se le envió el recordatorio hoy a las ${horaRecordatorio(repetidos[0])}. ¿Enviarlo otra vez?`).then(ok => {
+          if (!ok){ colaRecordatorios.shift(); procesadosRecordatorios++; actualizarBarraRecordatorios(); }
+          else { primero._forzar = true; }
+          mostrarPanelRecordatorios();
+        });
+        return;
+      }
+    }
     const r = colaRecordatorios.shift();
     if (r){ procesadosRecordatorios++; if (acc === "abrir"){
-      if (r.grupo){ if (abrirWhatsappConMensaje(telefonoDeItem(r), construirMensajeAgrupado(r))) enviadosRecordatorios++; }
-      else { enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; }
+      if (r.grupo){ if (abrirWhatsappConMensaje(telefonoDeItem(r), construirMensajeAgrupado(r))){ enviadosRecordatorios++; marcarRecordado(r.clientes); } }
+      else if (navigator.onLine){ enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; marcarRecordado([r]); }
     } }
     actualizarBarraRecordatorios();
     mostrarPanelRecordatorios();
@@ -7034,7 +7170,7 @@ function traerDatosReingreso(){
   if (!base) return;
   const copia = JSON.parse(JSON.stringify(base));
   // Lo que es propio de cada mes o del retiro anterior empieza en limpio
-  ["No. Planilla Pagada", "Fecha de Ingreso", "Fecha Retiro", "Motivo Retiro", "Recargo Mora", "En Proceso Desde",
+  ["No. Planilla Pagada", "Fecha de Ingreso", "Fecha Retiro", "Motivo Retiro", "Recargo Mora", "Último Recordatorio", "En Proceso Desde",
    "Recordatorio", "_supabaseId", "_ultimaEdicion"].forEach(k => { if (k in copia) copia[k] = ""; });
   copia["Imagen PlanillaPagada"] = null;
   copia["Imagen ComprobantePago"] = null;
@@ -7442,7 +7578,7 @@ function insertarConservandoLugar(nombreMes, nuevos, listaReferencia){
   const ordenRef = (listaReferencia || []).map(x => String(x["Cédula"]));
   nuevos.forEach(n => {
     const ced = String(n["Cédula"]);
-    const copia = { ...n, "Recargo Mora": "" }; delete copia._supabaseId;
+    const copia = { ...n, "Recargo Mora": "", "Último Recordatorio": "" }; delete copia._supabaseId;
     const posRef = ordenRef.indexOf(ced);
     let destino = arr.length; // si no aparece en la referencia, al final
     if (posRef > -1){
@@ -7462,7 +7598,7 @@ function insertarConservandoLugar(nombreMes, nuevos, listaReferencia){
 function agregarAlFinalDelMes(nombreMes, nuevos){
   const arr = store.months[nombreMes] || (store.months[nombreMes] = []);
   let maxNo = arr.reduce((acc, x) => Math.max(acc, Number(x["No."]) || 0), 0);
-  nuevos.forEach(n => { const copia = { ...n, "No.": ++maxNo, "Recargo Mora": "" }; delete copia._supabaseId; arr.push(copia); });
+  nuevos.forEach(n => { const copia = { ...n, "No.": ++maxNo, "Recargo Mora": "", "Último Recordatorio": "" }; delete copia._supabaseId; arr.push(copia); });
   store.months[nombreMes] = ordenarPorNumero(arr);
 }
 
