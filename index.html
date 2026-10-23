@@ -1140,19 +1140,31 @@
   .resp-row input{ flex:1; min-width:0; }
 
   /* ===== Agregar cliente: recuadros por confirmar ===== */
-  .na-btn{ float:right; font:inherit; font-size:12px; font-weight:700; letter-spacing:.01em;
-    color:#075985; background:#E0F2FE; border:1.5px solid #38BDF8; border-radius:999px;
-    padding:3px 11px; margin:-3px 0 0 8px; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.06);
-    transition:transform .12s cubic-bezier(.23,1,.32,1), background .15s, box-shadow .15s; }
-  .na-btn:hover{ background:#BAE6FD; box-shadow:0 2px 6px rgba(56,189,248,.35); }
-  .na-btn:active{ transform:scale(.95); }
-  .na-btn.on{ color:#fff; background:#0369A1; border-color:#0369A1; box-shadow:0 2px 6px rgba(3,105,161,.35); }
-  .na-btn.on:hover{ background:#075985; }
+  /* "No aplica" al estilo de Emil Kowalski: discreto, preciso, con un movimiento corto que
+     confirma la acción (la casilla se llena y el chulito se dibuja). */
+  .na-btn{ float:right; display:inline-flex; align-items:center; gap:6px; margin:-4px 0 0 8px;
+    font:inherit; font-size:12px; font-weight:550; letter-spacing:-.005em; line-height:1;
+    color:#0C4A6E; background:#F0F9FF; border:1px solid #BAE6FD; border-radius:8px; padding:5px 9px 5px 7px; cursor:pointer;
+    box-shadow:0 1px 1px rgba(2,132,199,.06), inset 0 1px 0 rgba(255,255,255,.7);
+    transition:background .16s cubic-bezier(.23,1,.32,1), border-color .16s cubic-bezier(.23,1,.32,1), color .16s, transform .12s cubic-bezier(.23,1,.32,1), box-shadow .16s; }
+  .na-btn:hover{ background:#E0F2FE; border-color:#7DD3FC; }
+  .na-btn:active{ transform:scale(.97); }
+  .na-btn:focus-visible{ outline:2px solid #0284C7; outline-offset:2px; }
+  .na-caja{ width:14px; height:14px; border-radius:4px; border:1.5px solid #7DD3FC; background:#fff; display:grid; place-items:center;
+    transition:background .16s cubic-bezier(.23,1,.32,1), border-color .16s cubic-bezier(.23,1,.32,1), transform .2s cubic-bezier(.23,1,.32,1); }
+  .na-caja svg{ width:10px; height:10px; fill:none; stroke:#fff; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:12; stroke-dashoffset:12; transition:stroke-dashoffset .22s cubic-bezier(.23,1,.32,1) .04s; }
+  .na-btn.on{ color:#fff; background:#0369A1; border-color:#0369A1; box-shadow:0 1px 2px rgba(3,105,161,.25), 0 4px 10px -4px rgba(3,105,161,.45); }
+  .na-btn.on:hover{ background:#075985; border-color:#075985; }
+  .na-btn.on .na-caja{ background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.9); transform:scale(1.04); }
+  .na-btn.on .na-caja svg{ stroke-dashoffset:0; }
   @media (prefers-color-scheme: dark){
-    .na-btn{ color:#7DD3FC; background:#0C2A3D; border-color:#38BDF8; }
-    .na-btn:hover{ background:#103A55; }
-    .na-btn.on{ color:#fff; background:#0284C7; border-color:#0284C7; }
+    .na-btn{ color:#BAE6FD; background:#0B2233; border-color:#155E85; box-shadow:none; }
+    .na-btn:hover{ background:#0F2E45; border-color:#1E7FB0; }
+    .na-caja{ background:transparent; border-color:#38BDF8; }
+    .na-btn.on{ background:#0284C7; border-color:#0284C7; }
   }
+  @media (prefers-reduced-motion: reduce){ .na-caja svg{ transition:none; } }
   #overlay .field.falta input, #overlay .field.falta select, #overlay .field.falta textarea{ border-color:#C8202F !important; box-shadow:0 0 0 3px rgba(200,32,47,.12) !important; }
   #overlay .field.falta > label{ color:#C8202F; }
   #overlay [data-na]{ background:var(--line) !important; color:var(--muted); }
@@ -7247,16 +7259,17 @@ function prepararNoAplica(){
     const c = controlDe(f);
     if (CAMPOS_OBLIGATORIOS.includes(c.id)) return;
     const b = document.createElement("button");
-    b.type = "button"; b.className = "na-btn"; b.textContent = "No aplica";
+    b.type = "button"; b.className = "na-btn"; b.setAttribute("aria-pressed", "false");
+    b.innerHTML = '<span class="na-caja" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-4.9"/></svg></span><span>No aplica</span>';
     b.addEventListener("click", () => {
       if (c.dataset.na){
         delete c.dataset.na; c.disabled = false; c.placeholder = c.dataset.phOriginal || "";
-        b.textContent = "No aplica"; b.classList.remove("on"); c.focus();
+        b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); c.focus();
       } else {
         c.dataset.phOriginal = c.placeholder || ""; c.dataset.na = "1";
         if (c.tagName !== "SELECT") c.value = "";
         c.disabled = true; c.placeholder = "No aplica";
-        b.textContent = "✓ No aplica"; b.classList.add("on");
+        b.classList.add("on"); b.setAttribute("aria-pressed", "true");
         f.classList.remove("falta");
       }
       actualizarFaltantes(false);
