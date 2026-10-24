@@ -1368,6 +1368,7 @@
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
           <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
+          <button type="button" class="btn small whatsapp" id="qrEnviarBtn">📲 Enviar QR</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
@@ -7749,6 +7750,55 @@ async function compartirReciboComoImagen(){
   }, "image/png");
 }
 document.getElementById("compartirReciboBtn").addEventListener("click", compartirReciboComoImagen);
+// ---- Enviar el QR de pago al cliente, con instrucciones cortas ----
+const QR_URL = "qr_pago_prosegurosnet.jpg";
+const LLAVE_BREB = "0078275062";
+function textoInstruccionesQR(r){
+  const valor = r ? calcularTotalPagar(r, store.currentMonth) : 0;
+  const nombre = r ? nombrePropio(String(r["Nombre del Afiliado"] || "").split(" ").slice(0, 2).join(" ")) : "";
+  return `Hola${nombre ? " " + nombre : ""} 👋 Así paga su planilla con el QR de PROSEGUROSNET:
+
+1️⃣ Guarde la imagen del QR y abra la app de su banco (Bancolombia, Nequi, Daviplata…).
+2️⃣ Toque *Pagar con QR* (o *Bre-B*) → *Galería / Subir imagen* y escoja esta imagen.
+    O pague con la llave: *${LLAVE_BREB}*
+3️⃣ Escriba el valor${valor ? `: *${fmt(valor)}*` : ""} y confirme.
+4️⃣ Envíenos aquí la foto del comprobante ✅
+
+¡Gracias! — PROSEGUROSNET 🛡️`;
+}
+async function enviarQRCliente(){
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  const texto = textoInstruccionesQR(r);
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  // En el celular: se comparte la imagen del QR + el texto, y se escoge WhatsApp
+  if (esCelular && navigator.canShare){
+    try{
+      const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
+      const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
+      if (navigator.canShare({ files: [file] })){
+        copiarAlPortapapeles(texto);
+        await navigator.share({ files: [file], text: texto, title: "Pago con QR · PROSEGUROSNET" });
+        showToast("Si WhatsApp no pegó las instrucciones, mantenga presionado y toque Pegar.");
+        return;
+      }
+    }catch(err){ if (err && err.name === "AbortError") return; }
+  }
+  // En computador (o si no se puede compartir la imagen): se abre WhatsApp con las instrucciones
+  // y el enlace del QR; además se descarga la imagen para adjuntarla.
+  const enlaceQR = new URL(QR_URL, location.href).href;
+  const mensaje = texto + `\n\n🔗 Código QR: ${enlaceQR}`;
+  const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
+  if (numero && navigator.onLine){
+    abrirWhatsappConMensaje(numero, mensaje);
+  } else {
+    copiarAlPortapapeles(mensaje);
+    showToast("Instrucciones copiadas: péguelas en el chat del cliente.");
+  }
+  const a = document.createElement("a"); a.href = QR_URL; a.download = "QR_pago_prosegurosnet.jpg";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
+
 
 document.getElementById("reciboBtn").addEventListener("click", () => {
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
