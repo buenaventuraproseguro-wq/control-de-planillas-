@@ -7767,35 +7767,38 @@ function textoInstruccionesQR(r){
 ¡Gracias! — PROSEGUROSNET 🛡️`;
 }
 async function enviarQRCliente(){
+  // Solo se envía la imagen del QR (sin textos ni enlaces).
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
-  const texto = textoInstruccionesQR(r);
-  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-  // En el celular: se comparte la imagen del QR + el texto, y se escoge WhatsApp
-  if (esCelular && navigator.canShare){
-    try{
-      const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
-      const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
-      if (navigator.canShare({ files: [file] })){
-        copiarAlPortapapeles(texto);
-        await navigator.share({ files: [file], text: texto, title: "Pago con QR · PROSEGUROSNET" });
-        showToast("Si WhatsApp no pegó las instrucciones, mantenga presionado y toque Pegar.");
-        return;
-      }
-    }catch(err){ if (err && err.name === "AbortError") return; }
+  let blob;
+  try{ blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob(); }
+  catch(e){ showToast("No se pudo cargar el QR. Revise el internet."); return; }
+  const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
+  // Celular: menú de compartir con la imagen → escoger WhatsApp y el cliente
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try{ await navigator.share({ files: [file] }); return; }
+    catch(err){ if (err && err.name === "AbortError") return; }
   }
-  // En computador (o si no se puede compartir la imagen): se abre WhatsApp con las instrucciones
-  // y el enlace del QR; además se descarga la imagen para adjuntarla.
-  const enlaceQR = new URL(QR_URL, location.href).href;
-  const mensaje = texto + `\n\n🔗 Código QR: ${enlaceQR}`;
+  // Computador: se copia la imagen y se abre el chat del cliente para pegarla (Ctrl+V)
+  let copiada = false;
+  try{
+    const img = await createImageBitmap(blob);
+    const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
+    cv.getContext("2d").drawImage(img, 0, 0);
+    const png = await new Promise(res => cv.toBlob(res, "image/png"));
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+    copiada = true;
+  }catch(e){}
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
   if (numero && navigator.onLine){
-    abrirWhatsappConMensaje(numero, mensaje);
-  } else {
-    copiarAlPortapapeles(mensaje);
-    showToast("Instrucciones copiadas: péguelas en el chat del cliente.");
+    const con = numero.length <= 10 ? `57${numero}` : numero;
+    window.open(`https://web.whatsapp.com/send?phone=${con}`, "_blank");
   }
-  const a = document.createElement("a"); a.href = QR_URL; a.download = "QR_pago_prosegurosnet.jpg";
-  document.body.appendChild(a); a.click(); a.remove();
+  if (copiada) showToast("QR copiado. En el chat de WhatsApp presione Ctrl+V y Enviar.");
+  else {
+    const a = document.createElement("a"); a.href = QR_URL; a.download = "QR_pago_prosegurosnet.jpg";
+    document.body.appendChild(a); a.click(); a.remove();
+    showToast("QR descargado: adjúntelo en el chat de WhatsApp.");
+  }
 }
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
 
