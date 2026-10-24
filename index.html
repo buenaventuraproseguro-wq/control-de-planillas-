@@ -7831,7 +7831,11 @@ function abrirChatEnApp(conIndicativo, esCelular){
   const marcar = () => { salio = true; };
   window.addEventListener("blur", marcar, { once: true });
   document.addEventListener("visibilitychange", marcar, { once: true });
-  location.href = `whatsapp://send?phone=${conIndicativo}`;
+  // Android: abre directo WhatsApp Business (paquete com.whatsapp.w4b). iPhone/PC: la app de WhatsApp instalada.
+  const esAndroid = /Android/i.test(navigator.userAgent || "");
+  location.href = esAndroid
+    ? `intent://send?phone=${conIndicativo}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${encodeURIComponent("https://wa.me/" + conIndicativo)};end`
+    : `whatsapp://send?phone=${conIndicativo}`;
   if (esCelular) return;
   setTimeout(() => {
     window.removeEventListener("blur", marcar);
