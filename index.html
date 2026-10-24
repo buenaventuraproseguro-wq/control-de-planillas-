@@ -5743,8 +5743,8 @@ const PLANTILLA_RECORDATORIO_ORIGINAL =
 📅 Fecha límite de pago: *{fecha_limite}*
 
 💳 Puedes pagar por Bre-B (Bancolombia):
-🔑 Llave: *0078275062*
-🏦 Cuenta de ahorros: *84317568222*
+🔑 Llave: \`\`\`0078275062\`\`\`
+🏦 Cuenta de ahorros: \`\`\`84317568222\`\`\`
 👤 A nombre de: Nestor Fabian Garzón — prosegurosnet
 
 ✅ Si ya realizaste el pago, ignora este mensaje 🙏
@@ -6242,12 +6242,20 @@ function fechaLimiteDelMes(dia){
   const mesInfo = String(store.currentMonth || "").match(/^(\S+)\s+de\s+(\d{4})$/);
   return mesInfo ? `${dia} de ${mesInfo[1].toLowerCase()} de ${mesInfo[2]}` : `el ${dia} del mes`;
 }
+// WhatsApp toma los números largos (llave, cuenta) como si fueran teléfonos: al tocarlos
+// intenta abrir un chat y se queda cargando. En letra monoespaciada (```…```) no los toma
+// como teléfono y al tocarlos solo se pueden copiar.
+function numerosSinEnlace(texto){
+  return String(texto)
+    .replace(/\*\s*(\d[\d\s-]{7,16}\d)\s*\*/g, (m, n) => "```" + n.replace(/[\s-]/g, "") + "```")
+    .replace(/(Llave|Cuenta[^:\n]*):\s*(\d{8,14})(?!`)/gi, (m, et, n) => `${et}: \`\`\`${n}\`\`\``);
+}
 function construirMensajeRecordatorio(plantilla, dia, datos){
-  return String(plantilla)
+  return numerosSinEnlace(String(plantilla)
     .replace(/\{nombre\}/gi, datos.nombre)
     .replace(/\{valor\}/gi, datos.valor)
     .replace(/\{mes\}/gi, datos.mes)
-    .replace(/\{fecha_limite\}/gi, fechaLimiteDelMes(dia));
+    .replace(/\{fecha_limite\}/gi, fechaLimiteDelMes(dia)));
 }
 
 function abrirEditorMensaje(){
@@ -7755,16 +7763,7 @@ const QR_URL = "qr_pago_prosegurosnet.jpg";
 const LLAVE_BREB = "0078275062";
 function textoInstruccionesQR(r){
   const valor = r ? calcularTotalPagar(r, store.currentMonth) : 0;
-  const nombre = r ? nombrePropio(String(r["Nombre del Afiliado"] || "").split(" ").slice(0, 2).join(" ")) : "";
-  return `Hola${nombre ? " " + nombre : ""} 👋 Así paga su planilla con el QR de PROSEGUROSNET:
-
-1️⃣ Guarde la imagen del QR y abra la app de su banco (Bancolombia, Nequi, Daviplata…).
-2️⃣ Toque *Pagar con QR* (o *Bre-B*) → *Galería / Subir imagen* y escoja esta imagen.
-    O pague con la llave: *${LLAVE_BREB}*
-3️⃣ Escriba el valor${valor ? `: *${fmt(valor)}*` : ""} y confirme.
-4️⃣ Envíenos aquí la foto del comprobante ✅
-
-¡Gracias! — PROSEGUROSNET 🛡️`;
+  return `Para pagar: en la app de su banco toque *Pagar con QR* → *Galería* y escoja esta imagen.${valor ? ` Valor: *${fmt(valor)}*.` : ""} Luego envíenos el comprobante ✅`;
 }
 async function enviarQRCliente(){
   // Solo se envía la imagen del QR (sin textos ni enlaces).
@@ -7775,7 +7774,7 @@ async function enviarQRCliente(){
   const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
   // Celular: menú de compartir con la imagen → escoger WhatsApp y el cliente
   if (navigator.canShare && navigator.canShare({ files: [file] })){
-    try{ await navigator.share({ files: [file] }); return; }
+    try{ copiarAlPortapapeles(textoInstruccionesQR(r)); await navigator.share({ files: [file], text: textoInstruccionesQR(r) }); return; }
     catch(err){ if (err && err.name === "AbortError") return; }
   }
   // Computador: se copia la imagen y se abre el chat del cliente para pegarla (Ctrl+V)
@@ -7791,7 +7790,7 @@ async function enviarQRCliente(){
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
   if (numero && navigator.onLine){
     const con = numero.length <= 10 ? `57${numero}` : numero;
-    window.open(`https://web.whatsapp.com/send?phone=${con}`, "_blank");
+    window.open(`https://web.whatsapp.com/send?phone=${con}&text=${encodeURIComponent(textoInstruccionesQR(r))}`, "_blank");
   }
   if (copiada) showToast("QR copiado. En el chat de WhatsApp presione Ctrl+V y Enviar.");
   else {
