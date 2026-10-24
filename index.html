@@ -1368,7 +1368,7 @@
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
           <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
-          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Copia la imagen del QR y abre directo el chat del cliente">📲 Enviar QR al cliente</button>
+          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía solo la imagen del QR por WhatsApp">📲 Enviar QR al cliente</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
@@ -7800,7 +7800,25 @@ async function imagenQRConExplicacion(r, tipo = "image/jpeg"){
   return await new Promise(res => cv.toBlob(res, tipo, 0.9));
 }
 // Abre DIRECTO el chat del cliente con el mensaje corto: valor + llave para copiar (sin imagen).
-function enviarQRCliente(){
+// Como al principio: comparte SOLO la imagen del QR (sin texto) → se escoge WhatsApp / Business y el cliente.
+// Va sin texto a propósito: si se agrega texto, WhatsApp a veces deja la imagen por fuera.
+async function enviarQRCliente(){
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  try {
+    if (navigator.share && navigator.canShare){
+      const blob = await imagenQRConExplicacion(r, "image/jpeg");
+      const file = new File([blob], "QR_pago_PROSEGUROSNET.jpg", { type: "image/jpeg" });
+      if (navigator.canShare({ files: [file] })){
+        await navigator.share({ files: [file] });
+        return;
+      }
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return; // canceló
+  }
+  enviarQRPorChat(); // sin opción de compartir: copia la imagen y abre el chat
+}
+function enviarQRPorChat(){
   // WhatsApp no deja adjuntar imágenes por enlace. Lo más directo posible:
   // 1) la imagen del QR con la explicación queda COPIADA, 2) se abre DIRECTO el chat del cliente
   // (sin texto); ahí solo se pega la imagen (Ctrl+V o mantener presionado → Pegar).
