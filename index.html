@@ -7769,34 +7769,57 @@ ${valor ? `Valor a pagar: *${fmt(valor)}*\n` : ""}Pague por *Bre-B* desde la app
 _(mantenga presionada la llave para copiarla)_
 Luego envíenos el comprobante ✅`;
 }
-// Enviar QR + llave. Celular: un solo envío con la imagen y el mensaje (menú de compartir →
-// WhatsApp → cliente). Computador: abre directo el chat con el mensaje y deja el QR copiado (Ctrl+V).
+// Arma UNA imagen: el QR y debajo una explicación breve con el valor del cliente.
+// Así la explicación siempre llega (algunos celulares no mandan el texto junto con la foto).
+async function imagenQRConExplicacion(r){
+  const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
+  const img = await createImageBitmap(blob);
+  const W = img.width, extra = Math.round(W * 0.42);
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = img.height + extra;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#1F2128"; c.fillRect(0, 0, cv.width, cv.height);
+  c.drawImage(img, 0, 0);
+  const y0 = img.height, pad = W * 0.06;
+  c.fillStyle = "#C8202F"; c.fillRect(0, y0, W, W * 0.012);
+  const valor = r ? calcularTotalPagar(r, store.currentMonth) : 0;
+  c.fillStyle = "#FFFFFF"; c.textAlign = "center";
+  c.font = `800 ${W * 0.05}px Inter, Arial, sans-serif`;
+  c.fillText("¿Cómo pagar?", W / 2, y0 + W * 0.085);
+  c.textAlign = "left"; c.font = `500 ${W * 0.036}px Inter, Arial, sans-serif`; c.fillStyle = "#E5E7EB";
+  const pasos = ["1. Abra la app de su banco.", "2. Toque \u201cPagar con QR\u201d y escoja esta imagen", "    (o use la llave " + LLAVE_BREB + ").", "3. Envíenos el comprobante por WhatsApp."];
+  pasos.forEach((t, i) => c.fillText(t, pad, y0 + W * (0.15 + i * 0.055)));
+  if (valor){
+    c.textAlign = "center"; c.fillStyle = "#FFFFFF"; c.font = `800 ${W * 0.055}px Inter, Arial, sans-serif`;
+    c.fillText("Valor a pagar: " + fmt(valor), W / 2, y0 + W * 0.39);
+  }
+  return await new Promise(res => cv.toBlob(res, "image/jpeg", 0.9));
+}
 async function enviarQRCliente(){
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
-  const texto = textoInstruccionesQR(r);
-  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-  let blob = null;
-  try{ blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob(); }catch(e){}
-  if (esCelular && blob && navigator.canShare){
-    const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
-    if (navigator.canShare({ files: [file] })){
-      copiarAlPortapapeles(texto);
-      try{ await navigator.share({ files: [file], text: texto }); return; }
-      catch(err){ if (err && err.name === "AbortError") return; }
-    }
+  let blob;
+  try{ blob = await imagenQRConExplicacion(r); }catch(e){ showToast("No se pudo preparar el QR. Revise el internet."); return; }
+  const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
+  // Celular: menú de compartir con la imagen → WhatsApp → cliente
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try{ await navigator.share({ files: [file] }); return; }
+    catch(err){ if (err && err.name === "AbortError") return; }
   }
+  // Computador: se copia la imagen y se abre el chat del cliente para pegarla (Ctrl+V)
+  let copiada = false;
+  try{
+    const img = await createImageBitmap(blob);
+    const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
+    cv.getContext("2d").drawImage(img, 0, 0);
+    const png = await new Promise(res => cv.toBlob(res, "image/png"));
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]); copiada = true;
+  }catch(e){}
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
-  if (!numero){ showToast("⚠️ Este cliente no tiene teléfono guardado."); return; }
-  if (!abrirWhatsappConMensaje(numero, texto)) return;
-  if (blob){
-    try{
-      const img = await createImageBitmap(blob);
-      const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
-      cv.getContext("2d").drawImage(img, 0, 0);
-      const png = await new Promise(res => cv.toBlob(res, "image/png"));
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
-      showToast("En el chat presione Ctrl+V para pegar el QR y luego Enviar.");
-    }catch(e){ showToast("Mensaje listo en el chat. Adjunte el QR con 'Ver/Descargar QR'."); }
+  if (numero && navigator.onLine){ const con = numero.length <= 10 ? `57${numero}` : numero; window.open(`https://web.whatsapp.com/send?phone=${con}`, "_blank"); }
+  if (copiada) showToast("QR copiado. En el chat presione Ctrl+V y Enviar.");
+  else {
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "QR_pago_prosegurosnet.jpg";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast("QR descargado: adjúntelo en el chat de WhatsApp.");
   }
 }
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
