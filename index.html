@@ -1191,6 +1191,11 @@
   @media (prefers-reduced-motion: reduce){ .resp-sugerencias{ animation:none; } }
   .tag-retiro-pend{ display:inline-block; font-size:11px; font-weight:600; color:#9C4A3D; background:#F8E3DE; border:1px solid #E7B9AE; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
   @media (prefers-color-scheme: dark){ .tag-retiro-pend{ background:#3A1917; color:#FFB4A8; border-color:#6B2C26; } }
+  .row .name:has(.tag-incompleto){ white-space:normal; }
+  .stat-card.stat-incompleto{ border-top-color:#B7791F; }
+  .stat-card.stat-incompleto.active{ background:#FDF3E1; border-color:#B7791F; }
+  .tag-incompleto{ display:inline-block; font-size:11px; font-weight:600; color:#7A4F0A; background:#FDF3E1; border:1px solid #F0D29C; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; white-space:normal; }
+  @media (prefers-color-scheme: dark){ .tag-incompleto{ background:#3A2C0E; color:#F4C46A; border-color:#6B5320; } .stat-card.stat-incompleto.active{ background:#2E2611; } }
 </style>
 </head>
 <body>
@@ -1762,6 +1767,17 @@
     <div class="modal-actions">
       <button type="button" class="btn ghost" id="confirmCancelBtn">Cancelar</button>
       <button type="button" class="btn primary" id="confirmOkBtn">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayPedir">
+  <div class="modal" style="max-width:420px;">
+    <h2 id="pedirTitulo"></h2>
+    <div id="pedirCampos" class="form-grid" style="grid-template-columns:1fr;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="pedirCancelBtn">Cancelar</button>
+      <button type="button" class="btn primary" id="pedirOkBtn">Guardar</button>
     </div>
   </div>
 </div>
@@ -4960,6 +4976,11 @@ function renderStatsStrip(){
       <div class="stat-value">${resumenResponsables().length}</div>
       <div class="stat-detalle">ver cuántos tiene cada uno</div>
     </button>
+    <button type="button" class="stat-card stat-incompleto ${activa("__INCOMPLETOS__")}" data-filtro="__INCOMPLETOS__" title="Clientes a los que les falta información">
+      <div class="stat-label">Datos incompletos</div>
+      <div class="stat-value">${records.filter(clienteIncompleto).length}</div>
+      <div class="stat-detalle">completar al atenderlos</div>
+    </button>
     <button type="button" class="stat-card stat-caja ${activa("__CAJA__")}" data-filtro="__CAJA__" title="Clientes que pagan caja de compensación este mes">
       <div class="stat-label">Caja de compensación</div>
       <div class="stat-value">${conCaja.length}</div>
@@ -5332,6 +5353,8 @@ function renderList(filterText){
       .filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" && estadoClass(r["Estado Trámite"]) !== "PAGO");
   } else if (filtroEstado === "__ATRASADOS__"){
     filtered = filtered.filter(estaAtrasado);
+  } else if (filtroEstado === "__INCOMPLETOS__"){
+    filtered = filtered.filter(clienteIncompleto).sort((a, b) => faltantesCliente(b).length - faltantesCliente(a).length);
   } else if (filtroEstado.startsWith("__RESP__:")){
     const k = filtroEstado.slice(9);
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => normResp(r["Responsable / Grupo"]) === k);
@@ -5366,6 +5389,7 @@ function renderList(filterText){
     "PAGO": "Pagados este mes",
     "__PENDIENTES__": "Pendientes de pago",
     "__ATRASADOS__": "Atrasados (pasaron el día 16)",
+    "__INCOMPLETOS__": "Datos incompletos · toque el cliente y luego Editar para completarlos",
     "__TRASLADOS__": "Traslados de EPS por aprobar · toque el cliente para aprobarlo o borrarlo",
     "__CAJA__": `Con caja de compensación${grupoConfirmacionFiltro ? " · " + NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacionFiltro] : ""}`,
     "__POR_CONFIRMAR__": `Por confirmar afiliación${grupoConfirmacionFiltro ? " · " + NOMBRES_GRUPO_CONFIRMACION[grupoConfirmacionFiltro] : ""} (EPS, pensión, caja o ARL en proceso)`,
@@ -5407,7 +5431,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}</div>
+      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -6662,6 +6686,34 @@ function alertApp(mensaje){
   });
 }
 
+// Ventana propia para pedir uno o varios datos (en vez del prompt() del navegador).
+// campos: [{ id, label, placeholder, tipo:"text"|"number" }] → devuelve {id: valor} o null
+function pedirDatosApp(titulo, campos, textoOk){
+  return new Promise((resolve) => {
+    const ov = document.getElementById("overlayPedir");
+    document.getElementById("pedirTitulo").textContent = titulo;
+    document.getElementById("pedirOkBtn").textContent = textoOk || "Guardar";
+    document.getElementById("pedirCampos").innerHTML = campos.map(c => `<div class="field"><label for="pedir_${c.id}">${escHtml(c.label)}</label>
+      <input id="pedir_${c.id}" type="text" ${c.tipo === "number" ? 'inputmode="numeric"' : ""} placeholder="${escHtml(c.placeholder || "")}" autocomplete="off"></div>`).join("");
+    ov.classList.add("show");
+    const primero = document.getElementById("pedir_" + campos[0].id); setTimeout(() => primero.focus(), 50);
+    const ok = document.getElementById("pedirOkBtn"), cancel = document.getElementById("pedirCancelBtn");
+    function fin(v){ ov.classList.remove("show"); ok.onclick = cancel.onclick = null; ov.onkeydown = null; resolve(v); }
+    ok.onclick = () => {
+      const out = {};
+      for (const c of campos){
+        const el = document.getElementById("pedir_" + c.id);
+        let v = el.value.trim().replace(/\s+/g, " ");
+        if (c.tipo === "number") v = v.replace(/[^0-9]/g, "");
+        if (!v){ showToast(`⚠️ Escriba ${c.label.toLowerCase()}.`); el.focus(); return; }
+        out[c.id] = c.tipo === "number" ? Number(v) : v;
+      }
+      fin(out);
+    };
+    cancel.onclick = () => fin(null);
+    ov.onkeydown = (e) => { if (e.key === "Enter") ok.click(); if (e.key === "Escape") fin(null); };
+  });
+}
 function showToast(msg){
   const esAdvertencia = msg.startsWith("⚠️") || PALABRAS_ADVERTENCIA.some(p => msg.toLowerCase().includes(p));
   const icono = esAdvertencia ? "⚠️" : "✅";
@@ -7572,15 +7624,13 @@ document.getElementById("navCarteraBtn").addEventListener("click", () => {
   document.getElementById("carteraSub").classList.toggle("show");
 });
 
-document.getElementById("navCobroExtraBtn").addEventListener("click", () => {
-  const descripcion = prompt("Descripción del cobro extra (ej: Multa, Servicio adicional):");
-  if (!descripcion || !descripcion.trim()) return;
-  const valorTexto = prompt(`Valor del cobro "${descripcion.trim()}" (solo números):`);
-  const valor = Number(valorTexto);
-  if (!valorTexto || isNaN(valor) || valor <= 0){
-    showToast("Valor inválido, no se agregó el cobro.");
-    return;
-  }
+document.getElementById("navCobroExtraBtn").addEventListener("click", async () => {
+  const datos = await pedirDatosApp("Agregar cobro extra", [
+    { id: "desc", label: "Descripción", placeholder: "Ej: Multa, servicio adicional" },
+    { id: "valor", label: "Valor", placeholder: "Solo números, ej: 20000", tipo: "number" }], "Agregar cobro");
+  if (!datos) return;
+  const descripcion = datos.desc, valor = datos.valor;
+  if (!valor || valor <= 0){ showToast("Valor inválido, no se agregó el cobro."); return; }
   getCobrosExtraDelMes().push({ descripcion: descripcion.trim(), valor });
   saveStore();
   renderList(searchInput.value);
@@ -9009,7 +9059,8 @@ function mostrarCamposPago(){
 }
 
 async function crearCategoriaGasto(){
-  const nombre = (prompt("Nombre de la nueva categoría (ej: Publicidad, Mantenimiento):") || "").trim().replace(/\s+/g, " ");
+  const datos = await pedirDatosApp("Nueva categoría de gastos", [{ id: "nombre", label: "Nombre de la categoría", placeholder: "Ej: Publicidad, Mantenimiento" }], "Crear");
+  const nombre = datos ? datos.nombre : "";
   if (!nombre) return null;
   if (nombre.length > 60){ showToast("El nombre es muy largo (máximo 60 letras)."); return null; }
   const existente = categoriasGasto.find(c => c.toLowerCase() === nombre.toLowerCase());
@@ -10418,6 +10469,25 @@ function tagRetiroPendiente(r){
   return esOtraEmpresa(r)
     ? `<span class="tag-retiro-pend" title="Falta cargar la imagen o la planilla de la novedad de retiro">📎 Falta soporte del retiro</span>`
     : `<span class="tag-retiro-pend" title="Falta la planilla del retiro: todavía debe pagarse">🚪 Retiro sin planilla · debe pagar</span>`;
+}
+// ---- Datos incompletos: lo que le falta a cada cliente activo ----
+function faltantesCliente(r){
+  const f = [];
+  if (String(r["Teléfono"] || "").replace(/\D/g, "").length < 7) f.push("teléfono");
+  if (!String(r["Dirección Completa"] || "").trim()) f.push("dirección");
+  if (!String(r["Fecha de Ingreso"] || "").trim()) f.push("fecha de ingreso");
+  if (!String(r["Responsable / Grupo"] || "").trim()) f.push("responsable");
+  if (r["Costo Servicio"] === "" || r["Costo Servicio"] == null) f.push("costo");
+  if (!String(r["EPS"] || "").trim()) f.push("EPS");
+  const ced = String(r["Cédula"] || "").trim();
+  const tieneFoto = !!r["Imagen Cedula"] || (docsEnNube ? docsEnNube.has(claveDocNube(ced, "cedula")) : true);
+  if (!tieneFoto) f.push("foto de cédula");
+  return f;
+}
+function clienteIncompleto(r){ return !isRetiro(r) && !esConductorExcluido(r) && faltantesCliente(r).length > 0; }
+function tagIncompleto(r){
+  if (filtroEstado !== "__INCOMPLETOS__" || !clienteIncompleto(r)) return "";
+  return `<span class="tag-incompleto" title="Complete estos datos al editar el cliente">Falta: ${escHtml(faltantesCliente(r).join(", "))}</span>`;
 }
 function tagRetiro(r){
   if (!r) return "";
