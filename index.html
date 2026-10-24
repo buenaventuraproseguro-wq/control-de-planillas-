@@ -7803,7 +7803,7 @@ async function imagenQRConExplicacion(r, tipo = "image/jpeg"){
 function enviarQRCliente(){
   // WhatsApp no deja adjuntar imágenes por enlace. Lo más directo posible:
   // 1) la imagen del QR con la explicación queda COPIADA, 2) se abre DIRECTO el chat del cliente
-  // con el valor y la llave; ahí solo se pega la imagen (Ctrl+V o mantener presionado → Pegar).
+  // (sin texto); ahí solo se pega la imagen (Ctrl+V o mantener presionado → Pegar).
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
   if (!numero){ showToast("⚠️ Este cliente no tiene teléfono guardado."); return; }
@@ -7816,10 +7816,10 @@ function enviarQRCliente(){
       copiada = navigator.clipboard.write([item]).then(() => true, () => false);
     }
   } catch (e) {}
-  const texto = encodeURIComponent(textoInstruccionesQR(r));
-  const pestana = esCelular ? null : window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
+  // Solo la imagen: el chat se abre vacío, sin texto.
+  const pestana = esCelular ? null : window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}`, abrirPestanaWhatsapp());
   copiada.then(ok => {
-    if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
+    if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}`;
     showToast(ok
       ? (esCelular ? "📋 Imagen del QR copiada. En el chat mantenga presionado el cuadro de texto → Pegar, y envíe." : "📋 Imagen del QR copiada. En el chat presione Ctrl+V y envíe.")
       : "No se pudo copiar la imagen en este navegador. Use «Ver/Descargar QR» y adjúntela en el chat.");
