@@ -1368,8 +1368,7 @@
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
           <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
-          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Abre el chat del cliente con el valor y la llave">📲 Enviar llave por WhatsApp</button>
-          <button type="button" class="btn small" id="qrImagenBtn" title="Compartir la imagen del QR">🖼️ Compartir imagen QR</button>
+          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía la imagen del QR con el valor y la llave">📲 Enviar QR</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
@@ -7770,38 +7769,37 @@ ${valor ? `Valor a pagar: *${fmt(valor)}*\n` : ""}Pague por *Bre-B* desde la app
 _(mantenga presionada la llave para copiarla)_
 Luego envíenos el comprobante ✅`;
 }
-// Abre DIRECTO el chat del cliente con el mensaje corto y la llave
+// Enviar QR + llave. Celular: un solo envío con la imagen y el mensaje (menú de compartir →
+// WhatsApp → cliente). Computador: abre directo el chat con el mensaje y deja el QR copiado (Ctrl+V).
 async function enviarQRCliente(){
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  const texto = textoInstruccionesQR(r);
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  let blob = null;
+  try{ blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob(); }catch(e){}
+  if (esCelular && blob && navigator.canShare){
+    const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
+    if (navigator.canShare({ files: [file] })){
+      copiarAlPortapapeles(texto);
+      try{ await navigator.share({ files: [file], text: texto }); return; }
+      catch(err){ if (err && err.name === "AbortError") return; }
+    }
+  }
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
   if (!numero){ showToast("⚠️ Este cliente no tiene teléfono guardado."); return; }
-  if (!abrirWhatsappConMensaje(numero, textoInstruccionesQR(r))) return;
-  // En computador se deja también la imagen del QR copiada, por si la quiere pegar (Ctrl+V)
-  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-  if (!esCelular){
+  if (!abrirWhatsappConMensaje(numero, texto)) return;
+  if (blob){
     try{
-      const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
       const img = await createImageBitmap(blob);
       const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
       cv.getContext("2d").drawImage(img, 0, 0);
       const png = await new Promise(res => cv.toBlob(res, "image/png"));
       await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
-      showToast("Mensaje listo. Si también quiere mandar el QR, presione Ctrl+V en el chat.");
-    }catch(e){}
+      showToast("En el chat presione Ctrl+V para pegar el QR y luego Enviar.");
+    }catch(e){ showToast("Mensaje listo en el chat. Adjunte el QR con 'Ver/Descargar QR'."); }
   }
 }
-// Compartir solo la imagen del QR (menú de compartir del celular)
-async function compartirImagenQR(){
-  try{
-    const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
-    const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file] }); return; }
-  }catch(err){ if (err && err.name === "AbortError") return; }
-  const a = document.createElement("a"); a.href = QR_URL; a.download = "QR_pago_prosegurosnet.jpg";
-  document.body.appendChild(a); a.click(); a.remove();
-}
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
-document.getElementById("qrImagenBtn").addEventListener("click", compartirImagenQR);
 
 
 document.getElementById("reciboBtn").addEventListener("click", () => {
