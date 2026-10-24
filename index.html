@@ -7804,6 +7804,9 @@ async function imagenQRConExplicacion(r, tipo = "image/jpeg"){
 // Va sin texto a propósito: si se agrega texto, WhatsApp a veces deja la imagen por fuera.
 async function enviarQRCliente(){
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  // En el PC: abre DIRECTO el chat del cliente en WhatsApp (Business) con la imagen ya copiada → Ctrl+V.
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  if (!esCelular){ enviarQRPorChat(); return; }
   try {
     if (navigator.share && navigator.canShare){
       const blob = await imagenQRConExplicacion(r, "image/jpeg");
