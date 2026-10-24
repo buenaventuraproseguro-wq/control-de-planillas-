@@ -6337,10 +6337,15 @@ function enviarWhatsapp(r, totalPagar){
   const url = esCelular
     ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`
     : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`;
-  window.open(url, "_blank");
+  window.open(url, abrirPestanaWhatsapp());
   if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
 }
 
+// Todas las aperturas de WhatsApp usan la MISMA pestaña (en vez de abrir una nueva cada vez).
+// En el celular se abre la app de WhatsApp normalmente.
+function abrirPestanaWhatsapp(){
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "") ? "_blank" : "whatsapp_prosegurosnet";
+}
 function copiarAlPortapapeles(texto){
   try{
     if (navigator.clipboard && navigator.clipboard.writeText){
@@ -6520,7 +6525,7 @@ function abrirWhatsappConMensaje(telefono, mensaje){
   copiarAlPortapapeles(mensaje);
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   const texto = encodeURIComponent(mensaje);
-  window.open(esCelular ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}` : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, "_blank");
+  window.open(esCelular ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}` : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
   return true;
 }
 let totalColaRecordatorios = 0, enviadosRecordatorios = 0, procesadosRecordatorios = 0;
@@ -7814,7 +7819,7 @@ async function enviarQRCliente(){
     await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]); copiada = true;
   }catch(e){}
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
-  if (numero && navigator.onLine){ const con = numero.length <= 10 ? `57${numero}` : numero; window.open(`https://web.whatsapp.com/send?phone=${con}`, "_blank"); }
+  if (numero && navigator.onLine){ const con = numero.length <= 10 ? `57${numero}` : numero; window.open(`https://web.whatsapp.com/send?phone=${con}`, abrirPestanaWhatsapp()); }
   if (copiada) showToast("QR copiado. En el chat presione Ctrl+V y Enviar.");
   else {
     const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "QR_pago_prosegurosnet.jpg";
@@ -9993,7 +9998,7 @@ document.getElementById("crmWaEnviarBtn").addEventListener("click", async () => 
   copiarAlPortapapeles(mensaje);
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   const texto = encodeURIComponent(mensaje);
-  window.open(esCelular ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}` : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, "_blank");
+  window.open(esCelular ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}` : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
   document.getElementById("overlayCrmWa").classList.remove("show");
 
   const dias = document.getElementById("crmWaDias").value;
