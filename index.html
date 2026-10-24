@@ -7806,7 +7806,7 @@ async function enviarQRCliente(){
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   // En el PC: abre DIRECTO el chat del cliente en WhatsApp (Business) con la imagen ya copiada → Ctrl+V.
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-  if (!esCelular){ enviarQRPorChat(); return; }
+  if (esCelular || !esCelular){ enviarQRPorChat(); return; } // siempre directo al chat del cliente en Business
   try {
     if (navigator.share && navigator.canShare){
       const blob = await imagenQRConExplicacion(r, "image/jpeg");
