@@ -1368,7 +1368,8 @@
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
           <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
-          <button type="button" class="btn small whatsapp" id="qrEnviarBtn">📲 Enviar QR</button>
+          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Abre el chat del cliente con el valor y la llave">📲 Enviar llave por WhatsApp</button>
+          <button type="button" class="btn small" id="qrImagenBtn" title="Compartir la imagen del QR">🖼️ Compartir imagen QR</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
@@ -7763,43 +7764,44 @@ const QR_URL = "qr_pago_prosegurosnet.jpg";
 const LLAVE_BREB = "0078275062";
 function textoInstruccionesQR(r){
   const valor = r ? calcularTotalPagar(r, store.currentMonth) : 0;
-  return `Para pagar: en la app de su banco toque *Pagar con QR* → *Galería* y escoja esta imagen.${valor ? ` Valor: *${fmt(valor)}*.` : ""} Luego envíenos el comprobante ✅`;
+  return `🛡️ *PROSEGUROSNET*
+${valor ? `Valor a pagar: *${fmt(valor)}*\n` : ""}Pague por *Bre-B* desde la app de su banco con esta llave:
+\`\`\`${LLAVE_BREB}\`\`\`
+_(mantenga presionada la llave para copiarla)_
+Luego envíenos el comprobante ✅`;
 }
+// Abre DIRECTO el chat del cliente con el mensaje corto y la llave
 async function enviarQRCliente(){
-  // Solo se envía la imagen del QR (sin textos ni enlaces).
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
-  let blob;
-  try{ blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob(); }
-  catch(e){ showToast("No se pudo cargar el QR. Revise el internet."); return; }
-  const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
-  // Celular: menú de compartir con la imagen → escoger WhatsApp y el cliente
-  if (navigator.canShare && navigator.canShare({ files: [file] })){
-    try{ copiarAlPortapapeles(textoInstruccionesQR(r)); await navigator.share({ files: [file], text: textoInstruccionesQR(r) }); return; }
-    catch(err){ if (err && err.name === "AbortError") return; }
-  }
-  // Computador: se copia la imagen y se abre el chat del cliente para pegarla (Ctrl+V)
-  let copiada = false;
-  try{
-    const img = await createImageBitmap(blob);
-    const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
-    cv.getContext("2d").drawImage(img, 0, 0);
-    const png = await new Promise(res => cv.toBlob(res, "image/png"));
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
-    copiada = true;
-  }catch(e){}
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
-  if (numero && navigator.onLine){
-    const con = numero.length <= 10 ? `57${numero}` : numero;
-    window.open(`https://web.whatsapp.com/send?phone=${con}&text=${encodeURIComponent(textoInstruccionesQR(r))}`, "_blank");
+  if (!numero){ showToast("⚠️ Este cliente no tiene teléfono guardado."); return; }
+  if (!abrirWhatsappConMensaje(numero, textoInstruccionesQR(r))) return;
+  // En computador se deja también la imagen del QR copiada, por si la quiere pegar (Ctrl+V)
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  if (!esCelular){
+    try{
+      const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
+      const img = await createImageBitmap(blob);
+      const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
+      cv.getContext("2d").drawImage(img, 0, 0);
+      const png = await new Promise(res => cv.toBlob(res, "image/png"));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      showToast("Mensaje listo. Si también quiere mandar el QR, presione Ctrl+V en el chat.");
+    }catch(e){}
   }
-  if (copiada) showToast("QR copiado. En el chat de WhatsApp presione Ctrl+V y Enviar.");
-  else {
-    const a = document.createElement("a"); a.href = QR_URL; a.download = "QR_pago_prosegurosnet.jpg";
-    document.body.appendChild(a); a.click(); a.remove();
-    showToast("QR descargado: adjúntelo en el chat de WhatsApp.");
-  }
+}
+// Compartir solo la imagen del QR (menú de compartir del celular)
+async function compartirImagenQR(){
+  try{
+    const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
+    const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file] }); return; }
+  }catch(err){ if (err && err.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = QR_URL; a.download = "QR_pago_prosegurosnet.jpg";
+  document.body.appendChild(a); a.click(); a.remove();
 }
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
+document.getElementById("qrImagenBtn").addEventListener("click", compartirImagenQR);
 
 
 document.getElementById("reciboBtn").addEventListener("click", () => {
