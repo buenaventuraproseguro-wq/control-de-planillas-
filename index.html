@@ -7841,20 +7841,21 @@ function enviarQRPorChat(){
   // Se abre la APP de WhatsApp (celular o WhatsApp para PC) en el chat del cliente:
   // no crea pestañas nuevas. Solo si en el computador no hay app instalada, usa WhatsApp Web.
   copiada.then(ok => {
-    abrirChatEnApp(conIndicativo, esCelular);
+    abrirChatEnApp(conIndicativo, esCelular, textoInstruccionesQR(r));
     showToast(ok
-      ? (esCelular ? "📋 Imagen del QR copiada. En el chat mantenga presionado el cuadro de texto → Pegar, y envíe." : "📋 Imagen del QR copiada. En el chat presione Ctrl+V y envíe.")
+      ? (esCelular ? "📋 Envíe el mensaje y luego mantenga presionado el cuadro de texto → Pegar el QR (ya está copiado)." : "📋 Envíe el mensaje y luego pegue el QR con Ctrl+V (ya está copiado).")
       : "No se pudo copiar la imagen en este navegador. Use «Ver/Descargar QR» y adjúntela en el chat.");
   });
 }
-function abrirChatEnApp(conIndicativo, esCelular){
+function abrirChatEnApp(conIndicativo, esCelular, mensaje = ""){
+  const t = mensaje ? `&text=${encodeURIComponent(mensaje)}` : "";
   // PC: WhatsApp Web (sesión de Business) directo en el chat del cliente, como al principio.
-  if (!esCelular){ window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}`, abrirPestanaWhatsapp()); return; }
+  if (!esCelular){ window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}${t}`, abrirPestanaWhatsapp()); return; }
   // Android: directo a WhatsApp Business. iPhone: la app de WhatsApp instalada.
   const esAndroid = /Android/i.test(navigator.userAgent || "");
   location.href = esAndroid
-    ? `intent://send?phone=${conIndicativo}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${encodeURIComponent("https://wa.me/" + conIndicativo)};end`
-    : `whatsapp://send?phone=${conIndicativo}`;
+    ? `intent://send?phone=${conIndicativo}${t}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${encodeURIComponent("https://wa.me/" + conIndicativo)};end`
+    : `whatsapp://send?phone=${conIndicativo}${t}`;
 }
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
 
