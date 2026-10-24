@@ -1368,7 +1368,7 @@
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
           <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
-          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía la imagen del QR con el valor y la llave">📲 Enviar QR</button>
+          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Copia la imagen del QR y abre directo el chat del cliente">📲 Enviar QR al cliente</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
@@ -6334,10 +6334,8 @@ function enviarWhatsapp(r, totalPagar){
   copiarAlPortapapeles(mensaje);
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   const texto = encodeURIComponent(mensaje);
-  const url = esCelular
-    ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`
-    : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`;
-  window.open(url, abrirPestanaWhatsapp());
+  if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
+  else window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
   if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
 }
 
@@ -6525,7 +6523,9 @@ function abrirWhatsappConMensaje(telefono, mensaje){
   copiarAlPortapapeles(mensaje);
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   const texto = encodeURIComponent(mensaje);
-  window.open(esCelular ? `https://api.whatsapp.com/send?phone=${conIndicativo}&text=${texto}` : `https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
+  // Celular: abre la app de WhatsApp DIRECTO en el chat (sin página intermedia)
+  if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
+  else window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
   return true;
 }
 let totalColaRecordatorios = 0, enviadosRecordatorios = 0, procesadosRecordatorios = 0;
@@ -7776,7 +7776,7 @@ Luego envíenos el comprobante ✅`;
 }
 // Arma UNA imagen: el QR y debajo una explicación breve con el valor del cliente.
 // Así la explicación siempre llega (algunos celulares no mandan el texto junto con la foto).
-async function imagenQRConExplicacion(r){
+async function imagenQRConExplicacion(r, tipo = "image/jpeg"){
   const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
   const img = await createImageBitmap(blob);
   const W = img.width, extra = Math.round(W * 0.42);
@@ -7797,35 +7797,34 @@ async function imagenQRConExplicacion(r){
     c.textAlign = "center"; c.fillStyle = "#FFFFFF"; c.font = `800 ${W * 0.055}px Inter, Arial, sans-serif`;
     c.fillText("Valor a pagar: " + fmt(valor), W / 2, y0 + W * 0.39);
   }
-  return await new Promise(res => cv.toBlob(res, "image/jpeg", 0.9));
+  return await new Promise(res => cv.toBlob(res, tipo, 0.9));
 }
-async function enviarQRCliente(){
+// Abre DIRECTO el chat del cliente con el mensaje corto: valor + llave para copiar (sin imagen).
+function enviarQRCliente(){
+  // WhatsApp no deja adjuntar imágenes por enlace. Lo más directo posible:
+  // 1) la imagen del QR con la explicación queda COPIADA, 2) se abre DIRECTO el chat del cliente
+  // con el valor y la llave; ahí solo se pega la imagen (Ctrl+V o mantener presionado → Pegar).
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
-  let blob;
-  try{ blob = await imagenQRConExplicacion(r); }catch(e){ showToast("No se pudo preparar el QR. Revise el internet."); return; }
-  const file = new File([blob], "QR_pago_prosegurosnet.jpg", { type: "image/jpeg" });
-  // Celular: menú de compartir con la imagen → WhatsApp → cliente
-  if (navigator.canShare && navigator.canShare({ files: [file] })){
-    try{ await navigator.share({ files: [file] }); return; }
-    catch(err){ if (err && err.name === "AbortError") return; }
-  }
-  // Computador: se copia la imagen y se abre el chat del cliente para pegarla (Ctrl+V)
-  let copiada = false;
-  try{
-    const img = await createImageBitmap(blob);
-    const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
-    cv.getContext("2d").drawImage(img, 0, 0);
-    const png = await new Promise(res => cv.toBlob(res, "image/png"));
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]); copiada = true;
-  }catch(e){}
   const numero = r ? String(r["Teléfono"] || "").replace(/\D/g, "") : "";
-  if (numero && navigator.onLine){ const con = numero.length <= 10 ? `57${numero}` : numero; window.open(`https://web.whatsapp.com/send?phone=${con}`, abrirPestanaWhatsapp()); }
-  if (copiada) showToast("QR copiado. En el chat presione Ctrl+V y Enviar.");
-  else {
-    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "QR_pago_prosegurosnet.jpg";
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
-    showToast("QR descargado: adjúntelo en el chat de WhatsApp.");
-  }
+  if (!numero){ showToast("⚠️ Este cliente no tiene teléfono guardado."); return; }
+  const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  let copiada = Promise.resolve(false);
+  try {
+    if (navigator.clipboard && window.ClipboardItem){
+      const item = new ClipboardItem({ "image/png": imagenQRConExplicacion(r, "image/png") });
+      copiada = navigator.clipboard.write([item]).then(() => true, () => false);
+    }
+  } catch (e) {}
+  const texto = encodeURIComponent(textoInstruccionesQR(r));
+  const pestana = esCelular ? null : window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
+  copiada.then(ok => {
+    if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
+    showToast(ok
+      ? (esCelular ? "📋 Imagen del QR copiada. En el chat mantenga presionado el cuadro de texto → Pegar, y envíe." : "📋 Imagen del QR copiada. En el chat presione Ctrl+V y envíe.")
+      : "No se pudo copiar la imagen en este navegador. Use «Ver/Descargar QR» y adjúntela en el chat.");
+  });
+  if (!esCelular && !pestana) showToast("Permita las ventanas emergentes para abrir WhatsApp.");
 }
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
 
