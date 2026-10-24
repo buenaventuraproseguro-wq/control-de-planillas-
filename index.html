@@ -7817,14 +7817,26 @@ function enviarQRCliente(){
     }
   } catch (e) {}
   // Solo la imagen: el chat se abre vacío, sin texto.
-  const pestana = esCelular ? null : window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}`, abrirPestanaWhatsapp());
+  // Se abre la APP de WhatsApp (celular o WhatsApp para PC) en el chat del cliente:
+  // no crea pestañas nuevas. Solo si en el computador no hay app instalada, usa WhatsApp Web.
   copiada.then(ok => {
-    if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}`;
+    abrirChatEnApp(conIndicativo, esCelular);
     showToast(ok
       ? (esCelular ? "📋 Imagen del QR copiada. En el chat mantenga presionado el cuadro de texto → Pegar, y envíe." : "📋 Imagen del QR copiada. En el chat presione Ctrl+V y envíe.")
       : "No se pudo copiar la imagen en este navegador. Use «Ver/Descargar QR» y adjúntela en el chat.");
   });
-  if (!esCelular && !pestana) showToast("Permita las ventanas emergentes para abrir WhatsApp.");
+}
+function abrirChatEnApp(conIndicativo, esCelular){
+  let salio = false;
+  const marcar = () => { salio = true; };
+  window.addEventListener("blur", marcar, { once: true });
+  document.addEventListener("visibilitychange", marcar, { once: true });
+  location.href = `whatsapp://send?phone=${conIndicativo}`;
+  if (esCelular) return;
+  setTimeout(() => {
+    window.removeEventListener("blur", marcar);
+    if (!salio) window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}`, abrirPestanaWhatsapp());
+  }, 1500);
 }
 document.getElementById("qrEnviarBtn").addEventListener("click", enviarQRCliente);
 
