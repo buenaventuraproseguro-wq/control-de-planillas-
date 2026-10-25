@@ -737,9 +737,10 @@
   }
   .field input:focus, .field select:focus{ border-color:var(--navy); }
   /* Lugar de trabajo resaltado en Agregar/Editar cliente */
-  .field.campo-destacado{ background:var(--gold-bg); border:1.5px solid var(--gold); border-radius:var(--radius); padding:8px 10px; }
+  .field.campo-destacado{ background:var(--gold-bg); border:1.5px solid var(--gold); border-radius:var(--radius); padding:4px 8px 6px; }
   .field.campo-destacado label{ color:var(--gold-deep); font-weight:700; font-size:12.5px; }
   .field.campo-destacado input{ border-color:var(--gold); font-weight:600; }
+  @media (min-width:561px){ .field.campo-destacado{ grid-column:2; } }
   .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
   .sidebar-badge{
     display:inline-flex; align-items:center; justify-content:center; min-width:17px; height:17px;
@@ -1452,12 +1453,12 @@
           </optgroup>
         </select>
       </div>
-      <div class="field span2 campo-nomina campo-destacado"><label for="fLugarTrabajo">📍 Lugar de trabajo (ciudad)</label>
+
+      <div class="field campo-nomina"><label><span class="field-num">5</span>Fecha de ingreso</label><input id="fFechaIngreso" type="date"></div>
+      <div class="field campo-nomina campo-destacado"><label for="fLugarTrabajo">📍 Lugar de trabajo (ciudad)</label>
         <input id="fLugarTrabajo" type="text" list="listaCiudades" placeholder="Solo si es distinta a la de la empresa" autocomplete="off">
         <datalist id="listaCiudades"><option value="Buenaventura"><option value="Cali"><option value="Bogotá"><option value="Medellín"><option value="Barranquilla"><option value="Cartagena"><option value="Santa Marta"><option value="Palmira"><option value="Tuluá"><option value="Buga"><option value="Jamundí"><option value="Yumbo"><option value="Popayán"><option value="Pasto"><option value="Pereira"><option value="Manizales"><option value="Armenia"><option value="Ibagué"><option value="Bucaramanga"><option value="Cúcuta"></datalist>
       </div>
-
-      <div class="field campo-nomina"><label><span class="field-num">5</span>Fecha de ingreso</label><input id="fFechaIngreso" type="date"></div>
       <div class="field span2 campo-nomina"><label><span class="field-num">6</span>Dirección completa</label><input id="fDireccion" type="text"></div>
       <div class="field campo-nomina"><label><span class="field-num">7</span>No. Planilla pagada</label><input id="fNoPlanillaPagada" type="text"></div>
       <div class="field"><label><span class="field-num">8</span>Muelle</label>
