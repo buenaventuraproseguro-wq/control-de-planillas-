@@ -1368,6 +1368,7 @@
         <div class="actions">
           <button class="btn small" id="editBtn">Editar</button>
           <button class="btn small" id="retirarBtn">🚪 Retirar</button>
+          <button class="btn small danger" id="retiroSinSoporteBtn" style="display:none;" title="Otra empresa: retirar de una vez aunque no haya soporte">✅ Retirar sin soporte</button>
           <button class="btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
           <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
@@ -10589,7 +10590,10 @@ function asegurarSoportesRetiro(){
   _cargandoSoportes = true;
   cargarSoportesRetiro(store.currentMonth).finally(() => { _cargandoSoportes = false; if (typeof renderList === "function") renderList(searchInput.value); });
 }
+const MARCA_RETIRO_CONFIRMADO = "Confirmado sin soporte";
+function retiroConfirmadoSinSoporte(r){ return esOtraEmpresa(r) && String(r["Motivo Retiro"] || "").includes(MARCA_RETIRO_CONFIRMADO); }
 function tieneSoporteRetiro(r){
+  if (retiroConfirmadoSinSoporte(r)) return true; // otra empresa: se confirmó retirar sin soporte
   if (String(r["No. Planilla Pagada"] || "").trim()) return true;
   if (r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return true;
   return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube.cedulas.has(String(r["Cédula"]).trim());
@@ -10657,6 +10661,8 @@ function aplicarRetiroProgramado(r, nombreMes){
 function actualizarBotonRetiro(r){
   const btn = document.getElementById("retirarBtn");
   if (!btn) return;
+  const b2 = document.getElementById("retiroSinSoporteBtn");
+  if (b2) b2.style.display = r && isRetiro(r) && esOtraEmpresa(r) && retiroSinSoporte(r) ? "" : "none";
   const tiene = r && (isRetiro(r) || retiroProgramado(r) || retiroPendientePlanilla(r));
   btn.textContent = tiene ? "↩️ Quitar retiro" : (r && !esOtraEmpresa(r) && !esConductorExcluido(r) ? "🚪 Pedir retiro" : "🚪 Retirar");
   btn.title = !tiene && r && !esOtraEmpresa(r) ? "PROSEGUROSNET: queda en RETIRO solo cuando se suba la planilla o el soporte del retiro" : "";
@@ -10694,6 +10700,17 @@ document.getElementById("retirarBtn").addEventListener("click", async () => {
   avisoRetiro();
   document.getElementById("overlayRetiro").classList.add("show");
 });
+async function confirmarRetiroSinSoporte(r){
+  if (!r) return;
+  const ok = await confirmarApp(`${r["Nombre del Afiliado"]} (${r["Empresa"]}) quedó en RETIRO pero no tiene soporte (imagen o planilla de la novedad).\n\n¿Retirarlo de una vez sin soporte? Ya no pasará al mes siguiente.\n\nSi prefiere esperar el soporte, toque Cancelar: seguirá pasando al mes siguiente hasta que se cargue.`);
+  if (!ok){ showToast("📎 Queda en RETIRO esperando el soporte."); renderList(searchInput.value); showBreakdown(r["Cédula"]); return; }
+  r["Motivo Retiro"] = r["Motivo Retiro"] ? `${r["Motivo Retiro"]} · ${MARCA_RETIRO_CONFIRMADO}` : MARCA_RETIRO_CONFIRMADO;
+  if (!r["Fecha Retiro"]) r["Fecha Retiro"] = fechaHoyISO();
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  showToast(`✅ ${r["Nombre del Afiliado"]} quedó retirado sin soporte y no pasará al mes siguiente.`);
+}
+document.getElementById("retiroSinSoporteBtn").addEventListener("click", () => confirmarRetiroSinSoporte(records.find(x => String(x["Cédula"]) === String(activeCedula))));
 document.getElementById("retiroFecha").addEventListener("change", avisoRetiro);
 document.getElementById("retiroCancelarBtn").addEventListener("click", () => document.getElementById("overlayRetiro").classList.remove("show"));
 document.getElementById("overlayRetiro").addEventListener("click", (e) => { if (e.target.id === "overlayRetiro") e.target.classList.remove("show"); });
@@ -10715,6 +10732,7 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
   saveStore();
   document.getElementById("overlayRetiro").classList.remove("show");
   renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  if (!programado && !esperaPlanilla && esOtraEmpresa(r) && !tieneSoporteRetiro(r)){ setTimeout(() => confirmarRetiroSinSoporte(r), 50); return; }
   if (esperaPlanilla){ showToast(`🧾 Retiro pendiente: ${r["Nombre del Afiliado"]} pasa a RETIRO cuando se suba la planilla o el soporte.`); return; }
   showToast(programado ? `📅 Retiro programado para el ${fechaCortaRetiro(fecha)}.` : `🚪 ${r["Nombre del Afiliado"]} quedó en RETIRO y no pasará al mes siguiente.`);
 });
