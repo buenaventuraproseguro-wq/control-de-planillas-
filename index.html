@@ -461,6 +461,9 @@
   .vehiculo-seccion{ border:1.5px dashed var(--line); border-radius:var(--radius); padding:8px 12px; }
   .vehiculo-seccion[open]{ border-style:solid; border-color:var(--navy); }
   .vehiculo-seccion summary{ cursor:pointer; font-weight:700; font-size:13.5px; color:var(--titulo); }
+  .field[hidden], .doc-upload[hidden]{ display:none !important; }
+  .muelles-serv-caja{ border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; }
+  .muelles-serv-caja b{ font-size:13.5px; color:var(--titulo); }
   .vehiculo-seccion{ min-width:0; }
   .vehiculo-seccion .doc-uploads{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
   @media (max-width:560px){ .vehiculo-seccion .doc-uploads{ grid-template-columns:minmax(0, 1fr); } }
@@ -945,7 +948,9 @@
     border:1.5px solid var(--danger-bg); background:transparent; color:var(--danger); border-radius:6px;
     cursor:pointer; font-size:15px; line-height:1; padding:6px 0; width:30px;
   }
-  .doc-uploads{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; margin-top:6px; }
+  .doc-uploads{ display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; margin-top:6px; }
+  .doc-upload{ min-width:0; }
+  .doc-file{ max-width:100%; }
   @media (max-width:560px){ .doc-uploads{ grid-template-columns: 1fr; } }
   .doc-upload{
     display:flex; flex-direction:column; gap:6px; padding:10px; border:1px dashed var(--line);
@@ -1599,7 +1604,7 @@
       </div>
       <div class="field campo-nomina"><label><span class="field-num">22</span>Valor caja</label><input id="fValorCaja" type="number"></div>
 
-      <div class="field span2 campo-nomina">
+      <div class="field span2 campo-nomina" id="docsCampo">
         <label>Fotos de documentos (opcional)</label>
         <div class="doc-uploads">
           <div class="doc-upload" data-doc="Cedula">
@@ -1651,6 +1656,14 @@
             <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
             <button type="button" class="doc-remove" style="display:none;">Quitar</button>
           </div>
+        </div>
+      </div>
+
+      <div class="field span2 campo-opcional campo-muelles-serv" id="muellesSeccion" hidden>
+        <div class="muelles-serv-caja">
+          <b>⚓ Actualización en los muelles</b>
+          <p class="vehiculo-ayuda">Ponga la fecha en que vence la actualización. Desde 30 días antes la app avisa en "Hoy" y en "Vencimientos" para ofrecerle renovarla. En «Fotos de documentos» (arriba) suba la <b>planilla</b> y el <b>comprobante</b> de la seguridad social que paga por su empresa (el PDF se guarda como imagen).</p>
+          <div class="vehiculo-grid"><div class="field"><label for="fVenceMuelles">La actualización vence</label><input id="fVenceMuelles" type="date"></div></div>
         </div>
       </div>
 
@@ -1766,6 +1779,8 @@
         <div class="field"><label>Nombre</label><input id="msNombre" type="text" maxlength="120" required></div>
         <div class="field"><label>Valor del servicio</label><input id="msValor" type="number" min="0" step="1" inputmode="numeric" required></div>
         <div class="field"><label>Teléfono (opcional)</label><input id="msTelefono" type="tel" inputmode="tel"></div>
+        <div class="field"><label for="msVence">La actualización vence (opcional)</label><input id="msVence" type="date"></div>
+        <p class="vehiculo-ayuda span2" style="grid-column:1/-1;">Después de guardar, toque el nombre de la persona y luego <b>Editar</b> para subir la planilla, el comprobante y los datos de vehículo y licencia.</p>
         <div class="field span2"><label>Empresa por la que paga (opcional)</label><input id="msPagaPor" type="text" maxlength="80" placeholder="Ej: la empresa o persona que le paga la seguridad social"></div>
       </div>
       <div class="modal-actions">
@@ -2463,7 +2478,7 @@ async function detectarColumnasConfirmacion(){
     try{ localStorage.setItem(COLUMNAS_RECORDATORIO_KEY, columnasRecordatorio ? "1" : "0"); }catch(e){}
   }catch(e){}
   try{
-    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,avisos_vencimiento").limit(1);
+    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,venc_muelles,avisos_vencimiento").limit(1);
     if (error){
       if (/placa|venc_|avisos_vencimiento|column|schema cache/i.test(String(error.message || ""))) columnasVehiculo = false;
     } else columnasVehiculo = true;
@@ -2534,6 +2549,7 @@ function esRecordToDbRow(r, monthId){
       venc_soat: r["Vence SOAT"] || null,
       venc_tecno: r["Vence Tecno"] || null,
       venc_poliza: r["Vence Póliza"] || null,
+      venc_muelles: r["Vence Muelles"] || null,
       avisos_vencimiento: r["Avisos Vencimiento"] && typeof r["Avisos Vencimiento"] === "object" ? r["Avisos Vencimiento"] : {},
     } : {}),
     ...(columnasRecargo ? {
@@ -2586,6 +2602,7 @@ function dbRowToEsRecord(row){
     "Vence SOAT": row.venc_soat || "",
     "Vence Tecno": row.venc_tecno || "",
     "Vence Póliza": row.venc_poliza || "",
+    "Vence Muelles": row.venc_muelles || "",
     "Avisos Vencimiento": row.avisos_vencimiento && typeof row.avisos_vencimiento === "object" ? row.avisos_vencimiento : {},
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
@@ -3203,7 +3220,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
-    ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
+    ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza","venc_muelles"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
     if (o && (o.avisos_vencimiento == null || (typeof o.avisos_vencimiento === "object" && !Object.keys(o.avisos_vencimiento).length))) delete o.avisos_vencimiento;
     return JSON.stringify(o);
   }catch(e){ return texto; }
@@ -3898,7 +3915,13 @@ const ESTADOS_CONDUCTOR = ["DEBE","PAGO CONDUCTOR"];
 function aplicarVisibilidadNomina(){
   const esConductores = esNombreEmpresaServicio(getField("Empresa").value);
   document.querySelectorAll(".campo-nomina").forEach(el => el.classList.toggle("oculto", esConductores));
-  if (esServicioMuelles({ "Empresa": getField("Empresa").value })) getField("Muelle").value = "Muelle";
+  const esMuellesServ = esServicioMuelles({ "Empresa": getField("Empresa").value });
+  if (esMuellesServ) getField("Muelle").value = "Muelle";
+  // Muelles independientes: solo planilla y comprobante (de su empresa) + vencimiento de la actualización
+  document.getElementById("muellesSeccion").hidden = !esMuellesServ;
+  const docsCampo = document.getElementById("docsCampo");
+  if (esMuellesServ) docsCampo.classList.remove("oculto");
+  docsCampo.querySelectorAll(".doc-upload").forEach(b => { b.hidden = esMuellesServ && !["PlanillaPagada", "ComprobantePago"].includes(b.dataset.doc); });
 
   const estadoActual = getField("Estado").value;
   document.getElementById("optgroupNomina").disabled = esConductores;
@@ -7091,6 +7114,7 @@ function openModal(record){
   getField("VenceSoat").value = record ? record["Vence SOAT"] || "" : "";
   getField("VenceTecno").value = record ? record["Vence Tecno"] || "" : "";
   getField("VencePoliza").value = record ? record["Vence Póliza"] || "" : "";
+  getField("VenceMuelles").value = record ? record["Vence Muelles"] || "" : "";
   { const tiene = record && (record["Placa"] || record["Vence Licencia"] || record["Vence SOAT"] || record["Vence Tecno"] || record["Vence Póliza"] || record["Imagen Licencia"] || record["Imagen SoatTecno"] || record["Imagen Poliza"]);
     document.getElementById("vehiculoSeccion").open = !!tiene; }
 
@@ -7445,7 +7469,8 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     if (!file) return;
     // Documentos de identificación y afiliación en PDF: se convierten a imagen para que pesen poco.
     // La planilla y el comprobante se dejan en PDF (la app lee su texto).
-    if (DOCS_PDF_A_IMAGEN.has(doc) && esPdfArchivo(file)){
+    const muellesServ = esServicioMuelles({ "Empresa": getField("Empresa").value }) && (doc === "PlanillaPagada" || doc === "ComprobantePago");
+    if ((DOCS_PDF_A_IMAGEN.has(doc) || muellesServ) && esPdfArchivo(file)){
       showToast("Convirtiendo el PDF a imagen para que pese menos…");
       const img = await convertirPdfAImagen(file);
       if (img){
@@ -8271,6 +8296,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Vence SOAT": getField("VenceSoat").value,
     "Vence Tecno": getField("VenceTecno").value,
     "Vence Póliza": getField("VencePoliza").value,
+    "Vence Muelles": getField("VenceMuelles").value,
   };
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
@@ -9634,7 +9660,10 @@ function renderMuellesServicio(){
     return `<div class="ms-row" data-ms-cedula="${escHtml(r["Cédula"])}">
       <div>
         <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])}</div>
-        <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}</div>
+        <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}${(() => {
+          const dv = diasHasta(r["Vence Muelles"]); if (dv === null) return "";
+          return ` · <span class="ve-dias ${dv < 0 ? "vencido" : dv <= 7 ? "pronto" : ""}">⚓ ${dv < 0 ? "venció" : "vence"} ${fechaLarga(r["Vence Muelles"])}</span>`;
+        })()}</div>
       </div>
       <div class="ms-valor">${fmt(r["Costo Servicio"])}</div>
       <div class="ms-pago">
@@ -9675,6 +9704,8 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
   const valorTxt = document.getElementById("msValor").value;
   if (cedula.length < 6 || cedula.length > 12){ showToast("La cédula debe tener entre 6 y 12 números."); return; }
   if (!nombre){ showToast("Escribe el nombre."); return; }
+  { const t = telefonoDiezDigitos(document.getElementById("msTelefono").value);
+    if (t && t.length !== 10){ showToast(`⚠️ El teléfono debe tener 10 dígitos (tiene ${t.length}).`); return; } }
   if (valorTxt === "" || !(Number(valorTxt) >= 0)){ showToast("Escribe el valor del servicio."); return; }
   const existente = records.find(x => String(x["Cédula"]) === cedula);
   if (existente){
@@ -9693,7 +9724,8 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
     "Estado Trámite": "DEBE",
     "Muelle": "Muelle",
     "AceptadoPorMuelle": {},
-    "Teléfono": document.getElementById("msTelefono").value.trim(),
+    "Teléfono": telefonoDiezDigitos(document.getElementById("msTelefono").value),
+    "Vence Muelles": document.getElementById("msVence").value,
     "Beneficiarios": [],
   };
   records.push(nuevo);
@@ -11507,6 +11539,7 @@ const DOCS_VENCEN = [
   { k: "soat", campo: "Vence SOAT", nombre: "SOAT", art: "su", fem: false },
   { k: "tecno", campo: "Vence Tecno", nombre: "revisión tecnomecánica", art: "su", fem: true },
   { k: "poliza", campo: "Vence Póliza", nombre: "póliza del vehículo", art: "su", fem: true },
+  { k: "muelles", campo: "Vence Muelles", nombre: "actualización en los muelles", art: "su", fem: true },
 ];
 const DIAS_ANTES_VENCE = 30, DIAS_DESPUES_VENCE = 60;
 function diasHasta(iso){
@@ -11532,20 +11565,23 @@ function mensajeVencimiento(r, docs){
     ? `• Su *${d.nombre}* venció el *${fechaLarga(d.fecha)}*.`
     : `• Su *${d.nombre}* vence el *${fechaLarga(d.fecha)}*${d.dias <= 7 ? ` (${d.dias === 0 ? "hoy" : `en ${d.dias} día${d.dias === 1 ? "" : "s"}`})` : ""}.`);
   const vencido = docs.some(d => d.dias < 0);
-  return `🛡️ *PROSEGUROSNET*\n¡Hola, ${nombre}! 👋\n\nLe recordamos el estado de sus documentos${placa ? " (vehículo de placa *" + r["Placa"] + "*)" : ""}:\n${lineas.join("\n")}\n\n`
-    + (vencido ? "Circular con documentos vencidos puede traerle multas e inmovilización. " : "Le avisamos con tiempo para que no le coja la fecha. ")
-    + `En *PROSEGUROSNET* le hacemos la renovación de forma rápida y segura.\n\n¿Quiere que le ayudemos con la renovación? Responda este mensaje y con gusto le atendemos. 🚗✅`;
+  const soloMuelles = docs.every(d => d.k === "muelles");
+  return `🛡️ *PROSEGUROSNET*\n¡Hola, ${nombre}! 👋\n\nLe recordamos ${soloMuelles ? "lo siguiente" : "el estado de sus documentos"}${placa && !soloMuelles ? " (vehículo de placa *" + r["Placa"] + "*)" : ""}:\n${lineas.join("\n")}\n\n`
+    + (soloMuelles
+        ? (vencido ? "Sin la actualización al día no le permiten el ingreso al muelle. " : "Le avisamos con tiempo para que no le quiten el ingreso al muelle. ")
+        : (vencido ? "Circular con documentos vencidos puede traerle multas e inmovilización. " : "Le avisamos con tiempo para que no le coja la fecha. "))
+    + `En *PROSEGUROSNET* le hacemos la ${soloMuelles ? "actualización" : "renovación"} de forma rápida y segura.\n\n¿Quiere que le ayudemos con ${soloMuelles ? "la actualización" : "la renovación"}? Responda este mensaje y con gusto le atendemos. ${soloMuelles ? "⚓✅" : "🚗✅"}`;
 }
 function abrirVencimientos(){
   const lista = clientesPorVencer();
   abrirVencimientos._lista = lista;
-  document.getElementById("veSub").textContent = `${lista.length} cliente(s) con documentos que vencen en los próximos ${DIAS_ANTES_VENCE} días o ya vencidos.`;
+  document.getElementById("veSub").textContent = `${lista.length} cliente(s) con documentos o actualización de muelles que vencen en los próximos ${DIAS_ANTES_VENCE} días o ya vencidos.`;
   document.getElementById("veCuerpo").innerHTML = lista.length ? lista.map((x, i) => {
     const r = x.r, tel = String(r["Teléfono"] || "").replace(/\D/g, "");
     const todosAvisados = x.docs.every(d => d.avisado);
     return `<div class="ay-card ${x.docs.some(d => d.dias < 0) ? "ve-vencido" : ""}">
       <div class="ay-card-h"><b>${escHtml(r["Nombre del Afiliado"])}</b>${r["Placa"] ? `<span class="ve-placa">${escHtml(r["Placa"])}</span>` : ""}</div>
-      ${x.docs.map(d => `<div class="ve-doc"><span>${d.k === "licencia" ? "🪪" : d.k === "poliza" ? "📄" : "🚗"} ${escHtml(d.nombre.charAt(0).toUpperCase() + d.nombre.slice(1))} · ${fechaLarga(d.fecha)}</span>
+      ${x.docs.map(d => `<div class="ve-doc"><span>${d.k === "licencia" ? "🪪" : d.k === "poliza" ? "📄" : d.k === "muelles" ? "⚓" : "🚗"} ${escHtml(d.nombre.charAt(0).toUpperCase() + d.nombre.slice(1))} · ${fechaLarga(d.fecha)}</span>
         <span class="ve-dias ${d.dias < 0 ? "vencido" : d.dias <= 7 ? "pronto" : ""}">${textoDias(d)}</span>${d.avisado ? `<span class="ve-avisado">📨 avisado ${escHtml(fechaLarga(d.avisado))}</span>` : ""}</div>`).join("")}
       <div class="ay-acciones">
         <button type="button" class="btn small whatsapp" data-ve-enviar="${i}" ${tel ? "" : "disabled title='Sin teléfono'"}>📲 ${todosAvisados ? "Volver a avisar" : "Avisar por WhatsApp"}</button>
