@@ -38,7 +38,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Vehículo y licencia (Editar cliente, sección opcional): placa, vencimientos de licencia, SOAT, tecnomecánica y póliza + fotos/PDF (licencia, SOAT y tecno juntos, póliza; el PDF se guarda como imagen). Menú 24 "Vencimientos": desde 30 días antes y hasta 60 después, con mensaje de WhatsApp de la empresa; queda marcado "avisado". También sale en "Hoy".
 - Muelles independientes (Actualización de Muelles): fecha de vencimiento por cada muelle (venc_por_muelle: Sociedad, TC Buen, Agua Dulce), planilla y comprobante de su empresa (PDF→imagen) y sección de vehículo/licencia; avisos en "Vencimientos" y "Hoy".
 - Certificados EPS/ARL/AFP/Caja en Agregar/Editar cliente: la app lee cédula, EPS, fecha de afiliación (→ fecha de ingreso), ARL (nivel y actividad), AFP y caja; pregunta "Llenar estos datos" y avisa si la cédula no coincide.
-- Muelles independientes: dos servicios (servicio_muelle): actualización (se cobra cada mes) y enrolamiento (una sola vez: pagado no pasa al mes siguiente; sin pagar pasa en DEBE). Recibo por persona.
+- Muelles independientes: servicios por persona con su valor (servicios_muelle jsonb {actualizacion, enrolamiento}; Costo = suma). Antes: servicio_muelle: actualización (se cobra cada mes) y enrolamiento (una sola vez: pagado no pasa al mes siguiente; sin pagar pasa en DEBE). Recibo por persona.
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
