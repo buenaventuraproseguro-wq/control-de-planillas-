@@ -1670,7 +1670,7 @@
       <div class="field span2 campo-opcional">
         <details id="vehiculoSeccion" class="vehiculo-seccion">
           <summary>🚗 Vehículo y licencia (opcional): documentos y vencimientos</summary>
-          <p class="vehiculo-ayuda">Suba la foto o el PDF (el PDF se guarda como imagen para ocupar menos espacio) y ponga la fecha en que vence. Desde 30 días antes, la app avisa en "Hoy" y en "Vencimientos" para escribirle al cliente.</p>
+          <p class="vehiculo-ayuda">Suba la foto o el PDF (el PDF se guarda como imagen para ocupar menos espacio): la app lee la fecha de vencimiento y la placa y le pregunta si las usa. Revise siempre la fecha. Desde 30 días antes, la app avisa en "Hoy" y en "Vencimientos" para escribirle al cliente.</p>
           <div class="vehiculo-grid">
             <div class="field"><label for="fPlaca">Placa</label><input id="fPlaca" type="text" maxlength="8" placeholder="Ej: ABC123" style="text-transform:uppercase;"></div>
             <div class="field"><label for="fVenceLicencia">Licencia de conducción vence</label><input id="fVenceLicencia" type="date"></div>
@@ -7478,6 +7478,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
         docImagenesCambiados[doc] = true;
         mostrarDocPreview(box, img.dataUrl);
         if (doc === "Cedula") leerCedulaDeImagen(img.dataUrl);
+        if (["Licencia", "SoatTecno", "Poliza"].includes(doc)) leerDocumentoVehiculo(doc, img.dataUrl);
         showToast(`✅ Listo: pasó de ${tamanoLegible(file.size)} a ${tamanoLegible(img.bytes)}.`);
         return;
       }
@@ -7489,6 +7490,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
       mostrarDocPreview(box, dataUrl);
     });
     if (doc === "Cedula" && /^image\//.test(file.type || "")) leerCedulaDeImagen(file); // se lee la foto original (más nítida)
+    if (["Licencia", "SoatTecno", "Poliza"].includes(doc) && /^image\//.test(file.type || "")) leerDocumentoVehiculo(doc, file);
   });
 
   removeBtn.addEventListener("click", async () => {
@@ -11603,6 +11605,111 @@ document.getElementById("veCuerpo").addEventListener("click", (e) => {
   setTimeout(abrirVencimientos, 300);
 });
 document.getElementById("navVencimientosBtn").addEventListener("click", abrirVencimientos);
+
+/* ---------- Leer fechas de vencimiento y placa de los documentos del vehículo ---------- */
+const MESES_TXT = { ene:1, enero:1, feb:2, febrero:2, mar:3, marzo:3, abr:4, abril:4, may:5, mayo:5, jun:6, junio:6, jul:7, julio:7, ago:8, agosto:8, sep:9, sept:9, septiembre:9, set:9, oct:10, octubre:10, nov:11, noviembre:11, dic:12, diciembre:12 };
+function isoValida(a, m, d){
+  a = +a; m = +m; d = +d;
+  if (a < 100) a += 2000;
+  if (a < 2000 || a > 2045 || m < 1 || m > 12 || d < 1 || d > 31) return "";
+  const f = new Date(a, m - 1, d);
+  if (f.getMonth() !== m - 1) return "";
+  return `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+// Todas las fechas del texto, con su posición
+function fechasEnTexto(t){
+  const res = [];
+  const add = (iso, i) => { if (iso) res.push({ iso, i }); };
+  let m;
+  const r1 = /\b(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{4}|\d{2})\b/g;           // 12/05/2027
+  while ((m = r1.exec(t))) add(isoValida(m[3], m[2], m[1]), m.index);
+  const r2 = /\b(\d{4})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\b/g;                  // 2027-05-12
+  while ((m = r2.exec(t))) add(isoValida(m[1], m[2], m[3]), m.index);
+  const r3 = /\b(\d{1,2})\s*(?:de\s+|[\/.\-\s])\s*([a-záéíóú]{3,10})\.?\s*(?:de\s+|del\s+|[\/.\-\s])\s*(\d{4})\b/gi; // 12 de mayo de 2027 · 12-MAY-2027
+  while ((m = r3.exec(t))){ const mes = MESES_TXT[m[2].toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")]; if (mes) add(isoValida(m[3], mes, m[1]), m.index); }
+  return res.sort((a, b) => a.i - b.i);
+}
+// Escoge la fecha de vencimiento: la que va después de "hasta / vence / vencimiento / fin de vigencia";
+// si no hay, la fecha más lejana que tenga sentido.
+function fechaVencimiento(t){
+  const fechas = fechasEnTexto(t);
+  if (!fechas.length) return "";
+  const claves = /(hasta|vence|vencimiento|venc\.?|fin\s+de\s+vigencia|fin\s+vigencia|vigente\s+hasta|valid[oa]\s+hasta|expira)/gi;
+  let m, mejor = null;
+  while ((m = claves.exec(t))){
+    const f = fechas.find(x => x.i >= m.index && x.i - m.index < 90);
+    if (f && (!mejor || f.iso > mejor)) mejor = f.iso;
+  }
+  if (mejor) return mejor;
+  const hoy = fechaHoyISO();
+  const lejanas = fechas.map(f => f.iso).filter(iso => iso >= `${+hoy.slice(0, 4) - 1}${hoy.slice(4)}`).sort();
+  return lejanas.length ? lejanas[lejanas.length - 1] : "";
+}
+function placaEnTexto(t){
+  const T = t.toUpperCase();
+  const cerca = T.match(/PLACA[^A-Z0-9]{0,15}([A-Z]{3})\s?-?\s?(\d{2}[A-Z0-9])\b/);
+  const m = cerca || T.match(/\b([A-Z]{3})\s?-?\s?(\d{3}|\d{2}[A-Z])\b/);
+  if (!m) return "";
+  const p = m[1] + m[2];
+  return /^(COL|CEL|TEL|NIT|CRA|CLL|AVE|CAL|DIR)/.test(p) ? "" : p;
+}
+// Divide el documento de SOAT + tecnomecánica en sus dos partes
+function partesSoatTecno(t){
+  const iT = t.search(/tecno|t[eé]cnico\s*-?\s*mec|revisi[oó]n\s+t[eé]cnica|\bCDA\b|centro\s+de\s+diagn/i);
+  const iS = t.search(/\bSOAT\b|seguro\s+obligatorio/i);
+  if (iT < 0 && iS < 0) return { soat: t, tecno: "" };
+  if (iT < 0) return { soat: t, tecno: "" };
+  if (iS < 0) return { soat: "", tecno: t };
+  return iS < iT ? { soat: t.slice(iS, iT), tecno: t.slice(iT) } : { tecno: t.slice(iT, iS), soat: t.slice(iS) };
+}
+function datosDocVehiculo(doc, texto){
+  const t = String(texto || "").replace(/[ \t]+/g, " ");
+  const res = { placa: placaEnTexto(t) };
+  if (doc === "Licencia"){
+    // La licencia trae una vigencia por categoría: se toma la más lejana
+    const fechas = fechasEnTexto(t).map(f => f.iso).sort();
+    const hoy = fechaHoyISO();
+    const futuras = fechas.filter(x => x >= hoy);
+    res.licencia = (futuras.length ? futuras[futuras.length - 1] : fechaVencimiento(t)) || "";
+    delete res.placa;
+  } else if (doc === "SoatTecno"){
+    const p = partesSoatTecno(t);
+    res.soat = p.soat ? fechaVencimiento(p.soat) : "";
+    res.tecno = p.tecno ? fechaVencimiento(p.tecno) : "";
+  } else if (doc === "Poliza"){
+    res.poliza = fechaVencimiento(t);
+  }
+  return res;
+}
+const CAMPO_FECHA_DOC = { licencia: ["VenceLicencia", "Licencia de conducción vence"], soat: ["VenceSoat", "SOAT vence"], tecno: ["VenceTecno", "Tecnomecánica vence"], poliza: ["VencePoliza", "Póliza vence"] };
+async function leerDocumentoVehiculo(doc, fuente){
+  const caja = document.querySelector(`.doc-upload[data-doc="${doc}"]`);
+  if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
+  let aviso = caja.querySelector(".ocr-aviso");
+  if (!aviso){ aviso = document.createElement("div"); aviso.className = "ocr-aviso"; caja.appendChild(aviso); }
+  aviso.innerHTML = "🔎 Leyendo el documento para sacar la fecha de vencimiento…";
+  try{
+    const T = await cargarTesseract();
+    const { data } = await T.recognize(fuente, "spa");
+    const d = datosDocVehiculo(doc, data && data.text);
+    const filas = Object.entries(CAMPO_FECHA_DOC).filter(([k]) => d[k]).map(([k, [, et]]) => `<br>${et}: <b>${fechaLarga(d[k])}</b>`);
+    if (d.placa) filas.unshift(`<br>Placa: <b>${escHtml(d.placa)}</b>`);
+    if (!filas.length){ aviso.innerHTML = "No encontré la fecha de vencimiento en el documento. Escríbala a mano arriba."; setTimeout(() => aviso.remove(), 7000); return; }
+    aviso.innerHTML = `<div>🔎 <b>Leí en el documento:</b>${filas.join("")}</div>
+      <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Usar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
+      <small>Revise que las fechas estén bien: con ellas se crean los recordatorios.</small>`;
+    aviso.querySelector("[data-ocr-usar]").onclick = () => {
+      Object.entries(CAMPO_FECHA_DOC).forEach(([k, [campo]]) => { if (d[k]) getField(campo).value = d[k]; });
+      if (d.placa && !getField("Placa").value.trim()) getField("Placa").value = d.placa;
+      document.getElementById("vehiculoSeccion").open = true;
+      aviso.remove(); showToast("✅ Fechas puestas. Al guardar quedan los recordatorios de vencimiento.");
+    };
+    aviso.querySelector("[data-ocr-no]").onclick = () => aviso.remove();
+  }catch(e){
+    aviso.innerHTML = `No se pudo leer el documento (${escHtml(e.message || "error")}). Escriba la fecha a mano.`;
+    setTimeout(() => aviso.remove(), 7000);
+  }
+}
 </script>
 </body>
 </html>
