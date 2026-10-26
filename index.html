@@ -448,6 +448,9 @@
   .row.active{ background:var(--accent-bg); box-shadow:inset 3px 0 0 var(--accent); }
   .row.atrasado{ background:var(--retiro-bg); box-shadow:inset 3px 0 0 var(--retiro); }
   .row.atrasado:hover{ background:var(--retiro-bg); }
+  .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
+  .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
+  .tag-resp-ret{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent); }
   .row.pagado{ background:var(--pago-bg); box-shadow:inset 3px 0 0 var(--pago); }
   .row.pagado:hover{ background:var(--pago-bg); }
   .row .chk{ width:16px; height:16px; cursor:pointer; }
@@ -5181,6 +5184,20 @@ function aplicarRecargosMora(){
 function tagRecordado(r){
   return recordadoHoy(r) ? `<span class="tag-recordado" title="Recordatorio de WhatsApp enviado hoy a las ${escHtml(horaRecordatorio(r))}">📨 Recordado hoy</span>` : "";
 }
+// En la lista de Retiros: qué falta, corto
+function tagDebeRetiro(r){
+  if (retiroPendientePlanilla(r)) return `<span class="tag-retiro-pend" title="Queda en RETIRO al subir la planilla del retiro">🚪 Pendiente planilla</span>`;
+  if (!retiroSinSoporte(r)) return "";
+  return esOtraEmpresa(r)
+    ? `<span class="tag-retiro-pend" title="Falta la imagen o planilla de la novedad">📎 Falta soporte</span>`
+    : `<span class="tag-retiro-pend" title="Falta la planilla del retiro: todavía debe pagarse">🚪 Debe planilla</span>`;
+}
+// En la lista de Retiros: empresa y responsable resaltados (en vez de la mora)
+function tagEmpresaResp(r){
+  const emp = String(r["Empresa"] || "").trim() || "Sin empresa";
+  const resp = limpiarEspacios(r["Responsable / Grupo"] || "");
+  return `<span class="tag-empresa-ret" title="Empresa">🏢 ${escHtml(emp)}</span>` + (resp ? `<span class="tag-resp-ret" title="Responsable">👤 ${escHtml(nombrePropio(resp))}</span>` : "");
+}
 function tagRecargo(r){
   const v = numOrZero(r && r["Recargo Mora"]);
   if (!v) return "";
@@ -5344,6 +5361,7 @@ function renderFilterPills(){
     else if (e === "__SERV_MUELLES__") count = records.filter(esServicioMuelles).length;
     else if (e === "__OTRA_EMPRESA__") count = sinConductores.filter(esOtraEmpresa).length;
     else if (e === "__INDEPENDIENTES__") count = sinConductores.filter(esIndependiente).length;
+    else if (e === "RETIRO") count = sinConductores.filter(r => isRetiro(r) || retiroPendientePlanilla(r)).length;
     else count = sinConductores.filter(r => estadoClass(r["Estado Trámite"]) === estadoClass(e)).length;
     const activo = filtroEstado === e ? "active" : "";
     return `<button type="button" class="filter-pill ${activo}" data-estado="${e}">${etiquetas[e] || e} (${count})</button>`;
@@ -5379,6 +5397,11 @@ function renderList(filterText){
   } else if (filtroEstado === "__CAJA__"){
     filtered = filtered.filter(tieneCaja)
       .filter(r => !grupoConfirmacionFiltro || grupoConfirmacion(r) === grupoConfirmacionFiltro);
+  } else if (estadoClass(filtroEstado) === "RETIRO"){
+    // Retiros: también los pendientes de planilla; primero los que todavía deben (sin soporte).
+    const debe = r => retiroPendientePlanilla(r) || retiroSinSoporte(r);
+    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => isRetiro(r) || retiroPendientePlanilla(r))
+      .sort((a, b) => (debe(b) ? 1 : 0) - (debe(a) ? 1 : 0));
   } else if (filtroEstado === "__OTRA_EMPRESA__"){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esOtraEmpresa);
   } else if (filtroEstado === "__INDEPENDIENTES__"){
@@ -5433,6 +5456,7 @@ function renderList(filterText){
     return;
   }
 
+  const enRetiros = estadoClass(filtroEstado) === "RETIRO";
   listEl.innerHTML = filtered.map(r => {
     const cls = estadoClass(r["Estado Trámite"]);
     const active = (String(r["Cédula"]) === String(activeCedula)) ? "active" : "";
@@ -5442,7 +5466,9 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}</div>
+      <div class="name">${enRetiros
+        ? `${r["Nombre del Afiliado"]}${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
+        : `${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
