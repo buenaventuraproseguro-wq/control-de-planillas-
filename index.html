@@ -768,6 +768,7 @@
     border:1.5px solid var(--line); background:var(--bg); color:var(--ink); outline:none;
   }
   .field input:focus, .field select:focus{ border-color:var(--navy); }
+  .field input.campo-error{ border-color:var(--retiro) !important; background:var(--retiro-bg); }
   /* Lugar de trabajo resaltado en Agregar/Editar cliente */
   .field.campo-destacado{ background:var(--gold-bg); border:1.5px solid var(--gold); border-radius:var(--radius); padding:4px 8px 6px; }
   .field.campo-destacado label{ color:var(--gold-deep); font-weight:700; font-size:12.5px; }
@@ -8027,6 +8028,23 @@ document.getElementById("muelleDotsBreakdown").addEventListener("click", (e) => 
   renderList(searchInput.value);
 });
 
+function telefonoDiezDigitos(v){
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("57")) d = d.slice(2);
+  return d;
+}
+// Mientras se escribe: solo números y aviso si no son 10
+["fTelefono", "fTelefono2"].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("input", () => {
+    const limpio = el.value.replace(/[^\d+\s-]/g, "");
+    if (limpio !== el.value) el.value = limpio;
+    const n = telefonoDiezDigitos(el.value).length;
+    el.classList.toggle("campo-error", n > 0 && n !== 10);
+    el.title = n > 0 && n !== 10 ? `Debe tener 10 dígitos (lleva ${n})` : "";
+  });
+});
 document.getElementById("saveBtn").addEventListener("click", async () => {
   const nombre = getField("Nombre").value.trim().toLowerCase();
   const cedula = getField("Cedula").value.trim();
@@ -8037,6 +8055,19 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   if (cedula.length < 6 || cedula.length > 12){
     showToast("La cédula debe tener entre 6 y 12 números. Revísala antes de guardar.");
     return;
+  }
+  // Teléfonos: exactamente 10 dígitos (se quitan espacios, guiones y el +57)
+  for (const [campo, etiqueta] of [["Telefono", "El teléfono"], ["Telefono2", "El segundo teléfono"]]){
+    const el = getField(campo);
+    if (!el || el.disabled || !el.value.trim()) continue;
+    const d = telefonoDiezDigitos(el.value);
+    if (d.length !== 10){
+      el.closest(".field").scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus(); el.classList.add("campo-error");
+      showToast(`⚠️ ${etiqueta} debe tener 10 dígitos (tiene ${d.length}). Revíselo antes de guardar.`);
+      return;
+    }
+    el.value = d; el.classList.remove("campo-error");
   }
   {
     const respEscrito = limpiarEspacios(getField("Resp").value);
