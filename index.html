@@ -5133,10 +5133,13 @@ function exportarListaCaja(){
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-// Un cliente está atrasado si ya pasó el día 16 del mes real y sigue en SIN PAGO o DÍAS PROPORCIONALES.
+// Un cliente está atrasado si ya pasó el día 16 del mes real y sigue en SIN PAGO o DÍAS PROPORCIONALES
+// (o en RETIRO de PROSEGUROSNET sin la planilla del retiro).
 function estaAtrasado(r){
   const est = estadoClass(r["Estado Trámite"]);
-  if (est !== "SIN_PAGO" && est !== "DIAS_PROPORCIONALES") return false;
+  // RETIRO de PROSEGUROSNET sin planilla del retiro: todavía debe, sigue en Atrasados.
+  const retiroDebe = est === "RETIRO" && !esOtraEmpresa(r) && retiroSinSoporte(r);
+  if (est !== "SIN_PAGO" && est !== "DIAS_PROPORCIONALES" && !retiroDebe) return false;
   if (store.currentMonth !== mesActualReal()) return false;
   return new Date().getDate() > 16;
 }
