@@ -450,6 +450,24 @@
   .row.atrasado:hover{ background:var(--retiro-bg); }
   /* Ayudas inteligentes */
   .sidebar-hoy{ font-weight:700; }
+  .ve-vencido{ border-color:var(--retiro); }
+  .ve-placa{ font-weight:800; letter-spacing:.06em; border:1.5px solid var(--ink); border-radius:6px; padding:0 6px; font-size:12px; background:#F7D046; color:#111; }
+  .ve-doc{ display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; font-size:13px; padding:4px 0; border-top:1px solid var(--line); }
+  .ve-doc span:first-child{ flex:1; min-width:180px; }
+  .ve-dias{ font-weight:700; font-size:12px; padding:1px 8px; border-radius:999px; background:var(--gold-bg); color:var(--gold-deep); }
+  .ve-dias.pronto{ background:var(--afiliacion-bg); color:var(--afiliacion); }
+  .ve-dias.vencido{ background:var(--retiro-bg); color:var(--retiro); }
+  .ve-avisado{ font-size:11.5px; color:var(--muted); }
+  .vehiculo-seccion{ border:1.5px dashed var(--line); border-radius:var(--radius); padding:8px 12px; }
+  .vehiculo-seccion[open]{ border-style:solid; border-color:var(--navy); }
+  .vehiculo-seccion summary{ cursor:pointer; font-weight:700; font-size:13.5px; color:var(--titulo); }
+  .vehiculo-seccion{ min-width:0; }
+  .vehiculo-seccion .doc-uploads{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  @media (max-width:560px){ .vehiculo-seccion .doc-uploads{ grid-template-columns:minmax(0, 1fr); } }
+  .vehiculo-seccion .doc-upload, .vehiculo-grid .field{ min-width:0; }
+  .vehiculo-seccion .doc-file{ max-width:100%; }
+  .vehiculo-ayuda{ font-size:12px; color:var(--muted); margin:6px 0 8px; }
+  .vehiculo-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px 10px; margin-bottom:10px; }
   .ay-cuerpo{ display:flex; flex-direction:column; gap:10px; }
   .ay-sec{ border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; background:var(--panel); }
   .ay-sec-ok{ opacity:.6; }
@@ -1332,6 +1350,7 @@
       <button type="button" class="sidebar-link" id="navRevisionBtn"><span class="sidebar-num">21</span><svg class="ico" aria-hidden="true"><use href="#i-lupa"/></svg>Revisión de datos</button>
       <button type="button" class="sidebar-link" id="navHistAtrasosBtn"><span class="sidebar-num">22</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Quién se atrasa más</button>
       <button type="button" class="sidebar-link" id="navRespaldosBtn"><span class="sidebar-num">23</span><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Respaldos automáticos</button>
+      <button type="button" class="sidebar-link" id="navVencimientosBtn"><span class="sidebar-num">24</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Vencimientos (licencia, SOAT, póliza) <span class="sidebar-badge" id="vencBadge" style="display:none;">0</span></button>
     </div>
   </nav>
 
@@ -1635,6 +1654,43 @@
         </div>
       </div>
 
+      <div class="field span2 campo-opcional">
+        <details id="vehiculoSeccion" class="vehiculo-seccion">
+          <summary>🚗 Vehículo y licencia (opcional): documentos y vencimientos</summary>
+          <p class="vehiculo-ayuda">Suba la foto o el PDF (el PDF se guarda como imagen para ocupar menos espacio) y ponga la fecha en que vence. Desde 30 días antes, la app avisa en "Hoy" y en "Vencimientos" para escribirle al cliente.</p>
+          <div class="vehiculo-grid">
+            <div class="field"><label for="fPlaca">Placa</label><input id="fPlaca" type="text" maxlength="8" placeholder="Ej: ABC123" style="text-transform:uppercase;"></div>
+            <div class="field"><label for="fVenceLicencia">Licencia de conducción vence</label><input id="fVenceLicencia" type="date"></div>
+            <div class="field"><label for="fVenceSoat">SOAT vence</label><input id="fVenceSoat" type="date"></div>
+            <div class="field"><label for="fVenceTecno">Tecnomecánica vence</label><input id="fVenceTecno" type="date"></div>
+            <div class="field"><label for="fVencePoliza">Póliza del vehículo vence</label><input id="fVencePoliza" type="date"></div>
+          </div>
+          <div class="doc-uploads">
+            <div class="doc-upload" data-doc="Licencia">
+              <span class="doc-label">Licencia de conducción</span>
+              <input type="file" accept="image/*,application/pdf" class="doc-file">
+              <img class="doc-preview" style="display:none;">
+              <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
+              <button type="button" class="doc-remove" style="display:none;">Quitar</button>
+            </div>
+            <div class="doc-upload" data-doc="SoatTecno">
+              <span class="doc-label">SOAT y tecnomecánica</span>
+              <input type="file" accept="image/*,application/pdf" class="doc-file">
+              <img class="doc-preview" style="display:none;">
+              <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
+              <button type="button" class="doc-remove" style="display:none;">Quitar</button>
+            </div>
+            <div class="doc-upload" data-doc="Poliza">
+              <span class="doc-label">Póliza del vehículo</span>
+              <input type="file" accept="image/*,application/pdf" class="doc-file">
+              <img class="doc-preview" style="display:none;">
+              <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
+              <button type="button" class="doc-remove" style="display:none;">Quitar</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div class="field span2 campo-nomina">
         <button type="button" class="btn ghost small" id="toggleBeneficiariosBtn">+ Agregar beneficiario</button>
         <div id="beneficiariosSection" class="beneficiarios-section" style="display:none;">
@@ -1808,6 +1864,14 @@
     <h2>Respaldos automáticos</h2>
     <div class="modal-sub" id="rbSub"></div>
     <div id="rbCuerpo" class="ay-cuerpo"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayVencimientos">
+  <div class="modal" style="max-width:620px;">
+    <h2>Vencimientos de licencia, SOAT, tecnomecánica y póliza</h2>
+    <div class="modal-sub" id="veSub"></div>
+    <div id="veCuerpo" class="ay-cuerpo"></div>
     <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
   </div>
 </div>
@@ -2372,6 +2436,9 @@ let columnasRecargo = (() => { try{ return localStorage.getItem(COLUMNAS_RECARGO
 // ¿La base ya tiene "ultimo_recordatorio"? (para no enviar el mismo recordatorio dos veces)
 const COLUMNAS_RECORDATORIO_KEY = "prosegurosnet_columnas_recordatorio";
 let columnasRecordatorio = (() => { try{ return localStorage.getItem(COLUMNAS_RECORDATORIO_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene los datos del vehículo (placa y vencimientos)?
+const COLUMNAS_VEHICULO_KEY = "prosegurosnet_columnas_vehiculo";
+let columnasVehiculo = (() => { try{ return localStorage.getItem(COLUMNAS_VEHICULO_KEY) === "1"; }catch(e){ return false; } })();
 async function detectarColumnasConfirmacion(){
   try{
     const { error } = await sb.from("clients").select("estado_arl,en_proceso_desde").limit(1);
@@ -2394,6 +2461,13 @@ async function detectarColumnasConfirmacion(){
       if (/ultimo_recordatorio|column|schema cache/i.test(String(error.message || ""))) columnasRecordatorio = false;
     } else columnasRecordatorio = true;
     try{ localStorage.setItem(COLUMNAS_RECORDATORIO_KEY, columnasRecordatorio ? "1" : "0"); }catch(e){}
+  }catch(e){}
+  try{
+    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,avisos_vencimiento").limit(1);
+    if (error){
+      if (/placa|venc_|avisos_vencimiento|column|schema cache/i.test(String(error.message || ""))) columnasVehiculo = false;
+    } else columnasVehiculo = true;
+    try{ localStorage.setItem(COLUMNAS_VEHICULO_KEY, columnasVehiculo ? "1" : "0"); }catch(e){}
   }catch(e){}
   try{
     const { error } = await sb.from("clients").select("lugar_trabajo").limit(1);
@@ -2454,6 +2528,14 @@ function esRecordToDbRow(r, monthId){
     } : {}),
     ...(columnasLugar ? { lugar_trabajo: r["Lugar Trabajo"] || "" } : {}),
     ...(columnasRecordatorio ? { ultimo_recordatorio: r["Último Recordatorio"] || null } : {}),
+    ...(columnasVehiculo ? {
+      placa: r["Placa"] || "",
+      venc_licencia: r["Vence Licencia"] || null,
+      venc_soat: r["Vence SOAT"] || null,
+      venc_tecno: r["Vence Tecno"] || null,
+      venc_poliza: r["Vence Póliza"] || null,
+      avisos_vencimiento: r["Avisos Vencimiento"] && typeof r["Avisos Vencimiento"] === "object" ? r["Avisos Vencimiento"] : {},
+    } : {}),
     ...(columnasRecargo ? {
       recargo_mora: r["Recargo Mora"] === "" || r["Recargo Mora"] == null ? null : Number(r["Recargo Mora"]),
     } : {}),
@@ -2499,6 +2581,12 @@ function dbRowToEsRecord(row){
     "Recargo Mora": row.recargo_mora == null ? "" : row.recargo_mora,
     "Lugar Trabajo": row.lugar_trabajo || "",
     "Último Recordatorio": row.ultimo_recordatorio || "",
+    "Placa": row.placa || "",
+    "Vence Licencia": row.venc_licencia || "",
+    "Vence SOAT": row.venc_soat || "",
+    "Vence Tecno": row.venc_tecno || "",
+    "Vence Póliza": row.venc_poliza || "",
+    "Avisos Vencimiento": row.avisos_vencimiento && typeof row.avisos_vencimiento === "object" ? row.avisos_vencimiento : {},
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
   };
@@ -2764,7 +2852,7 @@ document.addEventListener("visibilitychange", () => {
 // En este equipo solo se guardan los documentos que todavía NO están en la nube (para no perderlos
 // sin internet). Antes se guardaban todos como texto dentro de la copia local y el navegador se llenaba
 // ("No se pudo guardar: el almacenamiento del navegador está lleno").
-const CAMPO_A_TIPO_DOC = { "Imagen Cedula": "cedula", "Imagen Eps": "eps", "Imagen Afp": "afp", "Imagen Caja": "caja", "Imagen Arl": "arl", "Imagen PlanillaPagada": "planilla_pagada", "Imagen ComprobantePago": "comprobante_pago" };
+const CAMPO_A_TIPO_DOC = { "Imagen Cedula": "cedula", "Imagen Eps": "eps", "Imagen Afp": "afp", "Imagen Caja": "caja", "Imagen Arl": "arl", "Imagen PlanillaPagada": "planilla_pagada", "Imagen ComprobantePago": "comprobante_pago", "Imagen Licencia": "licencia", "Imagen SoatTecno": "soat_tecno", "Imagen Poliza": "poliza" };
 let docsEnNube = null; // Set "cedula|tipo"; null = todavía no se sabe (entonces no se quita nada)
 function claveDocNube(cedula, tipo){ return `${String(cedula || "").trim()}|${tipo}`; }
 function serializarStore(){
@@ -3115,6 +3203,8 @@ function firmaClienteCanonica(texto){
     if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
+    ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
+    if (o && (o.avisos_vencimiento == null || (typeof o.avisos_vencimiento === "object" && !Object.keys(o.avisos_vencimiento).length))) delete o.avisos_vencimiento;
     return JSON.stringify(o);
   }catch(e){ return texto; }
 }
@@ -3514,7 +3604,7 @@ let store = loadStore();
 let records = (store.currentMonth && store.months[store.currentMonth]) || [];
 let activeCedula = null;
 let documentosParaVer = [];
-const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla pagada", comprobante_pago: "Comprobante de pago" };
+const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla pagada", comprobante_pago: "Comprobante de pago", licencia: "Licencia de conducción", soat_tecno: "SOAT y tecnomecánica", poliza: "Póliza del vehículo" };
 let consultaDocsNube = 0;
 function fechaCortaDoc(iso){
   if (!iso) return "";
@@ -5520,6 +5610,7 @@ function renderList(filterText){
   }
   asegurarSoportesRetiro();
   mostrarHoySiToca();
+  try{ const nv = clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)).length, vb = document.getElementById("vencBadge"); vb.textContent = nv; vb.style.display = nv ? "inline-flex" : "none"; }catch(e){}
   totalCount.textContent = records.length + " registros";
   renderMonthTotal();
   renderStatsStrip();
@@ -5778,7 +5869,7 @@ function showBreakdown(cedula){
   };
 
   const thumbs = [];
-  [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"], ["Imagen ComprobantePago","Comprobante de pago"]].forEach(([campo, etiqueta]) => {
+  [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"], ["Imagen ComprobantePago","Comprobante de pago"], ["Imagen Licencia","Licencia de conducción"], ["Imagen SoatTecno","SOAT y tecnomecánica"], ["Imagen Poliza","Póliza del vehículo"]].forEach(([campo, etiqueta]) => {
     if (r[campo]) thumbs.push(armarDocumento(r[campo], etiqueta));
   });
   if (Array.isArray(r["Beneficiarios"])){
@@ -5789,7 +5880,7 @@ function showBreakdown(cedula){
   document.getElementById("bDocThumbs").innerHTML = thumbs.join("");
   // Además de los documentos guardados en este equipo, se traen siempre los que están
   // en la nube (así se ven desde cualquier computador o después de recargar la app).
-  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"],["Imagen ComprobantePago","comprobante_pago"]]
+  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"],["Imagen ComprobantePago","comprobante_pago"],["Imagen Licencia","licencia"],["Imagen SoatTecno","soat_tecno"],["Imagen Poliza","poliza"]]
     .filter(([campo]) => r[campo]).map(([, tipo]) => tipo));
   agregarDocumentosDeLaNube(r["Cédula"], tiposLocales);
 
@@ -6995,6 +7086,13 @@ function openModal(record){
     : (getField("EstadoCaja").value === "Sin Caja" ? "" : CAJA_DEFAULT);
   getField("Obs").value = record ? record["Observación"] || "" : "";
   getField("Recordatorio").value = record ? record["Recordatorio"] || "" : "";
+  getField("Placa").value = record ? record["Placa"] || "" : "";
+  getField("VenceLicencia").value = record ? record["Vence Licencia"] || "" : "";
+  getField("VenceSoat").value = record ? record["Vence SOAT"] || "" : "";
+  getField("VenceTecno").value = record ? record["Vence Tecno"] || "" : "";
+  getField("VencePoliza").value = record ? record["Vence Póliza"] || "" : "";
+  { const tiene = record && (record["Placa"] || record["Vence Licencia"] || record["Vence SOAT"] || record["Vence Tecno"] || record["Vence Póliza"] || record["Imagen Licencia"] || record["Imagen SoatTecno"] || record["Imagen Poliza"]);
+    document.getElementById("vehiculoSeccion").open = !!tiene; }
 
   cargarBeneficiarios(record ? record["Beneficiarios"] : null);
   cargarDocImagenes(record);
@@ -7063,7 +7161,7 @@ const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn")
 // Comprime una imagen antes de guardarla (máx. 1000px de lado, calidad 0.72) para no llenar
 // el almacenamiento del navegador. Los PDF no se pueden comprimir así, se guardan tal cual.
 // ---- PDF → imagen (documentos de identificación y afiliación) ----
-const DOCS_PDF_A_IMAGEN = new Set(["Cedula", "Eps", "Afp", "Caja", "Arl"]);
+const DOCS_PDF_A_IMAGEN = new Set(["Cedula", "Eps", "Afp", "Caja", "Arl", "Licencia", "SoatTecno", "Poliza"]);
 const MAX_PAGINAS_PDF_A_IMAGEN = 6;
 function tamanoLegible(bytes){
   if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1).replace(".", ",") + " MB";
@@ -7263,11 +7361,11 @@ function leerBeneficiarios(){
 }
 
 /* ---- Fotos/PDF de documentos (Cédula, EPS, Fondo de pensión, Caja, Planilla pagada) ---- */
-const docImagenes = { Cedula: null, Eps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null, ComprobantePago: null };
+const docImagenes = { Cedula: null, Eps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null, ComprobantePago: null, Licencia: null, SoatTecno: null, Poliza: null };
 // Marca qué documentos cambió el usuario en esta edición, para solo subir a la nube esos
 // (y no volver a subir cada vez los que ya estaban igual).
 let docImagenesCambiados = {};
-const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada", ComprobantePago: "comprobante_pago" };
+const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada", ComprobantePago: "comprobante_pago", Licencia: "licencia", SoatTecno: "soat_tecno", Poliza: "poliza" };
 
 function dataUrlToBlob(dataUrl){
   const [header, base64] = dataUrl.split(",");
@@ -7383,7 +7481,7 @@ async function marcarDocumentosEnNubeFormulario(cedula){
   let docs = [];
   try{ docs = await documentosDeLaNube(cedula); }catch(e){ return; }
   if (String(editingCedula) !== String(cedula)) return;
-  const PARTE = { cedula: "Cedula", eps: "Eps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada", comprobante_pago: "ComprobantePago" };
+  const PARTE = { cedula: "Cedula", eps: "Eps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada", comprobante_pago: "ComprobantePago", licencia: "Licencia", soat_tecno: "SoatTecno", poliza: "Poliza" };
   docs.forEach(d => {
     const box = document.querySelector(`.doc-upload[data-doc="${PARTE[d.tipo]}"]`);
     if (!box || !d.url) return;
@@ -7626,7 +7724,7 @@ getField("Resp").addEventListener("blur", () => revisarResponsableEscrito(true))
 function camposConfirmables(){
   return [...document.querySelectorAll("#overlay .form-grid > .field")].filter(f => {
     if (f.offsetParent === null) return false;
-    if (f.classList.contains("field-traslado")) return false;
+    if (f.classList.contains("field-traslado") || f.classList.contains("campo-opcional")) return false;
     if (f.querySelector('input[type="file"]') || f.querySelector("#beneficiariosSection")) return false;
     const c = controlDe(f);
     return !!c && c.tagName !== "SELECT";   // las listas siempre tienen una opción escogida
@@ -8165,6 +8263,14 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Imagen Arl": docImagenes.Arl,
     "Imagen PlanillaPagada": docImagenes.PlanillaPagada,
     "Imagen ComprobantePago": docImagenes.ComprobantePago,
+    "Imagen Licencia": docImagenes.Licencia,
+    "Imagen SoatTecno": docImagenes.SoatTecno,
+    "Imagen Poliza": docImagenes.Poliza,
+    "Placa": getField("Placa").value.trim().toUpperCase(),
+    "Vence Licencia": getField("VenceLicencia").value,
+    "Vence SOAT": getField("VenceSoat").value,
+    "Vence Tecno": getField("VenceTecno").value,
+    "Vence Póliza": getField("VencePoliza").value,
   };
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
@@ -10918,7 +11024,7 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
 /* ================= AYUDAS INTELIGENTES (19–24) ================= */
 function ayAbrir(id){ document.getElementById(id).classList.add("show"); }
 function ayCerrar(id){ document.getElementById(id).classList.remove("show"); }
-["overlayHoy","overlayEstadoCuenta","overlayRevision","overlayHistAtrasos","overlayRespaldos"].forEach(id => {
+["overlayHoy","overlayEstadoCuenta","overlayRevision","overlayHistAtrasos","overlayRespaldos","overlayVencimientos"].forEach(id => {
   const ov = document.getElementById(id);
   ov.addEventListener("click", (e) => { if (e.target === ov || e.target.closest("[data-ay-cerrar]")) ayCerrar(id); });
 });
@@ -10952,6 +11058,7 @@ function datosHoy(){
     recordatorios: records.filter(tieneRecordatorioVencido),
     consig: (Array.isArray(consignaciones) ? consignaciones : []).filter(c => c.estado === "pendiente"),
     problemas: problemasDeDatos().total,
+    vencen: clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)),
   };
 }
 function abrirHoy(){
@@ -10970,6 +11077,9 @@ function abrirHoy(){
   html += sec("📝 Tareas para hoy o vencidas", d.tareas.length, d.tareas.slice(0, 6).map(t => ayFila(escHtml(t.descripcion || "Tarea"), `${t.fecha ? t.fecha.split("-").reverse().join("/") : ""}${t.nombre ? " · " + escHtml(t.nombre) : ""}`, "", "")).join(""),
     d.tareas.length ? `<button type="button" class="btn small" data-hoy="tareas">Abrir tareas</button>` : "");
   html += sec("🔔 Recordatorios de clientes", d.recordatorios.length, lista(d.recordatorios, r => escHtml(r["Observación"] || "")));
+  html += sec("🚗 Licencias, SOAT, tecnomecánicas y pólizas por vencer (sin avisar)", d.vencen.length,
+    d.vencen.slice(0, 6).map(x => ayFila(escHtml(x.r["Nombre del Afiliado"]), x.docs.map(dd => `${escHtml(dd.nombre)} ${textoDias(dd)}`).join(" · "), x.r["Cédula"], "overlayHoy")).join(""),
+    d.vencen.length ? `<button type="button" class="btn small primary" data-hoy="vencen">Avisar</button>` : "");
   html += sec("🏦 Consignaciones por revisar", d.consig.length, `<p class="ay-txt">Llegaron pagos que hay que relacionar con un cliente.</p>`,
     d.consig.length ? `<button type="button" class="btn small" data-hoy="consig">Revisar</button>` : "");
   html += sec("🧹 Datos con problemas", d.problemas, `<p class="ay-txt">Cédulas repetidas, teléfonos mal escritos, nombres de EPS o empresas distintos, PAGO sin planilla.</p>`,
@@ -10987,6 +11097,7 @@ document.getElementById("hoyCuerpo").addEventListener("click", (e) => {
   else if (a === "tareas") document.getElementById("navTareasBtn").click();
   else if (a === "consig") document.getElementById("navConsigBtn").click();
   else if (a === "revision") abrirRevision();
+  else if (a === "vencen") abrirVencimientos();
 });
 document.getElementById("navHoyBtn").addEventListener("click", abrirHoy);
 // Se abre sola la primera vez del día en cada equipo (si hay algo pendiente)
@@ -10999,7 +11110,7 @@ function mostrarHoySiToca(){
     let visto = ""; try{ visto = localStorage.getItem(clave) || ""; }catch(e){}
     if (visto === fechaHoyISO() || document.querySelector(".overlay.show")) return;
     const d = datosHoy();
-    if (!(d.atrasados.length + d.retiros.length + d.afiliaciones.length + d.tareas.length + d.recordatorios.length + d.consig.length)) return;
+    if (!(d.vencen.length + d.atrasados.length + d.retiros.length + d.afiliaciones.length + d.tareas.length + d.recordatorios.length + d.consig.length)) return;
     try{ localStorage.setItem(clave, fechaHoyISO()); }catch(e){}
     abrirHoy();
   }, 4000);
@@ -11389,6 +11500,73 @@ async function leerCedulaDeImagen(fuente){
     setTimeout(() => aviso.remove(), 6000);
   }
 }
+
+/* ---------- 24. Vencimientos: licencia, SOAT, tecnomecánica y póliza ---------- */
+const DOCS_VENCEN = [
+  { k: "licencia", campo: "Vence Licencia", nombre: "licencia de conducción", art: "su", fem: true },
+  { k: "soat", campo: "Vence SOAT", nombre: "SOAT", art: "su", fem: false },
+  { k: "tecno", campo: "Vence Tecno", nombre: "revisión tecnomecánica", art: "su", fem: true },
+  { k: "poliza", campo: "Vence Póliza", nombre: "póliza del vehículo", art: "su", fem: true },
+];
+const DIAS_ANTES_VENCE = 30, DIAS_DESPUES_VENCE = 60;
+function diasHasta(iso){
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return Math.round((new Date(+m[1], +m[2] - 1, +m[3]) - hoy) / 86400000);
+}
+function fechaLarga(iso){ const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; }
+function vencimientosCliente(r){
+  return DOCS_VENCEN.map(d => ({ ...d, fecha: r[d.campo], dias: diasHasta(r[d.campo]) }))
+    .filter(x => x.dias !== null && x.dias <= DIAS_ANTES_VENCE && x.dias >= -DIAS_DESPUES_VENCE)
+    .map(x => { const av = (r["Avisos Vencimiento"] || {})[x.k]; return { ...x, avisado: av && av.venc === x.fecha ? av.enviado : "" }; });
+}
+function clientesPorVencer(){
+  return records.filter(r => !isRetiro(r)).map(r => ({ r, docs: vencimientosCliente(r) })).filter(x => x.docs.length)
+    .sort((a, b) => Math.min(...a.docs.map(d => d.dias)) - Math.min(...b.docs.map(d => d.dias)));
+}
+function textoDias(d){ return d.dias < 0 ? `venció hace ${-d.dias} día${d.dias === -1 ? "" : "s"}` : d.dias === 0 ? "vence hoy" : `vence en ${d.dias} día${d.dias === 1 ? "" : "s"}`; }
+function mensajeVencimiento(r, docs){
+  const nombre = nombrePropio(String(r["Nombre del Afiliado"] || "").split(" ").slice(0, 2).join(" "));
+  const placa = !!r["Placa"];
+  const lineas = docs.map(d => d.dias < 0
+    ? `• Su *${d.nombre}* venció el *${fechaLarga(d.fecha)}*.`
+    : `• Su *${d.nombre}* vence el *${fechaLarga(d.fecha)}*${d.dias <= 7 ? ` (${d.dias === 0 ? "hoy" : `en ${d.dias} día${d.dias === 1 ? "" : "s"}`})` : ""}.`);
+  const vencido = docs.some(d => d.dias < 0);
+  return `🛡️ *PROSEGUROSNET*\n¡Hola, ${nombre}! 👋\n\nLe recordamos el estado de sus documentos${placa ? " (vehículo de placa *" + r["Placa"] + "*)" : ""}:\n${lineas.join("\n")}\n\n`
+    + (vencido ? "Circular con documentos vencidos puede traerle multas e inmovilización. " : "Le avisamos con tiempo para que no le coja la fecha. ")
+    + `En *PROSEGUROSNET* le hacemos la renovación de forma rápida y segura.\n\n¿Quiere que le ayudemos con la renovación? Responda este mensaje y con gusto le atendemos. 🚗✅`;
+}
+function abrirVencimientos(){
+  const lista = clientesPorVencer();
+  abrirVencimientos._lista = lista;
+  document.getElementById("veSub").textContent = `${lista.length} cliente(s) con documentos que vencen en los próximos ${DIAS_ANTES_VENCE} días o ya vencidos.`;
+  document.getElementById("veCuerpo").innerHTML = lista.length ? lista.map((x, i) => {
+    const r = x.r, tel = String(r["Teléfono"] || "").replace(/\D/g, "");
+    const todosAvisados = x.docs.every(d => d.avisado);
+    return `<div class="ay-card ${x.docs.some(d => d.dias < 0) ? "ve-vencido" : ""}">
+      <div class="ay-card-h"><b>${escHtml(r["Nombre del Afiliado"])}</b>${r["Placa"] ? `<span class="ve-placa">${escHtml(r["Placa"])}</span>` : ""}</div>
+      ${x.docs.map(d => `<div class="ve-doc"><span>${d.k === "licencia" ? "🪪" : d.k === "poliza" ? "📄" : "🚗"} ${escHtml(d.nombre.charAt(0).toUpperCase() + d.nombre.slice(1))} · ${fechaLarga(d.fecha)}</span>
+        <span class="ve-dias ${d.dias < 0 ? "vencido" : d.dias <= 7 ? "pronto" : ""}">${textoDias(d)}</span>${d.avisado ? `<span class="ve-avisado">📨 avisado ${escHtml(fechaLarga(d.avisado))}</span>` : ""}</div>`).join("")}
+      <div class="ay-acciones">
+        <button type="button" class="btn small whatsapp" data-ve-enviar="${i}" ${tel ? "" : "disabled title='Sin teléfono'"}>📲 ${todosAvisados ? "Volver a avisar" : "Avisar por WhatsApp"}</button>
+        <button type="button" class="btn small ghost" data-ay-ced="${escHtml(r["Cédula"])}" data-ay-ov="overlayVencimientos">Ver cliente</button>
+      </div></div>`;
+  }).join("") : `<p class="ay-txt">No hay licencias, SOAT, tecnomecánicas ni pólizas por vencer. Para que aparezcan, ponga la fecha de vencimiento en Editar cliente → 🚗 Vehículo y licencia.</p>`;
+  ayAbrir("overlayVencimientos");
+}
+document.getElementById("veCuerpo").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ve-enviar]"); if (!b) return;
+  const x = (abrirVencimientos._lista || [])[+b.dataset.veEnviar]; if (!x) return;
+  const r = x.r;
+  if (!abrirWhatsappConMensaje(r["Teléfono"], mensajeVencimiento(r, x.docs))) return;
+  const hoy = fechaHoyISO(), av = { ...(r["Avisos Vencimiento"] || {}) };
+  x.docs.forEach(d => { av[d.k] = { venc: d.fecha, enviado: hoy }; });
+  r["Avisos Vencimiento"] = av; r["_ultimaEdicion"] = new Date().toISOString();
+  propagarAMesesPosteriores(r["Cédula"], { "Avisos Vencimiento": av }, false);
+  saveStore(); renderList(searchInput.value);
+  setTimeout(abrirVencimientos, 300);
+});
+document.getElementById("navVencimientosBtn").addEventListener("click", abrirVencimientos);
 </script>
 </body>
 </html>
