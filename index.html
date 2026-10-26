@@ -500,6 +500,7 @@
   .ay-pct.alto{ background:var(--retiro-bg); color:var(--retiro); }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .ocr-acc{ display:flex; gap:6px; }
+  .ocr-alerta{ color:var(--retiro); font-weight:600; }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
   .tag-resp-ret{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent); }
@@ -7499,6 +7500,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
         mostrarDocPreview(box, img.dataUrl);
         if (doc === "Cedula") leerCedulaDeImagen(img.dataUrl);
         if (["Licencia", "SoatTecno", "Poliza"].includes(doc)) leerDocumentoVehiculo(doc, img.dataUrl);
+        if (["Eps", "Arl", "Afp", "Caja"].includes(doc)) leerCertificadoAfiliacion(doc, img.dataUrl);
         showToast(`✅ Listo: pasó de ${tamanoLegible(file.size)} a ${tamanoLegible(img.bytes)}.`);
         return;
       }
@@ -7511,6 +7513,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     });
     if (doc === "Cedula" && /^image\//.test(file.type || "")) leerCedulaDeImagen(file); // se lee la foto original (más nítida)
     if (["Licencia", "SoatTecno", "Poliza"].includes(doc) && /^image\//.test(file.type || "")) leerDocumentoVehiculo(doc, file);
+    if (["Eps", "Arl", "Afp", "Caja"].includes(doc) && /^image\//.test(file.type || "")) leerCertificadoAfiliacion(doc, file);
   });
 
   removeBtn.addEventListener("click", async () => {
@@ -11795,6 +11798,104 @@ async function leerDocumentoVehiculo(doc, fuente){
     aviso.querySelector("[data-ocr-no]").onclick = () => aviso.remove();
   }catch(e){
     aviso.innerHTML = `No se pudo leer el documento (${escHtml(e.message || "error")}). Escriba la fecha a mano.`;
+    setTimeout(() => aviso.remove(), 7000);
+  }
+}
+
+/* ---------- Leer certificados de EPS, ARL, AFP y Caja y llenar el formulario ---------- */
+const NOMBRES_EPS = [["nueva eps", /nueva\s*e\.?p\.?s/], ["sos", /\bs\.?o\.?s\b|servicio\s+occidental/], ["salud total", /salud\s*total/], ["sura", /\bsura\b|suramericana/],
+  ["sanitas", /sanitas/], ["coosalud", /coosalud/], ["emssanar", /emssanar|emsanar/], ["mutual ser", /mutual\s*ser/], ["eps de la gente", /eps\s+de\s+la\s+gente/],
+  ["comfenalco valle", /comfenalco|confenalco/], ["mallamas", /mallamas/], ["compensar", /compensar/], ["famisanar", /famisanar/], ["asmet salud", /asmet/],
+  ["aliansalud", /aliansalud/], ["cajacopi", /cajacopi/], ["savia salud", /savia\s*salud/], ["capresoca", /capresoca/], ["pijaos salud", /pijaos/], ["anas wayuu", /anas\s*wayuu/], ["dusakawi", /dusakawi/]];
+const NOMBRES_AFP = [["porvenir", /porvenir/], ["colpensiones", /colpensiones/], ["proteccion", /protecci[oó]n/], ["colfondos", /colfondos/], ["skandia", /skandia|old\s*mutual/]];
+const NOMBRES_ARL = [["sura", /\bsura\b|suramericana/], ["positiva", /positiva/], ["colmena", /colmena/], ["bolivar", /bol[ií]var/], ["axa colpatria", /axa|colpatria/], ["equidad", /equidad/], ["alfa", /seguros\s+alfa|\balfa\b/], ["liberty", /liberty/], ["mapfre", /mapfre/]];
+const NOMBRES_CAJA = [["comfenalco valle", /comfenalco\s*valle|confenalco\s*valle|comfenalco/], ["comfandi", /comfandi/], ["compensar", /compensar/], ["cafam", /cafam/], ["colsubsidio", /colsubsidio/],
+  ["comfama", /comfama\b/], ["comfacauca", /comfacauca/], ["comfamiliar", /comfamiliar/], ["comfaoriente", /comfaoriente/], ["comfachoco", /comfachoc[oó]/], ["cajasan", /cajasan/], ["comfenalco antioquia", /comfenalco\s+antioquia/]];
+function buscarNombre(t, lista){ const n = t.toLowerCase(); const x = lista.find(([, re]) => re.test(n)); return x ? x[0] : ""; }
+function cedulaEnCertificado(t){
+  const m = t.match(/(?:C\.?\s?C\.?|c[eé]dula(?:\s+de\s+ciudadan[ií]a)?|identificaci[oó]n|documento|n[uú]mero\s+de\s+documento)[^\d]{0,25}(\d{1,3}(?:[.,]\d{3}){1,3}|\d{6,10})/i);
+  const c = m ? m[1].replace(/\D/g, "") : "";
+  return c.length >= 6 && c.length <= 10 ? c : "";
+}
+// Fecha que sigue a las palabras dadas (fecha de afiliación, de ingreso, inicio de cobertura…)
+function fechaTrasClave(t, re){
+  const fechas = fechasEnTexto(t);
+  let m; const r = new RegExp(re.source, "gi");
+  while ((m = r.exec(t))){ const f = fechas.find(x => x.i >= m.index && x.i - m.index < 80); if (f) return f.iso; }
+  return "";
+}
+function datosCertificado(doc, texto){
+  const t = String(texto || "").replace(/[ \t]+/g, " ");
+  const d = { cedula: cedulaEnCertificado(t) };
+  if (doc === "Eps"){
+    d.eps = buscarNombre(t, NOMBRES_EPS);
+    d.fechaIngreso = fechaTrasClave(t, /fecha\s+de\s+(?:afiliaci[oó]n|ingreso|inicio)|afiliad[oa]\s+desde|fecha\s+afiliaci[oó]n|inicio\s+de\s+(?:la\s+)?afiliaci[oó]n/);
+    d.activo = /\bactiv[oa]\b/i.test(t);
+  } else if (doc === "Arl"){
+    d.arl = buscarNombre(t, NOMBRES_ARL);
+    const n = t.match(/(?:clase|nivel)\s+(?:de\s+)?riesgo[^\dIV]{0,10}([1-5]|I{1,3}|IV|V)\b/i) || t.match(/riesgo[^\dIV]{0,6}([1-5]|I{1,3}|IV|V)\b/i);
+    if (n){ const v = n[1].toUpperCase(); d.nivel = { I: "1", II: "2", III: "3", IV: "4", V: "5" }[v] || v; }
+    const a = t.match(/actividad(?:\s+econ[oó]mica)?[^\d]{0,30}(\d{4,7})/i);
+    d.actividad = a ? a[1] : "";
+  } else if (doc === "Afp"){
+    d.afp = buscarNombre(t, NOMBRES_AFP);
+  } else if (doc === "Caja"){
+    d.caja = buscarNombre(t, NOMBRES_CAJA);
+  }
+  return d;
+}
+function ponerCampo(id, valor){
+  const c = document.getElementById(id);
+  if (!c || !valor || c.disabled) return false;
+  c.value = valor;
+  c.dispatchEvent(new Event("input", { bubbles: true })); c.dispatchEvent(new Event("change", { bubbles: true }));
+  const f = c.closest(".field"); if (f) f.classList.remove("falta");
+  return true;
+}
+async function leerCertificadoAfiliacion(doc, fuente){
+  const caja = document.querySelector(`.doc-upload[data-doc="${doc}"]`);
+  if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
+  let aviso = caja.querySelector(".ocr-aviso");
+  if (!aviso){ aviso = document.createElement("div"); aviso.className = "ocr-aviso"; caja.appendChild(aviso); }
+  aviso.innerHTML = "🔎 Leyendo el certificado…";
+  try{
+    const T = await cargarTesseract();
+    const { data } = await T.recognize(fuente, "spa");
+    const d = datosCertificado(doc, data && data.text);
+    const arlTexto = d.nivel || d.arl || d.actividad ? [d.arl, d.nivel ? `riesgo ${d.nivel}` : "", d.actividad ? `ac ${d.actividad}` : ""].filter(Boolean).join(" ") : "";
+    const filas = [
+      d.cedula && ["Cédula", d.cedula],
+      d.eps && ["EPS", d.eps.toUpperCase()],
+      d.fechaIngreso && ["Fecha de ingreso", fechaLarga(d.fechaIngreso)],
+      arlTexto && ["ARL (actividad)", arlTexto],
+      d.nivel && ["Nivel de riesgo", d.nivel],
+      d.afp && ["AFP", d.afp.toUpperCase()],
+      d.caja && ["Caja", d.caja.toUpperCase()],
+    ].filter(Boolean);
+    if (!filas.length){ aviso.innerHTML = "No encontré datos en el certificado. Llénelos a mano."; setTimeout(() => aviso.remove(), 7000); return; }
+    const cedForm = getField("Cedula").value.trim();
+    const otraCedula = d.cedula && cedForm && d.cedula !== cedForm;
+    aviso.innerHTML = `<div>🔎 <b>Leí en el certificado:</b>${filas.map(([k, v]) => `<br>${k}: <b>${escHtml(v)}</b>`).join("")}</div>
+      ${otraCedula ? `<div class="ocr-alerta">⚠️ La cédula del certificado (${escHtml(d.cedula)}) no es la misma del formulario (${escHtml(cedForm)}). Revise que sea el documento de este cliente.</div>` : ""}
+      <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Llenar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
+      <small>Solo se llenan estos recuadros; lo demás queda para llenarlo a mano.</small>`;
+    aviso.querySelector("[data-ocr-usar]").onclick = () => {
+      let n = 0;
+      if (d.cedula && !cedForm && ponerCampo("fCedula", d.cedula)) n++;
+      if (d.eps && ponerCampo("fEps", d.eps)) n++;
+      if (d.eps && d.activo) ponerCampo("fEstadoEps", "aceptado");
+      if (d.fechaIngreso && ponerCampo("fFechaIngreso", d.fechaIngreso)) n++;
+      if (arlTexto && ponerCampo("fArl", arlTexto)) n++;
+      if (d.nivel && ponerCampo("fArlNivel", d.nivel)) n++;
+      if (d.afp){ if (ponerCampo("fAfp", d.afp)) n++; ponerCampo("fEstadoAfp", "Activo"); }
+      if (d.caja){ if (ponerCampo("fCaja", d.caja)) n++; ponerCampo("fEstadoCaja", "Activo"); }
+      aviso.remove();
+      if (typeof actualizarFaltantes === "function") actualizarFaltantes(false);
+      showToast(`✅ ${n} recuadro(s) llenados con el certificado. Revíselos.`);
+    };
+    aviso.querySelector("[data-ocr-no]").onclick = () => aviso.remove();
+  }catch(e){
+    aviso.innerHTML = `No se pudo leer el certificado (${escHtml(e.message || "error")}). Llene los datos a mano.`;
     setTimeout(() => aviso.remove(), 7000);
   }
 }

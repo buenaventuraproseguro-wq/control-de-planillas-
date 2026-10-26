@@ -37,6 +37,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Respaldo semanal: tabla `respaldos` (solo admin la ve), función `crear_respaldo`, pg_cron lunes 04:00 UTC; guarda las 8 últimas. No incluye fotos/PDF.
 - Vehículo y licencia (Editar cliente, sección opcional): placa, vencimientos de licencia, SOAT, tecnomecánica y póliza + fotos/PDF (licencia, SOAT y tecno juntos, póliza; el PDF se guarda como imagen). Menú 24 "Vencimientos": desde 30 días antes y hasta 60 después, con mensaje de WhatsApp de la empresa; queda marcado "avisado". También sale en "Hoy".
 - Muelles independientes (Actualización de Muelles): fecha de vencimiento por cada muelle (venc_por_muelle: Sociedad, TC Buen, Agua Dulce), planilla y comprobante de su empresa (PDF→imagen) y sección de vehículo/licencia; avisos en "Vencimientos" y "Hoy".
+- Certificados EPS/ARL/AFP/Caja en Agregar/Editar cliente: la app lee cédula, EPS, fecha de afiliación (→ fecha de ingreso), ARL (nivel y actividad), AFP y caja; pregunta "Llenar estos datos" y avisa si la cédula no coincide.
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
