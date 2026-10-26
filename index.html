@@ -462,6 +462,8 @@
   .vehiculo-seccion[open]{ border-style:solid; border-color:var(--navy); }
   .vehiculo-seccion summary{ cursor:pointer; font-weight:700; font-size:13.5px; color:var(--titulo); }
   .field[hidden], .doc-upload[hidden]{ display:none !important; }
+  .ms-ced-archivo{ border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:var(--radius); padding:8px 10px; }
+  .ms-ced-prev{ max-width:220px; max-height:140px; border-radius:8px; border:1px solid var(--line); margin-top:6px; object-fit:contain; }
   .muelles-serv-caja{ border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; }
   .muelles-serv-caja b{ font-size:13.5px; color:var(--titulo); }
   .vehiculo-seccion{ min-width:0; }
@@ -1779,10 +1781,16 @@
     </div>
     <form id="msForm" autocomplete="off">
       <div class="form-grid">
+        <div class="field span2 ms-ced-archivo" style="grid-column:1/-1;"><label for="msCedulaArchivo">1. Primero suba la cédula (foto o PDF) *</label>
+          <input id="msCedulaArchivo" type="file" accept="image/*,application/pdf">
+          <small class="vehiculo-ayuda">El PDF se guarda como imagen. La app lee el número y el nombre para evitar errores al escribirlos.</small>
+          <img id="msCedulaPrev" class="ms-ced-prev" alt="" hidden>
+          <div id="msCedulaAviso"></div>
+        </div>
         <div class="field"><label>Cédula</label><input id="msCedula" type="text" inputmode="numeric" maxlength="12" required></div>
         <div class="field"><label>Nombre</label><input id="msNombre" type="text" maxlength="120" required></div>
         <div class="field"><label>Valor del servicio</label><input id="msValor" type="number" min="0" step="1" inputmode="numeric" required></div>
-        <div class="field"><label>Teléfono (opcional)</label><input id="msTelefono" type="tel" inputmode="tel"></div>
+        <div class="field"><label for="msTelefono">Teléfono (10 dígitos) *</label><input id="msTelefono" type="tel" inputmode="tel" required></div>
         <div class="field span2" style="grid-column:1/-1;"><label>Fecha que dio cada muelle (opcional)</label>
           <div class="vehiculo-grid" id="msVenceGrid">
             <div class="field"><label for="msVence0">Sociedad vence</label><input id="msVence0" type="date" data-muelle="Sociedad"></div>
@@ -3933,7 +3941,7 @@ function aplicarVisibilidadNomina(){
   document.getElementById("muellesSeccion").hidden = !esMuellesServ;
   const docsCampo = document.getElementById("docsCampo");
   if (esMuellesServ) docsCampo.classList.remove("oculto");
-  docsCampo.querySelectorAll(".doc-upload").forEach(b => { b.hidden = esMuellesServ && !["PlanillaPagada", "ComprobantePago"].includes(b.dataset.doc); });
+  docsCampo.querySelectorAll(".doc-upload").forEach(b => { b.hidden = esMuellesServ && !["Cedula", "PlanillaPagada", "ComprobantePago"].includes(b.dataset.doc); });
 
   const estadoActual = getField("Estado").value;
   document.getElementById("optgroupNomina").disabled = esConductores;
@@ -7481,7 +7489,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     if (!file) return;
     // Documentos de identificación y afiliación en PDF: se convierten a imagen para que pesen poco.
     // La planilla y el comprobante se dejan en PDF (la app lee su texto).
-    const muellesServ = esServicioMuelles({ "Empresa": getField("Empresa").value }) && (doc === "PlanillaPagada" || doc === "ComprobantePago");
+    const muellesServ = esServicioMuelles({ "Empresa": getField("Empresa").value }) && (doc === "Cedula" || doc === "PlanillaPagada" || doc === "ComprobantePago");
     if ((DOCS_PDF_A_IMAGEN.has(doc) || muellesServ) && esPdfArchivo(file)){
       showToast("Convirtiendo el PDF a imagen para que pese menos…");
       const img = await convertirPdfAImagen(file);
@@ -9703,9 +9711,63 @@ document.getElementById("cerrarMuellesServicioBtn").addEventListener("click", ce
 document.getElementById("overlayMuellesServicio").addEventListener("click", (e) => {
   if (e.target.id === "overlayMuellesServicio") cerrarMuellesServicio();
 });
+// Cédula primero (Muelles independientes): PDF → imagen, y se leen número y nombre
+let msCedulaImg = null;
+function limpiarCedulaMs(){
+  msCedulaImg = null;
+  const prev = document.getElementById("msCedulaPrev"); prev.hidden = true; prev.removeAttribute("src");
+  document.getElementById("msCedulaAviso").innerHTML = "";
+  document.getElementById("msCedulaArchivo").value = "";
+}
+document.getElementById("msCedulaArchivo").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const aviso = document.getElementById("msCedulaAviso");
+  let dataUrl = null;
+  if (esPdfArchivo(file)){
+    aviso.innerHTML = `<div class="ocr-aviso">Convirtiendo el PDF a imagen…</div>`;
+    const img = await convertirPdfAImagen(file);
+    if (!img){ aviso.innerHTML = `<div class="ocr-aviso">No se pudo convertir el PDF (sin internet o protegido). Suba una foto de la cédula.</div>`; e.target.value = ""; return; }
+    dataUrl = img.dataUrl;
+  } else {
+    dataUrl = await new Promise(res => comprimirImagen(file, res));
+  }
+  msCedulaImg = dataUrl;
+  const prev = document.getElementById("msCedulaPrev"); prev.src = dataUrl; prev.hidden = false;
+  aviso.innerHTML = `<div class="ocr-aviso">🔎 Leyendo la cédula…</div>`;
+  try{
+    const T = await cargarTesseract();
+    const { data } = await T.recognize(esPdfArchivo(file) ? dataUrl : file, "spa");
+    const d = datosDeTextoCedula(data && data.text);
+    if (!d.cedula && !d.nombre){ aviso.innerHTML = `<div class="ocr-aviso">No pude leer los datos. Escríbalos a mano.</div>`; return; }
+    aviso.innerHTML = `<div class="ocr-aviso"><div>🔎 <b>Leí en la cédula:</b>${d.cedula ? `<br>Cédula: <b>${escHtml(d.cedula)}</b>` : ""}${d.nombre ? `<br>Nombre: <b>${escHtml(d.nombre)}</b>` : ""}</div>
+      <div class="ocr-acc"><button type="button" class="btn small primary" id="msOcrUsar">Usar estos datos</button><button type="button" class="btn small ghost" id="msOcrNo">No</button></div></div>`;
+    document.getElementById("msOcrUsar").onclick = () => {
+      if (d.cedula) document.getElementById("msCedula").value = d.cedula;
+      if (d.nombre) document.getElementById("msNombre").value = d.nombre;
+      aviso.innerHTML = ""; showToast("✅ Datos puestos. Revíselos.");
+    };
+    document.getElementById("msOcrNo").onclick = () => { aviso.innerHTML = ""; };
+  }catch(err){ aviso.innerHTML = `<div class="ocr-aviso">No se pudo leer la cédula. Escriba los datos a mano.</div>`; }
+});
+document.getElementById("msTelefono").addEventListener("input", (e) => {
+  const n = telefonoDiezDigitos(e.target.value).length;
+  e.target.classList.toggle("campo-error", n > 0 && n !== 10);
+});
+async function subirCedulaMuelles(cedula, dataUrl){
+  if (!cloudDb || !dataUrl || !navigator.onLine) return;
+  try{
+    const blob = dataUrlToBlob(dataUrl), path = `${cedula}/cedula`;
+    const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
+    if (upErr) throw upErr;
+    const { error } = await sb.from("documentos").upsert({ cedula, tipo: "cedula", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() }, { onConflict: "cedula,tipo" });
+    if (error) throw error;
+    (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, "cedula"));
+  }catch(e){ showToast("La cédula quedó solo en este equipo: no se pudo subir a la nube."); }
+}
 document.getElementById("msNuevoBtn").addEventListener("click", () => {
   const f = document.getElementById("msForm");
   f.reset();
+  limpiarCedulaMs();
   f.classList.add("show");
   document.getElementById("msCedula").focus();
 });
@@ -9718,8 +9780,9 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
   const valorTxt = document.getElementById("msValor").value;
   if (cedula.length < 6 || cedula.length > 12){ showToast("La cédula debe tener entre 6 y 12 números."); return; }
   if (!nombre){ showToast("Escribe el nombre."); return; }
+  if (!msCedulaImg){ showToast("⚠️ Primero suba la foto o el PDF de la cédula."); document.getElementById("msCedulaArchivo").focus(); return; }
   { const t = telefonoDiezDigitos(document.getElementById("msTelefono").value);
-    if (t && t.length !== 10){ showToast(`⚠️ El teléfono debe tener 10 dígitos (tiene ${t.length}).`); return; } }
+    if (t.length !== 10){ document.getElementById("msTelefono").classList.add("campo-error"); document.getElementById("msTelefono").focus(); showToast(`⚠️ El teléfono debe tener 10 dígitos (tiene ${t.length}).`); return; } }
   if (valorTxt === "" || !(Number(valorTxt) >= 0)){ showToast("Escribe el valor del servicio."); return; }
   const existente = records.find(x => String(x["Cédula"]) === cedula);
   if (existente){
@@ -9740,6 +9803,7 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
     "AceptadoPorMuelle": {},
     "Teléfono": telefonoDiezDigitos(document.getElementById("msTelefono").value),
     "Vence Por Muelle": venceMuellesDe("#msVenceGrid"),
+    "Imagen Cedula": msCedulaImg,
     "Beneficiarios": [],
   };
   records.push(nuevo);
@@ -9750,6 +9814,8 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
     return;
   }
   document.getElementById("msForm").classList.remove("show");
+  subirCedulaMuelles(cedula, msCedulaImg);
+  limpiarCedulaMs();
   renderMuellesServicio();
   renderList(searchInput.value);
   showToast(`✅ ${nombre} agregado a Muelles · otras empresas.`);
