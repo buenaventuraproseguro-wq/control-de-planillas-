@@ -462,6 +462,8 @@
   .vehiculo-seccion[open]{ border-style:solid; border-color:var(--navy); }
   .vehiculo-seccion summary{ cursor:pointer; font-weight:700; font-size:13.5px; color:var(--titulo); }
   .field[hidden], .doc-upload[hidden]{ display:none !important; }
+  .rm-vista img{ width:100%; max-width:440px; display:block; margin:0 auto; border:1px solid var(--line); border-radius:var(--radius); }
+  #overlayReciboMuelles{ z-index:75; }
   .ms-ced-archivo{ border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:var(--radius); padding:8px 10px; }
   .ms-ced-prev{ max-width:220px; max-height:140px; border-radius:8px; border:1px solid var(--line); margin-top:6px; object-fit:contain; }
   .muelles-serv-caja{ border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; }
@@ -1906,6 +1908,18 @@
     <div class="modal-sub" id="veSub"></div>
     <div id="veCuerpo" class="ay-cuerpo"></div>
     <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayReciboMuelles">
+  <div class="modal" style="max-width:560px;">
+    <h2>🧾 Recibo · Actualización en muelles</h2>
+    <div class="modal-sub" id="rmSub"></div>
+    <div id="rmVista" class="rm-vista"></div>
+    <div class="ay-acciones" style="justify-content:flex-end; margin-top:12px;">
+      <button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button>
+      <button type="button" class="btn" id="rmBajarBtn">⬇️ Descargar</button>
+      <button type="button" class="btn whatsapp" id="rmEnviarBtn">📲 Enviar por WhatsApp</button>
+    </div>
   </div>
 </div>
 <div id="reciboImprimir" class="recibo-imprimir">
@@ -9694,6 +9708,7 @@ function renderMuellesServicio(){
       <div class="ms-pago">
         <span class="estado ${pagado ? "PAGO_CONDUCTOR" : "DEBE"}">${pagado ? "PAGO" : "DEBE"}</span>
         <button type="button" class="btn ghost small" data-ms-pago="1">${pagado ? "Deshacer" : "✅ Pagó"}</button>
+        <button type="button" class="btn small" data-ms-recibo="1" title="Recibo para el cliente">🧾 Recibo</button>
       </div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
     </div>`;
@@ -9850,6 +9865,7 @@ document.getElementById("listaMuellesServicio").addEventListener("click", (e) =>
     renderList(searchInput.value);
     return;
   }
+  if (e.target.closest("[data-ms-recibo]")){ abrirReciboMuelles(r); return; }
   if (e.target.closest("[data-ms-abrir]")){
     cerrarMuellesServicio();
     showBreakdown(r["Cédula"]);
@@ -11139,7 +11155,7 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
 /* ================= AYUDAS INTELIGENTES (19–24) ================= */
 function ayAbrir(id){ document.getElementById(id).classList.add("show"); }
 function ayCerrar(id){ document.getElementById(id).classList.remove("show"); }
-["overlayHoy","overlayEstadoCuenta","overlayRevision","overlayHistAtrasos","overlayRespaldos","overlayVencimientos"].forEach(id => {
+["overlayHoy","overlayEstadoCuenta","overlayRevision","overlayHistAtrasos","overlayRespaldos","overlayVencimientos","overlayReciboMuelles"].forEach(id => {
   const ov = document.getElementById(id);
   ov.addEventListener("click", (e) => { if (e.target === ov || e.target.closest("[data-ay-cerrar]")) ayCerrar(id); });
 });
@@ -11899,6 +11915,90 @@ async function leerCertificadoAfiliacion(doc, fuente){
     setTimeout(() => aviso.remove(), 7000);
   }
 }
+
+/* ---------- Recibo para Muelles independientes ---------- */
+function numeroReciboMuelles(r){
+  const i = indiceMes(store.currentMonth) || 0;
+  return `MU-${Math.floor(i / 12)}${String(i % 12 + 1).padStart(2, "0")}-${String(r["No."] || 0).padStart(4, "0")}`;
+}
+async function imagenReciboMuelles(r, tipo = "image/png"){
+  const W = 1000, pad = 60;
+  const pagado = r["Estado Trámite"] === "PAGO CONDUCTOR";
+  const muellesOk = MUELLES_NOMBRES.filter(m => (r["AceptadoPorMuelle"] || {})[m]);
+  const vm = r["Vence Por Muelle"] || {};
+  const filas = [
+    ["Recibo No.", numeroReciboMuelles(r)],
+    ["Fecha", new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })],
+    ["Cliente", nombrePropio(r["Nombre del Afiliado"])],
+    ["Cédula", String(r["Cédula"])],
+    ["Servicio", "Actualización en los muelles"],
+    ["Mes", store.currentMonth],
+  ];
+  if (String(r["Responsable / Grupo"] || "").trim()) filas.push(["Empresa por la que paga", nombrePropio(r["Responsable / Grupo"])]);
+  if (r["Placa"]) filas.push(["Placa", r["Placa"]]);
+  const lineasMuelles = MUELLES_NOMBRES.map(m => `${m}: ${(r["AceptadoPorMuelle"] || {})[m] ? "actualizado ✓" : "pendiente"}${vm[m] ? ` · vence ${fechaLarga(vm[m])}` : ""}`);
+  const H = 250 + filas.length * 52 + 60 + lineasMuelles.length * 40 + 230;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#FFFFFF"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#C8202F"; c.fillRect(0, 0, W, 140);
+  c.fillStyle = "#FFFFFF"; c.textAlign = "left";
+  c.font = "800 50px Inter, Arial, sans-serif"; c.fillText("PROSEGUROSNET", pad, 78);
+  c.font = "500 24px Inter, Arial, sans-serif"; c.fillText("Recibo de pago · Actualización en muelles", pad, 116);
+  // sello de estado
+  c.save(); c.translate(W - pad - 150, 200); c.rotate(-0.12);
+  c.strokeStyle = pagado ? "#2F6F62" : "#B4934C"; c.lineWidth = 5; c.strokeRect(-110, -38, 220, 70);
+  c.fillStyle = pagado ? "#2F6F62" : "#8C6F33"; c.font = "800 34px Inter, Arial, sans-serif"; c.textAlign = "center";
+  c.fillText(pagado ? "PAGADO" : "PENDIENTE", 0, 10); c.restore();
+  let y = 200;
+  filas.forEach(([k, v]) => {
+    c.textAlign = "left"; c.fillStyle = "#7A7268"; c.font = "500 24px Inter, Arial, sans-serif"; c.fillText(k, pad, y);
+    c.fillStyle = "#181512"; c.font = "700 27px Inter, Arial, sans-serif"; c.fillText(String(v).slice(0, 38), pad + 300, y);
+    y += 52;
+  });
+  y += 10; c.fillStyle = "#EDE9E2"; c.fillRect(pad, y, W - 2 * pad, 2); y += 44;
+  c.fillStyle = "#181512"; c.font = "700 26px Inter, Arial, sans-serif"; c.fillText("Muelles", pad, y); y += 40;
+  lineasMuelles.forEach(l => { c.fillStyle = "#3A342E"; c.font = "500 24px Inter, Arial, sans-serif"; c.fillText("⚓ " + l, pad + 10, y); y += 40; });
+  y += 20;
+  c.fillStyle = pagado ? "#2F6F62" : "#C8202F"; c.fillRect(pad - 10, y, W - 2 * pad + 20, 90);
+  c.fillStyle = "#FFFFFF"; c.font = "800 34px Inter, Arial, sans-serif";
+  c.fillText(pagado ? "VALOR PAGADO" : "VALOR A PAGAR", pad + 10, y + 58);
+  c.textAlign = "right"; c.fillText(fmt(r["Costo Servicio"]), W - pad - 10, y + 58);
+  c.textAlign = "center"; c.fillStyle = "#7A7268"; c.font = "500 21px Inter, Arial, sans-serif";
+  c.fillText(pagado ? "Gracias por su pago." : `Pague por Bre-B con la llave ${LLAVE_BREB} y envíenos el comprobante.`, W / 2, y + 140);
+  c.fillText("PROSEGUROSNET · Buenaventura", W / 2, y + 172);
+  return await new Promise(res => cv.toBlob(res, tipo, 0.92));
+}
+let _reciboMuellesR = null;
+async function abrirReciboMuelles(r){
+  _reciboMuellesR = r;
+  document.getElementById("rmSub").textContent = `${nombrePropio(r["Nombre del Afiliado"])} · ${store.currentMonth} · ${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "pagado" : "pendiente de pago"}`;
+  document.getElementById("rmEnviarBtn").disabled = !String(r["Teléfono"] || "").replace(/\D/g, "");
+  const blob = await imagenReciboMuelles(r);
+  document.getElementById("rmVista").innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Recibo">`;
+  ayAbrir("overlayReciboMuelles");
+}
+document.getElementById("rmBajarBtn").addEventListener("click", async () => {
+  const r = _reciboMuellesR; if (!r) return;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(await imagenReciboMuelles(r));
+  a.download = `recibo_muelles_${String(r["Cédula"])}_${store.currentMonth.replace(/\s+/g, "_")}.png`;
+  document.body.appendChild(a); a.click(); a.remove();
+});
+document.getElementById("rmEnviarBtn").addEventListener("click", () => {
+  const r = _reciboMuellesR; if (!r) return;
+  const numero = String(r["Teléfono"] || "").replace(/\D/g, "");
+  if (!numero){ showToast("Esta persona no tiene teléfono guardado."); return; }
+  const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  const pagado = r["Estado Trámite"] === "PAGO CONDUCTOR";
+  let copiada = Promise.resolve(false);
+  try{ if (navigator.clipboard && window.ClipboardItem) copiada = navigator.clipboard.write([new ClipboardItem({ "image/png": imagenReciboMuelles(r) })]).then(() => true, () => false); }catch(e){}
+  const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(String(r["Nombre del Afiliado"]).split(" ").slice(0, 2).join(" "))}, le compartimos su recibo de la *actualización en los muelles* de ${store.currentMonth}: *${fmt(r["Costo Servicio"])}*${pagado ? " (pagado ✅)" : ""}.`;
+  copiada.then(ok => {
+    abrirChatEnApp(conIndicativo, esCelular, texto);
+    showToast(ok ? "📋 Envíe el mensaje y luego pegue el recibo (ya está copiado)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela.");
+  });
+});
 </script>
 </body>
 </html>
