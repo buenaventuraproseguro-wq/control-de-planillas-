@@ -11186,23 +11186,27 @@ document.getElementById("revCuerpo").addEventListener("click", async (e) => {
 document.getElementById("navRevisionBtn").addEventListener("click", abrirRevision);
 
 /* ---------- 6. Historial de atrasos ---------- */
-function historialAtrasos(maxMeses = 6){
-  const nombres = sortedMonthNames();
-  const iAct = nombres.indexOf(store.currentMonth);
-  const meses = nombres.slice(Math.max(0, (iAct < 0 ? nombres.length : iAct) - maxMeses), iAct < 0 ? nombres.length : iAct); // meses ya cerrados
+// Se cuenta desde Octubre de 2026 (inicio del control de atrasos) hasta el mes que se está viendo.
+const MES_INICIO_ATRASOS = "Octubre de 2026";
+function historialAtrasos(){
+  const desde = indiceMes(MES_INICIO_ATRASOS), hasta = indiceMes(store.currentMonth);
+  const meses = sortedMonthNames().filter(m => { const i = indiceMes(m); return i !== null && i >= desde && (hasta === null || i <= hasta); });
   const porCed = new Map();
   meses.forEach(mes => (store.months[mes] || []).forEach(r => {
     if (esConductorExcluido(r)) return;
     const ced = String(r["Cédula"] || "").trim(); if (!ced) return;
     const ec = estadoClass(r["Estado Trámite"]);
-    if (!porCed.has(ced)) porCed.set(ced, { ced, nombre: r["Nombre del Afiliado"], resp: limpiarEspacios(r["Responsable / Grupo"] || ""), empresa: r["Empresa"] || "", meses: 0, sinPagar: 0, mora: 0, ultimos: [] });
+    if (!porCed.has(ced)) porCed.set(ced, { ced, nombre: r["Nombre del Afiliado"], resp: limpiarEspacios(r["Responsable / Grupo"] || ""), empresa: r["Empresa"] || "", meses: 0, sinPagar: 0, mora: 0, atrasos: 0, ultimos: [] });
     const x = porCed.get(ced);
     x.nombre = r["Nombre del Afiliado"]; x.resp = limpiarEspacios(r["Responsable / Grupo"] || "") || x.resp; x.empresa = r["Empresa"] || x.empresa;
     if (ec === "AFILIACION" || ec === "SIN_INICIAR" || ec === "RETIRO") return;
     x.meses++;
-    const noPago = ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES";
+    // Mes en curso: solo cuenta como "no pagó" si ya pasó el día 16 (atrasado).
+    const enCurso = mes === mesActualReal();
+    const noPago = (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && (!enCurso || new Date().getDate() > 16);
     if (noPago) x.sinPagar++;
     if (numOrZero(r["Recargo Mora"]) > 0) x.mora++;
+    if (noPago || numOrZero(r["Recargo Mora"]) > 0) x.atrasos++; // un mes atrasado cuenta una sola vez
     x.ultimos.push(noPago ? "✗" : numOrZero(r["Recargo Mora"]) > 0 ? "⏰" : "✓");
   }));
   const clientes = [...porCed.values()].filter(x => x.sinPagar + x.mora > 0)
@@ -11212,19 +11216,19 @@ function historialAtrasos(maxMeses = 6){
     const k = x.resp && !esGrupoGeneral(normResp(x.resp)) ? x.resp : (x.empresa && !esGrupoGeneral(String(x.empresa).toLowerCase()) ? x.empresa : "");
     if (!k) return;
     const kk = normResp(k);
-    if (!pr.has(kk)) pr.set(kk, { nombre: k, clientes: 0, mesesCliente: 0, sinPagar: 0, mora: 0 });
-    const g = pr.get(kk); g.clientes++; g.mesesCliente += x.meses; g.sinPagar += x.sinPagar; g.mora += x.mora;
+    if (!pr.has(kk)) pr.set(kk, { nombre: k, clientes: 0, mesesCliente: 0, sinPagar: 0, mora: 0, atrasos: 0 });
+    const g = pr.get(kk); g.clientes++; g.mesesCliente += x.meses; g.sinPagar += x.sinPagar; g.mora += x.mora; g.atrasos += x.atrasos;
   });
   const responsables = [...pr.values()].filter(g => g.sinPagar + g.mora > 0 && g.mesesCliente)
-    .map(g => ({ ...g, pct: Math.round(100 * (g.sinPagar + g.mora) / g.mesesCliente) })).sort((a, b) => b.pct - a.pct || b.sinPagar - a.sinPagar);
+    .map(g => ({ ...g, pct: Math.round(100 * g.atrasos / g.mesesCliente) })).sort((a, b) => b.pct - a.pct || b.sinPagar - a.sinPagar);
   return { meses, clientes, responsables };
 }
 function abrirHistAtrasos(){
   const h = historialAtrasos();
   const cuerpo = document.getElementById("haCuerpo");
   document.getElementById("haSub").textContent = h.meses.length
-    ? `Meses revisados: ${h.meses[0]} a ${h.meses[h.meses.length - 1]} (${h.meses.length}). ✓ pagó · ⏰ pagó con mora · ✗ no pagó.`
-    : "Todavía no hay meses anteriores guardados para comparar.";
+    ? `Desde ${MES_INICIO_ATRASOS} · ${h.meses.length === 1 ? h.meses[0] : `${h.meses[0]} a ${h.meses[h.meses.length - 1]}`} (${h.meses.length} mes${h.meses.length === 1 ? "" : "es"}). ✓ pagó · ⏰ pagó con mora · ✗ no pagó (en el mes actual, después del día 16).`
+    : `Se empieza a contar desde ${MES_INICIO_ATRASOS}.`;
   cuerpo.innerHTML = !h.meses.length ? "" : `
     <div class="ay-sec"><div class="ay-sec-h"><b>👤 Responsables y empresas que más se atrasan</b><span class="ay-n">${h.responsables.length}</span></div>
       ${h.responsables.slice(0, 15).map(g => `<div class="ay-fila ay-fila-fija"><span class="ay-fila-t">${escHtml(nombrePropio(g.nombre))} <span class="ay-pct ${g.pct >= 50 ? "alto" : g.pct >= 25 ? "medio" : ""}">${g.pct}% de atraso</span></span>
