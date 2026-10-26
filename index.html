@@ -5456,7 +5456,7 @@ function renderList(filterText){
     return;
   }
 
-  const enRetiros = estadoClass(filtroEstado) === "RETIRO";
+  const enRetiros = estadoClass(filtroEstado) === "RETIRO" || filtroEstado === "__ATRASADOS__"; // vista con empresa y responsable
   listEl.innerHTML = filtered.map(r => {
     const cls = estadoClass(r["Estado Trámite"]);
     const active = (String(r["Cédula"]) === String(activeCedula)) ? "active" : "";
