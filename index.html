@@ -464,6 +464,9 @@
   .field[hidden], .doc-upload[hidden]{ display:none !important; }
   .rm-vista img{ width:100%; max-width:440px; display:block; margin:0 auto; border:1px solid var(--line); border-radius:var(--radius); }
   #overlayReciboMuelles{ z-index:75; }
+  .ms-servicio{ font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; vertical-align:middle; margin-left:4px; }
+  .ms-servicio.actualizacion{ background:var(--accent-bg); color:var(--accent); }
+  .ms-servicio.enrolamiento{ background:var(--gold-bg); color:var(--gold-deep); }
   .ms-ced-archivo{ border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:var(--radius); padding:8px 10px; }
   .ms-ced-prev{ max-width:220px; max-height:140px; border-radius:8px; border:1px solid var(--line); margin-top:6px; object-fit:contain; }
   .muelles-serv-caja{ border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; }
@@ -1332,7 +1335,7 @@
           <span class="sidebar-total-value" id="sidebarTotalConductores">—</span>
         </button>
         <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="muelles">
-          <span class="sidebar-total-label">Total Actualización de Muelles (otras empresas)</span>
+          <span class="sidebar-total-label">Total Muelles otras empresas (actualización y enrolamiento)</span>
           <span class="sidebar-total-value" id="sidebarTotalMuelles">—</span>
         </button>
         <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="gestiones">
@@ -1666,7 +1669,9 @@
 
       <div class="field span2 campo-opcional campo-muelles-serv" id="muellesSeccion" hidden>
         <div class="muelles-serv-caja">
-          <b>⚓ Actualización en los muelles</b>
+          <b>⚓ Servicio en los muelles</b>
+          <div class="vehiculo-grid" style="margin-top:6px;"><div class="field"><label for="fServicioMuelle">Servicio</label>
+            <select id="fServicioMuelle"><option value="">Actualización en muelles (cada mes)</option><option value="enrolamiento">Enrolamiento en muelles (una sola vez)</option></select></div></div>
           <p class="vehiculo-ayuda">Ponga la fecha que le dio <b>cada muelle</b> (deje vacío el muelle donde no está actualizado). Desde 30 días antes la app avisa en "Hoy" y en "Vencimientos" para ofrecerle renovarla. En «Fotos de documentos» (arriba) suba la <b>planilla</b> y el <b>comprobante</b> de la seguridad social que paga por su empresa (el PDF se guarda como imagen).</p>
           <div class="vehiculo-grid" id="venceMuellesGrid">
             <div class="field"><label for="fVenceMuelle0">Sociedad vence</label><input id="fVenceMuelle0" type="date" data-muelle="Sociedad"></div>
@@ -1778,7 +1783,7 @@
 <div class="overlay" id="overlayMuellesServicio">
   <div class="modal">
     <h2>⚓ Muelles · Independientes (otras empresas)</h2>
-    <div class="modal-sub">Personas que pagan su seguridad social por otra empresa y a quienes PROSEGUROSNET les presta el servicio de actualización en los muelles. Solo se cobra el valor del servicio; no entran en la cartera de planillas.</div>
+    <div class="modal-sub">Personas que pagan su seguridad social por otra empresa y a quienes PROSEGUROSNET les presta el servicio de <b>actualización</b> (cada mes) o de <b>enrolamiento</b> (una sola vez) en los muelles. Solo se cobra el valor del servicio; no entran en la cartera de planillas.</div>
     <div class="modal-actions" style="justify-content:flex-start; margin:0 0 12px;">
       <button type="button" class="btn primary" id="msNuevoBtn">➕ Agregar persona</button>
     </div>
@@ -1790,6 +1795,8 @@
           <img id="msCedulaPrev" class="ms-ced-prev" alt="" hidden>
           <div id="msCedulaAviso"></div>
         </div>
+        <div class="field span2" style="grid-column:1/-1;"><label for="msServicio">Servicio *</label>
+          <select id="msServicio"><option value="actualizacion">⚓ Actualización en muelles (se cobra cada mes)</option><option value="enrolamiento">🪪 Enrolamiento en muelles (una sola vez)</option></select></div>
         <div class="field"><label>Cédula</label><input id="msCedula" type="text" inputmode="numeric" maxlength="12" required></div>
         <div class="field"><label>Nombre</label><input id="msNombre" type="text" maxlength="120" required></div>
         <div class="field"><label>Valor del servicio</label><input id="msValor" type="number" min="0" step="1" inputmode="numeric" required></div>
@@ -1808,6 +1815,7 @@
         <button type="submit" class="btn primary">Guardar</button>
       </div>
     </form>
+    <div class="filter-pills" id="msFiltros" style="margin-bottom:10px;"></div>
     <div class="ms-resumen" id="msResumen"></div>
     <div id="listaMuellesServicio"></div>
     <div class="modal-actions">
@@ -1912,7 +1920,7 @@
 </div>
 <div class="overlay" id="overlayReciboMuelles">
   <div class="modal" style="max-width:560px;">
-    <h2>🧾 Recibo · Actualización en muelles</h2>
+    <h2>🧾 Recibo · Muelles</h2>
     <div class="modal-sub" id="rmSub"></div>
     <div id="rmVista" class="rm-vista"></div>
     <div class="ay-acciones" style="justify-content:flex-end; margin-top:12px;">
@@ -2510,7 +2518,7 @@ async function detectarColumnasConfirmacion(){
     try{ localStorage.setItem(COLUMNAS_RECORDATORIO_KEY, columnasRecordatorio ? "1" : "0"); }catch(e){}
   }catch(e){}
   try{
-    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,venc_muelles,venc_por_muelle,avisos_vencimiento").limit(1);
+    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,venc_muelles,venc_por_muelle,avisos_vencimiento,servicio_muelle").limit(1);
     if (error){
       if (/placa|venc_|avisos_vencimiento|column|schema cache/i.test(String(error.message || ""))) columnasVehiculo = false;
     } else columnasVehiculo = true;
@@ -2582,6 +2590,7 @@ function esRecordToDbRow(r, monthId){
       venc_tecno: r["Vence Tecno"] || null,
       venc_poliza: r["Vence Póliza"] || null,
       venc_muelles: r["Vence Muelles"] || null,
+      servicio_muelle: r["Servicio Muelle"] || "",
       venc_por_muelle: r["Vence Por Muelle"] && typeof r["Vence Por Muelle"] === "object" ? r["Vence Por Muelle"] : {},
       avisos_vencimiento: r["Avisos Vencimiento"] && typeof r["Avisos Vencimiento"] === "object" ? r["Avisos Vencimiento"] : {},
     } : {}),
@@ -2636,6 +2645,7 @@ function dbRowToEsRecord(row){
     "Vence Tecno": row.venc_tecno || "",
     "Vence Póliza": row.venc_poliza || "",
     "Vence Muelles": row.venc_muelles || "",
+    "Servicio Muelle": row.servicio_muelle || "",
     "Vence Por Muelle": row.venc_por_muelle && typeof row.venc_por_muelle === "object" ? row.venc_por_muelle : {},
     "Avisos Vencimiento": row.avisos_vencimiento && typeof row.avisos_vencimiento === "object" ? row.avisos_vencimiento : {},
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
@@ -3254,7 +3264,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
-    ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza","venc_muelles"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
+    ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza","venc_muelles","servicio_muelle"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
     if (o && (o.venc_por_muelle == null || (typeof o.venc_por_muelle === "object" && !Object.keys(o.venc_por_muelle).length))) delete o.venc_por_muelle;
     if (o && (o.avisos_vencimiento == null || (typeof o.avisos_vencimiento === "object" && !Object.keys(o.avisos_vencimiento).length))) delete o.avisos_vencimiento;
     return JSON.stringify(o);
@@ -4617,11 +4627,14 @@ function construirInformeMuelles(){
     const valor = numOrZero(r["Costo Servicio"]);
     total += valor;
     if (r["Estado Trámite"] === "PAGO CONDUCTOR") cobrado += valor;
-    html += `<div class="informe-row"><span class="ir-label">${escHtml(r["Nombre del Afiliado"])} — ${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : escHtml(r["Estado Trámite"])}</span><span class="ir-valor">${fmt(valor)}</span></div>`;
+    html += `<div class="informe-row"><span class="ir-label">${escHtml(r["Nombre del Afiliado"])} (${esEnrolamiento(r) ? "enrolamiento" : "actualización"}) — ${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : escHtml(r["Estado Trámite"])}</span><span class="ir-valor">${fmt(valor)}</span></div>`;
   });
   if (lista.length === 0) html += `<div class="empty">Nadie en Actualización de Muelles este mes.</div>`;
   html += filaInforme("Ya pagado", cobrado);
-  html += filaInforme("Total Actualización de Muelles", total, true);
+  const totEnrol = lista.filter(esEnrolamiento).reduce((a, r) => a + numOrZero(r["Costo Servicio"]), 0);
+  html += filaInforme("Actualizaciones", total - totEnrol);
+  html += filaInforme("Enrolamientos", totEnrol);
+  html += filaInforme("Total Muelles (actualización y enrolamiento)", total, true);
   return html;
 }
 
@@ -4677,7 +4690,7 @@ function construirInformeGeneral(){
   html += filaInforme("PROSEGUROSNET (solo costo del servicio)", totalPrgGanancia + gastoRetiros);
   if (gastoRetiros) html += `<div class="informe-row"><span class="ir-label">Gasto por retiros (se resta)</span><span class="ir-valor" style="color:var(--retiro);">− ${fmt(gastoRetiros)}</span></div>`;
   html += filaInforme("Actualización de Conductores", totalCond);
-  html += filaInforme("Actualización de Muelles (otras empresas)", totalMue);
+  html += filaInforme("Muelles otras empresas (actualización y enrolamiento)", totalMue);
   html += filaInforme("Ganancias de gestiones", totalGest);
   html += filaInforme("Ganancia real total del mes", totalPrgGanancia + totalCond + totalMue + totalGest, true);
 
@@ -4690,7 +4703,7 @@ function abrirInforme(tipo){
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
-    muelles: "Informe — Actualización de Muelles (otras empresas)",
+    muelles: "Informe — Muelles otras empresas (actualización y enrolamiento)",
     gestiones: "Informe — Ganancias de gestiones",
     general: "Informe — Suma final del mes",
   };
@@ -5027,6 +5040,8 @@ function construirRegistroMesSiguiente(r){
       // "Actualización de Muelles": cada mes se vuelve a cobrar el mismo valor del servicio
       // y los muelles quedan pendientes de actualizar otra vez.
       if (esServicioMuelles(r)){
+        // Enrolamiento sin pagar: pasa igual, todavía debe (no se le vuelve a cobrar otro)
+        if (esEnrolamiento(r)) return { ...r, "Enviado": false, "Aprobado": false };
         return {
           ...r,
           "Estado Trámite": "DEBE",
@@ -5087,6 +5102,8 @@ advanceBtn.addEventListener("click", async () => {
 
   const continuing = records
     .filter(r => !isRetiro(r))
+    // Enrolamiento en muelles: es una sola vez; si ya lo pagó, no pasa al mes siguiente
+    .filter(r => !(esServicioMuelles(r) && esEnrolamiento(r) && r["Estado Trámite"] === "PAGO CONDUCTOR"))
     .map(construirRegistroMesSiguiente)
     // Retiros sin soporte: pasan igual, en RETIRO, sin planilla, para recordar que falta
     .concat(retirosPendientes.map(r => {
@@ -5570,6 +5587,10 @@ const NOMBRE_EMPRESA_CONDUCTORES = "Actualización de Conductores";
 // "Actualización de Muelles": independientes que pagan su seguridad social por otra empresa;
 // PROSEGUROSNET solo les presta el servicio de actualización en los muelles.
 const NOMBRE_EMPRESA_MUELLES = "Actualización de Muelles";
+// Servicios en Muelles independientes: actualización (se cobra cada mes) o enrolamiento (una sola vez)
+const SERVICIOS_MUELLE = { actualizacion: "Actualización en muelles", enrolamiento: "Enrolamiento en muelles" };
+function servicioMuelle(r){ return r && r["Servicio Muelle"] === "enrolamiento" ? "enrolamiento" : "actualizacion"; }
+function esEnrolamiento(r){ return servicioMuelle(r) === "enrolamiento"; }
 const esEmpresaConductores = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_CONDUCTORES);
 const esServicioMuelles = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_MUELLES);
 // Clientes de "solo servicio" (conductores o muelles): no entran en la cartera de planillas.
@@ -7149,6 +7170,7 @@ function openModal(record){
   getField("VenceSoat").value = record ? record["Vence SOAT"] || "" : "";
   getField("VenceTecno").value = record ? record["Vence Tecno"] || "" : "";
   getField("VencePoliza").value = record ? record["Vence Póliza"] || "" : "";
+  getField("ServicioMuelle").value = record && record["Servicio Muelle"] === "enrolamiento" ? "enrolamiento" : "";
   document.querySelectorAll("#venceMuellesGrid input[data-muelle]").forEach(i => { i.value = (record && (record["Vence Por Muelle"] || {})[i.dataset.muelle]) || ""; });
   { const tiene = record && (record["Placa"] || record["Vence Licencia"] || record["Vence SOAT"] || record["Vence Tecno"] || record["Vence Póliza"] || record["Imagen Licencia"] || record["Imagen SoatTecno"] || record["Imagen Poliza"]);
     document.getElementById("vehiculoSeccion").open = !!tiene; }
@@ -8336,6 +8358,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Vence Tecno": getField("VenceTecno").value,
     "Vence Póliza": getField("VencePoliza").value,
     "Vence Por Muelle": venceMuellesDe("#venceMuellesGrid"),
+    ...(esServicioMuelles({ "Empresa": getField("Empresa").value }) ? { "Servicio Muelle": getField("ServicioMuelle").value } : {}),
   };
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
@@ -9680,8 +9703,13 @@ document.getElementById("gTabla").addEventListener("click", (e) => {
 });
 
 /* ---- Muelles · Independientes (otras empresas): clientes de solo servicio ---- */
+let msFiltroServicio = "";
 function renderMuellesServicio(){
-  const lista = records.filter(esServicioMuelles);
+  const todos = records.filter(esServicioMuelles);
+  const nEnrol = todos.filter(esEnrolamiento).length;
+  document.getElementById("msFiltros").innerHTML = [["", `Todos (${todos.length})`], ["actualizacion", `⚓ Actualización (${todos.length - nEnrol})`], ["enrolamiento", `🪪 Enrolamiento (${nEnrol})`]]
+    .map(([k, t]) => `<button type="button" class="filter-pill ${msFiltroServicio === k ? "active" : ""}" data-ms-filtro="${k}">${t}</button>`).join("");
+  const lista = msFiltroServicio ? todos.filter(r => servicioMuelle(r) === msFiltroServicio) : todos;
   const pagados = lista.filter(r => r["Estado Trámite"] === "PAGO CONDUCTOR");
   const suma = (arr) => arr.reduce((a, r) => a + numOrZero(r["Costo Servicio"]), 0);
   document.getElementById("msResumen").innerHTML = `
@@ -9698,7 +9726,7 @@ function renderMuellesServicio(){
     const pagaPor = String(r["Responsable / Grupo"] || "").trim();
     return `<div class="ms-row" data-ms-cedula="${escHtml(r["Cédula"])}">
       <div>
-        <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])}</div>
+        <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])} <span class="ms-servicio ${servicioMuelle(r)}">${esEnrolamiento(r) ? "🪪 Enrolamiento" : "⚓ Actualización"}</span></div>
         <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}${MUELLES_NOMBRES.map(m => {
           const f = (r["Vence Por Muelle"] || {})[m], dv = diasHasta(f); if (dv === null) return "";
           return ` <span class="ve-dias ${dv < 0 ? "vencido" : dv <= 7 ? "pronto" : ""}" title="${escHtml(m)}">⚓ ${MUELLE_INFO[m].letra} ${dv < 0 ? "venció" : "vence"} ${fechaLarga(f).slice(0, 5)}</span>`;
@@ -9821,6 +9849,7 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
     "AceptadoPorMuelle": {},
     "Teléfono": telefonoDiezDigitos(document.getElementById("msTelefono").value),
     "Vence Por Muelle": venceMuellesDe("#msVenceGrid"),
+    "Servicio Muelle": document.getElementById("msServicio").value === "enrolamiento" ? "enrolamiento" : "",
     "Imagen Cedula": msCedulaImg,
     "Beneficiarios": [],
   };
@@ -9836,9 +9865,13 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
   limpiarCedulaMs();
   renderMuellesServicio();
   renderList(searchInput.value);
-  showToast(`✅ ${nombre} agregado a Muelles · otras empresas.`);
+  showToast(`✅ ${nombre} agregado a Muelles · otras empresas (${SERVICIOS_MUELLE[servicioMuelle(nuevo)].toLowerCase()}).`);
 });
 
+document.getElementById("msFiltros").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ms-filtro]"); if (!b) return;
+  msFiltroServicio = b.dataset.msFiltro; renderMuellesServicio();
+});
 document.getElementById("listaMuellesServicio").addEventListener("click", (e) => {
   const fila = e.target.closest("[data-ms-cedula]");
   if (!fila) return;
@@ -11931,12 +11964,12 @@ async function imagenReciboMuelles(r, tipo = "image/png"){
     ["Fecha", new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })],
     ["Cliente", nombrePropio(r["Nombre del Afiliado"])],
     ["Cédula", String(r["Cédula"])],
-    ["Servicio", "Actualización en los muelles"],
+    ["Servicio", esEnrolamiento(r) ? "Enrolamiento en los muelles" : "Actualización en los muelles"],
     ["Mes", store.currentMonth],
   ];
   if (String(r["Responsable / Grupo"] || "").trim()) filas.push(["Empresa por la que paga", nombrePropio(r["Responsable / Grupo"])]);
   if (r["Placa"]) filas.push(["Placa", r["Placa"]]);
-  const lineasMuelles = MUELLES_NOMBRES.map(m => `${m}: ${(r["AceptadoPorMuelle"] || {})[m] ? "actualizado ✓" : "pendiente"}${vm[m] ? ` · vence ${fechaLarga(vm[m])}` : ""}`);
+  const lineasMuelles = MUELLES_NOMBRES.map(m => `${m}: ${(r["AceptadoPorMuelle"] || {})[m] ? (esEnrolamiento(r) ? "enrolado ✓" : "actualizado ✓") : "pendiente"}${vm[m] ? ` · vence ${fechaLarga(vm[m])}` : ""}`);
   const H = 250 + filas.length * 52 + 60 + lineasMuelles.length * 40 + 230;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const c = cv.getContext("2d");
@@ -11944,7 +11977,7 @@ async function imagenReciboMuelles(r, tipo = "image/png"){
   c.fillStyle = "#C8202F"; c.fillRect(0, 0, W, 140);
   c.fillStyle = "#FFFFFF"; c.textAlign = "left";
   c.font = "800 50px Inter, Arial, sans-serif"; c.fillText("PROSEGUROSNET", pad, 78);
-  c.font = "500 24px Inter, Arial, sans-serif"; c.fillText("Recibo de pago · Actualización en muelles", pad, 116);
+  c.font = "500 24px Inter, Arial, sans-serif"; c.fillText(`Recibo de pago · ${esEnrolamiento(r) ? "Enrolamiento" : "Actualización"} en muelles`, pad, 116);
   // sello de estado
   c.save(); c.translate(W - pad - 150, 200); c.rotate(-0.12);
   c.strokeStyle = pagado ? "#2F6F62" : "#B4934C"; c.lineWidth = 5; c.strokeRect(-110, -38, 220, 70);
@@ -11993,7 +12026,7 @@ document.getElementById("rmEnviarBtn").addEventListener("click", () => {
   const pagado = r["Estado Trámite"] === "PAGO CONDUCTOR";
   let copiada = Promise.resolve(false);
   try{ if (navigator.clipboard && window.ClipboardItem) copiada = navigator.clipboard.write([new ClipboardItem({ "image/png": imagenReciboMuelles(r) })]).then(() => true, () => false); }catch(e){}
-  const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(String(r["Nombre del Afiliado"]).split(" ").slice(0, 2).join(" "))}, le compartimos su recibo de la *actualización en los muelles* de ${store.currentMonth}: *${fmt(r["Costo Servicio"])}*${pagado ? " (pagado ✅)" : ""}.`;
+  const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(String(r["Nombre del Afiliado"]).split(" ").slice(0, 2).join(" "))}, le compartimos su recibo del *${esEnrolamiento(r) ? "enrolamiento" : "servicio de actualización"} en los muelles* de ${store.currentMonth}: *${fmt(r["Costo Servicio"])}*${pagado ? " (pagado ✅)" : ""}.`;
   copiada.then(ok => {
     abrirChatEnApp(conIndicativo, esCelular, texto);
     showToast(ok ? "📋 Envíe el mensaje y luego pegue el recibo (ya está copiado)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela.");
