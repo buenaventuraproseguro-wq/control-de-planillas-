@@ -30,6 +30,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Reingreso: al agregar una cédula que ya estuvo en meses anteriores, ofrece traer sus datos
 - Colores de la página (menú 18): cada persona escoge su tema; se guarda en su propio equipo
 - Retiros: al avanzar de mes, el RETIRO sin soporte (PSN: planilla; otra empresa: imagen o planilla de la novedad) pasa al mes siguiente
+- Retiro PROSEGUROSNET: el botón "Pedir retiro" (o elegir RETIRO al editar) deja el retiro pendiente; pasa a RETIRO solo al subir la planilla o el soporte. Otra empresa se marca directo.
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).

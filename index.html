@@ -5347,6 +5347,7 @@ function renderFilterPills(){
 }
 
 function renderList(filterText){
+  try{ aplicarRetirosConSoporte(); }catch(e){}
   aplicarRecargosMora();
   const q = (filterText || "").trim().toLowerCase();
   let filtered = records;
@@ -8045,6 +8046,18 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     return;
   }
 
+  // PROSEGUROSNET: elegir RETIRO sin planilla/soporte deja el retiro PENDIENTE (no cambia el estado).
+  if (estadoClass(record["Estado Trámite"]) === "RETIRO" && !esOtraEmpresa(record) && !esConductorGuardando){
+    const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
+    const yaEraRetiro = original && isRetiro(original);
+    const soporte = String(record["No. Planilla Pagada"] || "").trim() || docImagenes.PlanillaPagada || docImagenes.ComprobantePago || (original && tieneSoporteRetiro(original));
+    if (!yaEraRetiro && !soporte){
+      record["Estado Trámite"] = original && !isRetiro(original) ? original["Estado Trámite"] : "SIN PAGO";
+      if (!original || !original["Fecha Retiro"]) record["Fecha Retiro"] = fechaHoyISO();
+      await alertApp("🧾 Este cliente es de PROSEGUROSNET: no se marca RETIRO sin la planilla del retiro.\n\nQueda como RETIRO PENDIENTE y cambia a RETIRO solo cuando se suba la planilla o el soporte (número de planilla o archivo de planilla/comprobante).");
+    }
+  }
+
   subirDocumentosCliente(cedula);
 
   if (editingCedula){
@@ -10569,7 +10582,7 @@ async function cargarSoportesRetiro(mes){
 let _cargandoSoportes = false;
 function asegurarSoportesRetiro(){
   if (_cargandoSoportes || !cloudDb || soportesRetiroNube.mes === store.currentMonth) return;
-  if (!records.some(isRetiro)) return;
+  if (!records.some(r => isRetiro(r) || retiroPendientePlanilla(r))) return;
   _cargandoSoportes = true;
   cargarSoportesRetiro(store.currentMonth).finally(() => { _cargandoSoportes = false; if (typeof renderList === "function") renderList(searchInput.value); });
 }
@@ -10577,6 +10590,20 @@ function tieneSoporteRetiro(r){
   if (String(r["No. Planilla Pagada"] || "").trim()) return true;
   if (r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return true;
   return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube.cedulas.has(String(r["Cédula"]).trim());
+}
+// PROSEGUROSNET: el botón Retirar NO marca RETIRO. Deja el retiro "pendiente de planilla" y el
+// estado cambia a RETIRO solo cuando se sube la planilla o el soporte. Otra empresa sí se marca directo.
+function retiroPendientePlanilla(r){
+  return !!r && !isRetiro(r) && !!r["Fecha Retiro"] && !retiroProgramado(r) && !esOtraEmpresa(r) && !esConductorExcluido(r);
+}
+function aplicarRetirosConSoporte(){
+  const listos = records.filter(r => retiroPendientePlanilla(r) && tieneSoporteRetiro(r));
+  listos.forEach(r => { r["Estado Trámite"] = "RETIRO"; r["_ultimaEdicion"] = new Date().toISOString(); });
+  if (listos.length){
+    saveStore();
+    showToast(`🚪 ${listos.length === 1 ? listos[0]["Nombre del Afiliado"] + " quedó" : listos.length + " clientes quedaron"} en RETIRO: ya tiene${listos.length === 1 ? "" : "n"} la planilla del retiro.`);
+  }
+  return listos.length;
 }
 function retiroSinSoporte(r){ return isRetiro(r) && !esConductorExcluido(r) && !tieneSoporteRetiro(r); }
 function tagRetiroPendiente(r){
@@ -10607,6 +10634,7 @@ function tagIncompleto(r){
 function tagRetiro(r){
   if (!r) return "";
   if (retiroProgramado(r)) return `<span class="tag-retiro" title="${escHtml(r["Motivo Retiro"] || "")}">🚪 Se retira el ${fechaCortaRetiro(r["Fecha Retiro"])}</span>`;
+  if (retiroPendientePlanilla(r)) return `<span class="tag-retiro-pend" title="Queda en RETIRO al subir la planilla o el soporte del retiro">🚪 Retiro pendiente · falta planilla</span>`;
   if (isRetiro(r) && (r["Fecha Retiro"] || r["Motivo Retiro"])){
     const f = fechaCortaRetiro(r["Fecha Retiro"]);
     return `<span class="tag-retiro" title="${escHtml(r["Motivo Retiro"] || "")}">🚪 Retiro${f ? " " + f : ""}${r["Motivo Retiro"] === "Reportado en la planilla" ? " (planilla)" : ""}</span>`;
@@ -10617,19 +10645,29 @@ function tagRetiro(r){
 function aplicarRetiroProgramado(r, nombreMes){
   if (!r["Fecha Retiro"] || esConductorExcluido(r)) return;
   const a = indiceMesDeFecha(r["Fecha Retiro"]), b = indiceMes(nombreMes);
-  if (a !== null && b !== null && a <= b) r["Estado Trámite"] = "RETIRO";
+  if (a !== null && b !== null && a <= b){
+    if (!esOtraEmpresa(r) && !tieneSoporteRetiro(r)) return; // PROSEGUROSNET: espera la planilla del retiro
+    r["Estado Trámite"] = "RETIRO";
+  }
 }
 
 function actualizarBotonRetiro(r){
   const btn = document.getElementById("retirarBtn");
   if (!btn) return;
-  btn.textContent = r && (isRetiro(r) || retiroProgramado(r)) ? "↩️ Quitar retiro" : "🚪 Retirar";
+  const tiene = r && (isRetiro(r) || retiroProgramado(r) || retiroPendientePlanilla(r));
+  btn.textContent = tiene ? "↩️ Quitar retiro" : (r && !esOtraEmpresa(r) && !esConductorExcluido(r) ? "🚪 Pedir retiro" : "🚪 Retirar");
+  btn.title = !tiene && r && !esOtraEmpresa(r) ? "PROSEGUROSNET: queda en RETIRO solo cuando se suba la planilla o el soporte del retiro" : "";
 }
 function avisoRetiro(){
   const f = document.getElementById("retiroFecha").value;
   const a = indiceMesDeFecha(f), b = indiceMes(store.currentMonth);
   const av = document.getElementById("retiroAviso");
   if (a === null || b === null){ av.textContent = ""; return; }
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  if (r && !esOtraEmpresa(r) && !tieneSoporteRetiro(r)){
+    av.innerHTML = `🧾 Es de <b>PROSEGUROSNET</b>: queda como <b>retiro pendiente</b> y pasa a <b>RETIRO</b> solo cuando se suba la <b>planilla o el soporte</b> del retiro (número de planilla o archivo).`;
+    return;
+  }
   av.innerHTML = a > b
     ? `📅 La fecha es de un mes siguiente: en <b>${escHtml(store.currentMonth)}</b> sigue igual y queda en <b>RETIRO</b> automáticamente en el mes de la fecha.`
     : `Queda en <b>RETIRO</b> en <b>${escHtml(store.currentMonth)}</b> y <b>no pasa</b> al mes siguiente.`;
@@ -10637,8 +10675,8 @@ function avisoRetiro(){
 document.getElementById("retirarBtn").addEventListener("click", async () => {
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (!r) return;
-  if (isRetiro(r) || retiroProgramado(r)){
-    if (!(await confirmarApp(`¿Quitar el retiro de ${r["Nombre del Afiliado"]}? ${isRetiro(r) ? "Vuelve a SIN PAGO en este mes." : "Se cancela el retiro programado."}`))) return;
+  if (isRetiro(r) || retiroProgramado(r) || retiroPendientePlanilla(r)){
+    if (!(await confirmarApp(`¿Quitar el retiro de ${r["Nombre del Afiliado"]}? ${isRetiro(r) ? "Vuelve a SIN PAGO en este mes." : "Se cancela el retiro pendiente."}`))) return;
     if (isRetiro(r)) r["Estado Trámite"] = "SIN PAGO";
     r["Fecha Retiro"] = ""; r["Motivo Retiro"] = "";
     r["_ultimaEdicion"] = new Date().toISOString();
@@ -10666,13 +10704,15 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
   r["Fecha Retiro"] = fecha;
   r["Motivo Retiro"] = nota ? `${motivo}: ${nota}` : motivo;
   const programado = indiceMesDeFecha(fecha) > indiceMes(store.currentMonth);
-  if (!programado) r["Estado Trámite"] = "RETIRO";
+  const esperaPlanilla = !programado && !esOtraEmpresa(r) && !esConductorExcluido(r) && !tieneSoporteRetiro(r);
+  if (!programado && !esperaPlanilla) r["Estado Trámite"] = "RETIRO";
   const obs = `retiro ${fechaCortaRetiro(fecha)}: ${r["Motivo Retiro"].toLowerCase()}`;
   r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${obs}` : obs;
   r["_ultimaEdicion"] = new Date().toISOString();
   saveStore();
   document.getElementById("overlayRetiro").classList.remove("show");
   renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  if (esperaPlanilla){ showToast(`🧾 Retiro pendiente: ${r["Nombre del Afiliado"]} pasa a RETIRO cuando se suba la planilla o el soporte.`); return; }
   showToast(programado ? `📅 Retiro programado para el ${fechaCortaRetiro(fecha)}.` : `🚪 ${r["Nombre del Afiliado"]} quedó en RETIRO y no pasará al mes siguiente.`);
 });
 </script>
