@@ -1662,8 +1662,12 @@
       <div class="field span2 campo-opcional campo-muelles-serv" id="muellesSeccion" hidden>
         <div class="muelles-serv-caja">
           <b>⚓ Actualización en los muelles</b>
-          <p class="vehiculo-ayuda">Ponga la fecha en que vence la actualización. Desde 30 días antes la app avisa en "Hoy" y en "Vencimientos" para ofrecerle renovarla. En «Fotos de documentos» (arriba) suba la <b>planilla</b> y el <b>comprobante</b> de la seguridad social que paga por su empresa (el PDF se guarda como imagen).</p>
-          <div class="vehiculo-grid"><div class="field"><label for="fVenceMuelles">La actualización vence</label><input id="fVenceMuelles" type="date"></div></div>
+          <p class="vehiculo-ayuda">Ponga la fecha que le dio <b>cada muelle</b> (deje vacío el muelle donde no está actualizado). Desde 30 días antes la app avisa en "Hoy" y en "Vencimientos" para ofrecerle renovarla. En «Fotos de documentos» (arriba) suba la <b>planilla</b> y el <b>comprobante</b> de la seguridad social que paga por su empresa (el PDF se guarda como imagen).</p>
+          <div class="vehiculo-grid" id="venceMuellesGrid">
+            <div class="field"><label for="fVenceMuelle0">Sociedad vence</label><input id="fVenceMuelle0" type="date" data-muelle="Sociedad"></div>
+            <div class="field"><label for="fVenceMuelle1">TC Buen vence</label><input id="fVenceMuelle1" type="date" data-muelle="TC Buen"></div>
+            <div class="field"><label for="fVenceMuelle2">Agua Dulce vence</label><input id="fVenceMuelle2" type="date" data-muelle="Agua Dulce"></div>
+          </div>
         </div>
       </div>
 
@@ -1779,7 +1783,12 @@
         <div class="field"><label>Nombre</label><input id="msNombre" type="text" maxlength="120" required></div>
         <div class="field"><label>Valor del servicio</label><input id="msValor" type="number" min="0" step="1" inputmode="numeric" required></div>
         <div class="field"><label>Teléfono (opcional)</label><input id="msTelefono" type="tel" inputmode="tel"></div>
-        <div class="field"><label for="msVence">La actualización vence (opcional)</label><input id="msVence" type="date"></div>
+        <div class="field span2" style="grid-column:1/-1;"><label>Fecha que dio cada muelle (opcional)</label>
+          <div class="vehiculo-grid" id="msVenceGrid">
+            <div class="field"><label for="msVence0">Sociedad vence</label><input id="msVence0" type="date" data-muelle="Sociedad"></div>
+            <div class="field"><label for="msVence1">TC Buen vence</label><input id="msVence1" type="date" data-muelle="TC Buen"></div>
+            <div class="field"><label for="msVence2">Agua Dulce vence</label><input id="msVence2" type="date" data-muelle="Agua Dulce"></div>
+          </div></div>
         <p class="vehiculo-ayuda span2" style="grid-column:1/-1;">Después de guardar, toque el nombre de la persona y luego <b>Editar</b> para subir la planilla, el comprobante y los datos de vehículo y licencia.</p>
         <div class="field span2"><label>Empresa por la que paga (opcional)</label><input id="msPagaPor" type="text" maxlength="80" placeholder="Ej: la empresa o persona que le paga la seguridad social"></div>
       </div>
@@ -2478,7 +2487,7 @@ async function detectarColumnasConfirmacion(){
     try{ localStorage.setItem(COLUMNAS_RECORDATORIO_KEY, columnasRecordatorio ? "1" : "0"); }catch(e){}
   }catch(e){}
   try{
-    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,venc_muelles,avisos_vencimiento").limit(1);
+    const { error } = await sb.from("clients").select("placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,venc_muelles,venc_por_muelle,avisos_vencimiento").limit(1);
     if (error){
       if (/placa|venc_|avisos_vencimiento|column|schema cache/i.test(String(error.message || ""))) columnasVehiculo = false;
     } else columnasVehiculo = true;
@@ -2550,6 +2559,7 @@ function esRecordToDbRow(r, monthId){
       venc_tecno: r["Vence Tecno"] || null,
       venc_poliza: r["Vence Póliza"] || null,
       venc_muelles: r["Vence Muelles"] || null,
+      venc_por_muelle: r["Vence Por Muelle"] && typeof r["Vence Por Muelle"] === "object" ? r["Vence Por Muelle"] : {},
       avisos_vencimiento: r["Avisos Vencimiento"] && typeof r["Avisos Vencimiento"] === "object" ? r["Avisos Vencimiento"] : {},
     } : {}),
     ...(columnasRecargo ? {
@@ -2603,6 +2613,7 @@ function dbRowToEsRecord(row){
     "Vence Tecno": row.venc_tecno || "",
     "Vence Póliza": row.venc_poliza || "",
     "Vence Muelles": row.venc_muelles || "",
+    "Vence Por Muelle": row.venc_por_muelle && typeof row.venc_por_muelle === "object" ? row.venc_por_muelle : {},
     "Avisos Vencimiento": row.avisos_vencimiento && typeof row.avisos_vencimiento === "object" ? row.avisos_vencimiento : {},
     "_ultimaEdicion": row.ultima_edicion || row.updated_at || null,
     _supabaseId: row.id,
@@ -3221,6 +3232,7 @@ function firmaClienteCanonica(texto){
     if (o && o.recargo_mora == null) delete o.recargo_mora;
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
     ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza","venc_muelles"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
+    if (o && (o.venc_por_muelle == null || (typeof o.venc_por_muelle === "object" && !Object.keys(o.venc_por_muelle).length))) delete o.venc_por_muelle;
     if (o && (o.avisos_vencimiento == null || (typeof o.avisos_vencimiento === "object" && !Object.keys(o.avisos_vencimiento).length))) delete o.avisos_vencimiento;
     return JSON.stringify(o);
   }catch(e){ return texto; }
@@ -7114,7 +7126,7 @@ function openModal(record){
   getField("VenceSoat").value = record ? record["Vence SOAT"] || "" : "";
   getField("VenceTecno").value = record ? record["Vence Tecno"] || "" : "";
   getField("VencePoliza").value = record ? record["Vence Póliza"] || "" : "";
-  getField("VenceMuelles").value = record ? record["Vence Muelles"] || "" : "";
+  document.querySelectorAll("#venceMuellesGrid input[data-muelle]").forEach(i => { i.value = (record && (record["Vence Por Muelle"] || {})[i.dataset.muelle]) || ""; });
   { const tiene = record && (record["Placa"] || record["Vence Licencia"] || record["Vence SOAT"] || record["Vence Tecno"] || record["Vence Póliza"] || record["Imagen Licencia"] || record["Imagen SoatTecno"] || record["Imagen Poliza"]);
     document.getElementById("vehiculoSeccion").open = !!tiene; }
 
@@ -8298,7 +8310,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Vence SOAT": getField("VenceSoat").value,
     "Vence Tecno": getField("VenceTecno").value,
     "Vence Póliza": getField("VencePoliza").value,
-    "Vence Muelles": getField("VenceMuelles").value,
+    "Vence Por Muelle": venceMuellesDe("#venceMuellesGrid"),
   };
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
@@ -9662,10 +9674,10 @@ function renderMuellesServicio(){
     return `<div class="ms-row" data-ms-cedula="${escHtml(r["Cédula"])}">
       <div>
         <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])}</div>
-        <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}${(() => {
-          const dv = diasHasta(r["Vence Muelles"]); if (dv === null) return "";
-          return ` · <span class="ve-dias ${dv < 0 ? "vencido" : dv <= 7 ? "pronto" : ""}">⚓ ${dv < 0 ? "venció" : "vence"} ${fechaLarga(r["Vence Muelles"])}</span>`;
-        })()}</div>
+        <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}${MUELLES_NOMBRES.map(m => {
+          const f = (r["Vence Por Muelle"] || {})[m], dv = diasHasta(f); if (dv === null) return "";
+          return ` <span class="ve-dias ${dv < 0 ? "vencido" : dv <= 7 ? "pronto" : ""}" title="${escHtml(m)}">⚓ ${MUELLE_INFO[m].letra} ${dv < 0 ? "venció" : "vence"} ${fechaLarga(f).slice(0, 5)}</span>`;
+        }).join("")}</div>
       </div>
       <div class="ms-valor">${fmt(r["Costo Servicio"])}</div>
       <div class="ms-pago">
@@ -9727,7 +9739,7 @@ document.getElementById("msForm").addEventListener("submit", (e) => {
     "Muelle": "Muelle",
     "AceptadoPorMuelle": {},
     "Teléfono": telefonoDiezDigitos(document.getElementById("msTelefono").value),
-    "Vence Muelles": document.getElementById("msVence").value,
+    "Vence Por Muelle": venceMuellesDe("#msVenceGrid"),
     "Beneficiarios": [],
   };
   records.push(nuevo);
@@ -11541,8 +11553,18 @@ const DOCS_VENCEN = [
   { k: "soat", campo: "Vence SOAT", nombre: "SOAT", art: "su", fem: false },
   { k: "tecno", campo: "Vence Tecno", nombre: "revisión tecnomecánica", art: "su", fem: true },
   { k: "poliza", campo: "Vence Póliza", nombre: "póliza del vehículo", art: "su", fem: true },
-  { k: "muelles", campo: "Vence Muelles", nombre: "actualización en los muelles", art: "su", fem: true },
 ];
+function venceMuellesDe(sel){
+  const o = {};
+  document.querySelectorAll(`${sel} input[data-muelle]`).forEach(i => { if (i.value) o[i.dataset.muelle] = i.value; });
+  return o;
+}
+// Una fecha por cada muelle (cada muelle da su propia fecha de vencimiento)
+function docsVencenDe(r){
+  const vm = r["Vence Por Muelle"] || {};
+  return DOCS_VENCEN.map(d => ({ ...d, fecha: r[d.campo] }))
+    .concat(MUELLES_NOMBRES.filter(m => vm[m]).map(m => ({ k: "muelle:" + m, nombre: `actualización en el muelle ${m}`, fecha: vm[m] })));
+}
 const DIAS_ANTES_VENCE = 30, DIAS_DESPUES_VENCE = 60;
 function diasHasta(iso){
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return null;
@@ -11551,7 +11573,7 @@ function diasHasta(iso){
 }
 function fechaLarga(iso){ const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; }
 function vencimientosCliente(r){
-  return DOCS_VENCEN.map(d => ({ ...d, fecha: r[d.campo], dias: diasHasta(r[d.campo]) }))
+  return docsVencenDe(r).map(d => ({ ...d, dias: diasHasta(d.fecha) }))
     .filter(x => x.dias !== null && x.dias <= DIAS_ANTES_VENCE && x.dias >= -DIAS_DESPUES_VENCE)
     .map(x => { const av = (r["Avisos Vencimiento"] || {})[x.k]; return { ...x, avisado: av && av.venc === x.fecha ? av.enviado : "" }; });
 }
@@ -11567,7 +11589,7 @@ function mensajeVencimiento(r, docs){
     ? `• Su *${d.nombre}* venció el *${fechaLarga(d.fecha)}*.`
     : `• Su *${d.nombre}* vence el *${fechaLarga(d.fecha)}*${d.dias <= 7 ? ` (${d.dias === 0 ? "hoy" : `en ${d.dias} día${d.dias === 1 ? "" : "s"}`})` : ""}.`);
   const vencido = docs.some(d => d.dias < 0);
-  const soloMuelles = docs.every(d => d.k === "muelles");
+  const soloMuelles = docs.every(d => d.k.startsWith("muelle:"));
   return `🛡️ *PROSEGUROSNET*\n¡Hola, ${nombre}! 👋\n\nLe recordamos ${soloMuelles ? "lo siguiente" : "el estado de sus documentos"}${placa && !soloMuelles ? " (vehículo de placa *" + r["Placa"] + "*)" : ""}:\n${lineas.join("\n")}\n\n`
     + (soloMuelles
         ? (vencido ? "Sin la actualización al día no le permiten el ingreso al muelle. " : "Le avisamos con tiempo para que no le quiten el ingreso al muelle. ")
@@ -11583,7 +11605,7 @@ function abrirVencimientos(){
     const todosAvisados = x.docs.every(d => d.avisado);
     return `<div class="ay-card ${x.docs.some(d => d.dias < 0) ? "ve-vencido" : ""}">
       <div class="ay-card-h"><b>${escHtml(r["Nombre del Afiliado"])}</b>${r["Placa"] ? `<span class="ve-placa">${escHtml(r["Placa"])}</span>` : ""}</div>
-      ${x.docs.map(d => `<div class="ve-doc"><span>${d.k === "licencia" ? "🪪" : d.k === "poliza" ? "📄" : d.k === "muelles" ? "⚓" : "🚗"} ${escHtml(d.nombre.charAt(0).toUpperCase() + d.nombre.slice(1))} · ${fechaLarga(d.fecha)}</span>
+      ${x.docs.map(d => `<div class="ve-doc"><span>${d.k === "licencia" ? "🪪" : d.k === "poliza" ? "📄" : d.k.startsWith("muelle:") ? "⚓" : "🚗"} ${escHtml(d.nombre.charAt(0).toUpperCase() + d.nombre.slice(1))} · ${fechaLarga(d.fecha)}</span>
         <span class="ve-dias ${d.dias < 0 ? "vencido" : d.dias <= 7 ? "pronto" : ""}">${textoDias(d)}</span>${d.avisado ? `<span class="ve-avisado">📨 avisado ${escHtml(fechaLarga(d.avisado))}</span>` : ""}</div>`).join("")}
       <div class="ay-acciones">
         <button type="button" class="btn small whatsapp" data-ve-enviar="${i}" ${tel ? "" : "disabled title='Sin teléfono'"}>📲 ${todosAvisados ? "Volver a avisar" : "Avisar por WhatsApp"}</button>
