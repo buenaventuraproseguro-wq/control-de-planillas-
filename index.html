@@ -448,6 +448,35 @@
   .row.active{ background:var(--accent-bg); box-shadow:inset 3px 0 0 var(--accent); }
   .row.atrasado{ background:var(--retiro-bg); box-shadow:inset 3px 0 0 var(--retiro); }
   .row.atrasado:hover{ background:var(--retiro-bg); }
+  /* Ayudas inteligentes */
+  .sidebar-hoy{ font-weight:700; }
+  .ay-cuerpo{ display:flex; flex-direction:column; gap:10px; }
+  .ay-sec{ border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; background:var(--panel); }
+  .ay-sec-ok{ opacity:.6; }
+  .ay-sec-h{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .ay-sec-h b{ flex:1; font-size:14px; color:var(--titulo); }
+  .ay-n{ min-width:26px; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; background:var(--line); border-radius:999px; padding:1px 8px; font-size:13px; }
+  .ay-sec:not(.ay-sec-ok) .ay-n{ background:var(--retiro-bg); color:var(--retiro); }
+  .ay-sec-h + .ay-fila{ margin-top:6px; }
+  .ay-txt{ font-size:13px; color:var(--muted); margin:6px 0; }
+  .ay-fila{ display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px; width:100%; text-align:left; font:inherit; color:var(--ink); background:transparent; border:none; border-top:1px solid var(--line); padding:7px 2px; cursor:pointer; }
+  .ay-fila:hover{ background:var(--bg); }
+  .ay-fila-fija{ cursor:default; }
+  .ay-fila-t{ font-weight:600; font-size:13.5px; }
+  .ay-fila-s{ font-size:12px; color:var(--muted); flex-basis:100%; }
+  .ay-hist{ font-size:12px; letter-spacing:2px; color:var(--muted); }
+  .ay-mas{ font-size:12px; color:var(--muted); margin:4px 0 0; }
+  .ay-card{ border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; background:var(--panel); }
+  .ay-card-h{ display:flex; justify-content:space-between; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .ay-total{ font-weight:800; font-variant-numeric:tabular-nums; color:var(--retiro); }
+  .ay-acciones{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .ay-vista{ width:100%; max-width:420px; display:block; margin:12px auto 0; border:1px solid var(--line); border-radius:var(--radius); }
+  .ay-hr{ border:none; border-top:2px dashed var(--line); margin:6px 0; }
+  .ay-pct{ font-size:11.5px; font-weight:700; padding:1px 7px; border-radius:999px; background:var(--line); color:var(--ink); margin-left:6px; }
+  .ay-pct.medio{ background:var(--afiliacion-bg); color:var(--afiliacion); }
+  .ay-pct.alto{ background:var(--retiro-bg); color:var(--retiro); }
+  .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .ocr-acc{ display:flex; gap:6px; }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
   .tag-resp-ret{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent); }
@@ -1207,7 +1236,7 @@
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-paleta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/><circle cx="17" cy="11" r="1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol><symbol id="i-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol><symbol id="i-escudo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-paleta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/><circle cx="17" cy="11" r="1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
 
 <div class="pin-lock" id="loginScreen" style="display:none;">
   <div class="pin-lock-box">
@@ -1237,6 +1266,7 @@
         <small>Control de planillas</small>
       </div>
     </div>
+    <button type="button" class="sidebar-link sidebar-hoy" id="navHoyBtn"><span class="sidebar-num">19</span><svg class="ico" aria-hidden="true"><use href="#i-sol"/></svg>Hoy: lo que toca hacer</button>
     <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
     <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
     <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;"><span class="sidebar-num">3</span><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg>Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
@@ -1295,6 +1325,12 @@
       <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><span class="sidebar-num">17</span><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
       <div class="sidebar-sub" id="enlacesLista"></div>
       <button type="button" class="sidebar-link" id="navTemaBtn"><span class="sidebar-num">18</span><svg class="ico" aria-hidden="true"><use href="#i-paleta"/></svg>Colores de la página</button>
+
+      <div class="sidebar-section-title">Ayudas inteligentes</div>
+      <button type="button" class="sidebar-link" id="navEstadoCuentaBtn"><span class="sidebar-num">20</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
+      <button type="button" class="sidebar-link" id="navRevisionBtn"><span class="sidebar-num">21</span><svg class="ico" aria-hidden="true"><use href="#i-lupa"/></svg>Revisión de datos</button>
+      <button type="button" class="sidebar-link" id="navHistAtrasosBtn"><span class="sidebar-num">22</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Quién se atrasa más</button>
+      <button type="button" class="sidebar-link" id="navRespaldosBtn"><span class="sidebar-num">23</span><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Respaldos automáticos</button>
     </div>
   </nav>
 
@@ -1733,6 +1769,47 @@
   </div>
 </div>
 
+<div class="overlay" id="overlayHoy">
+  <div class="modal" style="max-width:640px;">
+    <h2>Hoy: lo que toca hacer</h2>
+    <div class="modal-sub" id="hoySub"></div>
+    <div id="hoyCuerpo" class="ay-cuerpo"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayEstadoCuenta">
+  <div class="modal" style="max-width:640px;">
+    <h2>Estado de cuenta por responsable o empresa</h2>
+    <div class="modal-sub" id="ecSub"></div>
+    <div id="ecLista" class="ay-cuerpo"></div>
+    <div id="ecVista"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayRevision">
+  <div class="modal" style="max-width:640px;">
+    <h2>Revisión de datos</h2>
+    <div class="modal-sub" id="revSub"></div>
+    <div id="revCuerpo" class="ay-cuerpo"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayHistAtrasos">
+  <div class="modal" style="max-width:640px;">
+    <h2>Quién se atrasa más</h2>
+    <div class="modal-sub" id="haSub"></div>
+    <div id="haCuerpo" class="ay-cuerpo"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayRespaldos">
+  <div class="modal" style="max-width:600px;">
+    <h2>Respaldos automáticos</h2>
+    <div class="modal-sub" id="rbSub"></div>
+    <div id="rbCuerpo" class="ay-cuerpo"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
 <div id="reciboImprimir" class="recibo-imprimir">
   <div class="recibo-header">
     <img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z' fill='%23C0272D'/%3E%3Cpath d='M32 8 L52 16 V30 C52 43 43 52 32 56 C21 52 12 43 12 30 V16 Z' fill='%23ffffff' opacity='0.12'/%3E%3Crect x='18' y='30' width='28' height='12' rx='2' fill='%23ffffff'/%3E%3Crect x='20' y='24' width='10' height='8' rx='1' fill='%23ffffff'/%3E%3Ccircle cx='24' cy='44' r='3' fill='%23173A5E'/%3E%3Ccircle cx='40' cy='44' r='3' fill='%23173A5E'/%3E%3C/svg%3E" alt="PROSEGUROSNET" class="recibo-logo">
@@ -5441,6 +5518,7 @@ function renderList(filterText){
     listLabel.textContent = "Todos los afiliados";
   }
   asegurarSoportesRetiro();
+  mostrarHoySiToca();
   totalCount.textContent = records.length + " registros";
   renderMonthTotal();
   renderStatsStrip();
@@ -7275,6 +7353,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
         docImagenes[doc] = img.dataUrl;
         docImagenesCambiados[doc] = true;
         mostrarDocPreview(box, img.dataUrl);
+        if (doc === "Cedula") leerCedulaDeImagen(img.dataUrl);
         showToast(`✅ Listo: pasó de ${tamanoLegible(file.size)} a ${tamanoLegible(img.bytes)}.`);
         return;
       }
@@ -7285,6 +7364,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
       docImagenesCambiados[doc] = true;
       mostrarDocPreview(box, dataUrl);
     });
+    if (doc === "Cedula" && /^image\//.test(file.type || "")) leerCedulaDeImagen(file); // se lee la foto original (más nítida)
   });
 
   removeBtn.addEventListener("click", async () => {
@@ -10408,7 +10488,7 @@ function totalEsperado(r){
 // Sugiere de qué cliente es el pago: por nombre y por valor
 function sugerirClientes(info){
   const palabras = normalizarTexto(info.nombre).split(" ").filter(w => w.length >= 3);
-  return records.filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO").map(r => {
+  return records.filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" || retiroQueDebe(r)).map(r => {
     let puntos = 0, motivos = [];
     const nom = normalizarTexto(r["Nombre del Afiliado"]).split(" ");
     const coinciden = palabras.filter(w => nom.includes(w)).length;
@@ -10421,6 +10501,18 @@ function sugerirClientes(info){
     if (consignacionesDe(r["Cédula"]).length) puntos -= 10; // ya tiene otra consignación este mes
     return { r, puntos, motivos };
   }).filter(x => x.puntos >= 25).sort((a, b) => b.puntos - a.puntos).slice(0, 3);
+}
+// Pagos de un responsable o empresa por todos sus afiliados: el valor coincide con la suma
+function sugerirGrupos(info){
+  if (!info.valor) return [];
+  const palabras = normalizarTexto(info.nombre).split(" ").filter(w => w.length >= 3);
+  return gruposEstadoCuenta().filter(g => g.deben.length > 1).map(g => {
+    let puntos = 0, motivos = [];
+    if (Math.abs(g.total - info.valor) <= 300){ puntos += 70; motivos.push(`suma exacta de sus ${g.deben.length} afiliados`); }
+    const nom = normalizarTexto(g.nombre).split(" ");
+    if (palabras.some(w => nom.includes(w))){ puntos += 30; motivos.push("nombre parecido"); }
+    return { g, puntos, motivos };
+  }).filter(x => x.puntos >= 70).sort((a, b) => b.puntos - a.puntos).slice(0, 2);
 }
 function consignacionesDe(cedula){
   if (!Array.isArray(consignaciones)) return [];
@@ -10472,7 +10564,11 @@ function renderConsignaciones(){
     let cuerpo = "";
     if (c.estado === "pendiente"){
       const sug = sugerirClientes(info);
-      const opciones = sug.map((s, i) => `<label><input type="radio" name="cs-${c.id}" value="${escHtml(s.r["Cédula"])}" ${i === 0 ? "checked" : ""}>
+      const sugG = sugerirGrupos(info);
+      const opcionesG = sugG.map((x, i) => `<label><input type="radio" name="cs-${c.id}" value="grupo:${escHtml(x.g.k)}" ${i === 0 && !(sug[0] && sug[0].puntos >= 100) ? "checked" : ""}>
+          <span><b>${x.g.esEmpresa ? "🏢" : "👤"} ${escHtml(nombrePropio(x.g.nombre))}</b> · todos sus ${x.g.deben.length} afiliados · deben ${fmt(x.g.total)}<br><small>${x.motivos.join(" + ")}</small></span></label>`).join("");
+      const hayG = opcionesG && !(sug[0] && sug[0].puntos >= 100);
+      const opciones = opcionesG + sug.map((s, i) => `<label><input type="radio" name="cs-${c.id}" value="${escHtml(s.r["Cédula"])}" ${i === 0 && !hayG ? "checked" : ""}>
           <span><b>${escHtml(s.r["Nombre del Afiliado"])}</b> · ${escHtml(s.r["Estado Trámite"])} · debe ${fmt(totalEsperado(s.r))}<br><small>${s.motivos.join(" + ")}</small></span></label>`).join("");
       cuerpo = `
         <div class="cs-sug">${opciones || `<div class="cs-meta">No encontré un cliente que coincida${info.nombre ? "" : " (el mensaje no trae nombre)"}. Elíjalo abajo.</div>`}</div>
@@ -10508,6 +10604,7 @@ async function aplicarConsignacion(id){
   const otro = card.querySelector("[data-cs-otro]").value.trim();
   const elegido = card.querySelector(`input[name="cs-${id}"]:checked`);
   const ced = otro ? (otro.match(/^\d{5,12}/) || [""])[0] : (elegido ? elegido.value : "");
+  if (!otro && ced.startsWith("grupo:")) return aplicarConsignacionGrupo(c, card, ced.slice(6));
   const r = records.find(x => String(x["Cédula"]) === String(ced));
   if (!r){ showToast("Elija a qué cliente corresponde la consignación."); return; }
   const info = leerMensajeBanco(c.texto);
@@ -10524,6 +10621,30 @@ async function aplicarConsignacion(id){
   saveStore();
   actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
   showToast(`✅ ${fmt(info.valor)} aplicado a ${r["Nombre del Afiliado"]}.`);
+}
+async function aplicarConsignacionGrupo(c, card, k){
+  const g = gruposEstadoCuenta().find(x => x.k === k);
+  if (!g){ showToast("Ese grupo ya no tiene valores pendientes."); return; }
+  const info = leerMensajeBanco(c.texto);
+  const marcarPago = card.querySelector("[data-cs-pago]").checked;
+  if (!(await confirmarApp(`¿Aplicar ${fmt(info.valor)} a los ${g.deben.length} afiliados de ${nombrePropio(g.nombre)}?${marcarPago ? " Todos quedan en PAGO." : ""}`))) return;
+  const primero = g.deben[0];
+  const cambio = { estado: "aplicada", cedula: String(primero["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || info.lugar || null,
+    banco: info.banco || null, relacion: `Pago del grupo ${g.nombre}: ${g.deben.length} afiliados`, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
+  let { error } = await sb.from("consignaciones").update(cambio).eq("id", c.id);
+  if (error && /relacion/.test(error.message || "")){ delete cambio.relacion; ({ error } = await sb.from("consignaciones").update(cambio).eq("id", c.id)); }
+  if (error){ showToast("No se pudo aplicar: " + error.message); return; }
+  Object.assign(c, cambio);
+  const ahora = new Date().toISOString();
+  const nota = `pagó en grupo (${nombrePropio(g.nombre)}) ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}`;
+  g.deben.forEach(r => {
+    r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${nota}` : nota;
+    if (marcarPago && !isRetiro(r)) r["Estado Trámite"] = esConductorExcluido(r) ? "PAGO CONDUCTOR" : "PAGO";
+    r["_ultimaEdicion"] = ahora;
+  });
+  saveStore();
+  actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
+  showToast(`✅ ${fmt(info.valor)} aplicado a los ${g.deben.length} afiliados de ${nombrePropio(g.nombre)}.`);
 }
 async function cambiarEstadoConsignacion(id, estado){
   const cambio = estado === "pendiente"
@@ -10762,6 +10883,477 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
   if (esperaPlanilla){ showToast(`🧾 Retiro pendiente: ${r["Nombre del Afiliado"]} pasa a RETIRO cuando se suba la planilla o el soporte.`); return; }
   showToast(programado ? `📅 Retiro programado para el ${fechaCortaRetiro(fecha)}.` : `🚪 ${r["Nombre del Afiliado"]} quedó en RETIRO y no pasará al mes siguiente.`);
 });
+
+/* ================= AYUDAS INTELIGENTES (19–24) ================= */
+function ayAbrir(id){ document.getElementById(id).classList.add("show"); }
+function ayCerrar(id){ document.getElementById(id).classList.remove("show"); }
+["overlayHoy","overlayEstadoCuenta","overlayRevision","overlayHistAtrasos","overlayRespaldos"].forEach(id => {
+  const ov = document.getElementById(id);
+  ov.addEventListener("click", (e) => { if (e.target === ov || e.target.closest("[data-ay-cerrar]")) ayCerrar(id); });
+});
+function ayIrCliente(cedula, overlayId){
+  if (overlayId) ayCerrar(overlayId);
+  const r = records.find(x => String(x["Cédula"]) === String(cedula));
+  if (!r){ showToast("Ese cliente no está en este mes."); return; }
+  showBreakdown(r["Cédula"]);
+  try{ document.getElementById("breakdown").scrollIntoView({ behavior: "smooth", block: "start" }); }catch(e){}
+}
+function ayFila(titulo, sub, cedula, overlayId, extra = ""){
+  return `<button type="button" class="ay-fila" ${cedula ? `data-ay-ced="${escHtml(cedula)}" data-ay-ov="${overlayId}"` : ""}>
+    <span class="ay-fila-t">${titulo}</span>${extra}<span class="ay-fila-s">${sub}</span></button>`;
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ay-ced]");
+  if (b) ayIrCliente(b.dataset.ayCed, b.dataset.ayOv);
+});
+function retiroQueDebe(r){ return retiroPendientePlanilla(r) || (isRetiro(r) && !esOtraEmpresa(r) && retiroSinSoporte(r)); }
+
+/* ---------- 3. Hoy ---------- */
+function datosHoy(){
+  const activos = records.filter(r => !esConductorExcluido(r));
+  return {
+    cobrar: activos.filter(r => { const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }),
+    atrasados: records.filter(estaAtrasado),
+    retiros: activos.filter(retiroQueDebe),
+    soportes: activos.filter(r => isRetiro(r) && esOtraEmpresa(r) && retiroSinSoporte(r)),
+    afiliaciones: records.filter(r => pendientesConfirmacion(r).length && confirmacionDemorada(r)),
+    tareas: getTareas().filter(esTareaVencida),
+    recordatorios: records.filter(tieneRecordatorioVencido),
+    consig: (Array.isArray(consignaciones) ? consignaciones : []).filter(c => c.estado === "pendiente"),
+    problemas: problemasDeDatos().total,
+  };
+}
+function abrirHoy(){
+  const d = datosHoy();
+  const sec = (titulo, n, cuerpo, boton = "") => `<div class="ay-sec ${n ? "" : "ay-sec-ok"}"><div class="ay-sec-h"><b>${titulo}</b><span class="ay-n">${n}</span>${boton}</div>${n ? cuerpo : ""}</div>`;
+  const lista = (arr, sub, max = 6) => arr.slice(0, max).map(r => ayFila(escHtml(r["Nombre del Afiliado"]), sub(r), r["Cédula"], "overlayHoy")).join("") + (arr.length > max ? `<p class="ay-mas">y ${arr.length - max} más…</p>` : "");
+  const totalCobrar = d.cobrar.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
+  let html = "";
+  html += sec("💰 Por cobrar este mes", d.cobrar.length,
+    `<p class="ay-txt">Suman <b>${fmt(totalCobrar)}</b>${d.cobrar.filter(estaAtrasado).length ? ` · <b>${d.cobrar.filter(estaAtrasado).length}</b> ya pasaron el día 16` : ""}.</p>`,
+    d.cobrar.length ? `<button type="button" class="btn small primary" data-hoy="cobrar">Enviar recordatorios</button>` : "");
+  html += sec("🚪 Retiros que todavía deben planilla", d.retiros.length, lista(d.retiros, r => `${escHtml(r["Empresa"] || "")}${r["Responsable / Grupo"] ? " · " + escHtml(nombrePropio(r["Responsable / Grupo"])) : ""}`),
+    d.retiros.length ? `<button type="button" class="btn small" data-hoy="retiros">Ver lista</button>` : "");
+  html += sec("📎 Retiros de otra empresa sin soporte", d.soportes.length, lista(d.soportes, r => escHtml(r["Empresa"] || "")));
+  html += sec(`⏳ Afiliaciones sin confirmar (${DIAS_ALERTA_CONFIRMACION}+ días)`, d.afiliaciones.length, lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`));
+  html += sec("📝 Tareas para hoy o vencidas", d.tareas.length, d.tareas.slice(0, 6).map(t => ayFila(escHtml(t.descripcion || "Tarea"), `${t.fecha ? t.fecha.split("-").reverse().join("/") : ""}${t.nombre ? " · " + escHtml(t.nombre) : ""}`, "", "")).join(""),
+    d.tareas.length ? `<button type="button" class="btn small" data-hoy="tareas">Abrir tareas</button>` : "");
+  html += sec("🔔 Recordatorios de clientes", d.recordatorios.length, lista(d.recordatorios, r => escHtml(r["Observación"] || "")));
+  html += sec("🏦 Consignaciones por revisar", d.consig.length, `<p class="ay-txt">Llegaron pagos que hay que relacionar con un cliente.</p>`,
+    d.consig.length ? `<button type="button" class="btn small" data-hoy="consig">Revisar</button>` : "");
+  html += sec("🧹 Datos con problemas", d.problemas, `<p class="ay-txt">Cédulas repetidas, teléfonos mal escritos, nombres de EPS o empresas distintos, PAGO sin planilla.</p>`,
+    d.problemas ? `<button type="button" class="btn small" data-hoy="revision">Revisar</button>` : "");
+  const hoy = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  document.getElementById("hoySub").textContent = `${hoy.charAt(0).toUpperCase() + hoy.slice(1)} · ${store.currentMonth}`;
+  document.getElementById("hoyCuerpo").innerHTML = html;
+  ayAbrir("overlayHoy");
+}
+document.getElementById("hoyCuerpo").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-hoy]"); if (!b) return;
+  const a = b.dataset.hoy; ayCerrar("overlayHoy");
+  if (a === "cobrar") iniciarOContinuarRecordatorios();
+  else if (a === "retiros"){ filtroEstado = "RETIRO"; renderList(searchInput.value); }
+  else if (a === "tareas") document.getElementById("navTareasBtn").click();
+  else if (a === "consig") document.getElementById("navConsigBtn").click();
+  else if (a === "revision") abrirRevision();
+});
+document.getElementById("navHoyBtn").addEventListener("click", abrirHoy);
+// Se abre sola la primera vez del día en cada equipo (si hay algo pendiente)
+let _hoyRevisado = false;
+function mostrarHoySiToca(){
+  if (_hoyRevisado || !records.length) return;
+  _hoyRevisado = true;
+  setTimeout(() => {
+    const clave = "prosegurosnet_hoy_visto";
+    let visto = ""; try{ visto = localStorage.getItem(clave) || ""; }catch(e){}
+    if (visto === fechaHoyISO() || document.querySelector(".overlay.show")) return;
+    const d = datosHoy();
+    if (!(d.atrasados.length + d.retiros.length + d.afiliaciones.length + d.tareas.length + d.recordatorios.length + d.consig.length)) return;
+    try{ localStorage.setItem(clave, fechaHoyISO()); }catch(e){}
+    abrirHoy();
+  }, 4000);
+}
+
+/* ---------- 2. Estado de cuenta por responsable / empresa ---------- */
+function debeEsteMes(r){
+  const ec = estadoClass(r["Estado Trámite"]);
+  return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES" || retiroQueDebe(r);
+}
+function gruposEstadoCuenta(){
+  const m = new Map();
+  records.filter(r => !esConductorExcluido(r)).forEach(r => {
+    const c = claveAgrupacion(r); if (!c) return;
+    if (!m.has(c.k)) m.set(c.k, { k: c.k, nombre: c.nombre, esEmpresa: c.k.startsWith("emp:"), todos: [] });
+    m.get(c.k).todos.push(r);
+  });
+  return [...m.values()].map(g => {
+    g.deben = g.todos.filter(debeEsteMes);
+    g.pagados = g.todos.filter(r => estadoClass(r["Estado Trámite"]) === "PAGO").length;
+    g.total = g.deben.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
+    g.mora = g.deben.reduce((a, r) => a + numOrZero(r["Recargo Mora"]), 0);
+    g.telefono = String((g.deben.find(c => String(c["Teléfono"] || "").trim()) || g.todos.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
+    return g;
+  }).filter(g => g.deben.length).sort((a, b) => b.total - a.total);
+}
+function abrirEstadoCuenta(){
+  const gs = gruposEstadoCuenta();
+  document.getElementById("ecSub").textContent = `${store.currentMonth} · ${gs.length} responsable(s) o empresa(s) con valores pendientes.`;
+  document.getElementById("ecLista").innerHTML = gs.length ? gs.map((g, i) => `
+    <div class="ay-card">
+      <div class="ay-card-h"><b>${g.esEmpresa ? "🏢" : "👤"} ${escHtml(nombrePropio(g.nombre))}</b><span class="ay-total">${fmt(g.total)}</span></div>
+      <div class="ay-fila-s">${g.deben.length} por pagar${g.pagados ? ` · ${g.pagados} ya pagaron` : ""}${g.mora ? ` · incluye ${fmt(g.mora)} de mora` : ""}${g.telefono ? ` · 📱 ${escHtml(g.telefono)}` : " · sin teléfono"}</div>
+      <div class="ay-acciones">
+        <button type="button" class="btn small" data-ec-ver="${i}">👁️ Ver</button>
+        <button type="button" class="btn small" data-ec-bajar="${i}">⬇️ Descargar</button>
+        <button type="button" class="btn small whatsapp" data-ec-enviar="${i}" ${g.telefono ? "" : "disabled"}>📲 Enviar por WhatsApp</button>
+      </div>
+    </div>`).join("") : `<p class="ay-txt">No hay responsables ni empresas con valores pendientes este mes. 🎉</p>`;
+  abrirEstadoCuenta._gs = gs;
+  document.getElementById("ecVista").innerHTML = "";
+  ayAbrir("overlayEstadoCuenta");
+}
+async function imagenEstadoCuenta(g, tipo = "image/png"){
+  const W = 1080, pad = 60, filaH = 64;
+  const filas = g.deben;
+  let qr = null;
+  try{ qr = await createImageBitmap(await (await fetch(QR_URL, { cache: "force-cache" })).blob()); }catch(e){}
+  const qrW = 300, qrAlto = qr ? Math.round(qrW * qr.height / qr.width) : 0;
+  const qrH = qr ? qrAlto + 50 : 0;
+  const H = 300 + filas.length * filaH + 170 + qrH + 120;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#FFFFFF"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#C8202F"; c.fillRect(0, 0, W, 150);
+  c.fillStyle = "#FFFFFF"; c.textAlign = "left";
+  c.font = "800 52px Inter, Arial, sans-serif"; c.fillText("PROSEGUROSNET", pad, 82);
+  c.font = "500 26px Inter, Arial, sans-serif"; c.fillText("Estado de cuenta · seguridad social", pad, 124);
+  c.fillStyle = "#181512"; c.font = "700 38px Inter, Arial, sans-serif";
+  c.fillText(nombrePropio(g.nombre).slice(0, 40), pad, 215);
+  c.fillStyle = "#5A534A"; c.font = "500 26px Inter, Arial, sans-serif";
+  c.fillText(`${store.currentMonth} · ${filas.length} afiliado(s) por pagar`, pad, 255);
+  let y = 300;
+  c.fillStyle = "#F2EFEA"; c.fillRect(pad - 10, y, W - 2 * pad + 20, 50);
+  c.fillStyle = "#5A534A"; c.font = "700 22px Inter, Arial, sans-serif";
+  c.fillText("AFILIADO", pad, y + 33); c.textAlign = "right"; c.fillText("VALOR", W - pad, y + 33); c.textAlign = "left";
+  y += 50;
+  filas.forEach((r, i) => {
+    const v = calcularTotalPagar(r, store.currentMonth), m = numOrZero(r["Recargo Mora"]);
+    if (i % 2) { c.fillStyle = "#FAF8F5"; c.fillRect(pad - 10, y, W - 2 * pad + 20, filaH); }
+    c.fillStyle = "#181512"; c.font = "600 27px Inter, Arial, sans-serif";
+    c.fillText(nombrePropio(r["Nombre del Afiliado"]).slice(0, 34), pad, y + 30);
+    c.fillStyle = "#7A7268"; c.font = "500 20px Inter, Arial, sans-serif";
+    const est = retiroQueDebe(r) ? "Retiro (falta pagar planilla)" : (r["Estado Trámite"] === "DIAS PROPORCIONALES" ? "Días proporcionales" : "Sin pago");
+    c.fillText(`${est}${m ? ` · incluye ${fmt(m)} de mora` : ""}`, pad, y + 54);
+    c.fillStyle = "#181512"; c.font = "700 28px Inter, Arial, sans-serif"; c.textAlign = "right";
+    c.fillText(fmt(v), W - pad, y + 40); c.textAlign = "left";
+    y += filaH;
+  });
+  y += 20;
+  c.fillStyle = "#C8202F"; c.fillRect(pad - 10, y, W - 2 * pad + 20, 90);
+  c.fillStyle = "#FFFFFF"; c.font = "800 34px Inter, Arial, sans-serif";
+  c.fillText("TOTAL A PAGAR", pad + 10, y + 58); c.textAlign = "right"; c.fillText(fmt(g.total), W - pad - 10, y + 58); c.textAlign = "left";
+  y += 130;
+  if (qr){
+    c.drawImage(qr, (W - qrW) / 2, y - 20, qrW, qrAlto);
+    y += qrH;
+  }
+  c.fillStyle = "#181512"; c.textAlign = "center"; c.font = "600 26px Inter, Arial, sans-serif";
+  c.fillText(`Pague por Bre-B con la llave ${LLAVE_BREB}`, W / 2, y);
+  c.fillStyle = "#7A7268"; c.font = "500 22px Inter, Arial, sans-serif";
+  c.fillText("Luego envíenos el comprobante. ¡Gracias!", W / 2, y + 36);
+  return await new Promise(res => cv.toBlob(res, tipo, 0.92));
+}
+function nombreArchivoEC(g){ return `estado_cuenta_${nombrePropio(g.nombre).replace(/[^\wáéíóúñ]+/gi, "_")}_${store.currentMonth.replace(/\s+/g, "_")}.png`; }
+document.getElementById("ecLista").addEventListener("click", async (e) => {
+  const gs = abrirEstadoCuenta._gs || [];
+  const ver = e.target.closest("[data-ec-ver]"), bajar = e.target.closest("[data-ec-bajar]"), env = e.target.closest("[data-ec-enviar]");
+  if (ver){
+    const blob = await imagenEstadoCuenta(gs[+ver.dataset.ecVer]);
+    const url = URL.createObjectURL(blob);
+    document.getElementById("ecVista").innerHTML = `<img src="${url}" alt="Estado de cuenta" class="ay-vista">`;
+    document.getElementById("ecVista").scrollIntoView({ behavior: "smooth" });
+  }
+  if (bajar){
+    const g = gs[+bajar.dataset.ecBajar];
+    const blob = await imagenEstadoCuenta(g);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombreArchivoEC(g);
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  if (env){
+    const g = gs[+env.dataset.ecEnviar];
+    const numero = g.telefono.replace(/\D/g, "");
+    if (!numero){ showToast("Ese grupo no tiene teléfono guardado."); return; }
+    const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
+    const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+    let copiada = Promise.resolve(false);
+    try{
+      if (navigator.clipboard && window.ClipboardItem){
+        copiada = navigator.clipboard.write([new ClipboardItem({ "image/png": imagenEstadoCuenta(g) })]).then(() => true, () => false);
+      }
+    }catch(err){}
+    const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(g.nombre)}, le compartimos el estado de cuenta de ${store.currentMonth}: ${g.deben.length} afiliado(s), total *${fmt(g.total)}*.`;
+    copiada.then(ok => {
+      abrirChatEnApp(conIndicativo, esCelular, texto);
+      showToast(ok ? "📋 Envíe el mensaje y luego pegue la imagen del estado de cuenta (ya está copiada)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela en el chat.");
+    });
+  }
+});
+document.getElementById("navEstadoCuentaBtn").addEventListener("click", abrirEstadoCuenta);
+
+/* ---------- 4. Revisión de datos ---------- */
+function claveTexto(s){ return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+function distancia(a, b){
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// Agrupa escrituras distintas del mismo nombre (mayúsculas, tildes, espacios o 1 letra de diferencia)
+function escriturasDistintas(campo){
+  const conteo = new Map();
+  records.forEach(r => { const v = limpiarEspacios(r[campo] || ""); if (v) conteo.set(v, (conteo.get(v) || 0) + 1); });
+  const valores = [...conteo.keys()];
+  const grupos = [], usado = new Set();
+  valores.forEach(v => {
+    if (usado.has(v)) return;
+    const kv = claveTexto(v);
+    const g = valores.filter(w => !usado.has(w) && (claveTexto(w) === kv || (kv.length >= 5 && distancia(claveTexto(w), kv) <= 1)));
+    g.forEach(w => usado.add(w));
+    if (g.length > 1) grupos.push(g.map(w => ({ v: w, n: conteo.get(w) })).sort((a, b) => b.n - a.n));
+  });
+  return grupos;
+}
+function telefonoMalo(t){
+  let d = String(t || "").replace(/\D/g, "");
+  if (!d) return false;
+  if (d.length === 12 && d.startsWith("57")) d = d.slice(2);
+  return !(d.length === 10 && (d[0] === "3" || d.startsWith("60")));
+}
+function pagoSinPlanilla(r){
+  if (estadoClass(r["Estado Trámite"]) !== "PAGO" || esOtraEmpresa(r) || esConductorExcluido(r)) return false;
+  if (String(r["No. Planilla Pagada"] || "").trim() || r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return false;
+  const ced = String(r["Cédula"] || "").trim();
+  if (docsEnNube && (docsEnNube.has(claveDocNube(ced, "planilla_pagada")) || docsEnNube.has(claveDocNube(ced, "comprobante_pago")))) return false;
+  return true;
+}
+function problemasDeDatos(){
+  const porCed = new Map();
+  records.forEach(r => { const c = String(r["Cédula"] || "").replace(/\D/g, ""); if (c) porCed.set(c, [...(porCed.get(c) || []), r]); });
+  const repetidas = [...porCed.values()].filter(a => a.length > 1);
+  const telefonos = records.filter(r => telefonoMalo(r["Teléfono"]));
+  const eps = escriturasDistintas("EPS"), empresas = escriturasDistintas("Empresa"), afp = escriturasDistintas("AFP");
+  const sinPlanilla = records.filter(pagoSinPlanilla);
+  return { repetidas, telefonos, eps, empresas, afp, sinPlanilla,
+    total: repetidas.length + telefonos.length + eps.length + empresas.length + afp.length + sinPlanilla.length };
+}
+function abrirRevision(){
+  const p = problemasDeDatos();
+  const sec = (titulo, n, cuerpo, ayuda) => `<div class="ay-sec ${n ? "" : "ay-sec-ok"}"><div class="ay-sec-h"><b>${titulo}</b><span class="ay-n">${n}</span></div>${n ? `<p class="ay-txt">${ayuda}</p>${cuerpo}` : ""}</div>`;
+  const unif = (campo, grupos) => grupos.map((g, i) => `<div class="ay-card"><div class="ay-fila-s">${g.map(x => `«${escHtml(x.v)}» (${x.n})`).join(" · ")}</div>
+      <div class="ay-acciones"><button type="button" class="btn small primary" data-unificar="${campo}|${i}">Dejar todos como «${escHtml(g[0].v)}»</button></div></div>`).join("");
+  let html = "";
+  html += sec("🪪 Cédulas repetidas en el mes", p.repetidas.length,
+    p.repetidas.map(a => a.map(r => ayFila(escHtml(r["Nombre del Afiliado"]), `Cédula ${escHtml(r["Cédula"])} · ${escHtml(r["Estado Trámite"])} · No. ${escHtml(r["No."])}`, r["Cédula"], "overlayRevision")).join("")).join("<hr class='ay-hr'>"),
+    "La misma cédula aparece más de una vez. Revise cuál es la buena y elimine la otra.");
+  html += sec("📱 Teléfonos mal escritos", p.telefonos.length,
+    p.telefonos.map(r => ayFila(escHtml(r["Nombre del Afiliado"]), `Tiene «${escHtml(r["Teléfono"])}»`, r["Cédula"], "overlayRevision")).join(""),
+    "Un celular en Colombia tiene 10 dígitos y empieza por 3 (o 60 si es fijo). Así no llegan los recordatorios.");
+  html += sec("🏥 EPS escritas de varias formas", p.eps.length, unif("EPS", p.eps), "Parecen la misma EPS escrita distinto. Unificarlas ayuda a los informes y a la guía de afiliaciones. Se cambia en este mes y los siguientes.");
+  html += sec("🏢 Empresas escritas de varias formas", p.empresas.length, unif("Empresa", p.empresas), "Parecen la misma empresa. Si se escriben distinto, los recordatorios agrupados y los estados de cuenta salen separados.");
+  html += sec("🏦 Fondos de pensión escritos de varias formas", p.afp.length, unif("AFP", p.afp), "Parecen el mismo fondo escrito distinto.");
+  html += sec("🧾 En PAGO pero sin planilla", p.sinPlanilla.length,
+    p.sinPlanilla.map(r => ayFila(escHtml(r["Nombre del Afiliado"]), `Cédula ${escHtml(r["Cédula"])} · falta el número o archivo de la planilla`, r["Cédula"], "overlayRevision")).join(""),
+    "Están marcados como pagados pero no tienen número de planilla ni archivo. Sin eso no hay prueba del pago.");
+  abrirRevision._p = p;
+  document.getElementById("revSub").textContent = `${store.currentMonth} · ${p.total ? p.total + " cosa(s) para revisar" : "todo en orden"}`;
+  document.getElementById("revCuerpo").innerHTML = html;
+  ayAbrir("overlayRevision");
+}
+document.getElementById("revCuerpo").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-unificar]"); if (!b) return;
+  const [campo, i] = b.dataset.unificar.split("|");
+  const p = abrirRevision._p; const g = (campo === "EPS" ? p.eps : campo === "AFP" ? p.afp : p.empresas)[+i];
+  if (!g) return;
+  const final = g[0].v, otros = new Set(g.slice(1).map(x => x.v));
+  if (!(await confirmarApp(`¿Cambiar ${[...otros].map(v => `«${v}»`).join(", ")} por «${final}» en ${store.currentMonth} y los meses siguientes?`))) return;
+  let n = 0; const ahora = new Date().toISOString();
+  clientesDesdeActual().forEach(r => { if (otros.has(limpiarEspacios(r[campo] || ""))){ r[campo] = final; r["_ultimaEdicion"] = ahora; n++; } });
+  saveStore(); renderList(searchInput.value); abrirRevision();
+  showToast(`✅ ${n} cliente(s) quedaron con «${final}».`);
+});
+document.getElementById("navRevisionBtn").addEventListener("click", abrirRevision);
+
+/* ---------- 6. Historial de atrasos ---------- */
+function historialAtrasos(maxMeses = 6){
+  const nombres = sortedMonthNames();
+  const iAct = nombres.indexOf(store.currentMonth);
+  const meses = nombres.slice(Math.max(0, (iAct < 0 ? nombres.length : iAct) - maxMeses), iAct < 0 ? nombres.length : iAct); // meses ya cerrados
+  const porCed = new Map();
+  meses.forEach(mes => (store.months[mes] || []).forEach(r => {
+    if (esConductorExcluido(r)) return;
+    const ced = String(r["Cédula"] || "").trim(); if (!ced) return;
+    const ec = estadoClass(r["Estado Trámite"]);
+    if (!porCed.has(ced)) porCed.set(ced, { ced, nombre: r["Nombre del Afiliado"], resp: limpiarEspacios(r["Responsable / Grupo"] || ""), empresa: r["Empresa"] || "", meses: 0, sinPagar: 0, mora: 0, ultimos: [] });
+    const x = porCed.get(ced);
+    x.nombre = r["Nombre del Afiliado"]; x.resp = limpiarEspacios(r["Responsable / Grupo"] || "") || x.resp; x.empresa = r["Empresa"] || x.empresa;
+    if (ec === "AFILIACION" || ec === "SIN_INICIAR" || ec === "RETIRO") return;
+    x.meses++;
+    const noPago = ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES";
+    if (noPago) x.sinPagar++;
+    if (numOrZero(r["Recargo Mora"]) > 0) x.mora++;
+    x.ultimos.push(noPago ? "✗" : numOrZero(r["Recargo Mora"]) > 0 ? "⏰" : "✓");
+  }));
+  const clientes = [...porCed.values()].filter(x => x.sinPagar + x.mora > 0)
+    .map(x => ({ ...x, puntos: x.sinPagar * 2 + x.mora })).sort((a, b) => b.puntos - a.puntos || b.sinPagar - a.sinPagar);
+  const pr = new Map();
+  [...porCed.values()].forEach(x => {
+    const k = x.resp && !esGrupoGeneral(normResp(x.resp)) ? x.resp : (x.empresa && !esGrupoGeneral(String(x.empresa).toLowerCase()) ? x.empresa : "");
+    if (!k) return;
+    const kk = normResp(k);
+    if (!pr.has(kk)) pr.set(kk, { nombre: k, clientes: 0, mesesCliente: 0, sinPagar: 0, mora: 0 });
+    const g = pr.get(kk); g.clientes++; g.mesesCliente += x.meses; g.sinPagar += x.sinPagar; g.mora += x.mora;
+  });
+  const responsables = [...pr.values()].filter(g => g.sinPagar + g.mora > 0 && g.mesesCliente)
+    .map(g => ({ ...g, pct: Math.round(100 * (g.sinPagar + g.mora) / g.mesesCliente) })).sort((a, b) => b.pct - a.pct || b.sinPagar - a.sinPagar);
+  return { meses, clientes, responsables };
+}
+function abrirHistAtrasos(){
+  const h = historialAtrasos();
+  const cuerpo = document.getElementById("haCuerpo");
+  document.getElementById("haSub").textContent = h.meses.length
+    ? `Meses revisados: ${h.meses[0]} a ${h.meses[h.meses.length - 1]} (${h.meses.length}). ✓ pagó · ⏰ pagó con mora · ✗ no pagó.`
+    : "Todavía no hay meses anteriores guardados para comparar.";
+  cuerpo.innerHTML = !h.meses.length ? "" : `
+    <div class="ay-sec"><div class="ay-sec-h"><b>👤 Responsables y empresas que más se atrasan</b><span class="ay-n">${h.responsables.length}</span></div>
+      ${h.responsables.slice(0, 15).map(g => `<div class="ay-fila ay-fila-fija"><span class="ay-fila-t">${escHtml(nombrePropio(g.nombre))} <span class="ay-pct ${g.pct >= 50 ? "alto" : g.pct >= 25 ? "medio" : ""}">${g.pct}% de atraso</span></span>
+        <span class="ay-fila-s">${g.clientes} cliente(s) · ${g.sinPagar} mes(es) sin pagar · ${g.mora} con mora</span></div>`).join("") || `<p class="ay-txt">Ninguno se ha atrasado. 🎉</p>`}
+    </div>
+    <div class="ay-sec"><div class="ay-sec-h"><b>🧍 Clientes que más se atrasan</b><span class="ay-n">${h.clientes.length}</span></div>
+      <p class="ay-txt">Sirve para decidir a quién cobrarle primero o pedirle el pago por adelantado.</p>
+      ${h.clientes.slice(0, 30).map(x => ayFila(escHtml(x.nombre), `${x.sinPagar} sin pagar · ${x.mora} con mora · de ${x.meses} mes(es)${x.resp ? " · " + escHtml(nombrePropio(x.resp)) : ""}`, x.ced, "overlayHistAtrasos", `<span class="ay-hist">${x.ultimos.join(" ")}</span>`)).join("")}
+    </div>`;
+  ayAbrir("overlayHistAtrasos");
+}
+document.getElementById("navHistAtrasosBtn").addEventListener("click", abrirHistAtrasos);
+
+/* ---------- 7. Respaldos automáticos (cada semana en el servidor) ---------- */
+async function abrirRespaldos(){
+  const cuerpo = document.getElementById("rbCuerpo");
+  ayAbrir("overlayRespaldos");
+  if (!esAdmin()){ cuerpo.innerHTML = `<p class="ay-txt">Solo el administrador puede ver y descargar los respaldos.</p>`; return; }
+  if (!cloudDb || !navigator.onLine){ cuerpo.innerHTML = `<p class="ay-txt">📴 Se necesita internet.</p>`; return; }
+  cuerpo.innerHTML = `<p class="ay-txt">Cargando…</p>`;
+  const { data, error } = await sb.from("respaldos").select("id,creado_at,origen,tamano_bytes").order("creado_at", { ascending: false });
+  if (error){ cuerpo.innerHTML = `<p class="ay-txt">No se pudieron cargar los respaldos: ${escHtml(error.message)}</p>`; return; }
+  cuerpo.innerHTML = `<p class="ay-txt">Cada <b>lunes en la madrugada</b> el servidor guarda solo una copia de toda la información (clientes de todos los meses, tareas, gastos, consignaciones, CRM y configuración). Se guardan las <b>últimas 8</b>. Las fotos y PDF de los documentos no van aquí: siguen en su espacio propio.</p>
+    ${(data || []).map(x => `<div class="ay-card"><div class="ay-card-h"><b>${new Date(x.creado_at).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "full", timeStyle: "short" })}</b><span class="ay-fila-s">${x.origen === "manual" ? "hecho a mano" : "automático"} · ${tamanoLegible(x.tamano_bytes || 0)}</span></div>
+      <div class="ay-acciones"><button type="button" class="btn small" data-rb-bajar="${x.id}">⬇️ Descargar copia</button></div></div>`).join("") || `<p class="ay-txt">Todavía no hay respaldos.</p>`}
+    <div class="ay-acciones" style="margin-top:10px;"><button type="button" class="btn small primary" id="rbAhoraBtn">Hacer un respaldo ahora</button></div>`;
+}
+document.getElementById("rbCuerpo").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-rb-bajar]");
+  if (b){
+    b.disabled = true; b.textContent = "Descargando…";
+    const { data, error } = await sb.from("respaldos").select("creado_at,datos").eq("id", b.dataset.rbBajar).single();
+    b.disabled = false; b.textContent = "⬇️ Descargar copia";
+    if (error){ showToast("No se pudo descargar: " + error.message); return; }
+    const blob = new Blob([JSON.stringify(data.datos)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `respaldo_servidor_prosegurosnet_${String(data.creado_at).slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    return;
+  }
+  if (e.target.id === "rbAhoraBtn"){
+    e.target.disabled = true; e.target.textContent = "Guardando…";
+    const { error } = await sb.rpc("crear_respaldo", { p_origen: "manual" });
+    if (error){ showToast("No se pudo hacer el respaldo: " + error.message); e.target.disabled = false; return; }
+    showToast("✅ Respaldo guardado en el servidor.");
+    abrirRespaldos();
+  }
+});
+document.getElementById("navRespaldosBtn").addEventListener("click", abrirRespaldos);
+
+/* ---------- 1. Leer la cédula desde la foto ---------- */
+let _ocrCargando = null;
+function cargarTesseract(){
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (_ocrCargando) return _ocrCargando;
+  _ocrCargando = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = () => res(window.Tesseract); s.onerror = () => { _ocrCargando = null; rej(new Error("sin conexión")); };
+    document.head.appendChild(s);
+  });
+  return _ocrCargando;
+}
+// Saca número y nombre del texto leído (cédula amarilla, cédula digital y la parte de atrás con <<<)
+function datosDeTextoCedula(texto){
+  const lineas = String(texto || "").split(/\n+/).map(l => l.replace(/[^\wÁÉÍÓÚÑÜáéíóúñü.<\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
+  const res = { cedula: "", nombre: "" };
+  // Parte de atrás (MRZ): APELLIDO<APELLIDO<<NOMBRE<NOMBRE
+  const mrz = lineas.map(l => l.replace(/\s/g, "").toUpperCase()).filter(l => /</.test(l) && l.length >= 20);
+  const lineaNombre = mrz.find(l => /^[A-Z]+(<[A-Z]+)*<<[A-Z]+/.test(l));
+  if (lineaNombre){
+    const [ap, no] = lineaNombre.split("<<");
+    res.nombre = `${no.split("<").filter(Boolean).join(" ")} ${ap.split("<").filter(Boolean).join(" ")}`.trim();
+  }
+  const esEtiqueta = l => /^(APELLIDOS?|NOMBRES?|SURNAMES?|GIVEN|NUMERO|NÚMERO|NUIP|REPUBLICA|REPÚBLICA|COLOMBIA|IDENTIFICACION|IDENTIFICACIÓN|CEDULA|CÉDULA|PERSONAL|FIRMA|FECHA|SEXO|LUGAR|ESTATURA|NACIONALIDAD|DOCUMENTO)/i.test(l);
+  const esValor = l => l && !esEtiqueta(l) && /^[A-ZÁÉÍÓÚÑÜ ]{3,}$/.test(l) && l.split(" ").length <= 4;
+  const valorJunto = (re) => {
+    const i = lineas.findIndex(l => re.test(l));
+    if (i < 0) return "";
+    const enLinea = lineas[i].replace(re, "").replace(/^[\s/:]+|SURNAMES?|GIVEN NAMES?/gi, "").trim();
+    if (esValor(enLinea.toUpperCase()) && enLinea === enLinea.toUpperCase()) return enLinea;
+    const sig = lineas[i + 1], ant = lineas[i - 1];
+    // Cédula digital ("Apellidos / Surnames"): el dato va DEBAJO. Cédula amarilla ("APELLIDOS"): va ENCIMA.
+    const digital = /\/|SURNAME|GIVEN/i.test(lineas[i]);
+    if (digital) return esValor(sig) ? sig : (esValor(ant) ? ant : "");
+    return esValor(ant) ? ant : (esValor(sig) ? sig : "");
+  };
+  if (!res.nombre){
+    const ap = valorJunto(/APELLIDOS?/i), no = valorJunto(/NOMBRES?/i);
+    if (ap || no) res.nombre = `${no} ${ap}`.trim();
+  }
+  // Número: después de NUMERO / NUIP, o el primer número con puntos de miles
+  const todo = lineas.join("\n");
+  // 2.ª línea: fecha nac. + sexo + vencimiento + COL + número de cédula
+  const mrzNum = mrz.map(l => (l.match(/\d{7}[MF<]\d{7}COL(\d{6,10})/) || [])[1]).find(Boolean);
+  if (mrzNum){ res.cedula = mrzNum; return res; }
+  let m = todo.match(/(?:N[UÚ]MERO|NUIP|No\.?)\s*[:.]?\s*(\d{1,3}(?:[.,\s]\d{3}){1,3}|\d{6,10})/i)
+    || todo.match(/\b(\d{1,3}(?:[.,]\d{3}){2,3})\b/)
+    || todo.match(/\b(\d{7,10})\b/);
+  if (m) res.cedula = m[1].replace(/\D/g, "");
+  if (res.cedula && (res.cedula.length < 6 || res.cedula.length > 10)) res.cedula = "";
+  return res;
+}
+async function leerCedulaDeImagen(fuente){
+  const caja = document.querySelector('.doc-upload[data-doc="Cedula"]');
+  if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
+  let aviso = caja.querySelector(".ocr-aviso");
+  if (!aviso){ aviso = document.createElement("div"); aviso.className = "ocr-aviso"; caja.appendChild(aviso); }
+  aviso.innerHTML = `🔎 Leyendo la cédula…`;
+  try{
+    const T = await cargarTesseract();
+    const { data } = await T.recognize(fuente, "spa");
+    const d = datosDeTextoCedula(data && data.text);
+    if (!d.cedula && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Escríbalos a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
+    aviso.innerHTML = `<div>🔎 <b>Leí en la foto:</b>${d.cedula ? `<br>Cédula: <b>${escHtml(d.cedula)}</b>` : ""}${d.nombre ? `<br>Nombre: <b>${escHtml(d.nombre)}</b>` : ""}</div>
+      <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Usar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
+      <small>Revise que estén bien antes de guardar.</small>`;
+    aviso.querySelector("[data-ocr-usar]").onclick = () => {
+      const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
+      if (d.cedula && !fc.readOnly && !fc.disabled){ fc.value = d.cedula; fc.dispatchEvent(new Event("input", { bubbles: true })); fc.dispatchEvent(new Event("change", { bubbles: true })); }
+      if (d.nombre){ fn.value = d.nombre; fn.dispatchEvent(new Event("input", { bubbles: true })); }
+      aviso.remove(); showToast("✅ Datos de la cédula puestos. Revíselos.");
+    };
+    aviso.querySelector("[data-ocr-no]").onclick = () => aviso.remove();
+  }catch(e){
+    aviso.innerHTML = `No se pudo leer la foto (${escHtml(e.message || "error")}).`;
+    setTimeout(() => aviso.remove(), 6000);
+  }
+}
 </script>
 </body>
 </html>

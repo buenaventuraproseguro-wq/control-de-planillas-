@@ -31,6 +31,10 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Colores de la página (menú 18): cada persona escoge su tema; se guarda en su propio equipo
 - Retiros: al avanzar de mes, el RETIRO sin soporte (PSN: planilla; otra empresa: imagen o planilla de la novedad) pasa al mes siguiente
 - Retiro PROSEGUROSNET: el botón "Pedir retiro" (o elegir RETIRO al editar) deja el retiro pendiente; pasa a RETIRO solo al subir la planilla o el soporte. Otra empresa se marca directo.
+- Ayudas inteligentes (menú 19–23): Hoy (se abre sola 1 vez al día), Estado de cuenta por responsable/empresa (imagen con QR), Revisión de datos (cédulas repetidas, teléfonos, EPS/empresas/AFP escritas distinto, PAGO sin planilla), Quién se atrasa más, Respaldos automáticos
+- Foto de cédula: la app lee número y nombre (tesseract.js en el navegador) y pregunta antes de usarlos
+- Consignaciones: también sugiere el pago de un grupo (responsable/empresa) cuando el valor es la suma exacta de sus afiliados
+- Respaldo semanal: tabla `respaldos` (solo admin la ve), función `crear_respaldo`, pg_cron lunes 04:00 UTC; guarda las 8 últimas. No incluye fotos/PDF.
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
