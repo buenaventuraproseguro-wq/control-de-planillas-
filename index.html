@@ -514,6 +514,7 @@
   .ay-pct.alto{ background:var(--retiro-bg); color:var(--retiro); }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .ocr-acc{ display:flex; gap:6px; }
+  .tag-reingreso{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--afiliacion-bg); color:var(--afiliacion); vertical-align:middle; }
   .ocr-alerta{ color:var(--retiro); font-weight:600; }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
@@ -1525,6 +1526,7 @@
             <option value="PAGO">PAGO</option>
             <option value="RETIRO">RETIRO</option>
             <option value="AFILIACION">AFILIACIÓN</option>
+            <option value="REINGRESO">REINGRESO (vuelve a la empresa)</option>
             <option value="SIN INICIAR">SIN INICIAR</option>
             <option value="SIN PAGO">SIN PAGO</option>
             <option value="DIAS PROPORCIONALES">DÍAS PROPORCIONALES</option>
@@ -3978,7 +3980,7 @@ function listaEmpresasCompleta(){
 // necesita los datos básicos del conductor — se ocultan los campos de nómina/seguridad social,
 // y el Estado del trámite pasa a ser Pendiente/Cobrado en vez de los estados de nómina
 // (AFILIACIÓN, PAGO, DÍAS PROPORCIONALES...), porque es un servicio distinto al de PROSEGUROSNET.
-const ESTADOS_NOMINA = ["PAGO","RETIRO","AFILIACION","SIN INICIAR","SIN PAGO","DIAS PROPORCIONALES"];
+const ESTADOS_NOMINA = ["PAGO","RETIRO","AFILIACION","REINGRESO","SIN INICIAR","SIN PAGO","DIAS PROPORCIONALES"];
 const ESTADOS_CONDUCTOR = ["DEBE","PAGO CONDUCTOR"];
 
 function aplicarVisibilidadNomina(){
@@ -5768,7 +5770,7 @@ function renderList(filterText){
       <div class="no">${r["No."]}</div>
       <div class="name">${enRetiros
         ? `${r["Nombre del Afiliado"]}${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
-        : `${r["Nombre del Afiliado"]}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`}</div>
+        : `${r["Nombre del Afiliado"]}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -7667,9 +7669,26 @@ getField("Estado").addEventListener("change", () => {
   if (editingCedula) return; // no tocar el costo al editar un cliente existente
   const costoActual = getField("Costo").value === "" ? null : Number(getField("Costo").value);
   if (costoActual === null || costoActual === COSTO_AFILIACION || costoActual === COSTO_MENSUAL){
-    if (!getField("Costo").readOnly) getField("Costo").value = getField("Estado").value === "AFILIACION" ? COSTO_AFILIACION : COSTO_MENSUAL;
+    if (!getField("Costo").readOnly) getField("Costo").value = ["AFILIACION", "REINGRESO"].includes(getField("Estado").value) ? COSTO_AFILIACION : COSTO_MENSUAL;
   }
+  if (getField("Estado").value === "REINGRESO") iniciarReingresoDesdeEstado();
 });
+// Estado REINGRESO: trae los datos del cliente que ya estuvo y pone la fecha de ingreso de hoy.
+async function iniciarReingresoDesdeEstado(){
+  const aviso = document.getElementById("reingresoAviso");
+  const cedula = getField("Cedula").value.trim();
+  if (cedula.length < 6){
+    aviso.className = "reingreso-aviso"; aviso.hidden = false;
+    aviso.innerHTML = "🔁 <b>Reingreso:</b> escriba la cédula del cliente que vuelve y la app trae sus datos de los meses anteriores.";
+    getField("Cedula").focus(); return;
+  }
+  _reingresoCedula = ""; await revisarReingreso();
+  if (_reingresoRegistro) traerDatosReingreso();
+  else if (!records.find(x => String(x["Cédula"]).trim() === cedula)){
+    aviso.className = "reingreso-aviso aviso-no-existe"; aviso.hidden = false;
+    aviso.innerHTML = `No encontré la cédula <b>${escHtml(cedula)}</b> en meses anteriores. Si es un cliente nuevo, escoja <b>AFILIACIÓN</b>.`;
+  }
+}
 
 // Si se marca "Sin Caja", no se cobra valor de caja; si es "Activo" o "En Proceso",
 // se precarga el valor legal sobre el salario mínimo (editable).
@@ -7754,6 +7773,7 @@ async function revisarReingreso(){
   aviso.innerHTML = `🔁 Esta cédula ya estuvo con nosotros: <b>${escHtml(r["Nombre del Afiliado"] || "")}</b> — ${escHtml(hallado.mes)}${estado ? " (" + escHtml(estado) + ")" : ""}.<br>
     <button type="button" id="reingresoTraerBtn">Traer sus datos</button>`;
   aviso.hidden = false;
+  if (getField("Estado").value === "REINGRESO") traerDatosReingreso(); // ya escogió REINGRESO: se traen solos
 }
 function traerDatosReingreso(){
   const base = _reingresoRegistro;
@@ -7771,11 +7791,16 @@ function traerDatosReingreso(){
   prepararNoAplica();
   modalTitle.textContent = "Agregar cliente (reingreso)";
   getField("Cedula").value = cedula;
+  // Vuelve a ingresar hoy: estado REINGRESO, fecha de ingreso de hoy y costo de afiliación
+  getField("Estado").value = "REINGRESO";
+  getField("FechaIngreso").value = fechaHoyISO();
+  if (!getField("Costo").readOnly) getField("Costo").value = COSTO_AFILIACION;
+  getField("FechaIngreso").closest(".field").classList.remove("falta");
   _reingresoCedula = cedula;
   const aviso = document.getElementById("reingresoAviso");
   if (aviso){
     aviso.className = "reingreso-aviso";
-    aviso.innerHTML = `✅ Se trajeron los datos de <b>${escHtml(base["Nombre del Afiliado"] || "")}</b>. Revise que sigan vigentes (dirección, teléfono, EPS, ARL, valores) y complete la fecha de ingreso.`;
+    aviso.innerHTML = `✅ <b>Reingreso:</b> se trajeron los datos de <b>${escHtml(base["Nombre del Afiliado"] || "")}</b> con fecha de ingreso de hoy. Revise que sigan vigentes (dirección, teléfono, EPS, ARL, valores).`;
     aviso.hidden = false;
   }
   formSnapshotInicial = "";   // hay datos sin guardar: pedir confirmación si se cierra
@@ -8442,6 +8467,12 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     return;
   }
 
+  // REINGRESO: en la planilla es una afiliación nueva; queda anotado como reingreso
+  if (record["Estado Trámite"] === "REINGRESO"){
+    record["Estado Trámite"] = "AFILIACION";
+    const nota = `reingreso ${fechaCortaRetiro(fechaHoyISO())}`;
+    if (!/reingreso/.test(record["Observación"] || "")) record["Observación"] = record["Observación"] ? `${nota} | ${record["Observación"]}` : nota;
+  }
   // PROSEGUROSNET: elegir RETIRO sin planilla/soporte deja el retiro PENDIENTE (no cambia el estado).
   if (estadoClass(record["Estado Trámite"]) === "RETIRO" && !esOtraEmpresa(record) && !esConductorGuardando){
     const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
@@ -11185,6 +11216,9 @@ function clienteIncompleto(r){ return !isRetiro(r) && !esConductorExcluido(r) &&
 function tagIncompleto(r){
   if (filtroEstado !== "__INCOMPLETOS__" || !clienteIncompleto(r)) return "";
   return `<span class="tag-incompleto" title="Complete estos datos al editar el cliente">Falta: ${escHtml(faltantesCliente(r).join(", "))}</span>`;
+}
+function tagReingreso(r){
+  return r && estadoClass(r["Estado Trámite"]) === "AFILIACION" && /reingreso/.test(r["Observación"] || "") ? `<span class="tag-reingreso" title="${escHtml(r["Observación"])}">🔁 Reingreso</span>` : "";
 }
 function tagRetiro(r){
   if (!r) return "";

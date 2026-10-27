@@ -27,7 +27,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Copiar cédula
 - Lugar de trabajo junto a Estado ARL
 - Consignaciones desde el celular (MacroDroid)
-- Reingreso: al agregar una cédula que ya estuvo en meses anteriores, ofrece traer sus datos
+- Reingreso: estado REINGRESO en Agregar cliente (o al escribir una cédula que ya estuvo) trae sus datos, pone fecha de ingreso de hoy y costo de afiliación; se guarda como AFILIACIÓN con nota "reingreso dd/mm/aaaa" y etiqueta 🔁
 - Colores de la página (menú 18): cada persona escoge su tema; se guarda en su propio equipo
 - Retiros: al avanzar de mes, el RETIRO sin soporte (PSN: planilla; otra empresa: imagen o planilla de la novedad) pasa al mes siguiente
 - Retiro PROSEGUROSNET: el botón "Pedir retiro" (o elegir RETIRO al editar) deja el retiro pendiente; pasa a RETIRO solo al subir la planilla o el soporte. Otra empresa se marca directo.
