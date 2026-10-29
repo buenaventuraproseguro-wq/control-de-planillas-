@@ -6834,8 +6834,8 @@ function agruparPorResponsable(lista){
     if (!grupos.has(c.k)){ const g = { grupo:true, responsable:c.nombre, clientes:[] }; grupos.set(c.k, g); salida.push(g); }
     grupos.get(c.k).clientes.push(r);
   });
-  // un "grupo" de una sola persona vuelve a ser un recordatorio normal
-  return salida.map(x => (x.grupo && x.clientes.length === 1) ? x.clientes[0] : x);
+  // Aunque el responsable tenga un solo cliente, el mensaje va a nombre del responsable
+  return salida;
 }
 function telefonoDeItem(x){ return x.grupo ? String((x.clientes.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "") : String(x["Teléfono"] || ""); }
 function totalDeItem(x){ return x.grupo ? x.clientes.reduce((a, c) => a + calcularTotalPagar(c, store.currentMonth), 0) : calcularTotalPagar(x, store.currentMonth); }
@@ -6850,7 +6850,7 @@ function construirMensajeAgrupado(g){
     const v = calcularTotalPagar(c, store.currentMonth), m = numOrZero(c["Recargo Mora"]);
     return `• ${nombrePropio(c["Nombre del Afiliado"])}: *${fmt(v)}*${m ? ` (incluye ${fmt(m)} de mora)` : ""}`;
   });
-  const bloque = `¡Hola 👋😊, ${nombrePropio(g.responsable)}! Te compartimos los valores a pagar de seguridad social de tus ${g.clientes.length} afiliados correspondientes a ${store.currentMonth}:\n\n${lineasClientes.join("\n")}\n\n💰 *Total a pagar: ${fmt(total)}*`
+  const bloque = `¡Hola 👋😊, ${nombrePropio(g.responsable)}! Te compartimos ${g.clientes.length === 1 ? "el valor a pagar de seguridad social de tu afiliado" : `los valores a pagar de seguridad social de tus ${g.clientes.length} afiliados`} ${g.clientes.length === 1 ? "correspondiente" : "correspondientes"} a ${store.currentMonth}:\n\n${lineasClientes.join("\n")}\n\n💰 *Total a pagar: ${fmt(total)}*`
     + (moraDeItem(g) ? `\n⚠️ El total incluye recargo por mora porque el pago no se hizo antes del día ${DIA_LIMITE_RECARGO + 1}.` : "");
   const lineas = base.split("\n");
   const i = lineas.findIndex(l => l.includes(MARCA));
@@ -6937,7 +6937,7 @@ function mostrarPanelRecordatorios(eleccion){
       const mora = moraDeItem(r);
       cuerpo.innerHTML = `
         <div class="record-progreso"><span style="width:${Math.round(100 * procesadosRecordatorios / Math.max(1, totalColaRecordatorios))}%"></span></div>
-        <p class="record-cuenta">${n} de ${totalColaRecordatorios}${r.grupo ? " · mensaje agrupado" : ""}</p>
+        <p class="record-cuenta">${n} de ${totalColaRecordatorios}${r.grupo ? (r.clientes.length > 1 ? " · mensaje agrupado" : " · a nombre del responsable") : ""}</p>
         <p class="record-nombre">${escHtml(r.grupo ? r.responsable : (r["Nombre del Afiliado"] || ""))}</p>
         ${r.grupo ? `<ul class="record-lista">${r.clientes.map(c => `<li>${escHtml(nombrePropio(c["Nombre del Afiliado"]))} <span>${fmt(calcularTotalPagar(c, store.currentMonth))}</span></li>`).join("")}</ul>` : ""}
         <p class="record-dato">${escHtml(telefonoDeItem(r))} · ${r.grupo ? "Total " : ""}${fmt(total)}${mora ? ` · incluye mora ${fmt(mora)}` : ""}</p>
