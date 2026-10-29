@@ -39,6 +39,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Muelles independientes (Actualización de Muelles): fecha de vencimiento por cada muelle (venc_por_muelle: Sociedad, TC Buen, Agua Dulce), planilla y comprobante de su empresa (PDF→imagen) y sección de vehículo/licencia; avisos en "Vencimientos" y "Hoy".
 - Certificados EPS/ARL/AFP/Caja en Agregar/Editar cliente: la app lee cédula, EPS, fecha de afiliación (→ fecha de ingreso), ARL (nivel y actividad), AFP y caja; pregunta "Llenar estos datos" y avisa si la cédula no coincide.
 - Muelles independientes: servicios por persona con su valor (servicios_muelle jsonb {"act:Sociedad","act:TC Buen","act:Agua Dulce", enrolamiento; "actualizacion" = de antes}; Costo = suma). Antes: servicio_muelle: actualización (se cobra cada mes) y enrolamiento (una sola vez: pagado no pasa al mes siguiente; sin pagar pasa en DEBE). Recibo por persona.
+- Fecha del sistema (bajo el selector de mes): hoy, mes en que se trabaja y día del próximo paso de mes. Cuando el mes real empieza, al administrador se le propone pasar de mes con UN solo "Sí" (si dice no, se repite al día siguiente; botón "Pasar a …" en el recuadro). Crear un mes que no ha empezado pide escribir su nombre.
 
 ## Pendiente por decidir
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).

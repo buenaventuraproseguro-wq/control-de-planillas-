@@ -514,6 +514,11 @@
   .ay-pct.alto{ background:var(--retiro-bg); color:var(--retiro); }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .ocr-acc{ display:flex; gap:6px; }
+  .fecha-sistema{ flex-basis:100%; display:flex; flex-wrap:wrap; gap:4px 16px; align-items:center; font-size:13px; color:var(--muted); padding:6px 2px 0; }
+  .fecha-sistema b{ color:var(--ink); font-weight:700; }
+  .fecha-sistema .fs-hoy b::first-letter{ text-transform:uppercase; }
+  .fecha-sistema .fs-mes.otro b{ color:var(--retiro); }
+  .fecha-sistema .fs-paso.pendiente{ color:var(--retiro); font-weight:600; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .tag-reingreso{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--afiliacion-bg); color:var(--afiliacion); vertical-align:middle; }
   .ocr-alerta{ color:var(--retiro); font-weight:600; }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
@@ -1413,6 +1418,7 @@
       <select id="monthSelect"></select>
     </div>
     <button class="btn primary" id="advanceBtn">Avanzar al siguiente mes</button>
+    <div class="fecha-sistema" id="fechaSistema" aria-live="polite"></div>
   </div>
 
   <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
@@ -5120,7 +5126,10 @@ function construirRegistroMesSiguiente(r){
       return nuevo;
     }
 
+// Una sola autorización: cuando el mes real ya empezó, la app lo propone y basta un "Sí"
+let _avanceUnaAutorizacion = false;
 advanceBtn.addEventListener("click", async () => {
+  const unaSola = _avanceUnaAutorizacion; _avanceUnaAutorizacion = false;
   const current = store.currentMonth;
   const next = nextMonthName(current);
 
@@ -5139,8 +5148,12 @@ advanceBtn.addEventListener("click", async () => {
   const retirosPendientes = records.filter(retiroSinSoporte);
   const avisoRet = retirosPendientes.length
     ? `\n\n⚠️ ${retirosPendientes.length} en RETIRO no tienen soporte (planilla o imagen de la novedad) y pasarán a "${next}" en RETIRO para no olvidarlos: ${retirosPendientes.slice(0, 6).map(x => x["Nombre del Afiliado"]).join(", ")}${retirosPendientes.length > 6 ? "…" : ""}.` : "";
-  if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN). Los que estén en RETIRO con su planilla o soporte se quitarán.${avisoRet}`))) return;
-  if (!(await confirmarApp(`Última confirmación: se creará el mes "${next}" a partir de "${current}". ¿Estás seguro?`))) return;
+  if (unaSola){
+    if (avisoRet) showToast(avisoRet.trim());
+  } else {
+    if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN). Los que estén en RETIRO con su planilla o soporte se quitarán.${avisoRet}`))) return;
+    if (!(await confirmarApp(`Última confirmación: se creará el mes "${next}" a partir de "${current}". ¿Estás seguro?`))) return;
+  }
 
   const continuing = records
     .filter(r => !isRetiro(r))
@@ -5753,6 +5766,7 @@ function renderList(filterText){
   }
   asegurarSoportesRetiro();
   mostrarHoySiToca();
+  try{ actualizarFechaSistema(); revisarPasoDeMesUnaVez(); }catch(e){}
   try{ const nv = clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)).length, vb = document.getElementById("vencBadge"); vb.textContent = nv; vb.style.display = nv ? "inline-flex" : "none"; }catch(e){}
   totalCount.textContent = records.length + " registros";
   renderMonthTotal();
@@ -12198,6 +12212,56 @@ document.getElementById("rmEnviarBtn").addEventListener("click", () => {
     showToast(ok ? "📋 Envíe el mensaje y luego pegue el recibo (ya está copiado)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela.");
   });
 });
+
+/* ---------- Fecha del sistema y paso de mes con una sola autorización ---------- */
+function ultimoMesCreado(){ const n = sortedMonthNames(); return n[n.length - 1] || store.currentMonth; }
+function primeroDelMesSiguiente(){ const h = new Date(); return new Date(h.getFullYear(), h.getMonth() + 1, 1); }
+function actualizarFechaSistema(){
+  const el = document.getElementById("fechaSistema"); if (!el) return;
+  const hoy = new Date();
+  const hoyTxt = hoy.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const real = mesActualReal(), ultimo = ultimoMesCreado();
+  const falta = indiceMes(real) !== null && indiceMes(ultimo) !== null && indiceMes(real) > indiceMes(ultimo);
+  const sig = primeroDelMesSiguiente();
+  const dias = Math.round((sig - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 86400000);
+  const sigTxt = sig.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  const viendoOtro = store.currentMonth !== real;
+  el.innerHTML = `<span class="fs-hoy">📅 Hoy: <b>${escHtml(hoyTxt)}</b></span>`
+    + `<span class="fs-mes ${viendoOtro ? "otro" : ""}">Trabajando en: <b>${escHtml(store.currentMonth || "—")}</b>${viendoOtro ? " (no es el mes actual)" : ""}</span>`
+    + (falta
+      ? `<span class="fs-paso pendiente">⚠️ Ya empezó <b>${escHtml(real)}</b> y no se ha creado. ${esAdmin() ? `<button type="button" class="btn small primary" id="fsPasarBtn">Pasar a ${escHtml(real.split(" ")[0])}</button>` : "El administrador debe pasar de mes."}</span>`
+      : `<span class="fs-paso">Paso de mes: <b>${escHtml(sigTxt)}</b> (${dias === 1 ? "mañana" : `en ${dias} días`})</span>`);
+}
+async function proponerPasoDeMes(desdeBoton = false){
+  if (!esAdmin() || soloLectura) return;
+  const real = mesActualReal(), ultimo = ultimoMesCreado();
+  if (!(indiceMes(real) > indiceMes(ultimo))) return;
+  if (nextMonthName(ultimo) !== real) return; // se salta más de un mes: que lo haga a mano
+  const clave = "prosegurosnet_paso_mes_pospuesto";
+  if (!desdeBoton){
+    try{ if (localStorage.getItem(clave) === fechaHoyISO()) return; }catch(e){}
+    if (document.querySelector(".overlay.show")) return;
+  }
+  // Por si otro equipo ya lo creó: se traen los meses de la nube antes de preguntar
+  try{ if (cloudDb && navigator.onLine) await Promise.race([refrescarMesDesdeNube(), new Promise(r => setTimeout(r, 2500))]); }catch(e){}
+  const hoyTxt = new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long" });
+  const ok = await confirmarApp(`📅 Hoy es ${hoyTxt}: ya empezó "${real}".\n\n¿Pasar ahora de "${ultimo}" a "${real}"? Todos los afiliados pasan a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN), los RETIRO con soporte salen y los que no tienen soporte siguen.\n\nCon este "Sí" basta: no se vuelve a preguntar.`);
+  if (!ok){ try{ localStorage.setItem(clave, fechaHoyISO()); }catch(e){} showToast("Listo, se lo vuelvo a proponer mañana. También puede usar el botón del recuadro de la fecha."); return; }
+  if (store.currentMonth !== ultimo) switchToMonth(ultimo);
+  _avanceUnaAutorizacion = true;
+  advanceBtn.click();
+}
+document.getElementById("fechaSistema").addEventListener("click", (e) => { if (e.target.id === "fsPasarBtn") proponerPasoDeMes(true); });
+let _pasoMesRevisado = false, _diaFechaSistema = fechaHoyISO();
+function revisarPasoDeMesUnaVez(){
+  if (_pasoMesRevisado || !records.length) return;
+  _pasoMesRevisado = true;
+  setTimeout(() => proponerPasoDeMes(false), 2000);
+}
+setInterval(() => {
+  actualizarFechaSistema();
+  if (_diaFechaSistema !== fechaHoyISO()){ _diaFechaSistema = fechaHoyISO(); proponerPasoDeMes(false); } // cambió el día con la app abierta
+}, 60000);
 </script>
 </body>
 </html>
