@@ -5124,6 +5124,17 @@ advanceBtn.addEventListener("click", async () => {
   const current = store.currentMonth;
   const next = nextMonthName(current);
 
+  // Protección: crear un mes que todavía no ha empezado pide escribir su nombre
+  const iNext = indiceMes(next), iHoy = indiceMes(mesActualReal());
+  if (iNext !== null && iHoy !== null && iNext > iHoy){
+    const hoyTxt = new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long" });
+    const mesCorto = next.split(" ")[0];
+    const r = await pedirDatosApp(`⚠️ Hoy es ${hoyTxt}: "${next}" todavía no ha empezado. Si de verdad quiere crearlo, escriba ${mesCorto.toUpperCase()}.`,
+      [{ id: "conf", label: `Escriba ${mesCorto.toUpperCase()} para continuar`, placeholder: mesCorto.toUpperCase() }], "Continuar");
+    if (!r) return;
+    if (normalizarTexto(r.conf) !== normalizarTexto(mesCorto)){ showToast(`No se creó "${next}": la palabra no coincide.`); return; }
+  }
+
   await cargarSoportesRetiro(current);
   const retirosPendientes = records.filter(retiroSinSoporte);
   const avisoRet = retirosPendientes.length
