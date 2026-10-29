@@ -7976,13 +7976,20 @@ getField("Nombre").addEventListener("input", () => {
   if (limpio !== getField("Nombre").value) getField("Nombre").value = limpio;
 });
 
-function autocompletarValorArl(riesgo){
-  if (riesgo === null) return;
-  const valorActual = getField("ValorArl").value === "" ? null : Number(getField("ValorArl").value);
-  const esValorAutocompletado = valorActual === null || Object.values(ARL_TABLE).includes(valorActual);
-  if (esValorAutocompletado){
-    if (!getField("ValorArl").readOnly) getField("ValorArl").value = ARL_TABLE[riesgo];
-  }
+// forzar = true cuando se escoge el nivel de riesgo (a mano o desde el certificado): el valor
+// siempre pasa al de ese nivel. Al escribir el texto del código ARL solo se cambia si el valor
+// era uno de los de la tabla (o muy parecido, p. ej. redondeado o de la tabla del año anterior).
+function autocompletarValorArl(riesgo, forzar = false){
+  if (riesgo === null || !ARL_TABLE[riesgo]) return;
+  const campo = getField("ValorArl");
+  if (campo.readOnly || campo.dataset.na) return;
+  const valorActual = campo.value === "" ? null : Number(campo.value);
+  const pareceDeTabla = valorActual === null || Object.values(ARL_TABLE).some(v => Math.abs(v - valorActual) <= v * 0.08);
+  if (!forzar && !pareceDeTabla) return;
+  if (valorActual === ARL_TABLE[riesgo]) return;
+  campo.value = ARL_TABLE[riesgo];
+  campo.dispatchEvent(new Event("input", { bubbles: true }));
+  if (valorActual !== null) showToast(`Valor ARL: ${fmt(valorActual)} → ${fmt(ARL_TABLE[riesgo])} (riesgo ${riesgo}).`);
 }
 getField("Arl").addEventListener("input", () => {
   autocompletarValorArl(clasificarRiesgoArl(getField("Arl").value));
@@ -7999,7 +8006,7 @@ getField("Resp").addEventListener("input", () => {
 
 getField("ArlNivel").addEventListener("change", () => {
   const nivel = getField("ArlNivel").value;
-  if (nivel) autocompletarValorArl(Number(nivel));
+  if (nivel) autocompletarValorArl(Number(nivel), true);
 });
 
 document.getElementById("addBtn").addEventListener("click", () => openModal(null));
