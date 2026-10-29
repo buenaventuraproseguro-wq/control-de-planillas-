@@ -6656,11 +6656,16 @@ function enviarWhatsapp(r, totalPagar){
   if (!numero) return;
   const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
 
-  let mensaje = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
-    { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
+  // Si tiene responsable (persona) o es de otra empresa, el mensaje va a nombre de ese responsable
+  const grupo = claveAgrupacion(r);
+  let mensaje = grupo
+    ? construirMensajeAgrupado({ grupo: true, responsable: grupo.nombre, clientes: [r] })
+    : construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
+        { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
   // Si tiene recargo por mora, el mensaje lo dice (o se usa {mora} en la plantilla)
   const mora = numOrZero(r["Recargo Mora"]);
-  if (/\{mora\}/i.test(mensaje)) mensaje = mensaje.replace(/\{mora\}/gi, mora ? fmt(mora) : "$0");
+  if (grupo){ /* el mensaje agrupado ya trae la mora */ }
+  else if (/\{mora\}/i.test(mensaje)) mensaje = mensaje.replace(/\{mora\}/gi, mora ? fmt(mora) : "$0");
   else if (mora > 0){
     const aviso = `⚠️ Este valor incluye *${fmt(mora)}* de recargo por mora, porque el pago no se hizo antes del día ${DIA_LIMITE_RECARGO + 1}.`;
     const lineas = mensaje.split("\n");
