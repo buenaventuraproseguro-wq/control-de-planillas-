@@ -533,6 +533,7 @@
   .pila-tabla th{ text-align:left; font-size:11.5px; color:var(--muted); padding:7px 8px; border-bottom:1px solid var(--line); background:var(--bg); white-space:nowrap; }
   .pila-tabla td{ padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
   .pila-tabla .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .pila-tabla tr.pila-grupo td{ background:var(--bg); font-weight:700; font-size:12.5px; color:var(--titulo); }
   .pila-tabla tr.pila-aviso td:last-child{ color:var(--retiro); font-weight:600; }
   .pila-codigos summary{ cursor:pointer; font-weight:700; font-size:13.5px; }
   .pila-cod-grupo{ display:flex; flex-wrap:wrap; gap:6px 12px; margin:8px 0; align-items:center; }
@@ -12383,12 +12384,18 @@ function pilaCodigo(tipo, texto){
   return k ? { codigo: tabla[k], clave: k } : { codigo: "", clave: t };
 }
 function pilaFechaISO(ddmmaaaa){ const m = String(ddmmaaaa || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ""; }
-// Quiénes entran: de PROSEGUROSNET que deben aportes este mes
+// Los clientes no pagan todos a la vez: cuando un cliente le paga a PROSEGUROSNET se marca PAGO
+// y queda "listo para la planilla" hasta que se sube la planilla pagada (número o archivo).
+// Tiene planilla ESTE mes: número de planilla, archivo en este equipo o subido a la nube desde el 1.º del mes
+function pilaTienePlanilla(r){
+  if (String(r["No. Planilla Pagada"] || "").trim() || r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return true;
+  return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube.cedulas.has(String(r["Cédula"]).trim());
+}
+function pilaListo(r){ return (estadoClass(r["Estado Trámite"]) === "PAGO" && !pilaTienePlanilla(r)) || retiroQueDebe(r); }
+function pilaPendiente(r){ const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
 function pilaCandidatos(){
-  return records.filter(r => !esConductorExcluido(r) && !esOtraEmpresa(r)).filter(r => {
-    const ec = estadoClass(r["Estado Trámite"]);
-    return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES" || retiroQueDebe(r);
-  });
+  const base = records.filter(r => !esConductorExcluido(r) && !esOtraEmpresa(r));
+  return base.filter(pilaListo).concat(base.filter(r => !pilaListo(r) && pilaPendiente(r)));
 }
 // Periodo de la planilla (pensión): el mes anterior al mes que se cobra en la app
 function pilaPeriodo(){
@@ -12469,26 +12476,33 @@ function pilaFila(r, secuencia){
 let _pilaSel = null;
 async function abrirGenerarPila(){
   await cargarCodigosPila();
+  if (soportesRetiroNube.mes !== store.currentMonth) await cargarSoportesRetiro(store.currentMonth);
   const lista = pilaCandidatos();
-  if (!_pilaSel) _pilaSel = new Set(lista.map(r => String(r["Cédula"])));
+  if (!_pilaSel) _pilaSel = new Set(lista.filter(pilaListo).map(r => String(r["Cédula"]))); // de una vez: solo los que ya pagaron
   const filas = lista.map((r, i) => ({ ...pilaFila(r, i + 1), sel: _pilaSel.has(String(r["Cédula"])) }));
   const conAviso = filas.filter(f => f.avisos.length).length;
-  document.getElementById("pilaSub").textContent = `Cobro de ${store.currentMonth} · periodo de la planilla ${pilaPeriodo()} · ${lista.length} afiliado(s) de PROSEGUROSNET por pagar · ${conAviso} para revisar · aportante Nestor Fabián Garzón (CC 1112904783)`;
+  const nListos = lista.filter(pilaListo).length;
+  document.getElementById("pilaSub").textContent = `Cobro de ${store.currentMonth} · periodo de la planilla ${pilaPeriodo()} · ${nListos} ya pagaron y faltan en planilla · ${lista.length - nListos} todavía no pagan · ${conAviso} para revisar`;
   document.getElementById("pilaCuerpo").innerHTML = (filas.length ? `
     <div class="pila-tabla-wrap"><table class="pila-tabla">
       <thead><tr><th><input type="checkbox" id="pilaTodos" ${filas.every(f => f.sel) ? "checked" : ""} aria-label="Todos"></th><th>Afiliado (como va a la planilla)</th><th>Días</th><th>Novedad</th><th class="num">Aportes</th><th>Revisar</th></tr></thead>
-      <tbody>${filas.map(f => `<tr class="${f.avisos.length ? "pila-aviso" : ""}">
+      <tbody>${filas.map((f, i) => {
+        const grupo = pilaListo(f.r) ? "listos" : "pendientes";
+        const titulo = i === 0 || (pilaListo(filas[i - 1].r) ? "listos" : "pendientes") !== grupo
+          ? `<tr class="pila-grupo"><td colspan="6">${grupo === "listos" ? "✅ Ya le pagaron a PROSEGUROSNET: listos para la planilla" : "⏳ Todavía no han pagado (márquelos solo si va a pagarles la planilla igual)"}</td></tr>` : "";
+        return titulo + `<tr class="${f.avisos.length ? "pila-aviso" : ""}">
         <td><input type="checkbox" data-pila-ced="${escHtml(f.r["Cédula"])}" ${f.sel ? "checked" : ""} aria-label="Incluir"></td>
         <td><b>${escHtml(f.nombre)}</b><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${tieneCaja(f.r) ? "" : " · caja mínima $100"}</small></td>
         <td>${f.dias}</td><td>${f.ing ? "ING" : ""}${f.ret ? "RET" : ""}</td>
         <td class="num">${fmt(f.total)}</td>
-        <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`).join("")}</tbody>
+        <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`; }).join("")}</tbody>
     </table></div>` : `<p class="ay-txt">No hay afiliados de PROSEGUROSNET por pagar en ${escHtml(store.currentMonth)}.</p>`)
   + `<details class="pila-codigos"><summary>Códigos de EPS, AFP y caja que usa la planilla</summary>
       <p class="ay-txt">Los vacíos hay que llenarlos con el código que aparece en SUAPORTE. Se guardan para todo el equipo.</p>
       ${["eps","afp","ccf"].map(t => `<div class="pila-cod-grupo"><b>${t.toUpperCase()}</b>${Object.entries(pilaCodigos[t]).map(([k, c]) => `<label>${escHtml(k)} <input type="text" value="${escHtml(c)}" data-pila-cod="${t}|${escHtml(k)}" placeholder="código"></label>`).join("")}</div>`).join("")}
       <button type="button" class="btn small" id="pilaGuardarCod">Guardar códigos</button>
     </details>
+    <p class="ay-txt"><b>Cómo se usa:</b> cuando un cliente le paga, márquelo <b>PAGO</b> (con ✅ en Consignaciones o editándolo). Queda en "listos" hasta que suba la planilla pagada en <b>14 · Subir planilla pagada</b>; ahí sale de esta lista. Puede generar el Excel las veces que quiera con los que van pagando.</p>
     <p class="ay-txt">El nombre se parte como <b>APELLIDO APELLIDO NOMBRE NOMBRE</b>: revíselo en el Excel. Los valores se calculan sobre 1 salario mínimo (${fmt(PILA_SALARIO)}) y se redondean a la centena, como en SUAPORTE; SUAPORTE los vuelve a validar al cargar.</p>`;
   abrirGenerarPila._filas = filas;
   ayAbrir("overlayGenPila");
