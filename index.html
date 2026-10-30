@@ -6732,13 +6732,7 @@ function enviarWhatsapp(r, totalPagar){
   const mora = numOrZero(r["Recargo Mora"]);
   if (grupo){ /* el mensaje agrupado ya trae la mora */ }
   else if (/\{mora\}/i.test(mensaje)) mensaje = mensaje.replace(/\{mora\}/gi, mora ? fmt(mora) : "$0");
-  else if (mora > 0){
-    const aviso = `⚠️ Este valor incluye *${fmt(mora)}* de recargo por mora, porque el pago no se hizo antes del día ${DIA_LIMITE_RECARGO + 1}.`;
-    const lineas = mensaje.split("\n");
-    const i = lineas.findIndex(l => l.includes(fmt(totalPagar)));
-    if (i > -1){ lineas.splice(i + 1, 0, aviso); mensaje = lineas.join("\n"); }
-    else mensaje += "\n\n" + aviso;
-  }
+  // Sin explicación: la mora ya va sumada en el valor del mensaje
 
   // La aplicación de WhatsApp para computador daña los emojis que recibe por enlace
   // (los muestra como �). Por eso, en computador se abre WhatsApp Web en el navegador,
@@ -6918,11 +6912,10 @@ function construirMensajeAgrupado(g){
   let base = construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
     { nombre: nombrePropio(g.responsable), valor: MARCA, mes: store.currentMonth });
   const lineasClientes = g.clientes.map(c => {
-    const v = calcularTotalPagar(c, store.currentMonth), m = numOrZero(c["Recargo Mora"]);
-    return `• ${nombrePropio(c["Nombre del Afiliado"])}: *${fmt(v)}*${m ? ` (incluye ${fmt(m)} de mora)` : ""}`;
+    const v = calcularTotalPagar(c, store.currentMonth);
+    return `• ${nombrePropio(c["Nombre del Afiliado"])}: *${fmt(v)}*`;
   });
-  const bloque = `¡Hola 👋😊, ${nombrePropio(g.responsable)}! Te compartimos ${g.clientes.length === 1 ? "el valor a pagar de seguridad social de tu afiliado" : `los valores a pagar de seguridad social de tus ${g.clientes.length} afiliados`} ${g.clientes.length === 1 ? "correspondiente" : "correspondientes"} a ${store.currentMonth}:\n\n${lineasClientes.join("\n")}\n\n💰 *Total a pagar: ${fmt(total)}*`
-    + (moraDeItem(g) ? `\n⚠️ El total incluye recargo por mora porque el pago no se hizo antes del día ${DIA_LIMITE_RECARGO + 1}.` : "");
+  const bloque = `¡Hola 👋😊, ${nombrePropio(g.responsable)}! Te compartimos ${g.clientes.length === 1 ? "el valor a pagar de seguridad social de tu afiliado" : `los valores a pagar de seguridad social de tus ${g.clientes.length} afiliados`} ${g.clientes.length === 1 ? "correspondiente" : "correspondientes"} a ${store.currentMonth}:\n\n${lineasClientes.join("\n")}\n\n💰 *Total a pagar: ${fmt(total)}*`;
   const lineas = base.split("\n");
   const i = lineas.findIndex(l => l.includes(MARCA));
   if (i > -1) lineas[i] = bloque; else lineas.unshift(bloque);
@@ -11583,7 +11576,7 @@ async function imagenEstadoCuenta(g, tipo = "image/png"){
     c.fillText(nombrePropio(r["Nombre del Afiliado"]).slice(0, 34), pad, y + 30);
     c.fillStyle = "#7A7268"; c.font = "500 20px Inter, Arial, sans-serif";
     const est = retiroQueDebe(r) ? "Retiro (falta pagar planilla)" : (r["Estado Trámite"] === "DIAS PROPORCIONALES" ? "Días proporcionales" : "Sin pago");
-    c.fillText(`${est}${m ? ` · incluye ${fmt(m)} de mora` : ""}`, pad, y + 54);
+    c.fillText(est, pad, y + 54);
     c.fillStyle = "#181512"; c.font = "700 28px Inter, Arial, sans-serif"; c.textAlign = "right";
     c.fillText(fmt(v), W - pad, y + 40); c.textAlign = "left";
     y += filaH;
@@ -11835,13 +11828,20 @@ function cargarTesseract(){
 // Saca número y nombre del texto leído (cédula amarilla, cédula digital y la parte de atrás con <<<)
 function datosDeTextoCedula(texto){
   const lineas = String(texto || "").split(/\n+/).map(l => l.replace(/[^\wÁÉÍÓÚÑÜáéíóúñü.<\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
-  const res = { cedula: "", nombre: "" };
+  const res = { cedula: "", nombre: "", partes: null, mrz: false };
+  // Partes: [apellido1, apellido2, nombre1, nombre2]; el nombre queda APELLIDOS + NOMBRES como en la app
+  const ponPartes = (aps, nos) => {
+    aps = aps.filter(Boolean); nos = nos.filter(Boolean);
+    if (!aps.length && !nos.length) return;
+    res.partes = [aps[0] || "", aps.slice(1).join(" "), nos[0] || "", nos.slice(1).join(" ")].map(x => x.toUpperCase());
+    res.nombre = res.partes.filter(Boolean).join(" ").toLowerCase();
+  };
   // Parte de atrás (MRZ): APELLIDO<APELLIDO<<NOMBRE<NOMBRE
   const mrz = lineas.map(l => l.replace(/\s/g, "").toUpperCase()).filter(l => /</.test(l) && l.length >= 20);
   const lineaNombre = mrz.find(l => /^[A-Z]+(<[A-Z]+)*<<[A-Z]+/.test(l));
   if (lineaNombre){
     const [ap, no] = lineaNombre.split("<<");
-    res.nombre = `${no.split("<").filter(Boolean).join(" ")} ${ap.split("<").filter(Boolean).join(" ")}`.trim();
+    ponPartes(ap.split("<"), no.split("<")); res.mrz = true;
   }
   const esEtiqueta = l => /^(APELLIDOS?|NOMBRES?|SURNAMES?|GIVEN|NUMERO|NÚMERO|NUIP|REPUBLICA|REPÚBLICA|COLOMBIA|IDENTIFICACION|IDENTIFICACIÓN|CEDULA|CÉDULA|PERSONAL|FIRMA|FECHA|SEXO|LUGAR|ESTATURA|NACIONALIDAD|DOCUMENTO)/i.test(l);
   const esValor = l => l && !esEtiqueta(l) && /^[A-ZÁÉÍÓÚÑÜ ]{3,}$/.test(l) && l.split(" ").length <= 4;
@@ -11858,7 +11858,7 @@ function datosDeTextoCedula(texto){
   };
   if (!res.nombre){
     const ap = valorJunto(/APELLIDOS?/i), no = valorJunto(/NOMBRES?/i);
-    if (ap || no) res.nombre = `${no} ${ap}`.trim();
+    if ((ap || no) && ap !== no) ponPartes(ap.split(" "), no.split(" "));
   }
   // Número: después de NUMERO / NUIP, o el primer número con puntos de miles
   const todo = lineas.join("\n");
@@ -11872,6 +11872,18 @@ function datosDeTextoCedula(texto){
   if (res.cedula && (res.cedula.length < 6 || res.cedula.length > 10)) res.cedula = "";
   return res;
 }
+// Compara palabra por palabra lo que hay en la app con lo leído en la cédula
+function compararNombreCedula(actual, leido){
+  const pa = normalizarTexto(actual).split(" ").filter(Boolean), pl = normalizarTexto(leido).split(" ").filter(Boolean);
+  const mismas = pa.length === pl.length && [...pa].sort().join(" ") === [...pl].sort().join(" ");
+  const comunes = pl.filter(w => pa.includes(w)).length;
+  return { igual: pa.join(" ") === pl.join(" "), soloOrden: mismas && pa.join(" ") !== pl.join(" "), comunes, distintas: pl.filter(w => !pa.includes(w)), total: Math.max(pa.length, pl.length) };
+}
+async function guardarPartesNombre(cedula, partes){
+  if (!cedula || !partes) return;
+  pilaNombres[String(cedula).trim()] = partes;
+  if (cloudDb) try{ await sb.from("configuracion").upsert({ clave: "nombres_pila", valor: pilaNombres, updated_by: currentUserId }); }catch(e){}
+}
 async function leerCedulaDeImagen(fuente){
   const caja = document.querySelector('.doc-upload[data-doc="Cedula"]');
   if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
@@ -11882,14 +11894,53 @@ async function leerCedulaDeImagen(fuente){
     const T = await cargarTesseract();
     const { data } = await T.recognize(fuente, "spa");
     const d = datosDeTextoCedula(data && data.text);
-    if (!d.cedula && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Escríbalos a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
-    aviso.innerHTML = `<div>🔎 <b>Leí en la foto:</b>${d.cedula ? `<br>Cédula: <b>${escHtml(d.cedula)}</b>` : ""}${d.nombre ? `<br>Nombre: <b>${escHtml(d.nombre)}</b>` : ""}</div>
+    if (!d.cedula && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Revise el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
+    const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
+    const cedApp = String(editingCedula || fc.value || "").replace(/\D/g, "");
+    const nomApp = fn.value.trim();
+    const ponNombre = (v) => { fn.value = v; fn.dispatchEvent(new Event("input", { bubbles: true })); };
+    const cedOtra = d.cedula && cedApp && d.cedula !== cedApp;
+    const nombreTxt = d.partes ? d.partes.filter(Boolean).join(" ") : d.nombre.toUpperCase();
+
+    // Cliente que ya existe: se compara y se corrige lo que esté mal
+    if (editingCedula && nomApp){
+      const c = d.nombre ? compararNombreCedula(nomApp, d.nombre) : null;
+      const otraPersona = c && c.comunes < Math.min(2, c.total) && cedOtra;
+      if (otraPersona){
+        aviso.innerHTML = `<div>⚠️ <b>Esta cédula parece de otra persona.</b><br>En la foto: <b>${escHtml(nombreTxt)}</b> · CC ${escHtml(d.cedula)}<br>En la app: <b>${escHtml(nomApp.toUpperCase())}</b> · CC ${escHtml(cedApp)}</div><small>No cambié nada. Revise que subió la cédula del cliente correcto.</small>`;
+        return;
+      }
+      const lineas = [];
+      if (c && c.igual){ lineas.push(`✅ El nombre coincide con la cédula.`); guardarPartesNombre(editingCedula, d.partes); }
+      else if (c && c.soloOrden){
+        // Las mismas palabras en otro orden: se corrige solo (no hay riesgo de error de lectura)
+        const antes = nomApp; ponNombre(d.nombre); guardarPartesNombre(editingCedula, d.partes);
+        lineas.push(`✏️ <b>Corregí el orden del nombre</b> como está en la cédula:<br><s>${escHtml(antes.toUpperCase())}</s> → <b>${escHtml(nombreTxt)}</b> <button type="button" class="btn small ghost" data-ocr-deshacer>Deshacer</button>`);
+        aviso._antes = antes;
+      } else if (c){
+        lineas.push(`✏️ <b>El nombre no coincide con la cédula.</b><br>En la app: <b>${escHtml(nomApp.toUpperCase())}</b><br>En la cédula: <b>${escHtml(nombreTxt)}</b>${c.distintas.length ? `<br><small>Diferente: ${escHtml(c.distintas.join(", ").toUpperCase())}</small>` : ""}
+          <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-nombre>Usar el de la cédula</button><button type="button" class="btn small ghost" data-ocr-no>Dejar el de la app</button></div>`);
+      }
+      if (cedOtra) lineas.push(`⚠️ <b>El número no coincide:</b> en la foto leí <b>${escHtml(d.cedula)}</b> y el cliente está con <b>${escHtml(cedApp)}</b>. Mírelo en la foto: si el error está en la app, avíseme y lo cambiamos en todos los meses; si es que la foto se leyó mal, no haga nada.`);
+      else if (d.cedula) lineas.push(`✅ El número de cédula coincide.`);
+      aviso.innerHTML = `<div>${lineas.join("<br>")}</div><small>Los cambios quedan al tocar <b>Guardar</b>.</small>`;
+      const btnN = aviso.querySelector("[data-ocr-nombre]");
+      if (btnN) btnN.onclick = () => { ponNombre(d.nombre); guardarPartesNombre(editingCedula, d.partes); btnN.parentElement.innerHTML = "✅ Nombre corregido. Toque Guardar."; };
+      const btnD = aviso.querySelector("[data-ocr-deshacer]");
+      if (btnD) btnD.onclick = () => { ponNombre(aviso._antes); btnD.replaceWith(Object.assign(document.createElement("span"), { textContent: " (deshecho)" })); };
+      const btnNo = aviso.querySelector("[data-ocr-no]");
+      if (btnNo) btnNo.onclick = () => { btnNo.parentElement.innerHTML = "Se deja el nombre de la app."; };
+      return;
+    }
+
+    // Cliente nuevo: se ofrecen los datos leídos
+    aviso.innerHTML = `<div>🔎 <b>Leí en la foto:</b>${d.cedula ? `<br>Cédula: <b>${escHtml(d.cedula)}</b>` : ""}${d.nombre ? `<br>Nombre: <b>${escHtml(nombreTxt)}</b>` : ""}</div>
       <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Usar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
       <small>Revise que estén bien antes de guardar.</small>`;
     aviso.querySelector("[data-ocr-usar]").onclick = () => {
-      const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
       if (d.cedula && !fc.readOnly && !fc.disabled){ fc.value = d.cedula; fc.dispatchEvent(new Event("input", { bubbles: true })); fc.dispatchEvent(new Event("change", { bubbles: true })); }
-      if (d.nombre){ fn.value = d.nombre; fn.dispatchEvent(new Event("input", { bubbles: true })); }
+      if (d.nombre) ponNombre(d.nombre);
+      guardarPartesNombre(d.cedula || fc.value, d.partes);
       aviso.remove(); showToast("✅ Datos de la cédula puestos. Revíselos.");
     };
     aviso.querySelector("[data-ocr-no]").onclick = () => aviso.remove();
