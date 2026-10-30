@@ -8560,6 +8560,17 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     return;
   }
 
+  // Si se sube la planilla pagada (archivo o número nuevo) y el cliente seguía SIN PAGO o en
+  // DÍAS PROPORCIONALES, queda en PAGO solo (el recargo por mora no lo impide: ya va sumado al valor).
+  {
+    const ec = estadoClass(record["Estado Trámite"]);
+    const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
+    const numeroNuevo = record["No. Planilla Pagada"] && (!original || String(original["No. Planilla Pagada"] || "") !== record["No. Planilla Pagada"] || estadoClass(original["Estado Trámite"]) !== "PAGO");
+    if ((ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && (docImagenesCambiados.PlanillaPagada || numeroNuevo)){
+      record["Estado Trámite"] = esConductorGuardando ? "PAGO CONDUCTOR" : "PAGO";
+      showToast("✅ Con la planilla pagada el cliente quedó en PAGO.");
+    }
+  }
   // REINGRESO: en la planilla es una afiliación nueva; queda anotado como reingreso
   if (record["Estado Trámite"] === "REINGRESO"){
     record["Estado Trámite"] = "AFILIACION";
