@@ -12526,6 +12526,70 @@ document.getElementById("pilaCuerpo").addEventListener("click", async (e) => {
   if (await guardarCodigosPila()) showToast("✅ Códigos guardados.");
   abrirGenerarPila();
 });
+/* ---- Escritor de Excel (.xlsx) propio y mínimo, con textos compartidos (sharedStrings) como los
+   archivos de SUAPORTE. No depende de librerías externas. ---- */
+const XLSXMin = (() => {
+  const enc = new TextEncoder();
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const col = (n) => { let s = ""; n++; while (n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  let CRC = null;
+  function crc32(buf){
+    if (!CRC){ CRC = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC[n] = c >>> 0; } }
+    let c = 0xFFFFFFFF; for (let i = 0; i < buf.length; i++) c = CRC[(c ^ buf[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function zip(files){ // [{name, data:Uint8Array}] sin compresión (STORE)
+    const partes = [], central = []; let offset = 0;
+    files.forEach(f => {
+      const nombre = enc.encode(f.name), crc = crc32(f.data), n = f.data.length;
+      const h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+      h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, n, true); h.setUint32(22, n, true);
+      h.setUint16(26, nombre.length, true); h.setUint16(28, 0, true);
+      partes.push(new Uint8Array(h.buffer), nombre, f.data);
+      const c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+      c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, n, true); c.setUint32(24, n, true);
+      c.setUint16(28, nombre.length, true); c.setUint32(42, offset, true);
+      central.push(new Uint8Array(c.buffer), nombre);
+      offset += 30 + nombre.length + n;
+    });
+    const tamCentral = central.reduce((a, b) => a + b.length, 0);
+    const fin = new DataView(new ArrayBuffer(22));
+    fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, files.length, true); fin.setUint16(10, files.length, true);
+    fin.setUint32(12, tamCentral, true); fin.setUint32(16, offset, true);
+    return new Blob([...partes, ...central, new Uint8Array(fin.buffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+  // aoa: filas de celdas; null = celda vacía (no se escribe), número = número, texto = texto compartido
+  function libro(aoa, hoja = "Hoja1"){
+    const sst = [], idx = new Map();
+    const si = (s) => { s = String(s); if (!idx.has(s)){ idx.set(s, sst.length); sst.push(s); } return idx.get(s); };
+    let maxC = 0;
+    const filas = aoa.map((fila, r) => {
+      maxC = Math.max(maxC, fila.length);
+      const celdas = fila.map((v, c) => {
+        if (v === null || v === undefined) return "";
+        const ref = col(c) + (r + 1);
+        if (typeof v === "number" && isFinite(v)) return `<c r="${ref}"><v>${v}</v></c>`;
+        return `<c r="${ref}" t="s"><v>${si(v)}</v></c>`;
+      }).join("");
+      return `<row r="${r + 1}">${celdas}</row>`;
+    }).join("");
+    const dim = `A1:${col(Math.max(0, maxC - 1))}${Math.max(1, aoa.length)}`;
+    const x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+    const ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+    const archivos = {
+      "[Content_Types].xml": `${x}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>`,
+      "_rels/.rels": `${x}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      "xl/workbook.xml": `${x}<workbook ${ns} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${esc(hoja)}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      "xl/_rels/workbook.xml.rels": `${x}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>`,
+      "xl/styles.xml": `${x}<styleSheet ${ns}><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs></styleSheet>`,
+      "xl/worksheets/sheet1.xml": `${x}<worksheet ${ns}><dimension ref="${dim}"/><sheetData>${filas}</sheetData></worksheet>`,
+      "xl/sharedStrings.xml": `${x}<sst ${ns} count="${sst.length}" uniqueCount="${sst.length}">${sst.map(s => `<si><t xml:space="preserve">${esc(s)}</t></si>`).join("")}</sst>`,
+    };
+    return zip(Object.entries(archivos).map(([name, s]) => ({ name, data: enc.encode(s) })));
+  }
+  return { libro };
+})();
 let _xlsxCargando = null;
 function cargarXLSX(){
   if (window.XLSX) return Promise.resolve(window.XLSX);
@@ -12538,12 +12602,13 @@ function cargarXLSX(){
 document.getElementById("pilaDescargarBtn").addEventListener("click", async () => {
   const filas = (abrirGenerarPila._filas || []).filter(f => _pilaSel.has(String(f.r["Cédula"])));
   if (!filas.length){ showToast("Marque al menos un afiliado."); return; }
-  let X; try{ X = await cargarXLSX(); }catch(e){ showToast("No se pudo preparar el Excel: revise la conexión."); return; }
   const aoa = [PILA_ENC1, pilaFila1(filas), PILA_ENC2, ...filas.map((f, i) => { const v = f.v.slice(); v[1] = i + 1; return v; })];
-  const ws = X.utils.aoa_to_sheet(aoa);
-  const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, "Planilla base");
+  // Se escribe con textos compartidos (sharedStrings), igual que los Excel de SUAPORTE: así los lee bien
+  const blob = XLSXMin.libro(aoa, "Planilla base");
   const nombre = `PILA_CC1112904783_${pilaPeriodo().replace("-", "") || "mes"}.xlsx`; // mismo periodo que usa SUAPORTE
-  X.writeFile(wb, nombre);
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  window.__ultimoExcelPila = { aoa, nombre };
   showToast(`⬇️ ${nombre} con ${filas.length} afiliado(s). Súbalo en SUAPORTE → Autoliquidación de aportes → Cargar archivo.`);
 });
 document.getElementById("navPilaBtn").addEventListener("click", () => { _pilaSel = null; abrirGenerarPila(); });
