@@ -12327,7 +12327,15 @@ setInterval(() => {
    Formato del "Formato_Ayuda" de Enlace Operativo: fila 1-2 aportante, fila 3 títulos,
    desde la fila 4 un afiliado por fila (98 columnas). No lleva filas de totales. */
 const PILA_ENC1 = ["Tipo de registro", "Modalidad de la Planilla", "Secuencia", "Nombre o Razón Social del Aportante", "Tipo Documento", "Nº de Identificación", "Digito de Verificación", "Tipo Planilla", "Número Planilla Asociada a esta planilla", "Fecha de Pago Planilla Asociada a esta planilla", "Forma Presentación", "Código Sucursal Aportante", "Nombre Sucursal", "Código ARL", "Periodo Pago a Sistemas Diferentes a Salud", "Periodo Pago al Sistema de Salud", "Número  de Planilla", "Fecha de Pago", "Número total de cotizantes", "Valor Total Nómina", "Tipo de Aportante", "Código del Operador de Información"];
-const PILA_FILA1 = ["1","1","1","NESTOR FABIAN GARZON TORRES","CC","1112904783","0","","","","S","","","","","","","","","","01","89"];
+// Registro tipo 1 (aportante): igual que en las planillas que SUAPORTE ya aceptó (números como números)
+function pilaFila1(filas){
+  const p = pilaPeriodo();
+  const [a, m] = p.split("-").map(Number);
+  const salud = m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, "0")}`;
+  const nomina = filas.reduce((t, f) => t + numOrZero(f.v[44]), 0); // suma del IBC de caja
+  return [1, 1, 1, "NESTOR FABIAN GARZON TORRES", "CC", "1112904783", 0, "E", "", "", "S", "02", "EMPLEADOS", "14-11",
+    p, salud, "", "", filas.length, nomina, 1, 89];
+}
 const PILA_ENC2 = ["Tipo de registro", "Secuencia", "Tipo documento cotizante", "Documento cotizante", "Tipo de cotizante", "Subtipo de cotizante", "Extranjero", "Colombiano en el exterior", "Departamento", "Municipio", "Primer apellido", "Segundo apellido", "Primer nombre", "Segundo nombre", "ING", "RET", "TDE", "TAE", "TDP", "TAP", "VSP", "Línea", "VST", "SLN", "IGE", "LMA", "VAC-LR", "AVP", "VCT", "IRL", "AFP", "AFP Traslado", "EPS", "EPS Traslado", "CCF", "Días AFP", "Días EPS", "Días ARL", "Días CCF", "Salario básico", "Salario integral", "IBC AFP", "IBC EPS", "IBC ARL", "IBC CCF", "Tarifa AFP", "Cotización AFP", "AVP afiliado", "AVP aportante", "Total AFP", "Aporte FSP", "Aporte FSPS", "Valor no retenido", "Tarifa EPS", "Cotización EPS", "Valor UPC", "Número IGE", "Valor IGE", "Número LMA", "Valor LMA", "Tarifa ARL", "Centro de trabajo", "Cotización ARL", "Tarifa CCF", "Aporte CCF", "Tarifa SENA", "Aporte SENA", "Tarifa ICBF", "Aporte ICBF", "Tarifa ESAP", "Aporte ESAP", "Tarifa MEN", "Aporte MEN", "Tipo documento UPC", "Documento UPC", "Exonerado", "ARL", "Clase riesgo", "Tarifa especial AFP", "Fecha ING", "Fecha RET", "Fecha inicio VSP", "Fecha inicio SLN", "Fecha final SLN", "Fecha inicio IGE", "Fecha final IGE", "Fecha inicio LMA", "Fecha final LMA", "Fecha inicio VAC-LR", "Fecha final VAC-LR", "Fecha inicio VCT", "Fecha final VCT", "Fecha inicio IRL", "Fecha final IRL", "IBC otros parafiscales", "Número horas laboradas", "Fecha radicación exterior", "Actividad económica para ARL "];
 const PILA_SALARIO = 1750905; // salario mínimo 2026 (el mismo de la planilla de septiembre)
 // Lugar de trabajo → código DIVIPOLA [departamento, municipio] para la planilla
@@ -12531,7 +12539,7 @@ document.getElementById("pilaDescargarBtn").addEventListener("click", async () =
   const filas = (abrirGenerarPila._filas || []).filter(f => _pilaSel.has(String(f.r["Cédula"])));
   if (!filas.length){ showToast("Marque al menos un afiliado."); return; }
   let X; try{ X = await cargarXLSX(); }catch(e){ showToast("No se pudo preparar el Excel: revise la conexión."); return; }
-  const aoa = [PILA_ENC1, PILA_FILA1, PILA_ENC2, ...filas.map((f, i) => { const v = f.v.slice(); v[1] = i + 1; return v; })];
+  const aoa = [PILA_ENC1, pilaFila1(filas), PILA_ENC2, ...filas.map((f, i) => { const v = f.v.slice(); v[1] = i + 1; return v; })];
   const ws = X.utils.aoa_to_sheet(aoa);
   const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, "Planilla base");
   const nombre = `PILA_CC1112904783_${pilaPeriodo().replace("-", "") || "mes"}.xlsx`; // mismo periodo que usa SUAPORTE
