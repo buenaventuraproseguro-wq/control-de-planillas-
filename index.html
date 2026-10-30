@@ -533,6 +533,8 @@
   .pila-tabla th{ text-align:left; font-size:11.5px; color:var(--muted); padding:7px 8px; border-bottom:1px solid var(--line); background:var(--bg); white-space:nowrap; }
   .pila-tabla td{ padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
   .pila-tabla .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .pila-nom-btn{ border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:6px; padding:0 6px; font-size:12px; cursor:pointer; margin-left:4px; line-height:20px; }
+  .pila-nom-btn:hover{ border-color:var(--navy); }
   .pila-tabla tr.pila-grupo td{ background:var(--bg); font-weight:700; font-size:12.5px; color:var(--titulo); }
   .pila-tabla tr.pila-aviso td:last-child{ color:var(--retiro); font-weight:600; }
   .pila-codigos summary{ cursor:pointer; font-weight:700; font-size:13.5px; }
@@ -673,6 +675,7 @@
 
   /* CRM · Prospectos y cotizaciones */
   #overlayConfirm{ z-index:80; }
+  #overlayPedir{ z-index:78; }
   #overlayCRM .modal{ max-width:980px; }
   #overlayCrmWa{ z-index:70; }
   #overlayCrmWa .modal{ max-width:520px; }
@@ -12336,7 +12339,7 @@ function pilaFila1(filas){
   return [1, 1, 1, "NESTOR FABIAN GARZON TORRES", "CC", "1112904783", 0, "E", "", "", "S", "02", "EMPLEADOS", "14-11",
     p, salud, "", "", filas.length, nomina, 1, 89];
 }
-const PILA_ENC2 = ["Tipo de registro", "Secuencia", "Tipo documento cotizante", "Documento cotizante", "Tipo de cotizante", "Subtipo de cotizante", "Extranjero", "Colombiano en el exterior", "Departamento", "Municipio", "Primer apellido", "Segundo apellido", "Primer nombre", "Segundo nombre", "ING", "RET", "TDE", "TAE", "TDP", "TAP", "VSP", "Línea", "VST", "SLN", "IGE", "LMA", "VAC-LR", "AVP", "VCT", "IRL", "AFP", "AFP Traslado", "EPS", "EPS Traslado", "CCF", "Días AFP", "Días EPS", "Días ARL", "Días CCF", "Salario básico", "Salario integral", "IBC AFP", "IBC EPS", "IBC ARL", "IBC CCF", "Tarifa AFP", "Cotización AFP", "AVP afiliado", "AVP aportante", "Total AFP", "Aporte FSP", "Aporte FSPS", "Valor no retenido", "Tarifa EPS", "Cotización EPS", "Valor UPC", "Número IGE", "Valor IGE", "Número LMA", "Valor LMA", "Tarifa ARL", "Centro de trabajo", "Cotización ARL", "Tarifa CCF", "Aporte CCF", "Tarifa SENA", "Aporte SENA", "Tarifa ICBF", "Aporte ICBF", "Tarifa ESAP", "Aporte ESAP", "Tarifa MEN", "Aporte MEN", "Tipo documento UPC", "Documento UPC", "Exonerado", "ARL", "Clase riesgo", "Tarifa especial AFP", "Fecha ING", "Fecha RET", "Fecha inicio VSP", "Fecha inicio SLN", "Fecha final SLN", "Fecha inicio IGE", "Fecha final IGE", "Fecha inicio LMA", "Fecha final LMA", "Fecha inicio VAC-LR", "Fecha final VAC-LR", "Fecha inicio VCT", "Fecha final VCT", "Fecha inicio IRL", "Fecha final IRL", "IBC otros parafiscales", "Número horas laboradas", "Fecha radicación exterior", "Actividad económica para ARL "];
+const PILA_ENC2 = ["Tipo de registro", "Secuencia", "Tipo documento cotizante", "Documento cotizante", "Tipo de cotizante", "Subtipo de cotizante", "Extranjero", "Colombiano en el exterior", "Departamento", "Municipio", "Primer apellido", "Segundo apellido", "Primer nombre", "Segundo nombre", "ING", "RET", "TDE", "TAE", "TDP", "TAP", "VSP", "Línea", "VST", "SLN", "IGE", "LMA", "VAC-LR", "AVP", "VCT", "IRL", "AFP", "AFP Traslado", "EPS", "EPS Traslado", "CCF", "Días AFP", "Días EPS", "Días ARL", "Días CCF", "Salario básico", "Tipo Salario", "IBC AFP", "IBC EPS", "IBC ARL", "IBC CCF", "Tarifa AFP", "Cotización AFP", "AVP afiliado", "AVP aportante", "Total AFP", "Aporte FSP", "Aporte FSPS", "Valor no retenido", "Tarifa EPS", "Cotización EPS", "Valor UPC", "Número IGE", "Valor IGE", "Número LMA", "Valor LMA", "Tarifa ARL", "Centro de trabajo", "Cotización ARL", "Tarifa CCF", "Aporte CCF", "Tarifa SENA", "Aporte SENA", "Tarifa ICBF", "Aporte ICBF", "Tarifa ESAP", "Aporte ESAP", "Tarifa MEN", "Aporte MEN", "Tipo documento UPC", "Documento UPC", "Exonerado", "ARL", "Clase riesgo", "Tarifa especial AFP", "Fecha ING", "Fecha RET", "Fecha inicio VSP", "Fecha inicio SLN", "Fecha final SLN", "Fecha inicio IGE", "Fecha final IGE", "Fecha inicio LMA", "Fecha final LMA", "Fecha inicio VAC-LR", "Fecha final VAC-LR", "Fecha inicio VCT", "Fecha final VCT", "Fecha inicio IRL", "Fecha final IRL", "IBC otros parafiscales", "Número horas laboradas", "Fecha radicación exterior", "Actividad económica para ARL "];
 const PILA_SALARIO = 1750905; // salario mínimo 2026 (el mismo de la planilla de septiembre)
 // Lugar de trabajo → código DIVIPOLA [departamento, municipio] para la planilla
 const PILA_MUNICIPIOS = {
@@ -12361,11 +12364,15 @@ const PILA_CODIGOS_DEFECTO = {
   arl: { "sura": "14-11", "positiva": "14-23" },
 };
 let pilaCodigos = JSON.parse(JSON.stringify(PILA_CODIGOS_DEFECTO));
+// Partes del nombre corregidas a mano (cédula → [ap1, ap2, n1, n2]); se guardan para todo el equipo
+let pilaNombres = {};
 async function cargarCodigosPila(){
   if (!cloudDb) return;
   try{
     const { data } = await sb.from("configuracion").select("valor").eq("clave", "codigos_pila").maybeSingle();
     if (data && data.valor) ["eps","afp","ccf","arl"].forEach(k => { pilaCodigos[k] = { ...PILA_CODIGOS_DEFECTO[k], ...(data.valor[k] || {}) }; });
+    const n = await sb.from("configuracion").select("valor").eq("clave", "nombres_pila").maybeSingle();
+    if (n.data && n.data.valor) pilaNombres = n.data.valor;
   }catch(e){}
 }
 async function guardarCodigosPila(){
@@ -12376,6 +12383,13 @@ async function guardarCodigosPila(){
 }
 const pilaClave = (t) => normalizarTexto(t).replace(/\s+/g, " ").trim();
 const techo100 = (v) => Math.ceil(Math.round(v * 100) / 100 / 100) * 100;
+// Usa las partes guardadas a mano si todavía corresponden al nombre del cliente
+function pilaNombreDe(r){
+  const g = pilaNombres[String(r["Cédula"]).trim()];
+  const actual = pilaClave(r["Nombre del Afiliado"]).toUpperCase();
+  if (Array.isArray(g) && pilaClave(g.filter(Boolean).join(" ")).toUpperCase() === actual) return g.map(x => String(x || "").toUpperCase());
+  return pilaPartirNombre(r["Nombre del Afiliado"]);
+}
 function pilaPartirNombre(nombre){
   // En la app los nombres casi siempre están como "APELLIDO APELLIDO NOMBRE NOMBRE"
   const p = String(nombre || "").trim().toUpperCase().split(/\s+/).filter(Boolean);
@@ -12410,6 +12424,15 @@ function pilaPeriodo(){
   const i = indiceMes(store.currentMonth); if (i === null) return "";
   const p = i - 1; return `${Math.floor(p / 12)}-${String(p % 12 + 1).padStart(2, "0")}`;
 }
+// Actividad económica (Decreto 768 de 2022), tomada de las planillas que ya se pagaron.
+// Si el certificado ARL trae el código de 7 dígitos se usa ese; si no se conoce va vacío y SUAPORTE lo corrige.
+const PILA_ACTIVIDAD = { "1|1": "1651101", "4|41": "4492301", "5|8": "5521001", "5|7": "5422001" };
+const PILA_ACTIVIDAD_CLASE = { 1: "1651101", 4: "4492301" };
+function pilaActividad(texto, clase, centro){
+  const m = String(texto || "").match(/\b([1-5]\d{6})\b/);
+  if (m && Number(m[1][0]) === Number(clase)) return m[1];
+  return PILA_ACTIVIDAD[`${clase}|${Number(centro) || 0}`] || PILA_ACTIVIDAD_CLASE[clase] || "";
+}
 function pilaCentro(texto, clase){
   const t = String(texto || "").toLowerCase();
   const m = t.match(/c(?:d|odigo|g)\s*[o0]*(\d{1,3})\b/) || t.match(/(?:^|[^\d])0+(\d{1,2})(?!\d)(?![\/\d])/);
@@ -12432,7 +12455,7 @@ function pilaFila(r, secuencia){
     const dIni = ing ? parseInt(fIng.slice(8, 10), 10) : 1;
     dias = Math.max(1, Math.min(30, dRet) - dIni + 1);
   }
-  const [ap1, ap2, n1, n2] = pilaPartirNombre(r["Nombre del Afiliado"]);
+  const [ap1, ap2, n1, n2] = pilaNombreDe(r);
   const eps = pilaCodigo("eps", r["EPS"]);
   if (!eps.codigo) avisos.push(`falta el código de la EPS «${r["EPS"] || "vacía"}»`);
   if (eps.clave === "coosalud") avisos.push("Coosalud: confirme si es ESSC24 o EPS042");
@@ -12470,7 +12493,7 @@ function pilaFila(r, secuencia){
   if (ing) pon(15, "X"); if (ret) pon(16, "X");
   pon(30, 0); pon(31, afp.codigo || null); pon(33, eps.codigo || null); pon(35, ccf || null);
   pon(36, sinPension ? 0 : dias); pon(37, dias); pon(38, dias); pon(39, dias);
-  pon(40, PILA_SALARIO); pon(42, sinPension ? 0 : ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
+  pon(40, PILA_SALARIO); pon(41, "F"); pon(42, sinPension ? 0 : ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
   pon(46, tAfp); pon(47, cAfp); pon(48, 0); pon(49, 0); pon(50, cAfp); pon(51, 0); pon(52, 0); pon(53, 0);
   pon(54, tEps); pon(55, cEps); pon(56, 0); pon(58, 0); pon(60, 0);
   pon(61, tArl); pon(62, centro || null); pon(63, cArl); pon(64, tCcf); pon(65, cCcf);
@@ -12478,7 +12501,7 @@ function pilaFila(r, secuencia){
   pon(76, "S"); pon(77, arlCod); pon(78, clase ? String(clase) : null);
   if (ing) pon(80, fIng);
   if (ret && fechaRet) pon(81, fechaRet);
-  pon(95, 0); pon(96, dias * 8); pon(98, "");
+  pon(95, 0); pon(96, dias * 8); pon(98, pilaActividad(textoArl, clase, centro));
   return { v, avisos, nombre: [ap1, ap2, n1, n2].filter(Boolean).join(" "), dias, ing, ret, total: cAfp + cEps + cArl + cCcf, r };
 }
 let _pilaSel = null;
@@ -12500,7 +12523,7 @@ async function abrirGenerarPila(){
           ? `<tr class="pila-grupo"><td colspan="6">${grupo === "listos" ? "✅ Ya le pagaron a PROSEGUROSNET: listos para la planilla" : "⏳ Todavía no han pagado (márquelos solo si va a pagarles la planilla igual)"}</td></tr>` : "";
         return titulo + `<tr class="${f.avisos.length ? "pila-aviso" : ""}">
         <td><input type="checkbox" data-pila-ced="${escHtml(f.r["Cédula"])}" ${f.sel ? "checked" : ""} aria-label="Incluir"></td>
-        <td><b>${escHtml(f.nombre)}</b><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${tieneCaja(f.r) ? "" : " · caja mínima $100"}</small></td>
+        <td><b>${escHtml(f.nombre)}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(f.r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(f.r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${tieneCaja(f.r) ? "" : " · caja mínima $100"}</small></td>
         <td>${f.dias}</td><td>${f.ing ? "ING" : ""}${f.ret ? "RET" : ""}</td>
         <td class="num">${fmt(f.total)}</td>
         <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`; }).join("")}</tbody>
@@ -12511,7 +12534,7 @@ async function abrirGenerarPila(){
       <button type="button" class="btn small" id="pilaGuardarCod">Guardar códigos</button>
     </details>
     <p class="ay-txt"><b>Cómo se usa:</b> cuando un cliente le paga, márquelo <b>PAGO</b> (con ✅ en Consignaciones o editándolo). Queda en "listos" hasta que suba la planilla pagada en <b>14 · Subir planilla pagada</b>; ahí sale de esta lista. Puede generar el Excel las veces que quiera con los que van pagando.</p>
-    <p class="ay-txt">El nombre se parte como <b>APELLIDO APELLIDO NOMBRE NOMBRE</b>: revíselo en el Excel. Los valores se calculan sobre 1 salario mínimo (${fmt(PILA_SALARIO)}) y se redondean a la centena, como en SUAPORTE; SUAPORTE los vuelve a validar al cargar.</p>`;
+    <p class="ay-txt">El nombre va como <b>APELLIDO APELLIDO NOMBRE NOMBRE</b> y SUAPORTE lo compara con la cédula. Si quedó al revés toque <b>⇄</b>; para escribirlo parte por parte toque <b>✏️</b>. El cambio queda guardado en el cliente. Los valores se calculan sobre 1 salario mínimo (${fmt(PILA_SALARIO)}) y se redondean a la centena, como en SUAPORTE; SUAPORTE los vuelve a validar al cargar.</p>`;
   abrirGenerarPila._filas = filas;
   ayAbrir("overlayGenPila");
 }
@@ -12520,7 +12543,44 @@ document.getElementById("pilaCuerpo").addEventListener("change", (e) => {
   const ced = e.target.dataset && e.target.dataset.pilaCed;
   if (ced){ e.target.checked ? _pilaSel.add(ced) : _pilaSel.delete(ced); }
 });
+// Corregir el orden del nombre (SUAPORTE lo compara con la base de datos de afiliados)
+async function pilaGuardarNombre(r, ap1, ap2, n1, n2){
+  const partes = [ap1, ap2, n1, n2].map(x => String(x || "").trim().toUpperCase().replace(/\s+/g, " "));
+  const nuevo = partes.filter(Boolean).join(" ").toLowerCase();
+  if (!nuevo) return;
+  // Se guardan las partes: así un nombre de 3 palabras no se vuelve a partir mal
+  pilaNombres[String(r["Cédula"]).trim()] = partes;
+  if (cloudDb){
+    const { error } = await sb.from("configuracion").upsert({ clave: "nombres_pila", valor: pilaNombres, updated_by: currentUserId });
+    if (error) showToast("El nombre quedó en el cliente, pero no se guardaron las partes: " + error.message);
+  }
+  r["Nombre del Afiliado"] = nuevo; r["_ultimaEdicion"] = new Date().toISOString();
+  propagarAMesesPosteriores(r["Cédula"], { "Nombre del Afiliado": nuevo }, false);
+  saveStore(); renderList(searchInput.value);
+}
 document.getElementById("pilaCuerpo").addEventListener("click", async (e) => {
+  const inv = e.target.closest("[data-pila-invertir]"), edi = e.target.closest("[data-pila-editar]");
+  if (inv || edi){
+    const r = records.find(x => String(x["Cédula"]) === (inv || edi).dataset[inv ? "pilaInvertir" : "pilaEditar"]);
+    if (!r) return;
+    const p = String(r["Nombre del Afiliado"] || "").trim().split(/\s+/);
+    if (inv){
+      // NOMBRE NOMBRE APELLIDO APELLIDO → APELLIDO APELLIDO NOMBRE NOMBRE
+      const [a1, a2, n1, n2] = p.length >= 4 ? [p[p.length - 2], p[p.length - 1], p[0], p.slice(1, -2).join(" ")] : p.length === 3 ? [p[1], p[2], p[0], ""] : [p[1] || "", "", p[0] || "", ""];
+      await pilaGuardarNombre(r, a1, a2, n1, n2);
+      showToast("Nombre corregido: " + [a1, a2, n1, n2].filter(Boolean).join(" ").toUpperCase());
+    } else {
+      const [a1, a2, n1, n2] = pilaNombreDe(r);
+      const d = await pedirDatosApp(`Nombre de ${r["Cédula"]} como aparece en la cédula`, [
+        { id: "a1", label: "Primer apellido", placeholder: a1 }, { id: "a2", label: "Segundo apellido (o - si no tiene)", placeholder: a2 || "-" },
+        { id: "n1", label: "Primer nombre", placeholder: n1 }, { id: "n2", label: "Segundo nombre (o - si no tiene)", placeholder: n2 || "-" }], "Guardar nombre");
+      if (!d) return;
+      const limpio = (v) => v === "-" ? "" : v;
+      await pilaGuardarNombre(r, d.a1, limpio(d.a2), d.n1, limpio(d.n2));
+    }
+    abrirGenerarPila();
+    return;
+  }
   if (e.target.id !== "pilaGuardarCod") return;
   document.querySelectorAll("[data-pila-cod]").forEach(i => { const [t, k] = i.dataset.pilaCod.split("|"); pilaCodigos[t][k] = i.value.trim().toUpperCase(); });
   if (await guardarCodigosPila()) showToast("✅ Códigos guardados.");
