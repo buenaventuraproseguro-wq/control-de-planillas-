@@ -121,6 +121,20 @@
   .sidebar-total-pagos{ font-size:10px; opacity:.85; font-weight:600; }
   #navMenuBtn{ background:rgba(255,255,255,.08); margin-top:4px; }
   .sidebar-menu-colapsable{ display:none; flex-direction:column; gap:1px; }
+  /* Velo sobre la pantalla principal cuando la barra lateral está abierta */
+  .velo-principal{ position:fixed; inset:0; z-index:40; background:rgba(8,12,16,.55); backdrop-filter:blur(2px); cursor:pointer; animation:veloEntra .2s ease-out; }
+  @keyframes veloEntra{ from{ opacity:0; } to{ opacity:1; } }
+  @media (prefers-reduced-motion: reduce){ .velo-principal{ animation:none; } }
+  body.sidebar-enfocada .sidebar{ position:sticky; z-index:41; }
+  /* En el celular, "Ver más opciones" abre la barra como panel a la izquierda, sobre el velo */
+  @media (max-width:760px){
+    body.sidebar-enfocada .sidebar{ position:fixed; top:0; left:0; bottom:0; width:min(86vw,320px); height:100%;
+      flex-direction:column; overflow-y:auto; overflow-x:hidden; padding:calc(12px + env(safe-area-inset-top,0px)) 10px calc(16px + env(safe-area-inset-bottom,0px)) max(10px, env(safe-area-inset-left,0px)); gap:1px; box-shadow:4px 0 24px rgba(0,0,0,.35); }
+    body.sidebar-enfocada .sidebar-brand{ display:flex; }
+    body.sidebar-enfocada .sidebar-link{ width:100%; white-space:normal; padding:10px 12px; font-size:13.5px; }
+    body.sidebar-enfocada .sidebar-total{ white-space:normal; flex-shrink:1; }
+    body.sidebar-enfocada{ overflow:hidden; }
+  }
   .sidebar-menu-colapsable.show{ display:flex; }
   .sidebar-sub{ display:none; flex-direction:column; gap:0; padding-left:8px; border-left:1.5px solid rgba(255,255,255,.15); margin:0 0 2px 8px; }
   .sidebar-sub.show{ display:flex; }
@@ -1382,6 +1396,7 @@
     </div>
   </nav>
 
+  <div class="velo-principal" id="veloPrincipal" hidden></div>
   <div class="main-area">
   <div class="wrap">
 
@@ -8043,7 +8058,29 @@ document.getElementById("addBtn").addEventListener("click", () => openModal(null
 
 /* ---- Barra lateral: accesos directos ---- */
 document.getElementById("navMenuBtn").addEventListener("click", () => {
-  document.getElementById("sidebarMenuColapsable").classList.toggle("show");
+  const abierto = document.getElementById("sidebarMenuColapsable").classList.toggle("show");
+  enfocarBarraLateral(abierto);
+});
+// Al abrir "Ver más opciones", la pantalla principal se opaca para leer mejor la barra lateral.
+// Se aclara al escoger una opción, al tocar la pantalla principal o con Esc.
+function enfocarBarraLateral(on){
+  document.body.classList.toggle("sidebar-enfocada", !!on);
+  document.getElementById("veloPrincipal").hidden = !on;
+}
+document.getElementById("veloPrincipal").addEventListener("click", () => {
+  document.getElementById("sidebarMenuColapsable").classList.remove("show");
+  enfocarBarraLateral(false);
+});
+document.getElementById("sidebar").addEventListener("click", (e) => {
+  const b = e.target.closest(".sidebar-link, .sidebar-total");
+  if (!b || ["navMenuBtn", "navCarteraBtn", "navEnlacesBtn"].includes(b.id)) return;
+  enfocarBarraLateral(false); // escogió una opción: la pantalla vuelve a verse clara
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.body.classList.contains("sidebar-enfocada")){
+    document.getElementById("sidebarMenuColapsable").classList.remove("show");
+    enfocarBarraLateral(false);
+  }
 });
 
 document.getElementById("navAddBtn").addEventListener("click", () => openModal(null));
