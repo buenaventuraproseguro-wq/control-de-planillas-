@@ -12329,6 +12329,18 @@ const PILA_ENC1 = ["Tipo de registro", "Modalidad de la Planilla", "Secuencia", 
 const PILA_FILA1 = ["1","1","1","NESTOR FABIAN GARZON TORRES","CC","1112904783","0","","","","S","","","","","","","","","","01","89"];
 const PILA_ENC2 = ["Tipo de registro", "Secuencia", "Tipo documento cotizante", "Documento cotizante", "Tipo de cotizante", "Subtipo de cotizante", "Extranjero", "Colombiano en el exterior", "Departamento", "Municipio", "Primer apellido", "Segundo apellido", "Primer nombre", "Segundo nombre", "ING", "RET", "TDE", "TAE", "TDP", "TAP", "VSP", "Línea", "VST", "SLN", "IGE", "LMA", "VAC-LR", "AVP", "VCT", "IRL", "AFP", "AFP Traslado", "EPS", "EPS Traslado", "CCF", "Días AFP", "Días EPS", "Días ARL", "Días CCF", "Salario básico", "Salario integral", "IBC AFP", "IBC EPS", "IBC ARL", "IBC CCF", "Tarifa AFP", "Cotización AFP", "AVP afiliado", "AVP aportante", "Total AFP", "Aporte FSP", "Aporte FSPS", "Valor no retenido", "Tarifa EPS", "Cotización EPS", "Valor UPC", "Número IGE", "Valor IGE", "Número LMA", "Valor LMA", "Tarifa ARL", "Centro de trabajo", "Cotización ARL", "Tarifa CCF", "Aporte CCF", "Tarifa SENA", "Aporte SENA", "Tarifa ICBF", "Aporte ICBF", "Tarifa ESAP", "Aporte ESAP", "Tarifa MEN", "Aporte MEN", "Tipo documento UPC", "Documento UPC", "Exonerado", "ARL", "Clase riesgo", "Tarifa especial AFP", "Fecha ING", "Fecha RET", "Fecha inicio VSP", "Fecha inicio SLN", "Fecha final SLN", "Fecha inicio IGE", "Fecha final IGE", "Fecha inicio LMA", "Fecha final LMA", "Fecha inicio VAC-LR", "Fecha final VAC-LR", "Fecha inicio VCT", "Fecha final VCT", "Fecha inicio IRL", "Fecha final IRL", "IBC otros parafiscales", "Número horas laboradas", "Fecha radicación exterior", "Actividad económica para ARL "];
 const PILA_SALARIO = 1750905; // salario mínimo 2026 (el mismo de la planilla de septiembre)
+// Lugar de trabajo → código DIVIPOLA [departamento, municipio] para la planilla
+const PILA_MUNICIPIOS = {
+  "buenaventura": [76, 109], "cali": [76, 1], "palmira": [76, 520], "tulua": [76, 834], "buga": [76, 111], "guadalajara de buga": [76, 111],
+  "jamundi": [76, 364], "yumbo": [76, 892], "cartago": [76, 147], "dagua": [76, 233], "candelaria": [76, 130], "florida": [76, 275],
+  "pradera": [76, 563], "el cerrito": [76, 248], "ginebra": [76, 306], "guacari": [76, 318], "la union": [76, 400], "roldanillo": [76, 622],
+  "sevilla": [76, 736], "zarzal": [76, 895], "caicedonia": [76, 122], "calima": [76, 126], "darien": [76, 126], "restrepo": [76, 606],
+  "riofrio": [76, 616], "trujillo": [76, 828], "yotoco": [76, 890], "vijes": [76, 869], "la cumbre": [76, 377], "bolivar": [76, 100],
+  "bogota": [11, 1], "medellin": [5, 1], "turbo": [5, 837], "apartado": [5, 45], "chigorodo": [5, 172], "carepa": [5, 147], "necocli": [5, 490],
+  "barranquilla": [8, 1], "cartagena": [13, 1], "santa marta": [47, 1], "popayan": [19, 1], "pasto": [52, 1], "tumaco": [52, 835],
+  "pereira": [66, 1], "manizales": [17, 1], "armenia": [63, 1], "ibague": [73, 1], "bucaramanga": [68, 1], "cucuta": [54, 1],
+  "quibdo": [27, 1], "villavicencio": [50, 1], "neiva": [41, 1], "monteria": [23, 1], "sincelejo": [70, 1], "valledupar": [20, 1],
+};
 const PILA_TARIFA_ARL = { 1: 0.00522, 2: 0.01044, 3: 0.02436, 4: 0.0435, 5: 0.0696 };
 const PILA_CENTRO_DEFECTO = { 1: 1, 4: 41, 5: 5 };
 const PILA_CODIGOS_DEFECTO = {
@@ -12430,7 +12442,16 @@ function pilaFila(r, secuencia){
   const v = new Array(98).fill(null);
   const pon = (col, val) => { v[col - 1] = val; };
   pon(1, 2); pon(2, secuencia); pon(3, "CC"); pon(4, String(r["Cédula"]).trim()); pon(5, 1); pon(6, 0);
-  pon(9, 76); pon(10, 109); pon(11, ap1); pon(12, ap2); pon(13, n1); pon(14, n2);
+  // Lugar de trabajo distinto: la planilla se marca con el departamento y municipio donde trabaja
+  let dep = 76, mun = 109;
+  const lugar = String(r["Lugar Trabajo"] || "").trim();
+  if (lugar){
+    const k = pilaClave(lugar).replace(/\b(d\.?c\.?|valle|del cauca|antioquia)\b/g, "").trim();
+    const cod = PILA_MUNICIPIOS[k] || PILA_MUNICIPIOS[Object.keys(PILA_MUNICIPIOS).find(x => k.startsWith(x)) || ""];
+    if (cod){ [dep, mun] = cod; }
+    else avisos.push(`lugar de trabajo «${lugar}»: escriba en el Excel el código de departamento y municipio`);
+  }
+  pon(9, dep); pon(10, mun); pon(11, ap1); pon(12, ap2); pon(13, n1); pon(14, n2);
   if (ing) pon(15, "X"); if (ret) pon(16, "X");
   pon(30, 0); pon(31, afp.codigo || null); pon(33, eps.codigo || null); pon(35, ccf || null);
   pon(36, sinPension ? 0 : dias); pon(37, dias); pon(38, dias); pon(39, dias);
@@ -12458,7 +12479,7 @@ async function abrirGenerarPila(){
       <thead><tr><th><input type="checkbox" id="pilaTodos" ${filas.every(f => f.sel) ? "checked" : ""} aria-label="Todos"></th><th>Afiliado (como va a la planilla)</th><th>Días</th><th>Novedad</th><th class="num">Aportes</th><th>Revisar</th></tr></thead>
       <tbody>${filas.map(f => `<tr class="${f.avisos.length ? "pila-aviso" : ""}">
         <td><input type="checkbox" data-pila-ced="${escHtml(f.r["Cédula"])}" ${f.sel ? "checked" : ""} aria-label="Incluir"></td>
-        <td><b>${escHtml(f.nombre)}</b><br><small>CC ${escHtml(f.r["Cédula"])}</small></td>
+        <td><b>${escHtml(f.nombre)}</b><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${tieneCaja(f.r) ? "" : " · caja mínima $100"}</small></td>
         <td>${f.dias}</td><td>${f.ing ? "ING" : ""}${f.ret ? "RET" : ""}</td>
         <td class="num">${fmt(f.total)}</td>
         <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`).join("")}</tbody>
