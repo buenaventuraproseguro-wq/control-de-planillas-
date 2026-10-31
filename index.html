@@ -12393,11 +12393,14 @@ setInterval(() => {
    desde la fila 4 un afiliado por fila (98 columnas). No lleva filas de totales. */
 const PILA_ENC1 = ["Tipo de registro", "Modalidad de la Planilla", "Secuencia", "Nombre o Razón Social del Aportante", "Tipo Documento", "Nº de Identificación", "Digito de Verificación", "Tipo Planilla", "Número Planilla Asociada a esta planilla", "Fecha de Pago Planilla Asociada a esta planilla", "Forma Presentación", "Código Sucursal Aportante", "Nombre Sucursal", "Código ARL", "Periodo Pago a Sistemas Diferentes a Salud", "Periodo Pago al Sistema de Salud", "Número  de Planilla", "Fecha de Pago", "Número total de cotizantes", "Valor Total Nómina", "Tipo de Aportante", "Código del Operador de Información"];
 // Registro tipo 1 (aportante): igual que en las planillas que SUAPORTE ya aceptó (números como números)
-function pilaFila1(filas){
+function pilaFila1(filas, aportante){
   const p = pilaPeriodo();
   const [a, m] = p.split("-").map(Number);
   const salud = m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, "0")}`;
   const nomina = filas.reduce((t, f) => t + numOrZero(f.v[44]), 0); // suma del IBC de caja
+  // Independiente: él mismo es el aportante (su nombre y su cédula), sin sucursal
+  if (aportante) return [1, 1, 1, aportante.nombre, "CC", aportante.cedula, 0, "E", "", "", "U", "", "", aportante.arl,
+    p, salud, "", "", filas.length, nomina, 1, 89];
   return [1, 1, 1, "NESTOR FABIAN GARZON TORRES", "CC", "1112904783", 0, "E", "", "", "S", "02", "EMPLEADOS", "14-11",
     p, salud, "", "", filas.length, nomina, 1, 89];
 }
@@ -12509,7 +12512,17 @@ function pilaTieneCaja(r){
   const est = String(r["Estado Caja"] || "").trim().toLowerCase();
   return numOrZero(r["Valor Caja"]) > 0 || est === "activo" || est === "en proceso";
 }
-function pilaFila(r, secuencia){
+// Base de cotización de un independiente: sale de su aporte a pensión (16 %); si da casi un
+// número exacto de salarios mínimos se deja en ese múltiplo. Nunca menos de 1 mínimo.
+function pilaBaseIndependiente(r){
+  const pen = numOrZero(r["Valor Pensión (AFP)"]);
+  let base = pen ? Math.round(pen / 0.16) : PILA_SALARIO;
+  const k = Math.round(base / PILA_SALARIO);
+  if (k >= 1 && Math.abs(base - k * PILA_SALARIO) <= 1500 * k) base = k * PILA_SALARIO;
+  return Math.max(PILA_SALARIO, base);
+}
+function pilaFila(r, secuencia, opts){
+  opts = opts || {};
   const avisos = [];
   const periodo = pilaPeriodo();
   const fIng = pilaFechaISO(r["Fecha de Ingreso"]) || (/^\d{4}-\d{2}-\d{2}/.test(r["Fecha de Ingreso"] || "") ? String(r["Fecha de Ingreso"]).slice(0, 10) : "");
@@ -12542,12 +12555,14 @@ function pilaFila(r, secuencia){
   if (!clase) avisos.push("falta el nivel de riesgo ARL");
   const centro = pilaCentro(textoArl, clase);
   if (!centro && clase) avisos.push("falta el centro de trabajo ARL");
-  const arlCod = pilaCodigos.arl.sura || "14-11";
-  if (/independ/i.test(r["Responsable / Grupo"] || "")) avisos.push("es independiente: revise tipo de cotizante y tarifas");
-  const ibc = Math.ceil(PILA_SALARIO * dias / 30);
+  // PROSEGUROSNET: ARL siempre Sura. El independiente va con la ARL que tenga (p. ej. Positiva).
+  const arlCod = opts.independiente && /positiva/i.test(textoArl) ? (pilaCodigos.arl.positiva || "14-23") : (pilaCodigos.arl.sura || "14-11");
+  const base = opts.independiente ? pilaBaseIndependiente(r) : PILA_SALARIO;
+  const ibc = Math.ceil(base * dias / 30);
   const tAfp = sinPension ? 0 : 0.16, tEps = 0.04, tArl = PILA_TARIFA_ARL[clase] || 0, tCcf = 0.04;
   const ibcCcf = conCaja ? ibc : 100;
   const cAfp = tAfp ? techo100(ibc * tAfp) : 0, cEps = techo100(ibc * tEps), cArl = tArl ? techo100(ibc * tArl) : 0, cCcf = conCaja ? techo100(ibc * tCcf) : 100;
+  if (opts.independiente && conCaja && Math.abs(numOrZero(r["Valor Caja"]) - cCcf) > 200) avisos.push(`caja: en la planilla da ${fmt(cCcf)} y en la app está en ${fmt(numOrZero(r["Valor Caja"]))}, revísela`);
   const v = new Array(98).fill(null);
   const pon = (col, val) => { v[col - 1] = val; };
   pon(1, 2); pon(2, secuencia); pon(3, "CC"); pon(4, String(r["Cédula"]).trim()); pon(5, 1); pon(6, 0);
@@ -12564,7 +12579,7 @@ function pilaFila(r, secuencia){
   if (ing) pon(15, "X"); if (ret) pon(16, "X");
   pon(30, 0); pon(31, afp.codigo || null); pon(33, eps.codigo || null); pon(35, ccf || null);
   pon(36, sinPension ? 0 : dias); pon(37, dias); pon(38, dias); pon(39, dias);
-  pon(40, PILA_SALARIO); pon(41, "F"); pon(42, sinPension ? 0 : ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
+  pon(40, base); pon(41, "F"); pon(42, sinPension ? 0 : ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
   pon(46, tAfp); pon(47, cAfp); pon(48, 0); pon(49, 0); pon(50, cAfp); pon(51, 0); pon(52, 0); pon(53, 0);
   pon(54, tEps); pon(55, cEps); pon(56, 0); pon(58, 0); pon(60, 0);
   pon(61, tArl); pon(62, centro || null); pon(63, cArl); pon(64, tCcf); pon(65, cCcf);
@@ -12600,7 +12615,11 @@ async function abrirGenerarPila(){
         <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`; }).join("")}</tbody>
     </table></div>` : `<p class="ay-txt">No hay afiliados de PROSEGUROSNET por pagar en ${escHtml(store.currentMonth)}.</p>`)
   + (() => { const ind = records.filter(r => esIndependiente(r) && !esConductorExcluido(r) && !isRetiro(r));
-      return ind.length ? `<p class="ay-txt">👤 <b>${ind.length} independiente(s) no van en este Excel</b> porque pagan con su propia planilla (a nombre de su cédula, con sus aportes y su ARL): ${ind.map(r => escHtml(nombrePropio(r["Nombre del Afiliado"]))).join(", ")}.</p>` : ""; })()
+      if (!ind.length) return "";
+      return `<div class="pila-ind"><p class="ay-txt">👤 <b>${ind.length} independiente(s) no van en este Excel</b>: cada uno paga con <b>su propia planilla</b>, a nombre de su cédula, con su base y su ARL. Descargue el Excel de cada uno y súbalo en SUAPORTE entrando con la cédula de esa persona.</p>
+        <ul class="ay-txt">${ind.map(r => { const f = pilaFila(r, 1, { independiente: true });
+          return `<li><b>${escHtml([f.v[10], f.v[11], f.v[12], f.v[13]].filter(Boolean).join(" "))}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button> · CC ${escHtml(r["Cédula"])} · base ${fmt(pilaBaseIndependiente(r))} · ARL ${escHtml(f.v[76] === "14-23" ? "Positiva" : "Sura")} · aportes ${fmt(f.total)}${f.avisos.length ? ` · ⚠️ ${escHtml(f.avisos.join(" · "))}` : ""}
+            <button type="button" class="btn small" data-pila-ind="${escHtml(r["Cédula"])}">⬇️ Excel de su planilla</button></li>`; }).join("")}</ul></div>`; })()
   + `<details class="pila-codigos"><summary>Códigos de EPS, AFP y caja que usa la planilla</summary>
       <p class="ay-txt">Los vacíos hay que llenarlos con el código que aparece en SUAPORTE. Se guardan para todo el equipo.</p>
       ${["eps","afp","ccf"].map(t => `<div class="pila-cod-grupo"><b>${t.toUpperCase()}</b>${Object.entries(pilaCodigos[t]).map(([k, c]) => `<label>${escHtml(k)} <input type="text" value="${escHtml(c)}" data-pila-cod="${t}|${escHtml(k)}" placeholder="código"></label>`).join("")}</div>`).join("")}
@@ -12743,6 +12762,19 @@ document.getElementById("pilaDescargarBtn").addEventListener("click", async () =
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   window.__ultimoExcelPila = { aoa, nombre };
   showToast(`⬇️ ${nombre} con ${filas.length} afiliado(s). Súbalo en SUAPORTE → Autoliquidación de aportes → Cargar archivo.`);
+});
+document.getElementById("pilaCuerpo").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pila-ind]"); if (!b) return;
+  const r = records.find(x => String(x["Cédula"]) === b.dataset.pilaInd); if (!r) return;
+  const f = pilaFila(r, 1, { independiente: true });
+  const nombreAp = [f.v[10], f.v[11], f.v[12], f.v[13]].filter(Boolean).join(" ");
+  const aoa = [PILA_ENC1, pilaFila1([f], { nombre: nombreAp, cedula: String(r["Cédula"]).trim(), arl: f.v[76] }), PILA_ENC2, f.v.slice()];
+  const blob = XLSXMin.libro(aoa, "Planilla base");
+  const nombre = `PILA_CC${String(r["Cédula"]).trim()}_${pilaPeriodo().replace("-", "") || "mes"}.xlsx`;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  window.__ultimoExcelPila = { aoa, nombre };
+  showToast(`⬇️ ${nombre}: planilla propia de ${nombrePropio(r["Nombre del Afiliado"])}. En SUAPORTE entre con su cédula y cárguelo.`);
 });
 document.getElementById("navPilaBtn").addEventListener("click", () => { _pilaSel = null; abrirGenerarPila(); });
 </script>
