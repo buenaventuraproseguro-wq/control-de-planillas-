@@ -12622,7 +12622,7 @@ function pilaFila(r, secuencia, opts){
   if (opts.independiente && conCaja && Math.abs(numOrZero(r["Valor Caja"]) - cCcf) > 200) avisos.push(`caja: en la planilla da ${fmt(cCcf)} y en la app está en ${fmt(numOrZero(r["Valor Caja"]))}, revísela`);
   const v = new Array(98).fill(null);
   const pon = (col, val) => { v[col - 1] = val; };
-  pon(1, 2); pon(2, secuencia); pon(3, "CC"); pon(4, String(r["Cédula"]).trim()); pon(5, tipoI ? 57 : 1); pon(6, subtipo);
+  pon(1, 2); pon(2, secuencia); pon(3, "CC"); pon(4, String(r["Cédula"]).trim()); pon(5, tipoI ? 57 : 1); pon(6, subtipo ? String(subtipo).padStart(2, "0") : 0); // subtipo como texto "05" (SUAPORTE no tomó el 5 numérico)
   // Lugar de trabajo distinto: la planilla se marca con el departamento y municipio donde trabaja
   let dep = 76, mun = 109;
   const lugar = String(r["Lugar Trabajo"] || "").trim();
