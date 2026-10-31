@@ -12533,13 +12533,14 @@ function pilaFila(r, secuencia){
   if (sinPension) avisos.push("no aporta pensión: revise el subtipo de cotizante");
   // En las planillas de PROSEGUROSNET todos llevan caja: quien no tiene caja va con IBC y aporte de $100
   const conCaja = pilaTieneCaja(r);
-  const ccf = pilaCodigo("ccf", r["Caja de Compensación"]).codigo || pilaCodigos.ccf["comfenalco valle"];
+  // En PROSEGUROSNET la caja siempre es Comfenalco Valle y la ARL siempre Sura
+  const ccf = pilaCodigos.ccf["comfenalco valle"] || "CCF56";
   const textoArl = r["ARL (Riesgo/Código)"] || "";
   const clase = Number(r["ARL Nivel"]) || clasificarRiesgoArl(textoArl) || 0;
   if (!clase) avisos.push("falta el nivel de riesgo ARL");
   const centro = pilaCentro(textoArl, clase);
   if (!centro && clase) avisos.push("falta el centro de trabajo ARL");
-  const arlCod = /positiva/i.test(textoArl) ? pilaCodigos.arl.positiva : pilaCodigos.arl.sura;
+  const arlCod = pilaCodigos.arl.sura || "14-11";
   if (/independ/i.test(r["Responsable / Grupo"] || "")) avisos.push("es independiente: revise tipo de cotizante y tarifas");
   const ibc = Math.ceil(PILA_SALARIO * dias / 30);
   const tAfp = sinPension ? 0 : 0.16, tEps = 0.04, tArl = PILA_TARIFA_ARL[clase] || 0, tCcf = 0.04;

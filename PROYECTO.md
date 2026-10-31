@@ -46,3 +46,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Más adelante: versión para vender a otras empresas, CRM nivel 2 (IA) y nivel 3 (WhatsApp Business).
 
 - 14.1 PILA (ajustes tras la prueba en SUAPORTE): Tipo Salario = F; Actividad económica ARL (Decreto 768) según clase/centro de las planillas reales (1→1651101, 4/41→4492301, 5/8→5521001, 5/7→5422001) o el código de 7 dígitos del certificado; si no se conoce va vacío y SUAPORTE lo corrige. Nombres: botones ⇄ y ✏️; las partes (apellido1|apellido2|nombre1|nombre2) se guardan en configuracion clave "nombres_pila" para que un nombre de 3 palabras no se parta mal.
+- 14.1 PILA: la caja siempre va como Comfenalco Valle (CCF56) y la ARL siempre Sura (14-11), diga lo que diga el cliente.
