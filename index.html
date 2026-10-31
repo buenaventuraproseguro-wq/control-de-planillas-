@@ -5205,6 +5205,8 @@ function construirRegistroMesSiguiente(r){
       } else {
         delete nuevo["_prorrateoTransicion"];
       }
+      // Pensión y ARL con el valor de ley según su nivel; sin caja, el mínimo de $100
+      normalizarPensionArl(nuevo); ponerCajaMinima(nuevo);
       return nuevo;
     }
 
