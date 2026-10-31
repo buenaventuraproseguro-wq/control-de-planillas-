@@ -54,3 +54,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - 14.1 base del independiente: ✏️ para escribirla (configuracion "pila_base_independientes"); Sebastián Muriel cotiza sobre $2.094.734 (planilla I 88608488: Colpensiones, SOS, Positiva, sin caja = $742.900). Planilla I sin caja: días CCF 0.
 - 14.1 Otras empresas: planilla E con el dueño como aportante (configuracion "pila_aportantes_empresas", empresa → {nombre, cedula}). renovat = SEBASTIAN MURIEL RIOS CC 1235139380, empleado Jhonatan Muriel Ríos (planilla 88606462 = $472.300). Se calcula igual que PROSEGUROSNET.
 - 14.1 Otras empresas: solo salen las que tienen aportante guardado; a MANUEL no le liquidamos planillas.
+- 14.1: quien no aporta pensión va con subtipo de cotizante (1 pensionado, 3 no obligado por edad) y días/IBC de pensión iguales a los demás con tarifa 0. Retiro antes del ingreso → mismo día del ingreso. Emssanar = ESSC18.
