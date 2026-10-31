@@ -12441,6 +12441,10 @@ async function cargarCodigosPila(){
     if (n.data && n.data.valor) pilaNombres = n.data.valor;
     const ti = await sb.from("configuracion").select("valor").eq("clave", "pila_tipo_independientes").maybeSingle();
     if (ti.data && ti.data.valor) pilaTipoInd = ti.data.valor;
+    const bi = await sb.from("configuracion").select("valor").eq("clave", "pila_base_independientes").maybeSingle();
+    if (bi.data && bi.data.valor) pilaBaseInd = bi.data.valor;
+    const ae = await sb.from("configuracion").select("valor").eq("clave", "pila_aportantes_empresas").maybeSingle();
+    if (ae.data && ae.data.valor) pilaAportantes = ae.data.valor;
   }catch(e){}
 }
 async function guardarCodigosPila(){
@@ -12518,6 +12522,8 @@ function pilaTieneCaja(r){
 // Base de cotización de un independiente: sale de su aporte a pensión (16 %); si da casi un
 // número exacto de salarios mínimos se deja en ese múltiplo. Nunca menos de 1 mínimo.
 function pilaBaseIndependiente(r){
+  const escrita = numOrZero(pilaBaseInd[String(r["Cédula"]).trim()]);
+  if (escrita) return Math.max(PILA_SALARIO, escrita);
   const pen = numOrZero(r["Valor Pensión (AFP)"]);
   let base = pen ? Math.round(pen / 0.16) : PILA_SALARIO;
   const k = Math.round(base / PILA_SALARIO);
@@ -12525,6 +12531,14 @@ function pilaBaseIndependiente(r){
   return Math.max(PILA_SALARIO, base);
 }
 let pilaTipoInd = {}; // cédula → "I" | "E"
+let pilaBaseInd = {}; // cédula → IBC escrito a mano (el independiente cotiza sobre sus ingresos)
+let pilaAportantes = {}; // empresa → { nombre, cedula } del aportante (el dueño de la empresa)
+async function pilaGuardarConfig(clave, valor){
+  if (!cloudDb) return true;
+  const { error } = await sb.from("configuracion").upsert({ clave, valor, updated_by: currentUserId });
+  if (error){ showToast("No se pudo guardar: " + error.message); return false; }
+  return true;
+}
 function pilaEsTipoI(r){
   const t = pilaTipoInd[String(r["Cédula"]).trim()];
   return t ? t === "I" : true; // por defecto planilla I (independiente); la E se escoge a mano para quien paga como empleado propio
@@ -12588,7 +12602,7 @@ function pilaFila(r, secuencia, opts){
   pon(9, dep); pon(10, mun); pon(11, ap1); pon(12, ap2); pon(13, n1); pon(14, n2);
   if (ing) pon(15, "X"); if (ret) pon(16, "X");
   pon(30, 0); pon(31, afp.codigo || null); pon(33, eps.codigo || null); pon(35, tipoI && !conCaja ? null : (ccf || null));
-  pon(36, sinPension ? 0 : dias); pon(37, dias); pon(38, dias); pon(39, dias);
+  pon(36, sinPension ? 0 : dias); pon(37, dias); pon(38, dias); pon(39, tipoI && !conCaja ? 0 : dias);
   pon(40, base); pon(41, "F"); pon(42, sinPension ? 0 : ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
   pon(46, tAfp); pon(47, cAfp); pon(48, 0); pon(49, 0); pon(50, cAfp); pon(51, 0); pon(52, 0); pon(53, 0);
   pon(54, tEps); pon(55, cEps); pon(56, 0); pon(58, 0); pon(60, 0);
@@ -12628,10 +12642,19 @@ async function abrirGenerarPila(){
       if (!ind.length) return "";
       return `<div class="pila-ind"><p class="ay-txt">👤 <b>${ind.length} independiente(s) no van en este Excel</b>: cada uno paga con <b>su propia planilla</b>, a nombre de su cédula, con su base y su ARL. Descargue el Excel de cada uno y súbalo en SUAPORTE entrando con la cédula de esa persona.</p>
         <ul class="ay-txt">${ind.map(r => { const tI = pilaEsTipoI(r); const f = pilaFila(r, 1, { independiente: true, tipoI: tI });
-          return `<li><b>${escHtml([f.v[10], f.v[11], f.v[12], f.v[13]].filter(Boolean).join(" "))}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button> · CC ${escHtml(r["Cédula"])} · base ${fmt(pilaBaseIndependiente(r))} · ARL ${escHtml(f.v[76] === "14-23" ? "Positiva" : "Sura")} · aportes ${fmt(f.total)}${f.avisos.length ? ` · ⚠️ ${escHtml(f.avisos.join(" · "))}` : ""}
+          return `<li><b>${escHtml([f.v[10], f.v[11], f.v[12], f.v[13]].filter(Boolean).join(" "))}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button> · CC ${escHtml(r["Cédula"])} · base ${fmt(pilaBaseIndependiente(r))} <button type="button" class="pila-nom-btn" data-pila-base="${escHtml(r["Cédula"])}" title="Escribir la base (IBC) con la que cotiza">✏️</button> · ARL ${escHtml(f.v[76] === "14-23" ? "Positiva" : "Sura")} · aportes ${fmt(f.total)}${f.avisos.length ? ` · ⚠️ ${escHtml(f.avisos.join(" · "))}` : ""}
             <select data-pila-tipoind="${escHtml(r["Cédula"])}" aria-label="Tipo de planilla" title="I: planilla de independiente (salud 12,5 %, caja 2 %). E: como empleado de su propia razón social (salud 4 %).">
               <option value="I" ${tI ? "selected" : ""}>Planilla I (independiente)</option><option value="E" ${tI ? "" : "selected"}>Planilla E (empleado propio)</option></select>
             <button type="button" class="btn small" data-pila-ind="${escHtml(r["Cédula"])}">⬇️ Excel de su planilla</button></li>`; }).join("")}</ul></div>`; })()
+  + (() => {
+      // Otras empresas (por ejemplo la de un independiente que tiene empleados): planilla E con el dueño como aportante
+      const grupos = pilaOtrasEmpresas();
+      if (!grupos.length) return "";
+      return `<div class="pila-ind"><p class="ay-txt">🏢 <b>Otras empresas</b>: sus empleados van en la planilla E <b>de esa empresa</b> (el aportante es el dueño). Se calculan igual que los de PROSEGUROSNET: salario mínimo, salud 4 %, caja Comfenalco ($100 si no tiene) y ARL Sura.</p>
+        <ul class="ay-txt">${grupos.map(g => `<li><b>${escHtml(g.empresa)}</b> · aportante: ${g.ap ? `<b>${escHtml(g.ap.nombre)}</b> CC ${escHtml(g.ap.cedula)}` : `<span style="color:var(--retiro);font-weight:700;">falta</span>`} <button type="button" class="pila-nom-btn" data-pila-aportante="${escHtml(g.clave)}" title="Escribir el nombre y la cédula del dueño de la empresa">✏️</button>
+          <br>${g.listos.length} listo(s) para la planilla: ${g.listos.map(r => `${escHtml(pilaNombreDe(r).filter(Boolean).join(" "))} <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button>`).join(", ") || "nadie ha pagado todavía"}${g.pendientes.length ? ` · ${g.pendientes.length} sin pagar` : ""}
+          <button type="button" class="btn small" data-pila-empresa="${escHtml(g.clave)}" ${g.ap && g.listos.length ? "" : "disabled"}>⬇️ Excel de ${escHtml(g.empresa)}</button></li>`).join("")}</ul></div>`;
+    })()
   + `<details class="pila-codigos"><summary>Códigos de EPS, AFP y caja que usa la planilla</summary>
       <p class="ay-txt">Los vacíos hay que llenarlos con el código que aparece en SUAPORTE. Se guardan para todo el equipo.</p>
       ${["eps","afp","ccf"].map(t => `<div class="pila-cod-grupo"><b>${t.toUpperCase()}</b>${Object.entries(pilaCodigos[t]).map(([k, c]) => `<label>${escHtml(k)} <input type="text" value="${escHtml(c)}" data-pila-cod="${t}|${escHtml(k)}" placeholder="código"></label>`).join("")}</div>`).join("")}
@@ -12781,7 +12804,50 @@ document.getElementById("pilaCuerpo").addEventListener("change", async (e) => {
   if (cloudDb){ const { error } = await sb.from("configuracion").upsert({ clave: "pila_tipo_independientes", valor: pilaTipoInd, updated_by: currentUserId }); if (error) showToast("No se guardó el tipo de planilla: " + error.message); }
   abrirGenerarPila();
 });
-document.getElementById("pilaCuerpo").addEventListener("click", (e) => {
+function pilaOtrasEmpresas(){
+  const m = new Map();
+  records.filter(r => esOtraEmpresa(r) && !esIndependiente(r) && !esConductorExcluido(r) && !esServicioMuelles(r) && !isRetiro(r) || (esOtraEmpresa(r) && retiroQueDebe(r) && !esIndependiente(r))).forEach(r => {
+    const clave = pilaClave(r["Empresa"]);
+    if (!m.has(clave)) m.set(clave, { clave, empresa: String(r["Empresa"]).trim(), ap: pilaAportantes[clave] || null, listos: [], pendientes: [] });
+    const g = m.get(clave);
+    if (pilaListo(r)) g.listos.push(r); else if (pilaPendiente(r)) g.pendientes.push(r);
+  });
+  return [...m.values()].filter(g => g.listos.length || g.pendientes.length);
+}
+document.getElementById("pilaCuerpo").addEventListener("click", async (e) => {
+  const bb = e.target.closest("[data-pila-base]");
+  if (bb){
+    const ced = bb.dataset.pilaBase;
+    const d = await pedirDatosApp(`Base (IBC) con la que cotiza ${ced}`, [{ id: "b", label: "Base mensual en pesos", tipo: "number", placeholder: String(pilaBaseInd[ced] || PILA_SALARIO) }], "Guardar base");
+    if (!d) return;
+    if (d.b < PILA_SALARIO){ showToast(`La base no puede ser menor al mínimo (${fmt(PILA_SALARIO)}).`); return; }
+    pilaBaseInd[ced] = d.b;
+    if (await pilaGuardarConfig("pila_base_independientes", pilaBaseInd)) showToast("✅ Base guardada.");
+    abrirGenerarPila(); return;
+  }
+  const ba = e.target.closest("[data-pila-aportante]");
+  if (ba){
+    const clave = ba.dataset.pilaAportante;
+    const d = await pedirDatosApp(`Aportante (dueño) de la empresa`, [{ id: "n", label: "Nombre o razón social, como en SUAPORTE", placeholder: (pilaAportantes[clave] || {}).nombre || "" }, { id: "c", label: "Cédula o NIT (sin dígito de verificación)", tipo: "number", placeholder: (pilaAportantes[clave] || {}).cedula || "" }], "Guardar aportante");
+    if (!d) return;
+    pilaAportantes[clave] = { nombre: d.n.toUpperCase(), cedula: String(d.c) };
+    if (await pilaGuardarConfig("pila_aportantes_empresas", pilaAportantes)) showToast("✅ Aportante guardado.");
+    abrirGenerarPila(); return;
+  }
+  const be = e.target.closest("[data-pila-empresa]");
+  if (be){
+    const g = pilaOtrasEmpresas().find(x => x.clave === be.dataset.pilaEmpresa);
+    if (!g || !g.ap || !g.listos.length) return;
+    const filas = g.listos.map((r, i) => pilaFila(r, i + 1));
+    const aoa = [PILA_ENC1, pilaFila1(filas, { nombre: g.ap.nombre, cedula: g.ap.cedula, arl: pilaCodigos.arl.sura || "14-11", tipoI: false }), PILA_ENC2, ...filas.map(f => f.v.slice())];
+    const blob = XLSXMin.libro(aoa, "Planilla base");
+    const nombre = `PILA_CC${g.ap.cedula}_${pilaPeriodo().replace("-", "") || "mes"}_empleados.xlsx`;
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    window.__ultimoExcelPila = { aoa, nombre };
+    showToast(`⬇️ ${nombre}: planilla E de ${g.empresa} con ${filas.length} empleado(s). En SUAPORTE entre con la cédula de ${g.ap.nombre}.`);
+    return;
+  }
   const b = e.target.closest("[data-pila-ind]"); if (!b) return;
   const r = records.find(x => String(x["Cédula"]) === b.dataset.pilaInd); if (!r) return;
   const tI = pilaEsTipoI(r);
