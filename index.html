@@ -1640,16 +1640,20 @@
       <div class="field campo-nomina"><label><span class="field-num">16</span>Valor ARL</label><input id="fValorArl" type="number"></div>
       <div class="field campo-nomina"><label><span class="field-num">17</span>AFP</label><input id="fAfp" type="text" list="listaAfp" autocomplete="off" placeholder="Escoja de la lista"><small id="fAfpCodigo" class="eps-codigo"></small>
         <datalist id="listaAfp"><option value="PORVENIR" label="230301"><option value="COLPENSIONES" label="25-14"><option value="PROTECCION" label="230201"><option value="COLFONDOS" label="231001"><option value="SKANDIA" label="230901"></datalist></div>
-      <div class="field campo-nomina"><label><span class="field-num">18</span>Estado AFP</label>
+      <div class="field campo-nomina"><label><span class="field-num">18</span>Estado AFP · subtipo de cotizante</label>
         <select id="fEstadoAfp">
-          <option value="Activo">Activo (cotizando)</option>
-          <option value="En Proceso">En proceso</option>
-          <option value="Pensionado">Pensionado por vejez activo (no paga pensión · subtipo 01)</option>
-          <option value="Semanas Cumplidas">Semanas cumplidas</option>
-          <option value="No Cumple Semanas">No cumple semanas / no obligado a pensión por edad (no paga · subtipo 03)</option>
-          <option value="Requisitos Cumplidos">Requisitos cumplidos para pensión (no paga · subtipo 04)</option>
-          <option value="Indemnizacion Sustitutiva">Indemnización sustitutiva o devolución de saldos (no paga · subtipo 05)</option>
-          <option value="Trasladado">Trasladado de fondo</option>
+          <optgroup label="Sí paga pensión (No pensionado)">
+            <option value="Activo">No pensionado – activo, cotizando</option>
+            <option value="En Proceso">No pensionado – afiliación en proceso</option>
+            <option value="Semanas Cumplidas">No pensionado – semanas cumplidas (sigue cotizando)</option>
+            <option value="Trasladado">No pensionado – trasladado de fondo</option>
+          </optgroup>
+          <optgroup label="No paga pensión (subtipo de cotizante en la planilla)">
+            <option value="Pensionado">Dependiente pensionado por vejez activo (01)</option>
+            <option value="No Cumple Semanas">Cotizante no obligado a cotización a pensiones por edad (03)</option>
+            <option value="Requisitos Cumplidos">Cotizante con requisitos cumplidos para pensión (04)</option>
+            <option value="Indemnizacion Sustitutiva">Cotizante a quien se le ha reconocido indemnización sustitutiva o devolución de saldos (05)</option>
+          </optgroup>
         </select>
       </div>
 
