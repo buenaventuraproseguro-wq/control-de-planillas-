@@ -12501,6 +12501,12 @@ function pilaCentro(texto, clase){
   const n = m ? Number(m[1]) : 0;
   return n || PILA_CENTRO_DEFECTO[clase] || "";
 }
+// En la planilla, quien se retira paga la caja de los días que trabajó si la tenía (tieneCaja da no al estar en RETIRO)
+function pilaTieneCaja(r){
+  if (!r || esConductorExcluido(r)) return false;
+  const est = String(r["Estado Caja"] || "").trim().toLowerCase();
+  return numOrZero(r["Valor Caja"]) > 0 || est === "activo" || est === "en proceso";
+}
 function pilaFila(r, secuencia){
   const avisos = [];
   const periodo = pilaPeriodo();
@@ -12526,7 +12532,7 @@ function pilaFila(r, secuencia){
   if (!sinPension && !afp.codigo) avisos.push(`falta el código de la AFP «${r["AFP"] || "vacía"}»`);
   if (sinPension) avisos.push("no aporta pensión: revise el subtipo de cotizante");
   // En las planillas de PROSEGUROSNET todos llevan caja: quien no tiene caja va con IBC y aporte de $100
-  const conCaja = tieneCaja(r);
+  const conCaja = pilaTieneCaja(r);
   const ccf = pilaCodigo("ccf", r["Caja de Compensación"]).codigo || pilaCodigos.ccf["comfenalco valle"];
   const textoArl = r["ARL (Riesgo/Código)"] || "";
   const clase = Number(r["ARL Nivel"]) || clasificarRiesgoArl(textoArl) || 0;
@@ -12585,7 +12591,7 @@ async function abrirGenerarPila(){
           ? `<tr class="pila-grupo"><td colspan="6">${grupo === "listos" ? "✅ Ya le pagaron a PROSEGUROSNET: listos para la planilla" : "⏳ Todavía no han pagado (márquelos solo si va a pagarles la planilla igual)"}</td></tr>` : "";
         return titulo + `<tr class="${f.avisos.length ? "pila-aviso" : ""}">
         <td><input type="checkbox" data-pila-ced="${escHtml(f.r["Cédula"])}" ${f.sel ? "checked" : ""} aria-label="Incluir"></td>
-        <td><b>${escHtml(f.nombre)}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(f.r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(f.r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${tieneCaja(f.r) ? "" : " · caja mínima $100"}</small></td>
+        <td><b>${escHtml(f.nombre)}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(f.r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(f.r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${pilaTieneCaja(f.r) ? "" : " · sin caja: aporte mínimo $100 a Comfenalco Valle"}</small></td>
         <td>${f.dias}</td><td>${f.ing ? "ING" : ""}${f.ret ? "RET" : ""}</td>
         <td class="num">${fmt(f.total)}</td>
         <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`; }).join("")}</tbody>
