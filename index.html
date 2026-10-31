@@ -12569,9 +12569,10 @@ function pilaFila(r, secuencia, opts){
   const afp = sinPension ? { codigo: "" } : pilaCodigo("afp", r["AFP"]);
   if (!sinPension && !afp.codigo) avisos.push(`falta el código de la AFP «${r["AFP"] || "vacía"}»`);
   // Quien no aporta a pensión va con SUBTIPO de cotizante (si no, SUAPORTE exige pensión al tipo 01):
-  // 1 = pensionado, 3 = no obligado a cotizar a pensión por edad. Días e IBC iguales a los demás, tarifa 0.
-  const subtipo = !sinPension ? 0 : (r["Estado AFP"] === "Pensionado" || /pensionad/i.test(r["AFP"] || "") ? 1 : 3);
-  if (sinPension) avisos.push(`no aporta pensión: va con subtipo ${subtipo} (${subtipo === 1 ? "pensionado" : "no obligado a pensión por edad"}); confírmelo`);
+  // 1 = pensionado activo; 5 = está en la base de datos de pensionados (SUAPORTE lo exige así, Decreto 1730 de 2001).
+  // "No aporta pensión" va con 5, que es lo que pidió SUAPORTE (Willian Ochoa Torres, octubre 2026).
+  const subtipo = !sinPension ? 0 : (r["Estado AFP"] === "Pensionado" ? 1 : 5);
+  if (sinPension) avisos.push(`no aporta pensión: va con subtipo ${subtipo}; si SUAPORTE pide otro, avíseme`);
   // En las planillas de PROSEGUROSNET todos llevan caja: quien no tiene caja va con IBC y aporte de $100
   const conCaja = pilaTieneCaja(r);
   // En PROSEGUROSNET la caja siempre es Comfenalco Valle y la ARL siempre Sura
