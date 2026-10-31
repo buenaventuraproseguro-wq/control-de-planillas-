@@ -1644,10 +1644,11 @@
         <select id="fEstadoAfp">
           <option value="Activo">Activo (cotizando)</option>
           <option value="En Proceso">En proceso</option>
-          <option value="Pensionado">Pensionado</option>
+          <option value="Pensionado">Pensionado por vejez activo (no paga pensión · subtipo 01)</option>
           <option value="Semanas Cumplidas">Semanas cumplidas</option>
-          <option value="No Cumple Semanas">No cumple semanas</option>
-          <option value="Indemnizacion Sustitutiva">Indemnización sustitutiva o devolución de saldos (no paga pensión)</option>
+          <option value="No Cumple Semanas">No cumple semanas / no obligado a pensión por edad (no paga · subtipo 03)</option>
+          <option value="Requisitos Cumplidos">Requisitos cumplidos para pensión (no paga · subtipo 04)</option>
+          <option value="Indemnizacion Sustitutiva">Indemnización sustitutiva o devolución de saldos (no paga · subtipo 05)</option>
           <option value="Trasladado">Trasladado de fondo</option>
         </select>
       </div>
@@ -5712,7 +5713,9 @@ function renderAvisoMesNoActual(){
 
 const esIndependiente = (r) => String(r["Responsable / Grupo"] || "").toLowerCase().includes("independien");
 // No paga pensión: pensionado, no cumple semanas o indemnización sustitutiva / devolución de saldos
-const noAportaPension = (r) => ["Pensionado", "No Cumple Semanas", "Indemnizacion Sustitutiva"].includes(r && r["Estado AFP"]);
+const noAportaPension = (r) => ["Pensionado", "No Cumple Semanas", "Requisitos Cumplidos", "Indemnizacion Sustitutiva"].includes(r && r["Estado AFP"]);
+// Subtipo de cotizante en la planilla (lista de SUAPORTE) según el Estado AFP
+const SUBTIPO_PENSION = { "Pensionado": 1, "No Cumple Semanas": 3, "Requisitos Cumplidos": 4, "Indemnizacion Sustitutiva": 5 };
 const esOtraEmpresa = (r) => {
   const emp = String(r["Empresa"] || "").trim().toLowerCase();
   return emp !== "" && emp !== "prosegurosnet";
@@ -6060,7 +6063,7 @@ function showBreakdown(cedula){
   document.getElementById("bAfpNombre").textContent = r["AFP"] || "";
   document.getElementById("bCajaNombre").textContent = r["Caja de Compensación"] || "";
   document.getElementById("bTotal").textContent = fmt(valorPension) +
-    (r["Estado AFP"] === "Pensionado" ? " (pensionado)" : r["Estado AFP"] === "No Cumple Semanas" ? " (no cumple semanas)" : r["Estado AFP"] === "Indemnizacion Sustitutiva" ? " (indemnización sustitutiva)" : "");
+    (r["Estado AFP"] === "Pensionado" ? " (pensionado)" : r["Estado AFP"] === "No Cumple Semanas" ? " (no cumple semanas)" : r["Estado AFP"] === "Indemnizacion Sustitutiva" ? " (indemnización sustitutiva)" : r["Estado AFP"] === "Requisitos Cumplidos" ? " (requisitos cumplidos)" : "");
   document.getElementById("bCaja").textContent = fmt(valAportes("Valor Caja"));
 
   const totalPagar = calcularTotalPagar(r, store.currentMonth);
@@ -7310,6 +7313,7 @@ function openModal(record){
     if (v === "pensionado") return "Pensionado";
     if (v.includes("no cumple") || v.includes("no alcanz")) return "No Cumple Semanas";
     if (v.includes("indemniz") || v.includes("devoluci")) return "Indemnizacion Sustitutiva";
+    if (v.includes("requisitos")) return "Requisitos Cumplidos";
     if (v.includes("semanas cumplidas") || v.includes("cumplio")) return "Semanas Cumplidas";
     if (v.includes("traslad")) return "Trasladado";
     if (v === "en proceso") return "En Proceso";
@@ -7818,7 +7822,7 @@ getField("EstadoCaja").addEventListener("change", () => {
 getField("EstadoAfp").addEventListener("change", () => {
   const valorActual = getField("ValorTotal").value === "" ? null : Number(getField("ValorTotal").value);
   const estado = getField("EstadoAfp").value;
-  if (estado === "Pensionado" || estado === "No Cumple Semanas" || estado === "Indemnizacion Sustitutiva"){
+  if (["Pensionado", "No Cumple Semanas", "Requisitos Cumplidos", "Indemnizacion Sustitutiva"].includes(estado)){
     if (!getField("ValorTotal").readOnly) getField("ValorTotal").value = 0;
   } else if (valorActual === null || valorActual === 0 || valorActual === PENSION_DEFAULT){
     if (!getField("ValorTotal").readOnly) getField("ValorTotal").value = PENSION_DEFAULT;
@@ -12675,8 +12679,9 @@ function pilaFila(r, secuencia, opts){
   // 1 = pensionado activo; 5 = se le reconoció indemnización sustitutiva o devolución de saldos
   // (SUAPORTE lo exige así cuando aparece en la base de pensionados, Decreto 1730 de 2001).
   // "No aporta pensión" va con 5, que es lo que pidió SUAPORTE (Willian Ochoa Torres, octubre 2026).
-  const subtipo = !sinPension ? 0 : (r["Estado AFP"] === "Pensionado" ? 1 : 5);
-  if (sinPension) avisos.push(`no aporta pensión: va con subtipo ${subtipo}; si SUAPORTE pide otro, avíseme`);
+  // Si solo dice "no aporta pensión" en el campo AFP, va con 05 (lo que pidió SUAPORTE para Willian Ochoa Torres)
+  const subtipo = !sinPension ? 0 : (SUBTIPO_PENSION[r["Estado AFP"]] || 5);
+  if (sinPension && !SUBTIPO_PENSION[r["Estado AFP"]]) avisos.push(`no aporta pensión: va con subtipo 05; si es otro caso, escoja el Estado AFP del cliente`);
   // En las planillas de PROSEGUROSNET todos llevan caja: quien no tiene caja va con IBC y aporte de $100
   const conCaja = pilaTieneCaja(r);
   // En PROSEGUROSNET la caja siempre es Comfenalco Valle y la ARL siempre Sura
