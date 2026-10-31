@@ -55,3 +55,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - 14.1 Otras empresas: planilla E con el dueño como aportante (configuracion "pila_aportantes_empresas", empresa → {nombre, cedula}). renovat = SEBASTIAN MURIEL RIOS CC 1235139380, empleado Jhonatan Muriel Ríos (planilla 88606462 = $472.300). Se calcula igual que PROSEGUROSNET.
 - 14.1 Otras empresas: solo salen las que tienen aportante guardado; a MANUEL no le liquidamos planillas.
 - 14.1: quien no aporta pensión va con subtipo de cotizante (1 pensionado, 3 no obligado por edad) y días/IBC de pensión iguales a los demás con tarifa 0. Retiro antes del ingreso → mismo día del ingreso. Emssanar = ESSC18.
+- Coosalud en planilla = EPS042 (contributivo; lo pagan los empleadores). ESSC24 es el subsidiado.

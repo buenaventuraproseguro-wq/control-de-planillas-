@@ -12424,7 +12424,7 @@ const PILA_CENTRO_DEFECTO = { 1: 1, 4: 41, 5: 5 };
 const PILA_CODIGOS_DEFECTO = {
   eps: { "nueva eps": "EPS037", "sura": "EPS010", "sanitas": "EPS005", "salud total": "EPS002", "sos": "EPS018", "compensar": "EPS008",
          "famisanar": "EPS017", "comfenalco valle": "EPS012", "aliansalud": "EPS001", "adresmin002": "MIN002",
-         "coosalud": "ESSC24", "emssanar": "ESSC18", "mutual ser": "", "eps de la gente": "", "mallamas": "" },
+         "coosalud": "EPS042", "emssanar": "ESSC18", "mutual ser": "", "eps de la gente": "", "mallamas": "" },
   afp: { "porvenir": "230301", "colpensiones": "25-14", "proteccion": "230201", "colfondos": "231001", "skandia": "230901" },
   ccf: { "comfenalco valle": "CCF56", "comfandi": "CCF57" },
   arl: { "sura": "14-11", "positiva": "14-23" },
@@ -12565,7 +12565,6 @@ function pilaFila(r, secuencia, opts){
   const [ap1, ap2, n1, n2] = pilaNombreDe(r);
   const eps = pilaCodigo("eps", r["EPS"]);
   if (!eps.codigo) avisos.push(`falta el código de la EPS «${r["EPS"] || "vacía"}»`);
-  if (eps.clave === "coosalud") avisos.push("Coosalud: confirme si es ESSC24 o EPS042");
   const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas" || /pensionad|no aporta/i.test(r["AFP"] || "");
   const afp = sinPension ? { codigo: "" } : pilaCodigo("afp", r["AFP"]);
   if (!sinPension && !afp.codigo) avisos.push(`falta el código de la AFP «${r["AFP"] || "vacía"}»`);
