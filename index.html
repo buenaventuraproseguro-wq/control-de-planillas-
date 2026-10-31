@@ -1638,7 +1638,8 @@
         </select>
       </div>
       <div class="field campo-nomina"><label><span class="field-num">16</span>Valor ARL</label><input id="fValorArl" type="number"></div>
-      <div class="field campo-nomina"><label><span class="field-num">17</span>AFP</label><input id="fAfp" type="text"></div>
+      <div class="field campo-nomina"><label><span class="field-num">17</span>AFP</label><input id="fAfp" type="text" list="listaAfp" autocomplete="off" placeholder="Escoja de la lista"><small id="fAfpCodigo" class="eps-codigo"></small>
+        <datalist id="listaAfp"><option value="PORVENIR" label="230301"><option value="COLPENSIONES" label="25-14"><option value="PROTECCION" label="230201"><option value="COLFONDOS" label="231001"><option value="SKANDIA" label="230901"></datalist></div>
       <div class="field campo-nomina"><label><span class="field-num">18</span>Estado AFP</label>
         <select id="fEstadoAfp">
           <option value="Activo">Activo (cotizando)</option>
@@ -7293,7 +7294,7 @@ function openModal(record){
     ? (record["Costo Servicio"] || "")
     : (getField("Estado").value === "AFILIACION" ? COSTO_AFILIACION : COSTO_MENSUAL);
   getField("Eps").value = record ? record["EPS"] || "" : "";
-  setTimeout(() => { try{ mostrarCodigoEps(); mostrarActividadArl(); }catch(e){} }, 0);
+  setTimeout(() => { try{ mostrarCodigoEps(); mostrarActividadArl(); mostrarCodigoAfp(); }catch(e){} }, 0);
   getField("ValorEps").value = record
     ? (record["Valor EPS"] || "")
     : (esIndependiente({ "Responsable / Grupo": getField("Resp").value }) ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT);
@@ -12200,7 +12201,7 @@ const NOMBRES_EPS = [["nueva eps", /nueva\s*e\.?p\.?s/], ["sos", /\bs\.?o\.?s\b|
   ["sanitas", /sanitas/], ["coosalud", /coosalud/], ["emssanar", /emssanar|emsanar/], ["mutual ser", /mutual\s*ser/], ["eps de la gente", /eps\s+de\s+la\s+gente/],
   ["comfenalco valle", /comfenalco|confenalco/], ["mallamas", /mallamas/], ["compensar", /compensar/], ["famisanar", /famisanar/], ["asmet salud", /asmet/],
   ["aliansalud", /aliansalud/], ["cajacopi", /cajacopi/], ["savia salud", /savia\s*salud/], ["capresoca", /capresoca/], ["pijaos salud", /pijaos/], ["adresmin002", /sanidad\s+militar|\bdigsa\b|fuerzas\s+militares|\bmin002\b/], ["anas wayuu", /anas\s*wayuu/], ["dusakawi", /dusakawi/]];
-const NOMBRES_AFP = [["porvenir", /porvenir/], ["colpensiones", /colpensiones/], ["proteccion", /protecci[oó]n/], ["colfondos", /colfondos/], ["skandia", /skandia|old\s*mutual/]];
+const NOMBRES_AFP = [["porvenir", /porvenir/], ["colpensiones", /colpensiones/], ["proteccion", /(?:afp|fondo|administradora|pensiones\s+y\s+cesant[ií]as)[^.\n]{0,30}protecci[oó]n|protecci[oó]n\s*s\.?\s*a\b/], ["colfondos", /colfondos/], ["skandia", /skandia|old\s*mutual/]];
 const NOMBRES_ARL = [["sura", /\bsura\b|suramericana/], ["positiva", /positiva/], ["colmena", /colmena/], ["bolivar", /bol[ií]var/], ["axa colpatria", /axa|colpatria/], ["equidad", /equidad/], ["alfa", /seguros\s+alfa|\balfa\b/], ["liberty", /liberty/], ["mapfre", /mapfre/]];
 const NOMBRES_CAJA = [["comfenalco valle", /comfenalco\s*valle|confenalco\s*valle|comfenalco/], ["comfandi", /comfandi/], ["compensar", /compensar/], ["cafam", /cafam/], ["colsubsidio", /colsubsidio/],
   ["comfama", /comfama\b/], ["comfacauca", /comfacauca/], ["comfamiliar", /comfamiliar/], ["comfaoriente", /comfaoriente/], ["comfachoco", /comfachoc[oó]/], ["cajasan", /cajasan/], ["comfenalco antioquia", /comfenalco\s+antioquia/]];
@@ -12242,7 +12243,16 @@ function datosCertificado(doc, texto){
       if (k) d.actividad = k;
     }
   } else if (doc === "Afp"){
-    d.afp = buscarNombre(t, NOMBRES_AFP);
+    // El fondo del certificado: el que más se nombra (y si empatan, el primero que aparece), para no
+    // confundirse cuando el certificado menciona otro fondo (traslados, historia laboral)
+    const n = t.toLowerCase();
+    const cuenta = NOMBRES_AFP.map(([k, re]) => {
+      const g = new RegExp(re.source, "gi"); const ms = [...n.matchAll(g)];
+      return { k, veces: ms.length, primero: ms.length ? ms[0].index : 1e9 };
+    }).filter(x => x.veces).sort((a, b) => b.veces - a.veces || a.primero - b.primero);
+    d.afp = cuenta.length ? cuenta[0].k : "";
+    d.pensionado = /\bpensionad[oa]\b|pensi[oó]n\s+de\s+vejez\s+reconocida|indemnizaci[oó]n\s+sustitutiva|devoluci[oó]n\s+de\s+saldos/i.test(t)
+      ? (/indemnizaci[oó]n\s+sustitutiva|devoluci[oó]n\s+de\s+saldos/i.test(t) ? "Indemnizacion Sustitutiva" : "Pensionado") : "";
   } else if (doc === "Caja"){
     d.caja = buscarNombre(t, NOMBRES_CAJA);
   }
@@ -12277,7 +12287,8 @@ async function leerCertificadoAfiliacion(doc, fuente){
       d.nivel && ["Nivel de riesgo", d.nivel],
       d.centro && ["Centro de trabajo", d.centro],
       d.actividad && ["Actividad para la planilla", d.actividad.length === 7 ? `${d.actividad}${PILA_ACTIVIDAD_NOMBRE[d.actividad] ? " · " + PILA_ACTIVIDAD_NOMBRE[d.actividad] : ""}` : `${d.actividad} (corta: revise la de 7 dígitos)`],
-      d.afp && ["AFP", d.afp.toUpperCase()],
+      d.afp && ["AFP", `${d.afp.toUpperCase()}${pilaCodigos.afp[d.afp] ? " · código " + pilaCodigos.afp[d.afp] : ""}${getField("Afp").value.trim() && normalizarTexto(getField("Afp").value) !== d.afp ? ` (en el cliente estaba: ${getField("Afp").value.trim().toUpperCase()})` : ""}`],
+      d.pensionado && ["Estado AFP", d.pensionado === "Pensionado" ? "Pensionado (no paga pensión)" : "Indemnización sustitutiva o devolución de saldos (no paga pensión)"],
       d.caja && ["Caja", d.caja.toUpperCase()],
     ].filter(Boolean);
     if (!filas.length){ aviso.innerHTML = "No encontré datos en el certificado. Llénelos a mano."; setTimeout(() => aviso.remove(), 7000); return; }
@@ -12295,7 +12306,7 @@ async function leerCertificadoAfiliacion(doc, fuente){
       if (d.fechaIngreso && ponerCampo("fFechaIngreso", d.fechaIngreso)) n++;
       if (d.nivel && ponerCampo("fArlNivel", d.nivel)) n++;   // primero el nivel, para que la actividad se valide con él
       if (arlTexto && ponerCampo("fArl", arlTexto)) n++;
-      if (d.afp){ if (ponerCampo("fAfp", d.afp)) n++; ponerCampo("fEstadoAfp", "Activo"); }
+      if (d.afp){ if (ponerCampo("fAfp", d.afp)) n++; ponerCampo("fEstadoAfp", d.pensionado || "Activo"); }
       if (d.caja){ if (ponerCampo("fCaja", d.caja)) n++; ponerCampo("fEstadoCaja", "Activo"); }
       aviso.remove();
       if (typeof actualizarFaltantes === "function") actualizarFaltantes(false);
@@ -12909,6 +12920,15 @@ function mostrarCodigoEps(){
 }
 document.getElementById("fEps").addEventListener("input", mostrarCodigoEps);
 document.getElementById("fArl").addEventListener("input", mostrarActividadArl);
+function mostrarCodigoAfp(){
+  const el = document.getElementById("fAfpCodigo"); if (!el) return;
+  const v = getField("Afp").value.trim();
+  const c = v ? pilaCodigo("afp", v).codigo : "";
+  const no = /pensionad|no aporta|indemniz/i.test(v);
+  el.textContent = !v || no ? "" : c ? `Código en la planilla: ${c}` : "⚠️ No es un fondo de la lista: escójalo de la lista";
+  el.classList.toggle("falta", !!v && !c && !no);
+}
+document.getElementById("fAfp").addEventListener("input", mostrarCodigoAfp);
 document.getElementById("fArlNivel").addEventListener("change", mostrarActividadArl);
 document.getElementById("pilaCuerpo").addEventListener("change", async (e) => {
   const ced = e.target.dataset && e.target.dataset.pilaTipoind; if (!ced) return;
