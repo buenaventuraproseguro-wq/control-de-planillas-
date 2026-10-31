@@ -296,7 +296,7 @@ function calcularTotalPagar(row, mesNombre){
   const esAfiliacion = estadoClass(row.estado_tramite) === "AFILIACION";
   const esDiasProp = estadoClass(row.estado_tramite) === "DIAS_PROPORCIONALES";
   const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(row);
-  const sinPension = row.estado_afp === "Pensionado" || row.estado_afp === "No Cumple Semanas";
+  const sinPension = ["Pensionado", "No Cumple Semanas", "Indemnizacion Sustitutiva"].includes(row.estado_afp);
   const valAportes = (campo) => Math.round(numOrZero(row[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("valor_pension");
   const recargo = numOrZero(row.recargo_mora); // recargo por mora (después del día 21)

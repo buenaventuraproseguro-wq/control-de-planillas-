@@ -57,3 +57,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - 14.1: quien no aporta pensión va con subtipo de cotizante (Estado AFP "Pensionado" → 1; "no aporta pensión" → 5, como pidió SUAPORTE para Willian Ochoa Torres) y días/IBC de pensión iguales a los demás con tarifa 0. Retiro antes del ingreso → mismo día del ingreso. Emssanar = ESSC18.
 - Coosalud en planilla = EPS042 (contributivo; lo pagan los empleadores). ESSC24 es el subsidiado.
 - EPS: lista EPS_COLOMBIA (29 EPS con su código contributivo para PILA) en el campo EPS de agregar/editar cliente; debajo se ve el código que va a la planilla. Los códigos de 14.1 salen de esa lista.
+- Estado AFP "Indemnizacion Sustitutiva" (indemnización sustitutiva o devolución de saldos): no paga pensión, en 14.1 va con subtipo 05. Pensionado → subtipo 01.

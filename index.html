@@ -1646,6 +1646,7 @@
           <option value="Pensionado">Pensionado</option>
           <option value="Semanas Cumplidas">Semanas cumplidas</option>
           <option value="No Cumple Semanas">No cumple semanas</option>
+          <option value="Indemnizacion Sustitutiva">Indemnización sustitutiva o devolución de saldos (no paga pensión)</option>
           <option value="Trasladado">Trasladado de fondo</option>
         </select>
       </div>
@@ -5696,6 +5697,8 @@ function renderAvisoMesNoActual(){
 }
 
 const esIndependiente = (r) => String(r["Responsable / Grupo"] || "").toLowerCase().includes("independien");
+// No paga pensión: pensionado, no cumple semanas o indemnización sustitutiva / devolución de saldos
+const noAportaPension = (r) => ["Pensionado", "No Cumple Semanas", "Indemnizacion Sustitutiva"].includes(r && r["Estado AFP"]);
 const esOtraEmpresa = (r) => {
   const emp = String(r["Empresa"] || "").trim().toLowerCase();
   return emp !== "" && emp !== "prosegurosnet";
@@ -5951,7 +5954,7 @@ function calcularTotalPagar(r, mesActual){
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
   const esDiasProp = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES";
   const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r);
-  const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas";
+  const sinPension = noAportaPension(r);
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("Valor Pensión (AFP)");
   const recargo = numOrZero(r["Recargo Mora"]);
@@ -5967,7 +5970,7 @@ function calcularTotalPagar(r, mesActual){
 function calcularAportesApp(r, mesActual){
   const prorr = calcProrrateo(r, mesActual);
   const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r);
-  const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas";
+  const sinPension = noAportaPension(r);
   const val = (campo) => Math.round(numOrZero(r[campo]) * factor);
   const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: val("Valor ARL"), caja: val("Valor Caja") };
   d.total = d.salud + d.pension + d.arl + d.caja;
@@ -6027,7 +6030,7 @@ function showBreakdown(cedula){
       return esDiasProporcionalesMeta ? ` · <b class="meta-resaltado">${texto}</b>` : ` · ${texto}`;
     })());
 
-  const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas";
+  const sinPension = noAportaPension(r);
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("Valor Pensión (AFP)");
 
@@ -6043,7 +6046,7 @@ function showBreakdown(cedula){
   document.getElementById("bAfpNombre").textContent = r["AFP"] || "";
   document.getElementById("bCajaNombre").textContent = r["Caja de Compensación"] || "";
   document.getElementById("bTotal").textContent = fmt(valorPension) +
-    (r["Estado AFP"] === "Pensionado" ? " (pensionado)" : r["Estado AFP"] === "No Cumple Semanas" ? " (no cumple semanas)" : "");
+    (r["Estado AFP"] === "Pensionado" ? " (pensionado)" : r["Estado AFP"] === "No Cumple Semanas" ? " (no cumple semanas)" : r["Estado AFP"] === "Indemnizacion Sustitutiva" ? " (indemnización sustitutiva)" : "");
   document.getElementById("bCaja").textContent = fmt(valAportes("Valor Caja"));
 
   const totalPagar = calcularTotalPagar(r, store.currentMonth);
@@ -7292,6 +7295,7 @@ function openModal(record){
     const v = String((record && record["Estado AFP"]) || "").trim().toLowerCase();
     if (v === "pensionado") return "Pensionado";
     if (v.includes("no cumple") || v.includes("no alcanz")) return "No Cumple Semanas";
+    if (v.includes("indemniz") || v.includes("devoluci")) return "Indemnizacion Sustitutiva";
     if (v.includes("semanas cumplidas") || v.includes("cumplio")) return "Semanas Cumplidas";
     if (v.includes("traslad")) return "Trasladado";
     if (v === "en proceso") return "En Proceso";
@@ -7790,13 +7794,13 @@ getField("EstadoCaja").addEventListener("change", () => {
   }
 });
 
-// Si se marca "Pensionado" o "No cumple semanas", no se cobra pensión; en cualquier otro
+// Si se marca "Pensionado", "No cumple semanas" o "Indemnización sustitutiva", no se cobra pensión; en cualquier otro
 // estado (Activo, Semanas cumplidas, Trasladado) se precarga el valor legal de pensión
 // sobre el salario mínimo.
 getField("EstadoAfp").addEventListener("change", () => {
   const valorActual = getField("ValorTotal").value === "" ? null : Number(getField("ValorTotal").value);
   const estado = getField("EstadoAfp").value;
-  if (estado === "Pensionado" || estado === "No Cumple Semanas"){
+  if (estado === "Pensionado" || estado === "No Cumple Semanas" || estado === "Indemnizacion Sustitutiva"){
     if (!getField("ValorTotal").readOnly) getField("ValorTotal").value = 0;
   } else if (valorActual === null || valorActual === 0 || valorActual === PENSION_DEFAULT){
     if (!getField("ValorTotal").readOnly) getField("ValorTotal").value = PENSION_DEFAULT;
@@ -12588,11 +12592,12 @@ function pilaFila(r, secuencia, opts){
   const [ap1, ap2, n1, n2] = pilaNombreDe(r);
   const eps = pilaCodigo("eps", r["EPS"]);
   if (!eps.codigo) avisos.push(`falta el código de la EPS «${r["EPS"] || "vacía"}»`);
-  const sinPension = r["Estado AFP"] === "Pensionado" || r["Estado AFP"] === "No Cumple Semanas" || /pensionad|no aporta/i.test(r["AFP"] || "");
+  const sinPension = noAportaPension(r) || /pensionad|no aporta|indemniz/i.test(r["AFP"] || "");
   const afp = sinPension ? { codigo: "" } : pilaCodigo("afp", r["AFP"]);
   if (!sinPension && !afp.codigo) avisos.push(`falta el código de la AFP «${r["AFP"] || "vacía"}»`);
   // Quien no aporta a pensión va con SUBTIPO de cotizante (si no, SUAPORTE exige pensión al tipo 01):
-  // 1 = pensionado activo; 5 = está en la base de datos de pensionados (SUAPORTE lo exige así, Decreto 1730 de 2001).
+  // 1 = pensionado activo; 5 = se le reconoció indemnización sustitutiva o devolución de saldos
+  // (SUAPORTE lo exige así cuando aparece en la base de pensionados, Decreto 1730 de 2001).
   // "No aporta pensión" va con 5, que es lo que pidió SUAPORTE (Willian Ochoa Torres, octubre 2026).
   const subtipo = !sinPension ? 0 : (r["Estado AFP"] === "Pensionado" ? 1 : 5);
   if (sinPension) avisos.push(`no aporta pensión: va con subtipo ${subtipo}; si SUAPORTE pide otro, avíseme`);
