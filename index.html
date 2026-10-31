@@ -12556,6 +12556,8 @@ function pilaFila(r, secuencia, opts){
     fechaRet = String(r["Fecha Retiro"] || "").slice(0, 10);
     // Sin fecha de retiro: se retira el primer día del periodo (o el mismo día que ingresó)
     if (!fechaRet || fechaRet.slice(0, 7) !== periodo){ fechaRet = ing ? fIng : `${periodo}-01`; avisos.push(`retiro con fecha ${fechaLarga(fechaRet)}: confírmela`); }
+    // El retiro no puede ser antes del ingreso: se retira el mismo día que ingresó (1 día)
+    if (ing && fechaRet < fIng){ avisos.push(`el retiro (${fechaLarga(fechaRet)}) era antes del ingreso (${fechaLarga(fIng)}): va con la fecha de ingreso`); fechaRet = fIng; }
     const dRet = parseInt(fechaRet.slice(8, 10), 10);
     const dIni = ing ? parseInt(fIng.slice(8, 10), 10) : 1;
     dias = Math.max(1, Math.min(30, dRet) - dIni + 1);
