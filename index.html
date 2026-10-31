@@ -12648,12 +12648,14 @@ async function abrirGenerarPila(){
             <button type="button" class="btn small" data-pila-ind="${escHtml(r["Cédula"])}">⬇️ Excel de su planilla</button></li>`; }).join("")}</ul></div>`; })()
   + (() => {
       // Otras empresas (por ejemplo la de un independiente que tiene empleados): planilla E con el dueño como aportante
-      const grupos = pilaOtrasEmpresas();
-      if (!grupos.length) return "";
+      // Solo las empresas a las que les liquidamos (tienen aportante); las demás, en una línea aparte
+      const todas = pilaOtrasEmpresas(), grupos = todas.filter(g => g.ap), otras = todas.filter(g => !g.ap);
+      const lineaOtras = otras.length ? `<p class="ay-txt" style="opacity:.75;">No se les liquida planilla aquí: ${otras.map(g => `${escHtml(g.empresa)} <button type="button" class="pila-nom-btn" data-pila-aportante="${escHtml(g.clave)}" title="Si sí se le liquida, escriba el dueño (aportante)">✏️</button>`).join(", ")}</p>` : "";
+      if (!grupos.length) return lineaOtras ? `<div class="pila-ind">${lineaOtras}</div>` : "";
       return `<div class="pila-ind"><p class="ay-txt">🏢 <b>Otras empresas</b>: sus empleados van en la planilla E <b>de esa empresa</b> (el aportante es el dueño). Se calculan igual que los de PROSEGUROSNET: salario mínimo, salud 4 %, caja Comfenalco ($100 si no tiene) y ARL Sura.</p>
         <ul class="ay-txt">${grupos.map(g => `<li><b>${escHtml(g.empresa)}</b> · aportante: ${g.ap ? `<b>${escHtml(g.ap.nombre)}</b> CC ${escHtml(g.ap.cedula)}` : `<span style="color:var(--retiro);font-weight:700;">falta</span>`} <button type="button" class="pila-nom-btn" data-pila-aportante="${escHtml(g.clave)}" title="Escribir el nombre y la cédula del dueño de la empresa">✏️</button>
           <br>${g.listos.length} listo(s) para la planilla: ${g.listos.map(r => `${escHtml(pilaNombreDe(r).filter(Boolean).join(" "))} <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button>`).join(", ") || "nadie ha pagado todavía"}${g.pendientes.length ? ` · ${g.pendientes.length} sin pagar` : ""}
-          <button type="button" class="btn small" data-pila-empresa="${escHtml(g.clave)}" ${g.ap && g.listos.length ? "" : "disabled"}>⬇️ Excel de ${escHtml(g.empresa)}</button></li>`).join("")}</ul></div>`;
+          <button type="button" class="btn small" data-pila-empresa="${escHtml(g.clave)}" ${g.ap && g.listos.length ? "" : "disabled"}>⬇️ Excel de ${escHtml(g.empresa)}</button></li>`).join("")}</ul>${lineaOtras}</div>`;
     })()
   + `<details class="pila-codigos"><summary>Códigos de EPS, AFP y caja que usa la planilla</summary>
       <p class="ay-txt">Los vacíos hay que llenarlos con el código que aparece en SUAPORTE. Se guardan para todo el equipo.</p>
