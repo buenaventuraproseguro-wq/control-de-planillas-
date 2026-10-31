@@ -12478,7 +12478,9 @@ function pilaTienePlanilla(r){
 function pilaListo(r){ return (estadoClass(r["Estado Trámite"]) === "PAGO" && !pilaTienePlanilla(r)) || retiroQueDebe(r); }
 function pilaPendiente(r){ const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
 function pilaCandidatos(){
-  const base = records.filter(r => !esConductorExcluido(r) && !esOtraEmpresa(r));
+  // Los independientes no van en la planilla de PROSEGUROSNET: cada uno paga con su propia planilla
+  // (aportante = su cédula, su IBC y su ARL, que puede ser Positiva)
+  const base = records.filter(r => !esConductorExcluido(r) && !esOtraEmpresa(r) && !esIndependiente(r));
   return base.filter(pilaListo).concat(base.filter(r => !pilaListo(r) && pilaPendiente(r)));
 }
 // Periodo de la planilla (pensión): el mes anterior al mes que se cobra en la app
@@ -12597,6 +12599,8 @@ async function abrirGenerarPila(){
         <td class="num">${fmt(f.total)}</td>
         <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`; }).join("")}</tbody>
     </table></div>` : `<p class="ay-txt">No hay afiliados de PROSEGUROSNET por pagar en ${escHtml(store.currentMonth)}.</p>`)
+  + (() => { const ind = records.filter(r => esIndependiente(r) && !esConductorExcluido(r) && !isRetiro(r));
+      return ind.length ? `<p class="ay-txt">👤 <b>${ind.length} independiente(s) no van en este Excel</b> porque pagan con su propia planilla (a nombre de su cédula, con sus aportes y su ARL): ${ind.map(r => escHtml(nombrePropio(r["Nombre del Afiliado"]))).join(", ")}.</p>` : ""; })()
   + `<details class="pila-codigos"><summary>Códigos de EPS, AFP y caja que usa la planilla</summary>
       <p class="ay-txt">Los vacíos hay que llenarlos con el código que aparece en SUAPORTE. Se guardan para todo el equipo.</p>
       ${["eps","afp","ccf"].map(t => `<div class="pila-cod-grupo"><b>${t.toUpperCase()}</b>${Object.entries(pilaCodigos[t]).map(([k, c]) => `<label>${escHtml(k)} <input type="text" value="${escHtml(c)}" data-pila-cod="${t}|${escHtml(k)}" placeholder="código"></label>`).join("")}</div>`).join("")}
