@@ -3663,7 +3663,9 @@ const SCHEMA_VERSION = 5;
 const PRORATED_PENSION_BY_CEDULA = { "8438840": 168087 }; // caso de pago prorrateado (18 días)
 const PRORATED_CAJA_BY_CEDULA = { "8438840": 42022 };     // caso de pago prorrateado (18 días)
 const CAJA_DEFAULT = 70036; // 4% de 1 SMLMV 2026 ($1.750.905)
-const ARL_TABLE = { 1: 9140, 2: 18279, 3: 42652, 4: 76164, 5: 121863 }; // tarifas ARL sobre 1 SMLMV 2026
+// ARL sobre 1 SMLMV 2026 ($1.750.905), redondeado a la centena como se paga en la planilla
+// (riesgo I 0,522 % · II 1,044 % · III 2,436 % · IV 4,35 % · V 6,96 %)
+const ARL_TABLE = { 1: 9200, 2: 18300, 3: 42700, 4: 76200, 5: 121900 };
 
 function clasificarRiesgoArl(texto){
   const t = String(texto || "").toLowerCase();
@@ -5247,7 +5249,7 @@ advanceBtn.addEventListener("click", async () => {
       delete x._supabaseId; delete x["_prorrateoTransicion"];
       return x;
     }));
-  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; ponerCajaMinima(x); }); // el recargo por mora es de cada mes; sin caja va el mínimo de $100
+  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; ponerCajaMinima(x); normalizarPensionArl(x); }); // el recargo por mora es de cada mes; sin caja va el mínimo de $100
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
   const retiradosCount = records.filter(isRetiro).length - retirosPendientes.length;
@@ -5505,6 +5507,16 @@ function llevaCajaMinima(r){
   if (!r || esConductorExcluido(r) || esServicioMuelles(r) || esIndependiente(r) || esOtraEmpresa(r)) return false;
   const est = String(r["Estado Caja"] || "").trim().toLowerCase();
   return !(numOrZero(r["Valor Caja"]) > CAJA_MINIMA || est === "activo" || est === "en proceso");
+}
+// Al pasar de mes: pensión y ARL con el valor de ley según el nivel de riesgo (afiliados de PROSEGUROSNET
+// sobre 1 salario mínimo). No toca independientes, otras empresas, conductores ni muelles.
+function normalizarPensionArl(r){
+  if (!r || esConductorExcluido(r) || esServicioMuelles(r) || esIndependiente(r) || esOtraEmpresa(r)) return;
+  const nivel = Number(r["ARL Nivel"]) || clasificarRiesgoArl(r["ARL (Riesgo/Código)"]) || 0;
+  if (nivel && !Number(r["ARL Nivel"])) r["ARL Nivel"] = String(nivel);
+  if (nivel && ARL_TABLE[nivel]) r["Valor ARL"] = ARL_TABLE[nivel];
+  if (noAportaPension(r) || /pensionad|no aporta|indemniz/i.test(r["AFP"] || "")) r["Valor Pensión (AFP)"] = 0;
+  else if (Math.abs(numOrZero(r["Valor Pensión (AFP)"]) - PENSION_DEFAULT) < PENSION_DEFAULT * 0.1 || !numOrZero(r["Valor Pensión (AFP)"])) r["Valor Pensión (AFP)"] = PENSION_DEFAULT;
 }
 function ponerCajaMinima(r){
   if (llevaCajaMinima(r) && !numOrZero(r["Valor Caja"])){ r["Valor Caja"] = CAJA_MINIMA; return true; }
