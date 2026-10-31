@@ -526,6 +526,8 @@
   .ay-pct{ font-size:11.5px; font-weight:700; padding:1px 7px; border-radius:999px; background:var(--line); color:var(--ink); margin-left:6px; }
   .ay-pct.medio{ background:var(--afiliacion-bg); color:var(--afiliacion); }
   .ay-pct.alto{ background:var(--retiro-bg); color:var(--retiro); }
+  .eps-codigo{ display:block; font-size:11.5px; color:var(--muted); margin-top:3px; }
+  .eps-codigo.falta{ color:var(--retiro); font-weight:600; }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .ocr-acc{ display:flex; gap:6px; }
   .pila-tabla-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); }
@@ -1597,7 +1599,8 @@
       <div class="field"><label><span class="field-num">11</span>Costo / Valor del servicio</label><input id="fCosto" type="number"></div>
 
       <div class="field campo-nomina"><label><span class="field-num">12</span>EPS</label>
-        <input id="fEps" type="text" list="listaEps">
+        <input id="fEps" type="text" list="listaEps" autocomplete="off" placeholder="Escoja de la lista">
+        <small id="fEpsCodigo" class="eps-codigo"></small>
         <datalist id="listaEps"></datalist>
       </div>
       <div class="field campo-nomina"><label><span class="field-num">13</span>Valor EPS</label><input id="fValorEps" type="number"></div>
@@ -3853,6 +3856,24 @@ function sortedMonthNames(){
   });
 }
 
+// EPS de Colombia con el código del régimen CONTRIBUTIVO que va en la planilla (lo pagan los empleadores).
+// [nombre como se escribe en el cliente, clave interna, código PILA]. Fuente: listados de MinSalud/UGPP; SUAPORTE
+// igual reenvía el aporte a la EPS donde esté registrado el afiliado.
+const EPS_COLOMBIA = [
+  ["NUEVA EPS", "nueva eps", "EPS037"], ["SURA", "sura", "EPS010"], ["SANITAS", "sanitas", "EPS005"], ["SALUD TOTAL", "salud total", "EPS002"],
+  ["SOS", "sos", "EPS018"], ["COMPENSAR", "compensar", "EPS008"], ["FAMISANAR", "famisanar", "EPS017"], ["COMFENALCO VALLE", "comfenalco valle", "EPS012"],
+  ["ALIANSALUD", "aliansalud", "EPS001"], ["COOSALUD", "coosalud", "EPS042"], ["MUTUAL SER", "mutual ser", "EPS048"], ["SALUD MIA", "salud mia", "EPS046"],
+  ["EMSSANAR", "emssanar", "ESSC18"], ["ASMET SALUD", "asmet salud", "ESSC62"], ["CAPITAL SALUD", "capital salud", "EPSC34"], ["SAVIA SALUD", "savia salud", "EPS040"],
+  ["CAJACOPI", "cajacopi", "CCFC55"], ["CAPRESOCA", "capresoca", "EPSC25"], ["COMFAORIENTE", "comfaoriente", "CCFC50"], ["FAMILIAR DE COLOMBIA", "familiar de colombia", "CCFC33"],
+  ["COMFACHOCO", "comfachoco", ""], ["DUSAKAWI", "dusakawi", "EPSIC1"], ["AIC (ASOCIACION INDIGENA DEL CAUCA)", "asociacion indigena del cauca", "EPSIC3"],
+  ["ANAS WAYUU", "anas wayuu", "EPSIC4"], ["MALLAMAS", "mallamas", "EPSIC5"], ["PIJAOS SALUD", "pijaos salud", "EPSIC6"],
+  ["EPM SALUD", "epm", "EAS016"], ["FERROCARRILES NACIONALES", "ferrocarriles", "EAS027"], ["ADRESMIN002", "adresmin002", "MIN002"],
+];
+function codigoEpsDe(texto){
+  const t = normalizarTexto(texto); if (!t) return "";
+  const x = EPS_COLOMBIA.find(([, k]) => t === k) || EPS_COLOMBIA.find(([, k]) => t.includes(k) || (t.length >= 3 && k.startsWith(t)));
+  return x ? x[2] : "";
+}
 function renderListaEps(){
   const vistos = new Set();
   Object.values(store.months).forEach(mes => {
@@ -3861,8 +3882,11 @@ function renderListaEps(){
       if (v) vistos.add(v.toUpperCase());
     });
   });
+  // Primero las EPS de Colombia (con su código contributivo); después lo que ya se haya escrito distinto
+  const oficiales = new Set(EPS_COLOMBIA.map(([n]) => n));
   document.getElementById("listaEps").innerHTML =
-    Array.from(vistos).sort().map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join("");
+    EPS_COLOMBIA.map(([n, , c]) => `<option value="${n}" label="${c ? c + " · contributivo" : "código por confirmar"}">`).join("")
+    + Array.from(vistos).filter(v => !oficiales.has(v) && !codigoEpsDe(v)).sort().map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join("");
 }
 
 // Responsables: se evita crear el mismo dos veces por un espacio de más, mayúsculas o tildes
@@ -7253,6 +7277,7 @@ function openModal(record){
     ? (record["Costo Servicio"] || "")
     : (getField("Estado").value === "AFILIACION" ? COSTO_AFILIACION : COSTO_MENSUAL);
   getField("Eps").value = record ? record["EPS"] || "" : "";
+  setTimeout(() => { try{ mostrarCodigoEps(); }catch(e){} }, 0);
   getField("ValorEps").value = record
     ? (record["Valor EPS"] || "")
     : (esIndependiente({ "Responsable / Grupo": getField("Resp").value }) ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT);
@@ -12422,9 +12447,7 @@ const PILA_MUNICIPIOS = {
 const PILA_TARIFA_ARL = { 1: 0.00522, 2: 0.01044, 3: 0.02436, 4: 0.0435, 5: 0.0696 };
 const PILA_CENTRO_DEFECTO = { 1: 1, 4: 41, 5: 5 };
 const PILA_CODIGOS_DEFECTO = {
-  eps: { "nueva eps": "EPS037", "sura": "EPS010", "sanitas": "EPS005", "salud total": "EPS002", "sos": "EPS018", "compensar": "EPS008",
-         "famisanar": "EPS017", "comfenalco valle": "EPS012", "aliansalud": "EPS001", "adresmin002": "MIN002",
-         "coosalud": "EPS042", "emssanar": "ESSC18", "mutual ser": "", "eps de la gente": "", "mallamas": "" },
+  eps: Object.fromEntries(EPS_COLOMBIA.map(([, clave, cod]) => [clave, cod])),
   afp: { "porvenir": "230301", "colpensiones": "25-14", "proteccion": "230201", "colfondos": "231001", "skandia": "230901" },
   ccf: { "comfenalco valle": "CCF56", "comfandi": "CCF57" },
   arl: { "sura": "14-11", "positiva": "14-23" },
@@ -12805,6 +12828,15 @@ document.getElementById("pilaDescargarBtn").addEventListener("click", async () =
   window.__ultimoExcelPila = { aoa, nombre };
   showToast(`⬇️ ${nombre} con ${filas.length} afiliado(s). Súbalo en SUAPORTE → Autoliquidación de aportes → Cargar archivo.`);
 });
+// Debajo del campo EPS se ve el código que va a la planilla (régimen contributivo)
+function mostrarCodigoEps(){
+  const el = document.getElementById("fEpsCodigo"); if (!el) return;
+  const v = document.getElementById("fEps").value.trim();
+  const c = codigoEpsDe(v);
+  el.textContent = !v ? "" : c ? `Código en la planilla: ${c} (contributivo)` : "⚠️ No es una EPS de la lista: escójala de la lista para que salga su código";
+  el.classList.toggle("falta", !!v && !c);
+}
+document.getElementById("fEps").addEventListener("input", mostrarCodigoEps);
 document.getElementById("pilaCuerpo").addEventListener("change", async (e) => {
   const ced = e.target.dataset && e.target.dataset.pilaTipoind; if (!ced) return;
   pilaTipoInd[ced] = e.target.value;
