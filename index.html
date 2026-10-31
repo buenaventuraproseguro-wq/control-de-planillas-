@@ -1619,7 +1619,7 @@
           <div class="hint" id="trasladoHint" style="grid-column:1 / -1;">Queda en el botón <b>🔁 Traslados</b> de la pantalla principal hasta que se apruebe, y el valor se suma a <b>Ganancias de gestiones</b> del mes.</div>
         </div>
       </div>
-      <div class="field campo-nomina"><label><span class="field-num">15</span>Actividad económica (código ARL)</label><input id="fArl" type="text" placeholder="Ej: 14-11"></div>
+      <div class="field campo-nomina"><label><span class="field-num">15</span>Actividad económica (código ARL)</label><input id="fArl" type="text" placeholder="Ej: sura 5 cd 005 ac 5493001"><small id="fArlActividad" class="eps-codigo"></small></div>
       <div class="field campo-nomina"><label>Nivel de riesgo ARL</label>
         <select id="fArlNivel">
           <option value="">Sin definir</option>
@@ -7293,7 +7293,7 @@ function openModal(record){
     ? (record["Costo Servicio"] || "")
     : (getField("Estado").value === "AFILIACION" ? COSTO_AFILIACION : COSTO_MENSUAL);
   getField("Eps").value = record ? record["EPS"] || "" : "";
-  setTimeout(() => { try{ mostrarCodigoEps(); }catch(e){} }, 0);
+  setTimeout(() => { try{ mostrarCodigoEps(); mostrarActividadArl(); }catch(e){} }, 0);
   getField("ValorEps").value = record
     ? (record["Valor EPS"] || "")
     : (esIndependiente({ "Responsable / Grupo": getField("Resp").value }) ? EPS_INDEPENDIENTE_DEFAULT : EPS_DEFAULT);
@@ -12548,10 +12548,41 @@ function pilaPeriodo(){
 // Si el certificado ARL trae el código de 7 dígitos se usa ese; si no se conoce va vacío y SUAPORTE lo corrige.
 const PILA_ACTIVIDAD = { "1|1": "1651101", "4|41": "4492301", "5|8": "5521001", "5|7": "5422001" };
 const PILA_ACTIVIDAD_CLASE = { 1: "1651101", 4: "4492301" };
+// La ARL (Sura) da una actividad corta de 4 dígitos; en la planilla va la de 7 dígitos del Decreto 768 de 2022.
+// Equivalencias confirmadas con planillas pagadas y con SUAPORTE: "riesgo|actividad corta" → código de 7 dígitos.
+const PILA_ACTIVIDAD_CORTA = {
+  "1|6511": "1651101", "4|4923": "4492301", "5|5521": "5521001", "5|4220": "5422001", "5|5493": "5493001",
+};
+const PILA_ACTIVIDAD_NOMBRE = {
+  "1651101": "Seguros generales (oficina)", "4492301": "Transporte de carga por carretera",
+  "5521001": "Almacenamiento y depósito", "5422001": "Construcción de proyectos de servicio público",
+  "5493001": "Transporte por tuberías; explotación de gasolineras",
+};
 function pilaActividad(texto, clase, centro){
-  const m = String(texto || "").match(/\b([1-5]\d{6})\b/);
-  if (m && Number(m[1][0]) === Number(clase)) return m[1];
+  const t = String(texto || "");
+  // 1) Ya trae el código de 7 dígitos (o 6, sin el riesgo adelante: "ac 422001")
+  const m7 = t.match(/\b([1-5]\d{6})\b/);
+  if (m7 && Number(m7[1][0]) === Number(clase)) return m7[1];
+  const m6 = t.match(/(?:^|\D)(\d{6})(?!\d)/);
+  if (m6 && clase && /^\d{4}0\d$/.test(m6[1]) && PILA_ACTIVIDAD_NOMBRE[`${clase}${m6[1]}`]) return `${clase}${m6[1]}`;
+  // 2) Actividad corta de 4 dígitos (la que trae el certificado de Sura)
+  const cortas = (t.match(/(?:^|\D)([1-9]\d{3})(?!\d)/g) || []).map(x => x.replace(/\D/g, ""));
+  for (const c of cortas){ const k = PILA_ACTIVIDAD_CORTA[`${clase}|${c}`]; if (k) return k; }
+  if (cortas.length || /(?:^|\D)0\d{3}(?!\d)/.test(t.replace(/c(?:d|odigo|g)\s*[o0]*\d{1,3}/gi, ""))) return ""; // trae una actividad que no conozco: mejor vacía (SUAPORTE la corrige) que equivocada
+  // 3) Por riesgo y centro de trabajo, como en las planillas ya pagadas
   return PILA_ACTIVIDAD[`${clase}|${Number(centro) || 0}`] || PILA_ACTIVIDAD_CLASE[clase] || "";
+}
+// Lo que se ve debajo del campo ARL en agregar/editar cliente
+function mostrarActividadArl(){
+  const el = document.getElementById("fArlActividad"); if (!el) return;
+  const t = getField("Arl").value.trim();
+  const clase = Number(getField("ArlNivel").value) || clasificarRiesgoArl(t) || 0;
+  if (!t){ el.textContent = ""; el.classList.remove("falta"); return; }
+  const cod = clase ? pilaActividad(t, clase, pilaCentro(t, clase)) : "";
+  el.innerHTML = cod
+    ? `Actividad en la planilla: <b>${cod}</b>${PILA_ACTIVIDAD_NOMBRE[cod] ? " · " + escHtml(PILA_ACTIVIDAD_NOMBRE[cod]) : ""} · centro ${pilaCentro(t, clase) || "—"}`
+    : (clase ? "⚠️ No reconozco la actividad: escriba el código de 7 dígitos del certificado (ej. ac 5493001)" : "⚠️ Falta el nivel de riesgo");
+  el.classList.toggle("falta", !cod);
 }
 function pilaCentro(texto, clase){
   const t = String(texto || "").toLowerCase();
@@ -12664,6 +12695,7 @@ function pilaFila(r, secuencia, opts){
   if (ing) pon(80, fIng);
   if (ret && fechaRet) pon(81, fechaRet);
   pon(95, 0); pon(96, dias * 8); pon(98, pilaActividad(textoArl, clase, centro));
+  if (clase && !v[97]) avisos.push("falta la actividad económica de 7 dígitos (escríbala en el campo ARL, ej. ac 5493001)");
   return { v, avisos, nombre: [ap1, ap2, n1, n2].filter(Boolean).join(" "), dias, ing, ret, total: cAfp + cEps + cArl + cCcf, r };
 }
 let _pilaSel = null;
@@ -12861,6 +12893,8 @@ function mostrarCodigoEps(){
   el.classList.toggle("falta", !!v && !c);
 }
 document.getElementById("fEps").addEventListener("input", mostrarCodigoEps);
+document.getElementById("fArl").addEventListener("input", mostrarActividadArl);
+document.getElementById("fArlNivel").addEventListener("change", mostrarActividadArl);
 document.getElementById("pilaCuerpo").addEventListener("change", async (e) => {
   const ced = e.target.dataset && e.target.dataset.pilaTipoind; if (!ced) return;
   pilaTipoInd[ced] = e.target.value;
