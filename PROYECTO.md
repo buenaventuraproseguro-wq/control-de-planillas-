@@ -58,3 +58,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Coosalud en planilla = EPS042 (contributivo; lo pagan los empleadores). ESSC24 es el subsidiado.
 - EPS: lista EPS_COLOMBIA (29 EPS con su código contributivo para PILA) en el campo EPS de agregar/editar cliente; debajo se ve el código que va a la planilla. Los códigos de 14.1 salen de esa lista.
 - Estado AFP "Indemnizacion Sustitutiva" (indemnización sustitutiva o devolución de saldos): no paga pensión, en 14.1 va con subtipo 05. Pensionado → subtipo 01.
+- Caja mínima: CAJA_MINIMA = 100. Afiliados de PROSEGUROSNET sin caja llevan Valor Caja $100 (al escoger "Sin Caja", al guardar, y al avanzar de mes). Un valor de $100 NO cuenta como tener caja (tieneCaja/pilaTieneCaja > 100). Independientes, conductores, muelles y otras empresas no.

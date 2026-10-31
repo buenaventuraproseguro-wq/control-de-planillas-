@@ -5233,7 +5233,7 @@ advanceBtn.addEventListener("click", async () => {
       delete x._supabaseId; delete x["_prorrateoTransicion"];
       return x;
     }));
-  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; }); // el recargo por mora es de cada mes
+  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; ponerCajaMinima(x); }); // el recargo por mora es de cada mes; sin caja va el mínimo de $100
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
   const retiradosCount = records.filter(isRetiro).length - retirosPendientes.length;
@@ -5477,11 +5477,24 @@ function tagConfirmacion(r){
 
 // ---- Caja de compensación ----
 // Paga caja si tiene valor de caja o la caja está Activa / En proceso. Sin retirados ni clientes solo de servicio.
+// Sin caja de compensación se cobra y se paga el aporte mínimo de $100 a Comfenalco Valle (no puede ir en 0).
+// Ese $100 NO cuenta como "tener caja".
+const CAJA_MINIMA = 100;
 function tieneCaja(r){
   if (!r || esConductorExcluido(r)) return false;
   if (estadoClass(r["Estado Trámite"]) === "RETIRO") return false;
   const est = String(r["Estado Caja"] || "").trim().toLowerCase();
-  return numOrZero(r["Valor Caja"]) > 0 || est === "activo" || est === "en proceso";
+  return numOrZero(r["Valor Caja"]) > CAJA_MINIMA || est === "activo" || est === "en proceso";
+}
+// ¿A este cliente le va la caja mínima de $100? (afiliados de PROSEGUROSNET; no independientes, conductores ni muelles)
+function llevaCajaMinima(r){
+  if (!r || esConductorExcluido(r) || esServicioMuelles(r) || esIndependiente(r) || esOtraEmpresa(r)) return false;
+  const est = String(r["Estado Caja"] || "").trim().toLowerCase();
+  return !(numOrZero(r["Valor Caja"]) > CAJA_MINIMA || est === "activo" || est === "en proceso");
+}
+function ponerCajaMinima(r){
+  if (llevaCajaMinima(r) && !numOrZero(r["Valor Caja"])){ r["Valor Caja"] = CAJA_MINIMA; return true; }
+  return false;
 }
 function tagCaja(r){
   if (filtroEstado !== "__CAJA__" || !tieneCaja(r)) return "";
@@ -7312,7 +7325,7 @@ function openModal(record){
   })();
   getField("ValorCaja").value = record
     ? (record["Valor Caja"] || "")
-    : (getField("EstadoCaja").value === "Sin Caja" ? "" : CAJA_DEFAULT);
+    : (getField("EstadoCaja").value === "Sin Caja" ? CAJA_MINIMA : CAJA_DEFAULT);
   getField("Obs").value = record ? record["Observación"] || "" : "";
   getField("Recordatorio").value = record ? record["Recordatorio"] || "" : "";
   getField("Placa").value = record ? record["Placa"] || "" : "";
@@ -7783,13 +7796,17 @@ async function iniciarReingresoDesdeEstado(){
   }
 }
 
-// Si se marca "Sin Caja", no se cobra valor de caja; si es "Activo" o "En Proceso",
+// Lo que está escrito en el formulario: ¿le va la caja mínima de $100?
+function formularioLlevaCajaMinima(){
+  return llevaCajaMinima({ "Empresa": getField("Empresa").value, "Responsable / Grupo": getField("Resp").value, "Estado Caja": "Sin Caja", "Valor Caja": "" });
+}
+// Si se marca "Sin Caja", se cobra el aporte mínimo de $100 (PROSEGUROSNET); si es "Activo" o "En Proceso",
 // se precarga el valor legal sobre el salario mínimo (editable).
 getField("EstadoCaja").addEventListener("change", () => {
   const valorActual = getField("ValorCaja").value === "" ? null : Number(getField("ValorCaja").value);
   if (getField("EstadoCaja").value === "Sin Caja"){
-    if (!getField("ValorCaja").readOnly) getField("ValorCaja").value = "";
-  } else if (valorActual === null || valorActual === CAJA_DEFAULT){
+    if (!getField("ValorCaja").readOnly) getField("ValorCaja").value = formularioLlevaCajaMinima() ? CAJA_MINIMA : "";
+  } else if (valorActual === null || valorActual === CAJA_DEFAULT || valorActual === CAJA_MINIMA){
     if (!getField("ValorCaja").readOnly) getField("ValorCaja").value = CAJA_DEFAULT;
   }
 });
@@ -8546,7 +8563,9 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Valor Pensión (AFP)": getField("ValorTotal").value === "" ? "" : Number(getField("ValorTotal").value),
     "Caja de Compensación": getField("Caja").value.trim().toLowerCase(),
     "Estado Caja": getField("EstadoCaja").value.trim(),
-    "Valor Caja": getField("ValorCaja").value === "" ? "" : Number(getField("ValorCaja").value),
+    "Valor Caja": getField("ValorCaja").value === "" || Number(getField("ValorCaja").value) === 0
+      ? (getField("EstadoCaja").value === "Sin Caja" && formularioLlevaCajaMinima() ? CAJA_MINIMA : "")
+      : Number(getField("ValorCaja").value),
     "Observación": getField("Obs").value.trim().toLowerCase(),
     "Recordatorio": getField("Recordatorio").value,
     "Beneficiarios": leerBeneficiarios(),
@@ -12544,7 +12563,7 @@ function pilaCentro(texto, clase){
 function pilaTieneCaja(r){
   if (!r || esConductorExcluido(r)) return false;
   const est = String(r["Estado Caja"] || "").trim().toLowerCase();
-  return numOrZero(r["Valor Caja"]) > 0 || est === "activo" || est === "en proceso";
+  return numOrZero(r["Valor Caja"]) > CAJA_MINIMA || est === "activo" || est === "en proceso";
 }
 // Base de cotización de un independiente: sale de su aporte a pensión (16 %); si da casi un
 // número exacto de salarios mínimos se deja en ese múltiplo. Nunca menos de 1 mínimo.
