@@ -12228,8 +12228,19 @@ function datosCertificado(doc, texto){
     d.arl = buscarNombre(t, NOMBRES_ARL);
     const n = t.match(/(?:clase|nivel)\s+(?:de\s+)?riesgo[^\dIV]{0,10}([1-5]|I{1,3}|IV|V)\b/i) || t.match(/riesgo[^\dIV]{0,6}([1-5]|I{1,3}|IV|V)\b/i);
     if (n){ const v = n[1].toUpperCase(); d.nivel = { I: "1", II: "2", III: "3", IV: "4", V: "5" }[v] || v; }
+    // Centro de trabajo
+    const c = t.match(/centro\s+(?:de\s+)?trabajo[^\d]{0,25}(\d{1,9})/i) || t.match(/\bc(?:\.|ent)?\s*t(?:rab)?\.?\s*[:#]?\s*(\d{1,9})\b/i);
+    d.centro = c ? String(Number(c[1])) : "";
+    // Actividad: primero la de 7 dígitos (Decreto 768) que empiece por el riesgo; si no, la corta de Sura (4 dígitos)
+    const junto = t.match(/actividad[^\d]{0,40}([1-5]\d{6})(?!\d)/i);
+    const sieteTodas = (t.match(/\b[1-5]\d{6}\b/g) || []).filter(x => x !== d.cedula);
+    const siete = (junto && (!d.nivel || junto[1][0] === d.nivel) ? junto[1] : "") || (d.nivel ? sieteTodas.find(x => x[0] === d.nivel) : "") || "";
     const a = t.match(/actividad(?:\s+econ[oó]mica)?[^\d]{0,30}(\d{4,7})/i);
-    d.actividad = a ? a[1] : "";
+    d.actividad = siete || (a ? a[1] : "");
+    if (d.nivel && d.actividad && d.actividad.length < 7){
+      const k = PILA_ACTIVIDAD_CORTA[`${d.nivel}|${d.actividad.slice(-4)}`];
+      if (k) d.actividad = k;
+    }
   } else if (doc === "Afp"){
     d.afp = buscarNombre(t, NOMBRES_AFP);
   } else if (doc === "Caja"){
@@ -12255,13 +12266,17 @@ async function leerCertificadoAfiliacion(doc, fuente){
     const T = await cargarTesseract();
     const { data } = await T.recognize(fuente, "spa");
     const d = datosCertificado(doc, data && data.text);
-    const arlTexto = d.nivel || d.arl || d.actividad ? [d.arl, d.nivel ? `riesgo ${d.nivel}` : "", d.actividad ? `ac ${d.actividad}` : ""].filter(Boolean).join(" ") : "";
+    // Se escribe siempre igual para que la planilla lo lea bien: "sura 5 cd 005 ac 5493001"
+    const arlTexto = d.nivel || d.arl || d.actividad
+      ? [d.arl || "sura", d.nivel || "", d.centro ? `cd ${d.centro.padStart(3, "0")}` : "", d.actividad ? `ac ${d.actividad}` : ""].filter(Boolean).join(" ") : "";
     const filas = [
       d.cedula && ["Cédula", d.cedula],
       d.eps && ["EPS", d.eps.toUpperCase()],
       d.fechaIngreso && ["Fecha de ingreso", fechaLarga(d.fechaIngreso)],
-      arlTexto && ["ARL (actividad)", arlTexto],
+      arlTexto && ["ARL", arlTexto],
       d.nivel && ["Nivel de riesgo", d.nivel],
+      d.centro && ["Centro de trabajo", d.centro],
+      d.actividad && ["Actividad para la planilla", d.actividad.length === 7 ? `${d.actividad}${PILA_ACTIVIDAD_NOMBRE[d.actividad] ? " · " + PILA_ACTIVIDAD_NOMBRE[d.actividad] : ""}` : `${d.actividad} (corta: revise la de 7 dígitos)`],
       d.afp && ["AFP", d.afp.toUpperCase()],
       d.caja && ["Caja", d.caja.toUpperCase()],
     ].filter(Boolean);
@@ -12278,8 +12293,8 @@ async function leerCertificadoAfiliacion(doc, fuente){
       if (d.eps && ponerCampo("fEps", d.eps)) n++;
       if (d.eps && d.activo) ponerCampo("fEstadoEps", "aceptado");
       if (d.fechaIngreso && ponerCampo("fFechaIngreso", d.fechaIngreso)) n++;
+      if (d.nivel && ponerCampo("fArlNivel", d.nivel)) n++;   // primero el nivel, para que la actividad se valide con él
       if (arlTexto && ponerCampo("fArl", arlTexto)) n++;
-      if (d.nivel && ponerCampo("fArlNivel", d.nivel)) n++;
       if (d.afp){ if (ponerCampo("fAfp", d.afp)) n++; ponerCampo("fEstadoAfp", "Activo"); }
       if (d.caja){ if (ponerCampo("fCaja", d.caja)) n++; ponerCampo("fEstadoCaja", "Activo"); }
       aviso.remove();
