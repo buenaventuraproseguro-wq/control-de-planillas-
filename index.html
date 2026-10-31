@@ -12527,7 +12527,7 @@ function pilaBaseIndependiente(r){
 let pilaTipoInd = {}; // cédula → "I" | "E"
 function pilaEsTipoI(r){
   const t = pilaTipoInd[String(r["Cédula"]).trim()];
-  return t ? t === "I" : pilaBaseIndependiente(r) > PILA_SALARIO; // por defecto: base mayor al mínimo → planilla I
+  return t ? t === "I" : true; // por defecto planilla I (independiente); la E se escoge a mano para quien paga como empleado propio
 }
 function pilaFila(r, secuencia, opts){
   opts = opts || {};
