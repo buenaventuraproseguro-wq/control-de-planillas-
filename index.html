@@ -5356,11 +5356,17 @@ async function quitarCobroExtraConAviso(idx){
   showToast("Cobro borrado.");
 }
 
+// Pagó este mes: está en PAGO, o se retiró y ya tiene la planilla (o comprobante) de este mes
+function pagadoEsteMes(r){
+  const ec = estadoClass(r && r["Estado Trámite"]);
+  if (ec === "PAGO") return true;
+  return ec === "RETIRO" && !esConductorExcluido(r) && typeof pilaTienePlanilla === "function" && pilaTienePlanilla(r);
+}
 function renderStatsStrip(){
   const parteDeCartera = records.filter(r => !esConductorExcluido(r));
   const aplica = parteDeCartera.filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO");
-  const pagados = aplica.filter(r => estadoClass(r["Estado Trámite"]) === "PAGO").length;
-  const pendientes = aplica.length - pagados;
+  const pagados = parteDeCartera.filter(pagadoEsteMes).length;
+  const pendientes = aplica.filter(r => estadoClass(r["Estado Trámite"]) !== "PAGO").length;
   const atrasados = records.filter(estaAtrasado).length;
   const porConfirmar = records.filter(r => pendientesConfirmacion(r).length);
   const conCaja = records.filter(tieneCaja);
@@ -5875,7 +5881,7 @@ function renderList(filterText){
   } else if (filtroEstado === "__INDEPENDIENTES__"){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esIndependiente);
   } else if (filtroEstado){
-    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => estadoClass(r["Estado Trámite"]) === estadoClass(filtroEstado));
+    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => estadoClass(filtroEstado) === "PAGO" ? pagadoEsteMes(r) : estadoClass(r["Estado Trámite"]) === estadoClass(filtroEstado));
   } else {
     filtered = filtered.filter(r => !esConductorExcluido(r)); // "Todos" nunca incluye conductores
   }
@@ -6685,8 +6691,8 @@ function resumenResponsables(){
 function abrirResponsables(){
   const lista = resumenResponsables();
   const filas = lista.map(g => {
-    const pagados = g.clientes.filter(r => estadoClass(r["Estado Trámite"]) === "PAGO").length;
-    const pend = g.clientes.filter(r => estadoClass(r["Estado Trámite"]) !== "PAGO");
+    const pagados = g.clientes.filter(pagadoEsteMes).length;
+    const pend = g.clientes.filter(r => !pagadoEsteMes(r) && estadoClass(r["Estado Trámite"]) !== "RETIRO");
     const debe = pend.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
     const hoy = g.clientes.some(recordadoHoy);
     return `<button type="button" class="resp-fila" data-resp="${escHtml(g.k)}">
@@ -11447,7 +11453,7 @@ function tagRetiro(r){
   if (retiroPendientePlanilla(r)) return `<span class="tag-retiro-pend" title="Queda en RETIRO al subir la planilla o el soporte del retiro">🚪 Retiro pendiente · falta planilla</span>`;
   if (isRetiro(r) && (r["Fecha Retiro"] || r["Motivo Retiro"])){
     const f = fechaCortaRetiro(r["Fecha Retiro"]);
-    return `<span class="tag-retiro" title="${escHtml(r["Motivo Retiro"] || "")}">🚪 Retiro${f ? " " + f : ""}${r["Motivo Retiro"] === "Reportado en la planilla" ? " (planilla)" : ""}</span>`;
+    return `<span class="tag-retiro" title="${escHtml(r["Motivo Retiro"] || "")}">🚪 Retiro${f ? " " + f : ""}${r["Motivo Retiro"] === "Reportado en la planilla" ? " (planilla)" : ""}${pagadoEsteMes(r) ? " · ✅ pagó su planilla" : ""}</span>`;
   }
   return "";
 }
@@ -11649,7 +11655,7 @@ function gruposEstadoCuenta(){
   });
   return [...m.values()].map(g => {
     g.deben = g.todos.filter(debeEsteMes);
-    g.pagados = g.todos.filter(r => estadoClass(r["Estado Trámite"]) === "PAGO").length;
+    g.pagados = g.todos.filter(pagadoEsteMes).length;
     g.total = g.deben.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
     g.mora = g.deben.reduce((a, r) => a + numOrZero(r["Recargo Mora"]), 0);
     g.telefono = String((g.deben.find(c => String(c["Teléfono"] || "").trim()) || g.todos.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
