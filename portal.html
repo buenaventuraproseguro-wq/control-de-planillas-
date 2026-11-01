@@ -413,7 +413,10 @@ async function cargarDocumentos(cedula){
   const cont = document.getElementById("docsCont");
   docsCedulaActual = cedula;
   let r;
-  try{ r = await consultar(`/rest/v1/documentos?select=tipo,storage_path,uploaded_at&cedula=eq.${encodeURIComponent(cedula)}`); }
+  try{
+    r = await consultar(`/rest/v1/documentos?select=tipo,storage_path,uploaded_at,mes&cedula=eq.${encodeURIComponent(cedula)}`);
+    if (!r.ok) r = await consultar(`/rest/v1/documentos?select=tipo,storage_path,uploaded_at&cedula=eq.${encodeURIComponent(cedula)}`);
+  }
   catch(e){ cont.innerHTML = `<div class="vacio">No se pudieron cargar tus documentos. Recarga la página.</div>`; return; }
   const docs = r.ok && Array.isArray(r.cuerpo) ? r.cuerpo : [];
   if (!docs.length){
@@ -455,7 +458,10 @@ async function cargarDocumentos(cedula){
   cont.innerHTML = docs.map(d => {
     const url = firmados[d.storage_path];
     const fechaTxt = formatearFechaDoc(d._fecha);
-    const nombre = TIPO_LABEL[d.tipo] || d.tipo;
+    // La planilla y el comprobante son de cada mes: se dice de qué mes es
+    const MESES_DOC = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const mm = /^(\d{4})-(\d{2})$/.exec(d.mes || "");
+    const nombre = (TIPO_LABEL[d.tipo] || d.tipo) + (mm ? ` · ${MESES_DOC[+mm[2] - 1]} ${mm[1]}` : "");
     if (!url){
       return `<div class="doc-row"><span class="nombre">📄 <span>${esc(nombre)}${fechaTxt ? `<span class="doc-fecha">Subido el ${esc(fechaTxt)}</span>` : ""}</span></span><span class="vacio" style="padding:0;">No disponible</span></div>`;
     }

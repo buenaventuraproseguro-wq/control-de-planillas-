@@ -3008,10 +3008,30 @@ document.addEventListener("visibilitychange", () => {
 // ("No se pudo guardar: el almacenamiento del navegador está lleno").
 const CAMPO_A_TIPO_DOC = { "Imagen Cedula": "cedula", "Imagen Eps": "eps", "Imagen Afp": "afp", "Imagen Caja": "caja", "Imagen Arl": "arl", "Imagen PlanillaPagada": "planilla_pagada", "Imagen ComprobantePago": "comprobante_pago", "Imagen Licencia": "licencia", "Imagen SoatTecno": "soat_tecno", "Imagen Poliza": "poliza" };
 let docsEnNube = null; // Set "cedula|tipo"; null = todavía no se sabe (entonces no se quita nada)
-function claveDocNube(cedula, tipo){ return `${String(cedula || "").trim()}|${tipo}`; }
+// La planilla pagada y el comprobante son de CADA MES: se guardan aparte por mes ("2026-10") y al
+// pasar de mes el cliente queda sin los del mes anterior. Los demás documentos son del cliente (mes "").
+const DOCS_POR_MES = new Set(["planilla_pagada", "comprobante_pago"]);
+function mesISODe(nombreMes){
+  const i = indiceMes(nombreMes); if (i == null) return "";
+  return `${Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`;
+}
+function mesDocDe(tipo, nombreMes){ return DOCS_POR_MES.has(tipo) ? mesISODe(nombreMes || store.currentMonth) : ""; }
+function rutaDoc(cedula, tipo, mes){ return mes ? `${cedula}/${tipo}_${mes}` : `${cedula}/${tipo}`; }
+// Guarda la fila en "documentos" (por cédula, tipo y mes). Si la base todavía no tiene la columna "mes",
+// guarda como antes (una por cédula y tipo).
+async function guardarFilaDocumento(fila){
+  let r = await sb.from("documentos").upsert(fila, { onConflict: "cedula,tipo,mes" });
+  if (r.error && /mes|constraint|conflict/i.test(r.error.message || "")){
+    const { mes, ...sinMes } = fila;
+    r = await sb.from("documentos").upsert(sinMes, { onConflict: "cedula,tipo" });
+  }
+  return r;
+}
+function claveDocNube(cedula, tipo, mes){ return `${String(cedula || "").trim()}|${tipo}${mes ? "|" + mes : ""}`; }
 function serializarStore(){
   return JSON.stringify(store, function(k, v){
     if (typeof v === "string" && CAMPO_A_TIPO_DOC[k] && v.startsWith("data:") && docsEnNube
+        && !DOCS_POR_MES.has(CAMPO_A_TIPO_DOC[k])
         && docsEnNube.has(claveDocNube(this && this["Cédula"], CAMPO_A_TIPO_DOC[k]))) return undefined;
     return v;
   });
@@ -3030,30 +3050,34 @@ async function sincronizarDocumentosLocales(){
   try{ await _sincronizarDocumentosLocales(); } finally { _docsLocalesEnCurso = false; }
 }
 async function _sincronizarDocumentosLocales(){
-  const { data, error } = await sb.from("documentos").select("cedula, tipo");
+  let { data, error } = await sb.from("documentos").select("cedula, tipo, mes");
+  if (error) ({ data, error } = await sb.from("documentos").select("cedula, tipo"));
   if (error){ console.error("No se pudo leer la lista de documentos:", error); return; }
-  const enNube = new Set((data || []).map(d => claveDocNube(d.cedula, d.tipo)));
+  const enNube = new Set((data || []).map(d => claveDocNube(d.cedula, d.tipo, d.mes || "")));
   const pendientes = new Map(); // del mes más antiguo al más reciente: queda la versión más nueva
   const meses = (typeof sortedMonthNames === "function" ? sortedMonthNames() : Object.keys(store.months));
   meses.forEach(mes => (store.months[mes] || []).forEach(r => {
     Object.entries(CAMPO_A_TIPO_DOC).forEach(([campo, tipo]) => {
       const v = r[campo];
-      const clave = claveDocNube(r["Cédula"], tipo);
-      if (typeof v === "string" && v.startsWith("data:") && String(r["Cédula"] || "").trim() && !enNube.has(clave)) pendientes.set(clave, { cedula: String(r["Cédula"]).trim(), tipo, dataUrl: v });
+      const mesDoc = mesDocDe(tipo, mes);
+      const clave = claveDocNube(r["Cédula"], tipo, mesDoc);
+      if (typeof v === "string" && v.startsWith("data:") && String(r["Cédula"] || "").trim()){
+        if (!enNube.has(clave)) pendientes.set(clave, { cedula: String(r["Cédula"]).trim(), tipo, mes: mesDoc, dataUrl: v });
+        else if (mesDoc) r[campo] = null; // la planilla/comprobante de ese mes ya está en la nube: se libera la copia local
+      }
     });
   }));
   let subidos = 0;
   for (const p of pendientes.values()){
     try{
       const blob = dataUrlToBlob(p.dataUrl);
-      const path = `${p.cedula}/${p.tipo}`;
+      const path = rutaDoc(p.cedula, p.tipo, p.mes);
       const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
       if (upErr) throw upErr;
-      const { error: dbErr } = await sb.from("documentos").upsert(
-        { cedula: p.cedula, tipo: p.tipo, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
-        { onConflict: "cedula,tipo" });
+      const { error: dbErr } = await guardarFilaDocumento(
+        { cedula: p.cedula, tipo: p.tipo, mes: p.mes, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
       if (dbErr) throw dbErr;
-      enNube.add(claveDocNube(p.cedula, p.tipo));
+      enNube.add(claveDocNube(p.cedula, p.tipo, p.mes));
       subidos++;
     }catch(e){ console.error("No se pudo subir un documento guardado en este equipo:", p.cedula, p.tipo, e); }
   }
@@ -3773,8 +3797,13 @@ function fechaCortaDoc(iso){
 }
 async function documentosDeLaNube(cedula){
   if (!cloudDb || !cedula) return [];
-  const { data: filas, error } = await sb.from("documentos").select("tipo, storage_path, uploaded_at").eq("cedula", String(cedula));
-  if (error || !Array.isArray(filas) || !filas.length) return [];
+  let { data: todas, error } = await sb.from("documentos").select("tipo, storage_path, uploaded_at, mes").eq("cedula", String(cedula));
+  if (error) ({ data: todas, error } = await sb.from("documentos").select("tipo, storage_path, uploaded_at").eq("cedula", String(cedula)));
+  if (error || !Array.isArray(todas)) return [];
+  // Planilla y comprobante: solo los del mes que se está viendo
+  const mesVer = mesISODe(store.currentMonth);
+  const filas = todas.filter(f => !DOCS_POR_MES.has(f.tipo) || (f.mes != null ? f.mes === mesVer : String(f.uploaded_at || "").slice(0, 7) === mesVer));
+  if (!filas.length) return [];
   const { data: firmados } = await sb.storage.from("documentos-clientes").createSignedUrls(filas.map(f => f.storage_path), 3600);
   const porRuta = {};
   (firmados || []).forEach(x => { if (x && !x.error && x.signedUrl) porRuta[x.path] = x.signedUrl; });
@@ -5254,7 +5283,8 @@ advanceBtn.addEventListener("click", async () => {
       delete x._supabaseId; delete x["_prorrateoTransicion"];
       return x;
     }));
-  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; ponerCajaMinima(x); normalizarPensionArl(x); }); // el recargo por mora es de cada mes; sin caja va el mínimo de $100
+  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; ponerCajaMinima(x); normalizarPensionArl(x);
+    x["Imagen PlanillaPagada"] = null; x["Imagen ComprobantePago"] = null; }); // la planilla y el comprobante quedan en su mes // el recargo por mora es de cada mes; sin caja va el mínimo de $100
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
   const retiradosCount = records.filter(isRetiro).length - retirosPendientes.length;
@@ -7667,22 +7697,24 @@ async function subirDocumentosCliente(cedula){
   for (const doc of Object.keys(docImagenes)){
     if (!docImagenesCambiados[doc]) continue;
     const tipo = DOC_TIPO_DB[doc];
-    const path = `${cedula}/${tipo}`;
+    const mesDoc = mesDocDe(tipo);
+    const path = rutaDoc(cedula, tipo, mesDoc);
     try {
       if (docImagenes[doc]){
         const blob = dataUrlToBlob(docImagenes[doc]);
         const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
         if (upErr) throw upErr;
-        const { error: dbErr } = await sb.from("documentos").upsert(
-          { cedula, tipo, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
-          { onConflict: "cedula,tipo" }
-        );
+        const { error: dbErr } = await guardarFilaDocumento(
+          { cedula, tipo, mes: mesDoc, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
         if (dbErr) throw dbErr;
-        (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, tipo));
+        (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, tipo, mesDoc));
       } else {
-        await sb.storage.from("documentos-clientes").remove([path]);
-        await sb.from("documentos").delete().eq("cedula", cedula).eq("tipo", tipo);
-        if (docsEnNube) docsEnNube.delete(claveDocNube(cedula, tipo));
+        // Se borra el de este mes (los de otros meses quedan en su mes)
+        const { data: fila } = await sb.from("documentos").select("storage_path").eq("cedula", cedula).eq("tipo", tipo).eq("mes", mesDoc).maybeSingle();
+        await sb.storage.from("documentos-clientes").remove([fila && fila.storage_path ? fila.storage_path : path]);
+        let del = await sb.from("documentos").delete().eq("cedula", cedula).eq("tipo", tipo).eq("mes", mesDoc);
+        if (del.error) await sb.from("documentos").delete().eq("cedula", cedula).eq("tipo", tipo);
+        if (docsEnNube) docsEnNube.delete(claveDocNube(cedula, tipo, mesDoc));
       }
     } catch (e){
       console.error(`No se pudo sincronizar el documento "${doc}" a la nube:`, e);
@@ -8781,6 +8813,7 @@ async function ofrecerAgregarAMesesPosteriores(cedula){
     const enEseMes = (store.months[meses[i]] || []).find(x => String(x["Cédula"]) === String(cedula));
     if (enEseMes){ previo = enEseMes; continue; }
     const nuevo = construirRegistroMesSiguiente(previo);
+    nuevo["Imagen PlanillaPagada"] = null; nuevo["Imagen ComprobantePago"] = null; nuevo["No. Planilla Pagada"] = "";
     insertarConservandoLugar(meses[i], [nuevo], store.months[meses[i - 1]] || []);
     previo = nuevo;
   }
@@ -9418,14 +9451,13 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
     } else {
       for (const f of elegidos){
         const ced = String(f.r["Cédula"]);
-        const path = `${ced}/planilla_pagada`;
+        const mesDoc = mesDocDe("planilla_pagada");
+        const path = rutaDoc(ced, "planilla_pagada", mesDoc);
         try{
           const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, archivo, { upsert: true, contentType: "application/pdf" });
           if (upErr) throw upErr;
-          const { error: dbErr } = await sb.from("documentos").upsert(
-            { cedula: ced, tipo: "planilla_pagada", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
-            { onConflict: "cedula,tipo" }
-          );
+          const { error: dbErr } = await guardarFilaDocumento(
+            { cedula: ced, tipo: "planilla_pagada", mes: mesDoc, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
           if (dbErr) throw dbErr;
           subidos++;
         }catch(err){ console.error("No se pudo guardar la planilla de", ced, err); fallidos++; }
@@ -9440,14 +9472,13 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
       const { blob, tipo } = await pilaPrepararComprobante(pilaComprobante);
       for (const f of elegidos){
         const ced = String(f.r["Cédula"]);
-        const path = `${ced}/comprobante_pago`;
+        const mesDoc = mesDocDe("comprobante_pago");
+        const path = rutaDoc(ced, "comprobante_pago", mesDoc);
         try{
           const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: tipo });
           if (upErr) throw upErr;
-          const { error: dbErr } = await sb.from("documentos").upsert(
-            { cedula: ced, tipo: "comprobante_pago", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() },
-            { onConflict: "cedula,tipo" }
-          );
+          const { error: dbErr } = await guardarFilaDocumento(
+            { cedula: ced, tipo: "comprobante_pago", mes: mesDoc, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
           if (dbErr) throw dbErr;
           compSubidos++;
         }catch(err){ console.error("No se pudo guardar el comprobante de", ced, err); compFallidos++; }
@@ -10122,7 +10153,7 @@ async function subirCedulaMuelles(cedula, dataUrl){
     const blob = dataUrlToBlob(dataUrl), path = `${cedula}/cedula`;
     const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
     if (upErr) throw upErr;
-    const { error } = await sb.from("documentos").upsert({ cedula, tipo: "cedula", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() }, { onConflict: "cedula,tipo" });
+    const { error } = await guardarFilaDocumento({ cedula, tipo: "cedula", mes: "", storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
     if (error) throw error;
     (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, "cedula"));
   }catch(e){ showToast("La cédula quedó solo en este equipo: no se pudo subir a la nube."); }
@@ -11343,8 +11374,11 @@ async function cargarSoportesRetiro(mes){
   if (!cloudDb || !navigator.onLine){ soportesRetiroNube = { mes, cedulas: res }; return res; }
   const ini = inicioDeMes(mes);
   try{
-    const { data } = await sb.from("documentos").select("cedula,tipo,uploaded_at").in("tipo", ["planilla_pagada", "comprobante_pago"]);
-    (data || []).forEach(d => { if (!ini || !d.uploaded_at || new Date(d.uploaded_at) >= ini) res.add(String(d.cedula).trim()); });
+    const mesVer = mesISODe(mes);
+    let { data, error } = await sb.from("documentos").select("cedula,tipo,uploaded_at,mes").in("tipo", ["planilla_pagada", "comprobante_pago"]);
+    if (error) ({ data } = await sb.from("documentos").select("cedula,tipo,uploaded_at").in("tipo", ["planilla_pagada", "comprobante_pago"]));
+    // Del mes que se está viendo (por la columna "mes"; si no existe, por la fecha en que se subió)
+    (data || []).forEach(d => { if (d.mes != null ? d.mes === mesVer : (!ini || !d.uploaded_at || new Date(d.uploaded_at) >= ini)) res.add(String(d.cedula).trim()); });
   }catch(e){}
   soportesRetiroNube = { mes, cedulas: res };
   return res;
@@ -11762,7 +11796,7 @@ function pagoSinPlanilla(r){
   if (estadoClass(r["Estado Trámite"]) !== "PAGO" || esOtraEmpresa(r) || esConductorExcluido(r)) return false;
   if (String(r["No. Planilla Pagada"] || "").trim() || r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return false;
   const ced = String(r["Cédula"] || "").trim();
-  if (docsEnNube && (docsEnNube.has(claveDocNube(ced, "planilla_pagada")) || docsEnNube.has(claveDocNube(ced, "comprobante_pago")))) return false;
+  if (docsEnNube && (docsEnNube.has(claveDocNube(ced, "planilla_pagada", mesDocDe("planilla_pagada"))) || docsEnNube.has(claveDocNube(ced, "comprobante_pago", mesDocDe("comprobante_pago"))))) return false;
   return true;
 }
 function problemasDeDatos(){
