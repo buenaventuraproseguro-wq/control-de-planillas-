@@ -533,6 +533,9 @@
   .eps-codigo.falta{ color:var(--retiro); font-weight:600; }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .ocr-acc{ display:flex; gap:6px; }
+  .pila-buscar{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+  .pila-buscar input{ flex:1 1 220px; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+  .pila-sel-resumen{ font-size:12.5px; color:var(--muted); margin:0 0 8px; }
   .pila-tabla-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); }
   .pila-tabla{ width:100%; border-collapse:collapse; font-size:13px; }
   .pila-tabla th{ text-align:left; font-size:11.5px; color:var(--muted); padding:7px 8px; border-bottom:1px solid var(--line); background:var(--bg); white-space:nowrap; }
@@ -12825,13 +12828,20 @@ async function abrirGenerarPila(){
   const nListos = lista.filter(pilaListo).length;
   document.getElementById("pilaSub").textContent = `Cobro de ${store.currentMonth} · periodo de la planilla ${pilaPeriodo()} · ${nListos} ya pagaron y faltan en planilla · ${lista.length - nListos} todavía no pagan · ${conAviso} para revisar`;
   document.getElementById("pilaCuerpo").innerHTML = (filas.length ? `
+    <div class="pila-buscar">
+      <input type="search" id="pilaBuscar" placeholder="🔎 Buscar por nombre, cédula, responsable o empresa" value="${escHtml(_pilaBusca)}" autocomplete="off">
+      <button type="button" class="btn small" id="pilaMarcarVis">Marcar los que se ven</button>
+      <button type="button" class="btn small ghost" id="pilaDesmarcarTodo">Desmarcar todos</button>
+    </div>
+    <div class="pila-sel-resumen" id="pilaSelResumen"></div>
     <div class="pila-tabla-wrap"><table class="pila-tabla">
       <thead><tr><th><input type="checkbox" id="pilaTodos" ${filas.every(f => f.sel) ? "checked" : ""} aria-label="Todos"></th><th>Afiliado (como va a la planilla)</th><th>Días</th><th>Novedad</th><th class="num">Aportes</th><th>Revisar</th></tr></thead>
       <tbody>${filas.map((f, i) => {
         const grupo = pilaListo(f.r) ? "listos" : "pendientes";
         const titulo = i === 0 || (pilaListo(filas[i - 1].r) ? "listos" : "pendientes") !== grupo
           ? `<tr class="pila-grupo"><td colspan="6">${grupo === "listos" ? "✅ Ya le pagaron a PROSEGUROSNET: listos para la planilla" : "⏳ Todavía no han pagado (márquelos solo si va a pagarles la planilla igual)"}</td></tr>` : "";
-        return titulo + `<tr class="${f.avisos.length ? "pila-aviso" : ""}">
+        const busca = normalizarTexto([f.nombre, f.r["Nombre del Afiliado"], f.r["Cédula"], f.r["Responsable / Grupo"], f.r["Empresa"]].join(" "));
+        return titulo.replace('<tr class="pila-grupo">', `<tr class="pila-grupo" data-pila-grupo="${grupo}">`) + `<tr class="${f.avisos.length ? "pila-aviso" : ""}" data-pila-fila="${grupo}" data-busca="${escHtml(busca)}" data-total="${f.total}">
         <td><input type="checkbox" data-pila-ced="${escHtml(f.r["Cédula"])}" ${f.sel ? "checked" : ""} aria-label="Incluir"></td>
         <td><b>${escHtml(f.nombre)}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(f.r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(f.r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${pilaTieneCaja(f.r) ? "" : " · sin caja: aporte mínimo $100 a Comfenalco Valle"}</small></td>
         <td>${f.dias}</td><td>${f.ing ? "ING" : ""}${f.ret ? "RET" : ""}</td>
@@ -12866,11 +12876,50 @@ async function abrirGenerarPila(){
     <p class="ay-txt">El nombre va como <b>APELLIDO APELLIDO NOMBRE NOMBRE</b> y SUAPORTE lo compara con la cédula. Si quedó al revés toque <b>⇄</b>; para escribirlo parte por parte toque <b>✏️</b>. El cambio queda guardado en el cliente. Los valores se calculan sobre 1 salario mínimo (${fmt(PILA_SALARIO)}) y se redondean a la centena, como en SUAPORTE; SUAPORTE los vuelve a validar al cargar.</p>`;
   abrirGenerarPila._filas = filas;
   ayAbrir("overlayGenPila");
+  pilaFiltrar(); pilaResumenSel();
 }
+// Buscador de la planilla: muestra solo los que coinciden; se marcan exactamente los que se van a pagar
+let _pilaBusca = "";
+function pilaFiltrar(){
+  const q = normalizarTexto(_pilaBusca).split(" ").filter(Boolean);
+  document.querySelectorAll("#pilaCuerpo tr[data-pila-fila]").forEach(tr => {
+    tr.hidden = q.length > 0 && !q.every(w => tr.dataset.busca.includes(w));
+  });
+  document.querySelectorAll("#pilaCuerpo tr[data-pila-grupo]").forEach(g => {
+    g.hidden = ![...document.querySelectorAll(`#pilaCuerpo tr[data-pila-fila="${g.dataset.pilaGrupo}"]`)].some(tr => !tr.hidden);
+  });
+}
+function pilaResumenSel(){
+  const el = document.getElementById("pilaSelResumen"); if (!el) return;
+  const marcados = [...document.querySelectorAll("#pilaCuerpo input[data-pila-ced]:checked")];
+  const total = marcados.reduce((a, c) => a + numOrZero(c.closest("tr").dataset.total), 0);
+  el.innerHTML = `<b>${marcados.length}</b> marcado(s) para la planilla · aportes <b>${fmt(total)}</b>`;
+  const b = document.getElementById("pilaDescargarBtn");
+  if (b) b.textContent = marcados.length ? `⬇️ Descargar Excel (${marcados.length})` : "⬇️ Descargar Excel";
+}
+document.getElementById("pilaCuerpo").addEventListener("input", (e) => {
+  if (e.target.id !== "pilaBuscar") return;
+  _pilaBusca = e.target.value; pilaFiltrar();
+});
+document.getElementById("pilaCuerpo").addEventListener("click", (e) => {
+  if (e.target.id === "pilaMarcarVis"){
+    document.querySelectorAll("#pilaCuerpo tr[data-pila-fila]:not([hidden]) input[data-pila-ced]").forEach(c => { c.checked = true; _pilaSel.add(c.dataset.pilaCed); });
+    pilaResumenSel();
+  } else if (e.target.id === "pilaDesmarcarTodo"){
+    document.querySelectorAll("#pilaCuerpo input[data-pila-ced]").forEach(c => { c.checked = false; _pilaSel.delete(c.dataset.pilaCed); });
+    const t = document.getElementById("pilaTodos"); if (t) t.checked = false;
+    pilaResumenSel();
+  }
+});
 document.getElementById("pilaCuerpo").addEventListener("change", (e) => {
-  if (e.target.id === "pilaTodos"){ const on = e.target.checked; (abrirGenerarPila._filas || []).forEach(f => on ? _pilaSel.add(String(f.r["Cédula"])) : _pilaSel.delete(String(f.r["Cédula"]))); abrirGenerarPila(); return; }
+  if (e.target.id === "pilaTodos"){
+    // Con búsqueda: solo los que se ven
+    const on = e.target.checked;
+    document.querySelectorAll("#pilaCuerpo tr[data-pila-fila]:not([hidden]) input[data-pila-ced]").forEach(c => { c.checked = on; on ? _pilaSel.add(c.dataset.pilaCed) : _pilaSel.delete(c.dataset.pilaCed); });
+    pilaResumenSel(); return;
+  }
   const ced = e.target.dataset && e.target.dataset.pilaCed;
-  if (ced){ e.target.checked ? _pilaSel.add(ced) : _pilaSel.delete(ced); }
+  if (ced){ e.target.checked ? _pilaSel.add(ced) : _pilaSel.delete(ced); pilaResumenSel(); }
 });
 // Corregir el orden del nombre (SUAPORTE lo compara con la base de datos de afiliados)
 async function pilaGuardarNombre(r, ap1, ap2, n1, n2){
@@ -13084,7 +13133,7 @@ document.getElementById("pilaCuerpo").addEventListener("click", async (e) => {
   window.__ultimoExcelPila = { aoa, nombre };
   showToast(`⬇️ ${nombre}: planilla propia de ${nombrePropio(r["Nombre del Afiliado"])}. En SUAPORTE entre con su cédula y cárguelo.`);
 });
-document.getElementById("navPilaBtn").addEventListener("click", () => { _pilaSel = null; abrirGenerarPila(); });
+document.getElementById("navPilaBtn").addEventListener("click", () => { _pilaSel = null; _pilaBusca = ""; abrirGenerarPila(); });
 </script>
 </body>
 </html>
