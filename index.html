@@ -8629,6 +8629,12 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
 
   // Si se marca PAGO sin EPS ni ARL cargados, se avisa (no es nómina de conductores, que no los usa).
   const esConductorGuardando = esNombreEmpresaServicio(getField("Empresa").value);
+  // No se deja guardar si el código de la ARL no corresponde al nivel de riesgo
+  { const err = errorRiesgoArl();
+    if (err){
+      const f = getField("ArlNivel").closest(".field"); if (f){ f.scrollIntoView({ behavior: "smooth", block: "center" }); f.classList.add("falta"); }
+      mostrarActividadArl(); showToast("⛔ " + err); return;
+    } }
   if (!esConductorGuardando && getField("Estado").value === "PAGO"){
     const faltaEps = !getField("Eps").value.trim();
     const faltaArl = !getField("Arl").value.trim();
@@ -12824,11 +12830,36 @@ function pilaActividad(texto, clase, centro){
   return PILA_ACTIVIDAD[`${clase}|${Number(centro) || 0}`] || PILA_ACTIVIDAD_CLASE[clase] || "";
 }
 // Lo que se ve debajo del campo ARL en agregar/editar cliente
+// ¿De qué riesgo es la actividad escrita? (7 dígitos: el primero es el riesgo; corta de Sura: por la tabla)
+function claseDeActividad(texto){
+  const t = String(texto || "");
+  const m7 = t.match(/(?:^|\D)([1-5]\d{6})(?!\d)/); if (m7) return Number(m7[1][0]);
+  const m6 = t.match(/(?:^|\D)(\d{6})(?!\d)/);
+  if (m6){ const k = Object.keys(PILA_ACTIVIDAD_NOMBRE).find(c => c.slice(1) === m6[1]); if (k) return Number(k[0]); }
+  const cortas = (t.match(/(?:^|\D)([1-9]\d{3})(?!\d)/g) || []).map(x => x.replace(/\D/g, ""));
+  for (const c of cortas){
+    const clases = [...new Set(Object.keys(PILA_ACTIVIDAD_CORTA).filter(k => k.split("|")[1] === c).map(k => Number(k.split("|")[0])))];
+    if (clases.length === 1) return clases[0];
+  }
+  return 0;
+}
+// Error si el código de la actividad es de un riesgo distinto al escogido
+function errorRiesgoArl(){
+  const t = getField("Arl").value.trim();
+  const nivel = Number(getField("ArlNivel").value) || 0;
+  const ca = claseDeActividad(t);
+  if (!t || !ca) return "";
+  if (!nivel) return `La actividad del código ARL es de riesgo ${ca}: escoja el nivel de riesgo ${ca}.`;
+  return ca !== nivel ? `El código ARL (actividad de riesgo ${ca}) no corresponde al nivel de riesgo ${nivel} escogido. Corrija el nivel o el código.` : "";
+}
 function mostrarActividadArl(){
   const el = document.getElementById("fArlActividad"); if (!el) return;
   const t = getField("Arl").value.trim();
   const clase = Number(getField("ArlNivel").value) || clasificarRiesgoArl(t) || 0;
   if (!t){ el.textContent = ""; el.classList.remove("falta"); return; }
+  const err = errorRiesgoArl();
+  if (err){ el.innerHTML = `⛔ ${escHtml(err)}`; el.classList.add("falta"); return; }
+  { const f = getField("ArlNivel").closest(".field"); if (f) f.classList.remove("falta"); }
   const cod = clase ? pilaActividad(t, clase, pilaCentro(t, clase)) : "";
   el.innerHTML = cod
     ? `Actividad en la planilla: <b>${cod}</b>${PILA_ACTIVIDAD_NOMBRE[cod] ? " · " + escHtml(PILA_ACTIVIDAD_NOMBRE[cod]) : ""} · centro ${pilaCentro(t, clase) || "—"}`
