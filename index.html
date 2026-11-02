@@ -529,6 +529,8 @@
   .lugar-selects{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   .lugar-selects select{ width:100%; min-width:0; max-width:100%; }
   @media (max-width:520px){ .lugar-selects{ grid-template-columns:1fr; } }
+  .arl-sug{ margin-top:4px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; color:var(--muted); font-weight:400; }
+  .arl-sug .btn{ font-size:11.5px; padding:3px 8px; }
   .eps-codigo{ display:block; font-size:11.5px; color:var(--muted); margin-top:3px; }
   .eps-codigo.falta{ color:var(--retiro); font-weight:600; }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
@@ -12469,6 +12471,7 @@ async function leerCertificadoAfiliacion(doc, fuente){
     const cedForm = getField("Cedula").value.trim();
     const otraCedula = d.cedula && cedForm && d.cedula !== cedForm;
     aviso.innerHTML = `<div>🔎 <b>Leí en el certificado:</b>${filas.map(([k, v]) => `<br>${k}: <b>${escHtml(v)}</b>`).join("")}</div>
+      ${doc === "Arl" && d.nivel && !(d.actividad && d.actividad.length === 7) ? `<div class="ocr-alerta">No pude leer bien la actividad económica en el certificado.${botonesSugerencia(d.nivel)}</div>` : ""}
       ${otraCedula ? `<div class="ocr-alerta">⚠️ La cédula del certificado (${escHtml(d.cedula)}) no es la misma del formulario (${escHtml(cedForm)}). Revise que sea el documento de este cliente.</div>` : ""}
       <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Llenar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
       <small>Solo se llenan estos recuadros; lo demás queda para llenarlo a mano.</small>`;
@@ -12829,6 +12832,36 @@ function pilaActividad(texto, clase, centro){
   // 3) Por riesgo y centro de trabajo, como en las planillas ya pagadas
   return PILA_ACTIVIDAD[`${clase}|${Number(centro) || 0}`] || PILA_ACTIVIDAD_CLASE[clase] || "";
 }
+// Actividades recomendadas para un riesgo: las de la tabla de ese riesgo, primero las que más usan los clientes
+function actividadesSugeridas(clase){
+  const cods = Object.keys(PILA_ACTIVIDAD_NOMBRE).filter(c => Number(c[0]) === Number(clase));
+  const uso = {};
+  Object.values(store.months || {}).forEach(mes => (mes || []).forEach(r => {
+    const n = Number(r["ARL Nivel"]) || 0; if (n !== Number(clase)) return;
+    const c = pilaActividad(r["ARL (Riesgo/Código)"], n, pilaCentro(r["ARL (Riesgo/Código)"], n));
+    if (c) uso[c] = (uso[c] || 0) + 1;
+  }));
+  return cods.sort((a, b) => (uso[b] || 0) - (uso[a] || 0));
+}
+function botonesSugerencia(clase){
+  const cods = actividadesSugeridas(clase);
+  if (!cods.length) return "";
+  return `<div class="arl-sug">Recomendadas para riesgo ${clase}: ${cods.map(c => `<button type="button" class="btn small ghost" data-arl-sug="${c}" title="${escHtml(PILA_ACTIVIDAD_NOMBRE[c] || "")}">${c} · ${escHtml(PILA_ACTIVIDAD_NOMBRE[c] || "")}</button>`).join(" ")}</div>`;
+}
+// Al tocar una recomendación: el campo queda "sura N cd 00X ac XXXXXXX" (conserva el centro de trabajo escrito)
+document.addEventListener("click", (e) => {
+  const bn = e.target.closest("[data-arl-nivel]");
+  if (bn){ getField("ArlNivel").value = bn.dataset.arlNivel; getField("ArlNivel").dispatchEvent(new Event("change", { bubbles: true })); mostrarActividadArl(); return; }
+  const b = e.target.closest("[data-arl-sug]"); if (!b) return;
+  const cod = b.dataset.arlSug, clase = Number(cod[0]);
+  const t = getField("Arl").value;
+  const centro = pilaCentro(t, clase) || PILA_CENTRO_DEFECTO[clase] || 1;
+  const arl = /positiva/i.test(t) ? "positiva" : "sura";
+  getField("ArlNivel").value = String(clase); getField("ArlNivel").dispatchEvent(new Event("change", { bubbles: true }));
+  getField("Arl").value = `${arl} ${clase} cd ${String(centro).padStart(3, "0")} ac ${cod}`;
+  getField("Arl").dispatchEvent(new Event("input", { bubbles: true }));
+  showToast(`✅ Actividad ${cod} puesta. Revise que sea la del certificado.`);
+});
 // Lo que se ve debajo del campo ARL en agregar/editar cliente
 // ¿De qué riesgo es la actividad escrita? (7 dígitos: el primero es el riesgo; corta de Sura: por la tabla)
 function claseDeActividad(texto){
@@ -12858,12 +12891,12 @@ function mostrarActividadArl(){
   const clase = Number(getField("ArlNivel").value) || clasificarRiesgoArl(t) || 0;
   if (!t){ el.textContent = ""; el.classList.remove("falta"); return; }
   const err = errorRiesgoArl();
-  if (err){ el.innerHTML = `⛔ ${escHtml(err)}`; el.classList.add("falta"); return; }
+  if (err){ const ca = claseDeActividad(t), nv = Number(getField("ArlNivel").value) || 0; el.innerHTML = `⛔ ${escHtml(err)}${nv ? botonesSugerencia(nv) : ""}${ca && ca !== nv ? `<div class="arl-sug">O si el riesgo es ${ca}: <button type="button" class="btn small ghost" data-arl-nivel="${ca}">Poner nivel ${ca}</button></div>` : ""}`; el.classList.add("falta"); return; }
   { const f = getField("ArlNivel").closest(".field"); if (f) f.classList.remove("falta"); }
   const cod = clase ? pilaActividad(t, clase, pilaCentro(t, clase)) : "";
   el.innerHTML = cod
     ? `Actividad en la planilla: <b>${cod}</b>${PILA_ACTIVIDAD_NOMBRE[cod] ? " · " + escHtml(PILA_ACTIVIDAD_NOMBRE[cod]) : ""} · centro ${pilaCentro(t, clase) || "—"}`
-    : (clase ? "⚠️ No reconozco la actividad: escriba el código de 7 dígitos del certificado (ej. ac 5493001)" : "⚠️ Falta el nivel de riesgo");
+    : (clase ? `⚠️ No reconozco la actividad: escriba el código de 7 dígitos del certificado (ej. ac 5493001) o escoja una recomendada.${botonesSugerencia(clase)}` : "⚠️ Falta el nivel de riesgo");
   el.classList.toggle("falta", !cod);
 }
 function pilaCentro(texto, clase){
