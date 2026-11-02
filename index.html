@@ -2483,6 +2483,8 @@
       Para poner un texto en <b>negrita</b> en WhatsApp, enciérralo entre asteriscos: *así*.</div>
     <div class="form-grid" style="margin-bottom:10px;">
       <div class="field"><label>Día límite de pago (de cada mes)</label><input type="number" id="fMensajeDia" min="1" max="31"></div>
+      <div class="field"><label class="chk-qr"><input type="checkbox" id="fMensajeQR"> Enviar también el <b>QR del banco</b> con cada recordatorio</label>
+        <small class="eps-codigo">Al abrir el chat, el QR (con el valor del cliente) queda copiado: envíe el mensaje y luego pegue la imagen.</small></div>
     </div>
     <div class="field">
       <label>Texto del mensaje</label>
@@ -6281,7 +6283,7 @@ async function cargarConfigMensaje(){
   try{
     const { data, error } = await sb.from("configuracion").select("valor").eq("clave", "mensaje_recordatorio").maybeSingle();
     if (!error && data && data.valor && data.valor.plantilla){
-      configMensaje = { plantilla: data.valor.plantilla, dia: Number(data.valor.dia) || 16 };
+      configMensaje = { plantilla: data.valor.plantilla, dia: Number(data.valor.dia) || 16, qr: !!data.valor.qr };
       try{ localStorage.setItem(CONFIG_MENSAJE_KEY, JSON.stringify(configMensaje)); }catch(e){}
     }
   }catch(e){ console.error("No se pudo leer el mensaje de recordatorio:", e); }
@@ -6778,7 +6780,9 @@ function construirMensajeRecordatorio(plantilla, dia, datos){
 function abrirEditorMensaje(){
   document.getElementById("fMensajeTexto").value = configMensaje.plantilla;
   document.getElementById("fMensajeDia").value = configMensaje.dia;
+  document.getElementById("fMensajeQR").checked = !!configMensaje.qr;
   const soloLecturaMsg = !esAdmin();
+  document.getElementById("fMensajeQR").disabled = soloLecturaMsg;
   document.getElementById("fMensajeTexto").readOnly = soloLecturaMsg;
   document.getElementById("fMensajeDia").readOnly = soloLecturaMsg;
   document.getElementById("guardarMensajeBtn").style.display = soloLecturaMsg ? "none" : "";
@@ -6813,7 +6817,7 @@ document.getElementById("guardarMensajeBtn").addEventListener("click", async () 
   const plantilla = document.getElementById("fMensajeTexto").value.trim();
   const dia = Math.min(31, Math.max(1, Number(document.getElementById("fMensajeDia").value) || 16));
   if (!plantilla){ showToast("Escribe el texto del mensaje."); return; }
-  configMensaje = { plantilla, dia };
+  configMensaje = { plantilla, dia, qr: document.getElementById("fMensajeQR").checked };
   try{ localStorage.setItem(CONFIG_MENSAJE_KEY, JSON.stringify(configMensaje)); }catch(e){}
   let guardadoEnNube = false;
   try{
@@ -6847,12 +6851,19 @@ function enviarWhatsapp(r, totalPagar){
   // (los muestra como �). Por eso, en computador se abre WhatsApp Web en el navegador,
   // que sí los respeta; en el celular se abre la app de WhatsApp normalmente.
   // Además el mensaje se copia al portapapeles, por si hay que pegarlo a mano (Ctrl+V).
-  copiarAlPortapapeles(mensaje);
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  // Con el QR activado, lo que queda copiado es la imagen del QR (con el valor), para pegarla después del mensaje
+  let qrCopiado = false;
+  if (configMensaje.qr && navigator.clipboard && window.ClipboardItem){
+    try{ navigator.clipboard.write([new ClipboardItem({ "image/png": imagenQRConExplicacion(r, "image/png", totalPagar) })]).catch(() => {}); qrCopiado = true; }catch(e){ qrCopiado = false; }
+  }
+  if (!qrCopiado) copiarAlPortapapeles(mensaje);
   const texto = encodeURIComponent(mensaje);
   if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
   else window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
-  if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
+  if (qrCopiado) showToast(esCelular ? "📋 Envíe el mensaje y luego mantenga presionado el cuadro de texto → Pegar: el QR ya está copiado." : "📋 Envíe el mensaje y luego pegue el QR con Ctrl+V (ya está copiado).");
+  else if (configMensaje.qr) showToast("No se pudo copiar el QR en este navegador: use «Ver/Descargar QR» y adjúntelo.");
+  else if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
 }
 
 // Todas las aperturas de WhatsApp usan la MISMA pestaña (en vez de abrir una nueva cada vez).
@@ -8369,7 +8380,7 @@ Luego envíenos el comprobante ✅`;
 }
 // Arma UNA imagen: el QR y debajo una explicación breve con el valor del cliente.
 // Así la explicación siempre llega (algunos celulares no mandan el texto junto con la foto).
-async function imagenQRConExplicacion(r, tipo = "image/jpeg"){
+async function imagenQRConExplicacion(r, tipo = "image/jpeg", valorFijo){
   const blob = await (await fetch(QR_URL, { cache: "force-cache" })).blob();
   const img = await createImageBitmap(blob);
   const W = img.width, extra = Math.round(W * 0.42);
@@ -8379,7 +8390,7 @@ async function imagenQRConExplicacion(r, tipo = "image/jpeg"){
   c.drawImage(img, 0, 0);
   const y0 = img.height, pad = W * 0.06;
   c.fillStyle = "#C8202F"; c.fillRect(0, y0, W, W * 0.012);
-  const valor = r ? calcularTotalPagar(r, store.currentMonth) : 0;
+  const valor = valorFijo != null ? valorFijo : (r ? calcularTotalPagar(r, store.currentMonth) : 0);
   c.fillStyle = "#FFFFFF"; c.textAlign = "center";
   c.font = `800 ${W * 0.05}px Inter, Arial, sans-serif`;
   c.fillText("¿Cómo pagar?", W / 2, y0 + W * 0.085);
