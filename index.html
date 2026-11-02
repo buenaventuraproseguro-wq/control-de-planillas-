@@ -675,6 +675,15 @@
   .g-estado.vencido{ background:var(--retiro-bg); color:var(--retiro); }
   .g-acciones{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
   .g-acciones .btn{ padding:4px 8px; font-size:12px; }
+  .g-cierre{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; margin:10px 0 12px; }
+  .g-cierre-caja{ border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--card, #fff); }
+  .g-cierre-caja h3{ font-size:13px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; }
+  .g-cierre-caja .fila{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:2px 0; border-bottom:1px dashed var(--line); }
+  .g-cierre-caja .fila:last-child{ border-bottom:0; }
+  .g-cierre-caja .fila span:last-child{ font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .g-cierre-caja.ingresos h3{ color:#1E7B4F; } .g-cierre-caja.gastos h3{ color:#B4232C; }
+  .g-cierre-caja .nota{ font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .g-tipo-ing{ color:#1E7B4F; font-weight:700; } .g-tipo-gas{ color:#B4232C; font-weight:700; }
   .g-categorias{ font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.7; }
   .g-categorias b{ color:var(--ink); }
   #gForm{ border:1.5px solid var(--navy); border-radius:12px; padding:14px; margin-bottom:14px; display:none; }
@@ -1404,7 +1413,7 @@
       </div>
 
       <div class="sidebar-section-title">Empresa</div>
-      <button type="button" class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Gastos de la empresa <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+      <button type="button" class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Libro contable (ingresos y gastos) <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
 
       <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><span class="sidebar-num">17</span><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
       <div class="sidebar-sub" id="enlacesLista"></div>
@@ -2181,22 +2190,25 @@
 <!-- Gastos de la empresa (solo administrador) -->
 <div class="overlay" id="overlayGastos">
   <div class="modal">
-    <h2>💸 Gastos de la empresa</h2>
-    <div class="modal-sub">Gastos ocasionales, facturas, arriendo y pagos de trabajos. Todo el equipo puede ver y agregar gastos y marcarlos como pagados; solo el administrador puede cambiar o eliminar un gasto ya guardado.</div>
+    <h2>📒 Libro contable · ingresos y gastos</h2>
+    <div class="modal-sub">Registre lo que <b>entra</b> (por ejemplo, clientes que pagan en efectivo) y lo que <b>sale</b> (arriendo, pagos a terceros, facturas, sueldos). Al final del mes vea el cierre: ingresos por medio de pago, gastos por categoría, el efectivo y el resultado. Todo el equipo puede registrar; solo el administrador puede cambiar o eliminar lo ya guardado.</div>
 
     <div class="g-barra">
       <div class="field"><label>Mes</label><input type="month" id="gMes"></div>
+      <div class="field"><label>Tipo</label><select id="gFiltroTipo"><option value="">Todo</option><option value="ingreso">Ingresos</option><option value="gasto">Gastos</option></select></div>
       <div class="field"><label>Categoría</label><select id="gFiltroCat"><option value="">Todas</option></select></div>
       <div class="field"><label>Estado</label><select id="gFiltroEstado"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="pagado">Pagados</option></select></div>
       <div style="flex:1"></div>
       <button type="button" class="btn ghost small" id="gExportarBtn">⬇️ Exportar mes</button>
+      <button type="button" class="btn primary" id="gNuevoIngresoBtn" style="background:#1E7B4F;border-color:#1E7B4F;">➕ Nuevo ingreso</button>
       <button type="button" class="btn primary" id="gNuevoBtn">➕ Nuevo gasto</button>
     </div>
 
     <form id="gForm" autocomplete="off">
       <h2 id="gFormTitulo" style="font-size:15px;">Nuevo gasto</h2>
       <div class="form-grid">
-        <div class="field"><label>Fecha del gasto</label><input type="date" id="gFecha" required></div>
+        <div class="field"><label>Tipo</label><select id="gTipo"><option value="gasto">Gasto (sale dinero)</option><option value="ingreso">Ingreso (entra dinero)</option></select></div>
+        <div class="field"><label id="gFechaLabel">Fecha del gasto</label><input type="date" id="gFecha" required></div>
         <div class="field"><label>Categoría</label><select id="gCategoria"></select></div>
         <div class="field span2"><label>Descripción</label><input type="text" id="gDescripcion" maxlength="200" placeholder="Ej: Arriendo oficina, factura de luz, pago trámite muelle" required></div>
         <div class="field"><label>A quién se le paga</label><input type="text" id="gProveedor" maxlength="120" placeholder="Persona o empresa"></div>
@@ -2216,6 +2228,7 @@
 
     <div id="gFijos"></div>
     <div class="g-resumen" id="gResumen"></div>
+    <div class="g-cierre" id="gCierre"></div>
     <div class="g-tabla-wrap"><table class="g-tabla" id="gTabla"></table></div>
     <div class="g-categorias" id="gPorCategoria"></div>
 
@@ -9642,7 +9655,10 @@ document.getElementById("exportCsvBtn").addEventListener("click", () => {
 // Se guardan en la tabla "gastos" de Supabase (la base solo se los muestra al administrador).
 // Se guarda una copia en este equipo solo para poder CONSULTARLOS sin internet.
 const GASTOS_CACHE_KEY = "prosegurosnet_gastos_v1";
-const CATEGORIAS_GASTO_BASE = ["Arriendo","Servicios públicos","Internet y teléfono","Pago a trabajadores","Facturas de proveedores","Papelería y oficina","Transporte","Impuestos","Otros"];
+const CATEGORIAS_GASTO_BASE = ["Arriendo","Pagos a terceros","Servicios públicos","Internet y teléfono","Pago a trabajadores","Facturas de proveedores","Papelería y oficina","Transporte","Impuestos","Otros"];
+// Ingresos: entradas de dinero que no son las consignaciones del banco (por ejemplo, clientes que pagan en efectivo)
+const CATEGORIAS_INGRESO = ["Pagos de clientes en efectivo","Pagos de clientes por transferencia","Servicios (muelles, trámites, asesorías)","Otros ingresos"];
+const tipoMov = (g) => g && g.tipo === "ingreso" ? "ingreso" : "gasto";
 let gastos = [];
 let categoriasGasto = CATEGORIAS_GASTO_BASE.slice();
 let gastoEditando = null;      // id del gasto que se está editando
@@ -9710,7 +9726,8 @@ function actualizarBadgeGastos(){
 
 function llenarSelectCategorias(sel, conTodas, valor){
   const opciones = categoriasGasto.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
-  sel.innerHTML = (conTodas ? `<option value="">Todas</option>` : "") + opciones + (conTodas ? "" : `<option value="__nueva__">➕ Crear otra categoría…</option>`);
+  const deIngreso = conTodas ? `<optgroup label="Ingresos">${CATEGORIAS_INGRESO.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("")}</optgroup>` : "";
+  sel.innerHTML = (conTodas ? `<option value="">Todas</option><optgroup label="Gastos">` : "") + opciones + (conTodas ? `</optgroup>` + deIngreso : `<option value="__nueva__">➕ Crear otra categoría…</option>`);
   if (valor !== undefined) sel.value = valor;
 }
 
@@ -9739,8 +9756,12 @@ function renderGastos(){
   const ym = document.getElementById("gMes").value || mesDeFecha(hoyISO());
   const fCat = document.getElementById("gFiltroCat").value;
   const fEst = document.getElementById("gFiltroEstado").value;
-  const delMes = gastos.filter(g => mesDeFecha(g.fecha) === ym);
-  const lista = delMes
+  const fTipo = document.getElementById("gFiltroTipo").value;
+  const todosMes = gastos.filter(g => mesDeFecha(g.fecha) === ym);
+  const ingresosMes = todosMes.filter(g => tipoMov(g) === "ingreso");
+  const delMes = todosMes.filter(g => tipoMov(g) === "gasto");
+  const lista = todosMes
+    .filter(g => !fTipo || tipoMov(g) === fTipo)
     .filter(g => !fCat || g.categoria === fCat)
     .filter(g => !fEst || g.estado === fEst)
     .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || "") || (a.created_at || "").localeCompare(b.created_at || ""));
@@ -9749,11 +9770,14 @@ function renderGastos(){
   const pagados = delMes.filter(g => g.estado === "pagado");
   const pendientes = delMes.filter(g => g.estado !== "pagado");
   const vencidos = pendientes.filter(g => estadoVisual(g) === "vencido");
+  const totIng = suma(ingresosMes), totGasPag = suma(pagados);
   document.getElementById("gResumen").innerHTML = `
-    <div class="g-tarjeta"><small>Total gastos del mes</small><b>${fmt(suma(delMes))}</b></div>
-    <div class="g-tarjeta"><small>Pagado</small><b>${fmt(suma(pagados))}</b></div>
-    <div class="g-tarjeta"><small>Pendiente por pagar</small><b>${fmt(suma(pendientes))}</b></div>
-    <div class="g-tarjeta ${vencidos.length ? "alerta" : ""}"><small>Vencidos</small><b>${vencidos.length ? `${vencidos.length} · ${fmt(suma(vencidos))}` : "0"}</b></div>`;
+    <div class="g-tarjeta"><small>Ingresos del mes</small><b class="g-tipo-ing">${fmt(totIng)}</b></div>
+    <div class="g-tarjeta"><small>Gastos pagados</small><b class="g-tipo-gas">${fmt(totGasPag)}</b></div>
+    <div class="g-tarjeta"><small>Gastos pendientes por pagar</small><b>${fmt(suma(pendientes))}</b></div>
+    <div class="g-tarjeta ${totIng - totGasPag < 0 ? "alerta" : ""}"><small>Resultado (ingresos − gastos pagados)</small><b>${fmt(totIng - totGasPag)}</b></div>
+    ${vencidos.length ? `<div class="g-tarjeta alerta"><small>Vencidos</small><b>${vencidos.length} · ${fmt(suma(vencidos))}</b></div>` : ""}`;
+  renderCierreMes(ym, ingresosMes, delMes);
 
   const faltan = fijosFaltantes(ym);
   document.getElementById("gFijos").innerHTML = faltan.length ? `
@@ -9768,15 +9792,16 @@ function renderGastos(){
     <tbody>${lista.map(g => {
       const ev = estadoVisual(g);
       const etiqueta = ev === "pagado" ? `Pagado${g.fecha_pago ? " " + fechaCorta(g.fecha_pago) : ""}` : ev === "vencido" ? "Vencido" : "Pendiente";
+      const esIng = tipoMov(g) === "ingreso";
       return `<tr data-gasto="${escHtml(g.id)}">
         <td>${fechaCorta(g.fecha)}</td>
-        <td>${escHtml(g.categoria)}${g.fijo_mensual ? ` <span title="Se repite cada mes">🔁</span>` : ""}</td>
+        <td><span class="${esIng ? "g-tipo-ing" : "g-tipo-gas"}">${esIng ? "▲ Ingreso" : "▼ Gasto"}</span><br>${escHtml(g.categoria)}${g.fijo_mensual ? ` <span title="Se repite cada mes">🔁</span>` : ""}</td>
         <td>${escHtml(g.descripcion)}${g.proveedor ? `<div class="g-sub">${escHtml(g.proveedor)}</div>` : ""}${g.medio_pago && g.estado === "pagado" ? `<div class="g-sub">${escHtml(g.medio_pago)}</div>` : ""}</td>
         <td>${g.vence ? fechaCorta(g.vence) : "—"}</td>
-        <td class="num">${fmt(g.valor)}</td>
-        <td><span class="g-estado ${ev}">${etiqueta}</span></td>
+        <td class="num ${esIng ? "g-tipo-ing" : ""}">${esIng ? "+" : ""}${fmt(g.valor)}</td>
+        <td>${esIng ? `<span class="g-estado pagado">Recibido${g.medio_pago ? " · " + escHtml(g.medio_pago) : ""}</span>` : `<span class="g-estado ${ev}">${etiqueta}</span>`}</td>
         <td><div class="g-acciones">
-          ${g.estado !== "pagado" ? `<button type="button" class="btn ghost" data-g-accion="pagar" title="Marcar como pagado">✅ Pagado</button>` : ""}
+          ${g.estado !== "pagado" && !esIng ? `<button type="button" class="btn ghost" data-g-accion="pagar" title="Marcar como pagado">✅ Pagado</button>` : ""}
           ${g.comprobante_path ? `<a class="btn ghost g-ver" data-g-path="${escHtml(g.comprobante_path)}" target="_blank" rel="noopener" title="Ver factura o recibo" aria-disabled="true">📎</a>` : ""}
           ${esAdmin() ? `<button type="button" class="btn ghost" data-g-accion="editar" title="Editar">✏️</button>
           <button type="button" class="btn ghost danger" data-g-accion="borrar" title="Eliminar">🗑️</button>` : ""}
@@ -9786,13 +9811,36 @@ function renderGastos(){
   }
 
   firmarComprobantesGastos();
+  document.getElementById("gPorCategoria").innerHTML = "";
+}
 
-  const porCat = {};
-  delMes.forEach(g => { porCat[g.categoria] = (porCat[g.categoria] || 0) + (Number(g.valor) || 0); });
-  const cats = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
-  document.getElementById("gPorCategoria").innerHTML = cats.length
-    ? "Por categoría: " + cats.map(([c, v]) => `<b>${escHtml(c)}</b> ${fmt(v)}`).join(" · ")
-    : "";
+// Cierre del mes: ingresos por medio y por tipo, gastos por categoría (arriendo, pagos a terceros…) y resultado
+function renderCierreMes(ym, ingresos, gastosMes){
+  const suma = arr => arr.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+  const agrupar = (arr, clave) => { const m = {}; arr.forEach(g => { const k = clave(g) || "Sin dato"; m[k] = (m[k] || 0) + (Number(g.valor) || 0); }); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+  const filas = (pares) => pares.map(([k, v]) => `<div class="fila"><span>${escHtml(k)}</span><span>${fmt(v)}</span></div>`).join("") || `<div class="fila"><span>—</span><span>$0</span></div>`;
+  const pagados = gastosMes.filter(g => g.estado === "pagado");
+  const pend = gastosMes.filter(g => g.estado !== "pagado");
+  const efIng = suma(ingresos.filter(g => /efectivo/i.test(g.medio_pago || "") || /efectivo/i.test(g.categoria || "")));
+  const efGas = suma(pagados.filter(g => /efectivo/i.test(g.medio_pago || "")));
+  // Lo que la app dice que pagaron los clientes en ese mes (referencia, no es dinero registrado aquí)
+  const nombreMes = nombreMesISO(ym);
+  const regs = store.months[nombreMes] || [];
+  const cartera = regs.filter(r => !esConductorExcluido(r) && pagadoEsteMes(r)).reduce((a, r) => a + calcularTotalPagar(r, nombreMes), 0);
+  document.getElementById("gCierre").innerHTML = `
+    <div class="g-cierre-caja ingresos"><h3><span>▲ Ingresos</span><span>${fmt(suma(ingresos))}</span></h3>
+      <div class="nota">Por medio de pago</div>${filas(agrupar(ingresos, g => g.medio_pago || (/efectivo/i.test(g.categoria) ? "Efectivo" : "")))}
+      <div class="nota">Por tipo de ingreso</div>${filas(agrupar(ingresos, g => g.categoria))}
+      ${regs.length ? `<div class="nota">Referencia: los clientes que pagaron en la app en ${escHtml(nombreMes)} suman <b>${fmt(cartera)}</b> (consignaciones y efectivo).</div>` : ""}</div>
+    <div class="g-cierre-caja gastos"><h3><span>▼ Gastos pagados</span><span>${fmt(suma(pagados))}</span></h3>
+      ${filas(agrupar(pagados, g => g.categoria))}
+      ${pend.length ? `<div class="nota">Pendientes por pagar: <b>${fmt(suma(pend))}</b> (${pend.length})</div>` : ""}
+      <div class="nota">A terceros (a quién se le pagó)</div>${filas(agrupar(pagados.filter(g => g.proveedor), g => g.proveedor).slice(0, 8))}</div>
+    <div class="g-cierre-caja"><h3><span>💵 Efectivo del mes</span><span>${fmt(efIng - efGas)}</span></h3>
+      <div class="fila"><span>Entró en efectivo</span><span>${fmt(efIng)}</span></div>
+      <div class="fila"><span>Salió en efectivo</span><span>${fmt(efGas)}</span></div>
+      <h3 style="margin-top:10px;"><span>📊 Resultado del mes</span><span>${fmt(suma(ingresos) - suma(pagados))}</span></h3>
+      <div class="nota">Ingresos registrados menos gastos pagados de ${escHtml(nombreMes)}.</div></div>`;
 }
 
 // Los enlaces a las facturas se preparan antes de tocarlos (así abren bien en iPhone).
@@ -9826,14 +9874,17 @@ function abrirFormGasto(g){
   gastoEditando = g ? g.id : null;
   gastoArchivoQuitar = false;
   const ym = document.getElementById("gMes").value || mesDeFecha(hoyISO());
-  document.getElementById("gFormTitulo").textContent = g ? "Editar gasto" : "Nuevo gasto";
+  const tipo = g ? tipoMov(g) : (abrirFormGasto._tipo || "gasto");
+  abrirFormGasto._tipo = null;
+  document.getElementById("gTipo").value = tipo;
+  document.getElementById("gFormTitulo").textContent = (g ? "Editar " : "Nuevo ") + (tipo === "ingreso" ? "ingreso" : "gasto");
   document.getElementById("gFecha").value = g ? g.fecha : (mesDeFecha(hoyISO()) === ym ? hoyISO() : ym + "-01");
-  llenarSelectCategorias(document.getElementById("gCategoria"), false, g ? g.categoria : categoriasGasto[0]);
+  llenarCategoriasSegunTipo(tipo, g ? g.categoria : null);
   document.getElementById("gDescripcion").value = g ? g.descripcion : "";
   document.getElementById("gProveedor").value = g ? (g.proveedor || "") : "";
   document.getElementById("gValor").value = g ? g.valor : "";
   document.getElementById("gVence").value = g ? (g.vence || "") : "";
-  document.getElementById("gEstado").value = g ? g.estado : "pendiente";
+  document.getElementById("gEstado").value = g ? g.estado : (tipo === "ingreso" ? "pagado" : "pendiente");
   document.getElementById("gFechaPago").value = g ? (g.fecha_pago || "") : "";
   document.getElementById("gMedio").value = g ? (g.medio_pago || "") : "";
   document.getElementById("gFijo").checked = g ? !!g.fijo_mensual : false;
@@ -9845,6 +9896,20 @@ function abrirFormGasto(g){
   form.classList.add("show");
   form.scrollIntoView({ behavior: "smooth", block: "start" });
   document.getElementById("gDescripcion").focus();
+}
+function llenarCategoriasSegunTipo(tipo, valor){
+  const sel = document.getElementById("gCategoria");
+  if (tipo === "ingreso"){
+    sel.innerHTML = CATEGORIAS_INGRESO.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
+    sel.value = valor && CATEGORIAS_INGRESO.includes(valor) ? valor : CATEGORIAS_INGRESO[0];
+  } else llenarSelectCategorias(sel, false, valor || categoriasGasto[0]);
+  // En un ingreso no hay "pendiente", ni vence, ni "se repite cada mes"
+  const esIng = tipo === "ingreso";
+  document.getElementById("gFechaLabel").textContent = esIng ? "Fecha en que entró el dinero" : "Fecha del gasto";
+  ["gVence", "gEstado", "gFijo"].forEach(id => { const f = document.getElementById(id).closest(".field"); if (f) f.style.display = esIng ? "none" : ""; });
+  if (esIng) document.getElementById("gEstado").value = "pagado";
+  document.querySelector('label[for="gProveedor"], #gProveedor').closest(".field").querySelector("label").textContent = esIng ? "Quién pagó (cliente o persona)" : "A quién se le paga";
+  if (typeof mostrarCamposPago === "function") mostrarCamposPago();
 }
 function cerrarFormGasto(){ document.getElementById("gForm").classList.remove("show"); gastoEditando = null; }
 function mostrarCamposPago(){
@@ -9890,6 +9955,7 @@ async function guardarGasto(ev){
   const estado = document.getElementById("gEstado").value;
   const g = {
     id: anterior ? anterior.id : (crypto.randomUUID ? crypto.randomUUID() : ("g" + Date.now() + Math.random().toString(16).slice(2))),
+    tipo: document.getElementById("gTipo").value === "ingreso" ? "ingreso" : "gasto",
     fecha, categoria, descripcion: desc,
     proveedor: document.getElementById("gProveedor").value.trim() || null,
     valor,
@@ -9928,7 +9994,8 @@ async function guardarGasto(ev){
     cerrarFormGasto();
     document.getElementById("gMes").value = mesDeFecha(g.fecha);
     renderGastos();
-    showToast(anterior ? "✅ Gasto actualizado." : "✅ Gasto guardado.");
+    const palabra = g.tipo === "ingreso" ? "Ingreso" : "Gasto";
+    showToast(anterior ? `✅ ${palabra} actualizado.` : `✅ ${palabra} guardado.`);
   }catch(e){
     console.error(e);
     showToast("No se pudo guardar el gasto: " + (e.message || e));
@@ -9988,16 +10055,19 @@ function exportarGastosMes(){
   const filas = gastos.filter(g => mesDeFecha(g.fecha) === ym).sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
   if (!filas.length){ showToast("No hay gastos en este mes para exportar."); return; }
   const csv = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
-  const enc = ["Fecha","Categoría","Descripción","A quién se le paga","Valor","Vence","Estado","Fecha de pago","Medio de pago","Se repite cada mes"];
+  const enc = ["Fecha","Tipo","Categoría","Descripción","Quién / a quién","Valor","Vence","Estado","Fecha de pago","Medio de pago","Se repite cada mes"];
   const lineas = [enc.map(csv).join(";")].concat(filas.map(g => [
-    fechaCorta(g.fecha), g.categoria, g.descripcion, g.proveedor || "", g.valor, fechaCorta(g.vence), g.estado === "pagado" ? "Pagado" : (estadoVisual(g) === "vencido" ? "Vencido" : "Pendiente"),
+    fechaCorta(g.fecha), tipoMov(g) === "ingreso" ? "Ingreso" : "Gasto", g.categoria, g.descripcion, g.proveedor || "", g.valor, fechaCorta(g.vence), g.estado === "pagado" ? "Pagado" : (estadoVisual(g) === "vencido" ? "Vencido" : "Pendiente"),
     fechaCorta(g.fecha_pago), g.medio_pago || "", g.fijo_mensual ? "Sí" : "No",
   ].map(csv).join(";")));
-  lineas.push(["", "", "TOTAL", "", filas.reduce((s, g) => s + (Number(g.valor) || 0), 0)].map(csv).join(";"));
+  const sumaT = (t, soloPag) => filas.filter(g => tipoMov(g) === t && (!soloPag || g.estado === "pagado")).reduce((s, g) => s + (Number(g.valor) || 0), 0);
+  lineas.push(["", "", "", "TOTAL INGRESOS", "", sumaT("ingreso")].map(csv).join(";"));
+  lineas.push(["", "", "", "TOTAL GASTOS", "", sumaT("gasto")].map(csv).join(";"));
+  lineas.push(["", "", "", "RESULTADO (ingresos - gastos pagados)", "", sumaT("ingreso") - sumaT("gasto", true)].map(csv).join(";"));
   const blob = new Blob(["﻿" + lineas.join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `Gastos PROSEGUROSNET - ${nombreMesISO(ym)}.csv`;
+  a.download = `Libro contable PROSEGUROSNET - ${nombreMesISO(ym)}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -10006,6 +10076,12 @@ document.getElementById("navGastosBtn").addEventListener("click", abrirGastos);
 document.getElementById("gCerrarBtn").addEventListener("click", () => { cerrarFormGasto(); document.getElementById("overlayGastos").classList.remove("show"); });
 document.getElementById("overlayGastos").addEventListener("click", (e) => { if (e.target.id === "overlayGastos"){ cerrarFormGasto(); e.target.classList.remove("show"); } });
 document.getElementById("gNuevoBtn").addEventListener("click", () => abrirFormGasto(null));
+document.getElementById("gNuevoIngresoBtn").addEventListener("click", () => { abrirFormGasto._tipo = "ingreso"; abrirFormGasto(null); });
+document.getElementById("gFiltroTipo").addEventListener("change", renderGastos);
+document.getElementById("gTipo").addEventListener("change", (e) => {
+  llenarCategoriasSegunTipo(e.target.value, null);
+  document.getElementById("gFormTitulo").textContent = (gastoEditando ? "Editar " : "Nuevo ") + (e.target.value === "ingreso" ? "ingreso" : "gasto");
+});
 document.getElementById("gCancelarBtn").addEventListener("click", cerrarFormGasto);
 document.getElementById("gForm").addEventListener("submit", guardarGasto);
 document.getElementById("gEstado").addEventListener("change", mostrarCamposPago);
