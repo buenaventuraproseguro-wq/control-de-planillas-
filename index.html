@@ -6852,7 +6852,9 @@ function enviarWhatsapp(r, totalPagar){
   // que sí los respeta; en el celular se abre la app de WhatsApp normalmente.
   // Además el mensaje se copia al portapapeles, por si hay que pegarlo a mano (Ctrl+V).
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
-  // Con el QR activado, lo que queda copiado es la imagen del QR (con el valor), para pegarla después del mensaje
+  // Con el QR activado, el mensaje lleva el enlace al QR y la llave Bre-B (llega siempre, aunque no se pueda pegar)
+  if (configMensaje.qr) mensaje += `\n\n📲 *Pague con nuestro QR:* ${enlaceQR()}\nO con la llave Bre-B: *${LLAVE_BREB}*`;
+  // Además queda copiada la imagen del QR (con el valor), por si la quiere pegar después del mensaje
   let qrCopiado = false;
   if (configMensaje.qr && navigator.clipboard && window.ClipboardItem){
     try{ navigator.clipboard.write([new ClipboardItem({ "image/png": imagenQRConExplicacion(r, "image/png", totalPagar) })]).catch(() => {}); qrCopiado = true; }catch(e){ qrCopiado = false; }
@@ -6861,8 +6863,8 @@ function enviarWhatsapp(r, totalPagar){
   const texto = encodeURIComponent(mensaje);
   if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
   else window.open(`https://web.whatsapp.com/send?phone=${conIndicativo}&text=${texto}`, abrirPestanaWhatsapp());
-  if (qrCopiado) showToast(esCelular ? "📋 Envíe el mensaje y luego mantenga presionado el cuadro de texto → Pegar: el QR ya está copiado." : "📋 Envíe el mensaje y luego pegue el QR con Ctrl+V (ya está copiado).");
-  else if (configMensaje.qr) showToast("No se pudo copiar el QR en este navegador: use «Ver/Descargar QR» y adjúntelo.");
+  if (qrCopiado) showToast(esCelular ? "El mensaje lleva el enlace del QR. Si quiere, mantenga presionado el cuadro de texto → Pegar para mandar también la imagen." : "El mensaje lleva el enlace del QR. Si quiere, pegue también la imagen con Ctrl+V.");
+  else if (configMensaje.qr) showToast("El mensaje ya lleva el enlace del QR y la llave Bre-B.");
   else if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
 }
 
@@ -8370,12 +8372,15 @@ document.getElementById("compartirReciboBtn").addEventListener("click", comparti
 // ---- Enviar el QR de pago al cliente, con instrucciones cortas ----
 const QR_URL = "qr_pago_prosegurosnet.jpg";
 const LLAVE_BREB = "0078275062";
+// Enlace público a la imagen del QR (WhatsApp muestra la imagen y el cliente la puede abrir o guardar)
+function enlaceQR(){ try{ return new URL(QR_URL, location.href).href; }catch(e){ return QR_URL; } }
 function textoInstruccionesQR(r){
   const valor = r ? calcularTotalPagar(r, store.currentMonth) : 0;
   return `🛡️ *PROSEGUROSNET*
 ${valor ? `Valor a pagar: *${fmt(valor)}*\n` : ""}Pague por *Bre-B* desde la app de su banco con esta llave:
 \`\`\`${LLAVE_BREB}\`\`\`
 _(mantenga presionada la llave para copiarla)_
+📲 O escanee nuestro QR: ${enlaceQR()}
 Luego envíenos el comprobante ✅`;
 }
 // Arma UNA imagen: el QR y debajo una explicación breve con el valor del cliente.
@@ -8448,7 +8453,7 @@ function enviarQRPorChat(){
     abrirChatEnApp(conIndicativo, esCelular, textoInstruccionesQR(r));
     showToast(ok
       ? (esCelular ? "📋 Envíe el mensaje y luego mantenga presionado el cuadro de texto → Pegar el QR (ya está copiado)." : "📋 Envíe el mensaje y luego pegue el QR con Ctrl+V (ya está copiado).")
-      : "No se pudo copiar la imagen en este navegador. Use «Ver/Descargar QR» y adjúntela en el chat.");
+      : "El mensaje lleva el enlace del QR y la llave Bre-B (la imagen no se pudo copiar en este navegador).");
   });
 }
 function abrirChatEnApp(conIndicativo, esCelular, mensaje = ""){
