@@ -7013,8 +7013,10 @@ function actualizarBarraRecordatorios(){
 // teléfono del primero de la lista. El saludo va dirigido al responsable.
 // Se juntan: responsables que son una persona (don hector, jhon mastercarga…) y empresas
 // distintas a PROSEGUROSNET. NO se juntan los grupos generales: muelles, independientes.
-const GRUPOS_NO_PERSONA = ["", "psn", "prosegurosnet", "conductor", "conductores"];
-function esGrupoGeneral(k){ return GRUPOS_NO_PERSONA.includes(k) || /^muelle/.test(k) || /^independ/.test(k); }
+// Grupos que NO son una persona (una actividad o el nombre de la empresa): cada cliente recibe su
+// recordatorio a su propio nombre. Ej.: "mensajero" es la actividad de Luis Ríos y Dani Torres.
+const GRUPOS_NO_PERSONA = ["", "psn", "prosegurosnet", "conductor", "conductores", "mensajero", "mensajeros", "mensajeria", "mensajería"];
+function esGrupoGeneral(k){ return GRUPOS_NO_PERSONA.includes(k) || /^muelle/.test(k) || /^independ/.test(k) || /^mensajer/.test(k); }
 function claveResponsable(r){
   return String(r["Responsable / Grupo"] || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
