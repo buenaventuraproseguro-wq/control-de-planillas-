@@ -1276,6 +1276,25 @@
 
   .resp-row .resp-txt{ flex:1; min-width:0; font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-transform:capitalize; }
   .resp-row .count{ font-size:12px; }
+  .resp-row{ flex-wrap:wrap; }
+  .resp-row[data-tipo] .resp-txt{ flex:1 1 140px; }
+  .resp-datos{ flex:1 1 100%; display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; padding:10px; margin-top:2px; border:1px solid var(--line, #d8d8d8); border-radius:8px; }
+  .resp-datos label{ display:flex; flex-direction:column; gap:3px; font-size:12px; font-weight:600; min-width:0; }
+  .resp-datos input, .resp-datos select{ width:100%; min-width:0; padding:7px 8px; font:inherit; font-weight:400; }
+  .resp-datos .ancho{ grid-column:1 / -1; }
+  .resp-datos .chequeo{ flex-direction:row; align-items:center; gap:8px; font-weight:400; }
+  .resp-datos .chequeo input{ width:auto; }
+  .resp-datos .acciones{ display:flex; gap:8px; }
+  @media (max-width:560px){ .resp-datos{ grid-template-columns:1fr; } }
+  .resp-falta{ font-size:12px; color:var(--retiro); font-weight:600; }
+  .resp-completo{ font-size:12px; color:var(--muted); }
+  .faltan-caja{ border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:10px; margin-bottom:12px; font-size:13px; }
+  .faltan-caja summary{ cursor:pointer; font-weight:600; }
+  .faltan-caja ul{ margin:8px 0 0; padding-left:18px; }
+  .faltan-caja li{ margin-bottom:4px; }
+  .factura-clientes{ margin:10px 0; padding:0; list-style:none; font-size:13px; }
+  .factura-clientes li{ display:flex; justify-content:space-between; gap:12px; padding:5px 0; border-bottom:1px solid var(--line, #e5e5e5); }
+  .factura-total{ text-align:right; font-weight:700; margin-bottom:10px; }
   .resp-row input{ flex:1; min-width:0; }
 
   /* ===== Agregar cliente: recuadros por confirmar ===== */
@@ -2413,6 +2432,27 @@
 </div>
 
 <!-- Modal de editar responsables -->
+<div class="overlay" id="overlayFactura">
+  <div class="modal" style="max-width:520px;">
+    <h2>🧾 Crear borrador en Alegra</h2>
+    <div class="modal-sub" id="facturaSub"></div>
+    <div id="facturaCuerpo"></div>
+    <div class="field" id="facturaMedioCampo"><label for="facturaMedio">Medio de pago</label>
+      <select id="facturaMedio">
+        <option value="">Escoja cómo pagó</option>
+        <option value="BANK_DEPOSIT">Consignación bancaria</option>
+        <option value="CREDIT_TRANSFER_BANK">Transferencia bancaria</option>
+        <option value="CASH">Efectivo</option>
+        <option value="MUTUAL_AGREEMENT">Otro</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="facturaCancelarBtn">Cancelar</button>
+      <button class="btn primary" id="facturaCrearBtn">Crear borrador</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlayResp">
   <div class="modal">
     <h2>Editar responsables</h2>
@@ -2421,6 +2461,7 @@
       <input type="text" id="fNuevoResponsable" placeholder="Nombre del nuevo responsable">
       <button type="button" class="btn small primary" id="crearResponsableBtn">+ Crear</button>
     </div>
+    <div id="faltanFactura"></div>
     <div id="listaRespEditar"></div>
 
     <h2 style="margin-top:22px;">Empresas</h2>
@@ -4007,12 +4048,80 @@ function responsablesConocidos(){
 // Responsables CREADOS (tabla compartida "responsables"). Solo se puede escoger uno de estos;
 // si se escribe uno que no existe, se avisa que primero hay que crearlo.
 let responsablesCreados = null; // Map clave -> nombre (null = todavía no se sabe / sin tabla)
+let responsablesDatos = new Map(); // Map clave -> fila completa, con los datos para la factura
+const CAMPOS_FACTURA_RESP = ["nombre_factura", "tipo_doc", "documento", "correo", "telefono", "factura_individual"];
+// Grupos que no son una persona que compra: cada cliente se factura a su propio nombre
+function respFacturaAlCliente(clave){
+  return esGrupoGeneral(clave) || !!(responsablesDatos.get(clave) || {}).factura_individual;
+}
+function faltanDatosResp(clave){
+  const d = responsablesDatos.get(clave) || {}, f = [];
+  if (!String(d.nombre_factura || "").trim()) f.push("nombre");
+  if (!String(d.documento || "").trim()) f.push("cédula o NIT");
+  if (!String(d.correo || "").trim()) f.push("correo");
+  if (!String(d.telefono || "").trim()) f.push("teléfono");
+  return f;
+}
+function formularioDatosResp(clave){
+  const d = responsablesDatos.get(clave) || {};
+  const tipo = d.tipo_doc || "CC";
+  const auto = esGrupoGeneral(clave);
+  return `<form class="resp-datos" data-clave="${escHtml(clave)}">
+    <label class="ancho">Nombre o razón social (si es persona, primero los apellidos)
+      <input type="text" data-c="nombre_factura" maxlength="120" value="${escHtml(d.nombre_factura || "")}"></label>
+    <label>Tipo de documento
+      <select data-c="tipo_doc">${[["CC","Cédula"],["NIT","NIT"],["CE","Cédula de extranjería"],["PP","Pasaporte"],["PEP","PEP"]].map(([v,t]) => `<option value="${v}" ${v === tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <label>Cédula o NIT (con el dígito: 900123456-7)
+      <input type="text" data-c="documento" maxlength="20" value="${escHtml(d.documento || "")}"></label>
+    <label>Correo
+      <input type="email" data-c="correo" maxlength="120" value="${escHtml(d.correo || "")}"></label>
+    <label>Teléfono
+      <input type="tel" data-c="telefono" maxlength="15" value="${escHtml(d.telefono || "")}"></label>
+    <label class="ancho chequeo"><input type="checkbox" data-c="factura_individual" ${auto || d.factura_individual ? "checked" : ""} ${auto ? "disabled" : ""}> No es quien compra: cada cliente se factura a su nombre</label>
+    <div class="ancho acciones"><button type="button" class="btn small primary" data-accion="guardarDatos">Guardar datos</button><button type="button" class="btn small ghost" data-accion="cerrarDatos">Cerrar</button></div>
+  </form>`;
+}
+async function guardarDatosResp(form){
+  const clave = form.dataset.clave;
+  const val = c => form.querySelector(`[data-c="${c}"]`);
+  const correo = val("correo").value.trim(), telefono = val("telefono").value.replace(/\D/g, "");
+  const documento = val("documento").value.replace(/[^\dA-Za-z-]/g, "").toUpperCase();
+  if (correo && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)){ showToast("Revise el correo."); val("correo").focus(); return false; }
+  if (telefono && telefono.length !== 10){ showToast("El teléfono debe tener 10 números."); val("telefono").focus(); return false; }
+  if (val("tipo_doc").value === "CC" && documento && typeof problemaCedula === "function" && problemaCedula(documento)){ showToast("⚠️ " + problemaCedula(documento)); val("documento").focus(); return false; }
+  const datos = { nombre_factura: limpiarEspacios(val("nombre_factura").value).toUpperCase() || null, tipo_doc: val("tipo_doc").value, documento: documento || null, correo: correo || null, telefono: telefono || null, factura_individual: val("factura_individual").checked && !esGrupoGeneral(clave) };
+  const existe = responsablesDatos.get(clave);
+  const nombre = existe ? existe.nombre : (responsablesCreados && responsablesCreados.get(clave)) || form.closest(".resp-row").dataset.original;
+  try{
+    const { data, error } = existe
+      ? await sb.from("responsables").update(datos).eq("clave", clave).select().single()
+      : await sb.from("responsables").insert({ ...datos, nombre, clave }).select().single();
+    if (error) throw error;
+    responsablesDatos.set(clave, data);
+    showToast("✅ Datos guardados.");
+    return true;
+  }catch(e){ await alertApp("No se pudieron guardar los datos: " + (e.message || e)); return false; }
+}
+// Lo que falta para poder facturar: responsables sin datos y clientes sin correo
+function renderFaltanFactura(lista){
+  const caja = document.getElementById("faltanFactura");
+  if (!caja) return;
+  const resp = lista.filter(g => g.n > 0 && !respFacturaAlCliente(g.k)).map(g => ({ ...g, f: faltanDatosResp(g.k) })).filter(g => g.f.length);
+  const clientes = records.filter(r => !isRetiro(r) && (!claveValidaResp(r) || respFacturaAlCliente(normResp(r["Responsable / Grupo"]))) && !String(r["Correo"] || "").trim());
+  caja.innerHTML = (resp.length || clientes.length) ? `<details class="faltan-caja">
+    <summary>⚠️ Faltan datos para facturar: ${resp.length} responsable${resp.length === 1 ? "" : "s"} y ${clientes.length} cliente${clientes.length === 1 ? "" : "s"}</summary>
+    ${resp.length ? `<ul>${resp.map(g => `<li><b>${escHtml(g.nombre)}</b>: falta ${escHtml(g.f.join(", "))}</li>`).join("")}</ul>` : ""}
+    ${clientes.length ? `<p style="margin:10px 0 0;font-weight:600;">Clientes sin correo (se agrega en Editar cliente):</p><ul>${clientes.map(r => `<li>${escHtml(r["Nombre del Afiliado"] || "")} · ${escHtml(r["Cédula"])}</li>`).join("")}</ul>` : ""}
+  </details>` : `<div class="faltan-caja">✅ Están los datos para facturar a responsables y clientes.</div>`;
+}
+function claveValidaResp(r){ return !!normResp(r["Responsable / Grupo"]); }
 async function cargarResponsablesCreados(){
   if (!cloudDb) return;
   try{
-    const { data, error } = await sb.from("responsables").select("nombre,clave");
+    const { data, error } = await sb.from("responsables").select("*");
     if (error) return;
     responsablesCreados = new Map((data || []).map(r => [r.clave || normResp(r.nombre), r.nombre]));
+    responsablesDatos = new Map((data || []).map(r => [r.clave || normResp(r.nombre), r]));
     renderListaResponsables();
   }catch(e){}
 }
@@ -5085,11 +5194,15 @@ function responsablesDelMes(){
   return [...m.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 function filaEditable(tipo, clave, nombre, n){
+  const esResp = tipo === "resp";
+  const faltan = esResp && !respFacturaAlCliente(clave) ? faltanDatosResp(clave) : [];
   return `<div class="resp-row" data-tipo="${tipo}" data-clave="${escHtml(clave)}" data-original="${escHtml(nombre)}">
       <span class="resp-txt">${escHtml(nombre)}</span>
       <span class="count">${n} cliente${n === 1 ? "" : "s"}</span>
+      ${esResp ? `<button type="button" class="btn small" data-accion="datosFactura">🧾 Datos para factura</button>` : ""}
       <button type="button" class="btn small" data-accion="editar">Editar</button>
       <button type="button" class="btn small danger" data-accion="eliminar">Eliminar</button>
+      ${esResp ? (respFacturaAlCliente(clave) ? `<span class="resp-completo" style="flex-basis:100%;">Cada cliente se factura a su nombre</span>` : faltan.length ? `<span class="resp-falta" style="flex-basis:100%;">Falta: ${escHtml(faltan.join(", "))}</span>` : `<span class="resp-completo" style="flex-basis:100%;">✅ Datos completos</span>`) : ""}
     </div>`;
 }
 async function abrirEditorResponsables(){
@@ -5102,6 +5215,7 @@ async function abrirEditorResponsables(){
   document.getElementById("listaRespEditar").innerHTML = lista.length
     ? lista.map(g => filaEditable("resp", g.k, g.nombre, g.n)).join("")
     : `<div class="empty">Este mes no hay clientes con responsable.</div>`;
+  renderFaltanFactura(lista);
   renderListaEmpresasEditar();
   document.getElementById("overlayResp").classList.add("show");
 }
@@ -5127,6 +5241,14 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
   const row = b.closest(".resp-row");
   const tipo = row.dataset.tipo, clave = row.dataset.clave, original = row.dataset.original;
   const accion = b.dataset.accion;
+  if (accion === "datosFactura"){
+    const abierto = row.querySelector(".resp-datos");
+    if (abierto) abierto.remove();
+    else { row.insertAdjacentHTML("beforeend", formularioDatosResp(clave)); const c = row.querySelector('[data-c="nombre_factura"]'); if (c) c.focus(); }
+    return;
+  }
+  if (accion === "cerrarDatos"){ row.querySelector(".resp-datos").remove(); return; }
+  if (accion === "guardarDatos"){ if (await guardarDatosResp(row.querySelector(".resp-datos"))) abrirEditorResponsables(); return; }
   const esResp = tipo === "resp";
   const coincide = esResp ? (r => normResp(r["Responsable / Grupo"]) === clave) : (r => normalizarEmpresa(r["Empresa"]) === clave);
   const campo = esResp ? "Responsable / Grupo" : "Empresa";
@@ -5149,6 +5271,11 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
     afectados.forEach(r => { r[campo] = esResp ? nuevo.toLowerCase() : nuevo; });
     if (esResp){
       await crearResponsable(nuevo);
+      const claveNueva = normResp(nuevo), datosViejos = responsablesDatos.get(clave);
+      if (datosViejos && claveNueva !== clave && !(responsablesDatos.get(claveNueva) || {}).documento){
+        const copia = {}; CAMPOS_FACTURA_RESP.forEach(c => { copia[c] = datosViejos[c]; });
+        try{ await sb.from("responsables").update(copia).eq("clave", claveNueva); }catch(e){ console.error(e); }
+      }
       const sigueEnUso = Object.values(store.months).some(m => (m || []).some(r => normResp(r["Responsable / Grupo"]) === clave));
       if (!sigueEnUso) await borrarResponsableCreado(clave);
     }
@@ -7011,20 +7138,43 @@ async function crearBorradorAlegra(r){
   if (!sb || !navigator.onLine){ showToast("No hay conexión con la nube en este momento."); return; }
   const btn = document.getElementById("facturarBtn");
   const texto = btn.textContent;
+  const cedula = String(r["Cédula"]).trim(), mes = store.currentMonth;
   btn.disabled = true; btn.textContent = "Conectando con Alegra…";
   try{
-    const e = await llamarAlegra({ accion: "estado" });
-    const ok = await confirmarApp(`✅ Alegra conectado (numeración ${e.prefijo}${e.siguiente ? `, sigue la ${e.siguiente}` : ""}).\n\n¿Crear un BORRADOR para ${r["Nombre del Afiliado"]} por ${fmt(numOrZero(r["Costo Servicio"]))}?\n\nNo se envía a la DIAN. Queda en Alegra para que lo revise.`);
-    if (!ok) return;
-    btn.textContent = "Creando borrador…";
-    await llamarAlegra({ accion: "borrador", cedula: String(r["Cédula"]).trim(), mes: store.currentMonth });
-    await alertApp("✅ Borrador creado. Revíselo en Alegra → Ingresos → Facturas de venta. No se envió a la DIAN.");
+    const res = await llamarAlegra({ accion: "resumen", cedula, mes });
+    const incompleto = res.faltan && res.faltan.length;
+    document.getElementById("facturaSub").textContent = `${res.responsable ? `Responsable: ${res.responsable}` : "A nombre del cliente"} · ${mes} · numeración ${res.prefijo}. No se envía a la DIAN.`;
+    document.getElementById("facturaCuerpo").innerHTML = `
+      <p><b>${escHtml(res.destinatario || res.responsable)}</b>${res.documento ? ` · ${escHtml(res.tipo)} ${escHtml(res.documento)}` : ""}</p>
+      <ul class="factura-clientes">${res.clientes.map(c => `<li><span>${escHtml(c.nombre)} · ${escHtml(c.cedula)}</span><span>${fmt(c.valor)}</span></li>`).join("")}</ul>
+      <div class="factura-total">Total ${fmt(res.total)}</div>
+      ${incompleto ? `<p class="ocr-alerta">Falta: ${escHtml(res.faltan.join(", "))}. Complételo en Editar responsables → 🧾 Datos para factura.</p>` : ""}
+      ${(res.avisos || []).map(a => `<p class="ocr-alerta">${escHtml(a)}</p>`).join("")}`;
+    document.getElementById("facturaMedio").value = "";
+    document.getElementById("facturaMedioCampo").hidden = !!incompleto;
+    const crear = document.getElementById("facturaCrearBtn");
+    crear.hidden = !!incompleto; crear.disabled = false; crear.textContent = "Crear borrador";
+    crear.onclick = async () => {
+      const medioPago = document.getElementById("facturaMedio").value;
+      if (!medioPago){ showToast("Escoja el medio de pago."); return; }
+      crear.disabled = true; crear.textContent = "Creando…";
+      try{
+        await llamarAlegra({ accion: "borrador", cedula, mes, medioPago });
+        document.getElementById("overlayFactura").classList.remove("show");
+        await alertApp("✅ Borrador creado. Revíselo en Alegra → Ingresos → Facturas de venta. No se envió a la DIAN.");
+      }catch(err){
+        crear.disabled = false; crear.textContent = "Crear borrador";
+        await alertApp("⚠️ " + err.message);
+      }
+    };
+    document.getElementById("overlayFactura").classList.add("show");
   }catch(err){
     await alertApp("⚠️ " + err.message);
   }finally{
     btn.disabled = false; btn.textContent = texto;
   }
 }
+document.getElementById("facturaCancelarBtn").addEventListener("click", () => document.getElementById("overlayFactura").classList.remove("show"));
 async function crearAccesoPortal(r){
   const cedula = String(r["Cédula"] || "").trim();
   if (!cedula){ showToast("Este cliente no tiene cédula guardada."); return; }
