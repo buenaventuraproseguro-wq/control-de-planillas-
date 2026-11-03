@@ -685,6 +685,11 @@
   .g-cierre-caja .fila span:last-child{ font-variant-numeric:tabular-nums; white-space:nowrap; }
   .g-cierre-caja.ingresos h3{ color:#1E7B4F; } .g-cierre-caja.gastos h3{ color:#B4232C; }
   .g-cierre-caja .nota{ font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .g-historico{ margin:4px 0 12px; } .g-historico summary{ cursor:pointer; font-weight:700; font-size:14px; margin-bottom:6px; }
+  .g-hist .g-hist-actual td{ background:var(--accent-bg, #f3f0ea); }
+  .g-hist-barras{ width:120px; } .g-hist-barras span{ display:block; height:6px; border-radius:3px; margin:2px 0; }
+  .g-hist-barras .b-ing{ background:#1E7B4F; } .g-hist-barras .b-gas{ background:#B4232C; }
+  @media (max-width:600px){ .g-hist-barras{ display:none; } }
   .g-tipo-ing{ color:#1E7B4F; font-weight:700; } .g-tipo-gas{ color:#B4232C; font-weight:700; }
   .g-categorias{ font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.7; }
   .g-categorias b{ color:var(--ink); }
@@ -1839,9 +1844,9 @@
 <div class="overlay" id="overlayGanancias">
   <div class="modal">
     <h2>Ganancias de gestiones</h2>
-    <div class="modal-sub">Suma de los valores a cobrar de todas las tareas (de todos los meses) que tengan un valor cargado.</div>
+    <div class="modal-sub">Las gestiones con valor de este mes. Cada una queda en su mes; solo las que no se han cobrado (deudas) siguen apareciendo en los meses siguientes, hasta que toque <b>✅ Ya pagó</b>.</div>
     <div class="month-total" style="margin-bottom:14px;">
-      <span class="month-total-label">Total en gestiones</span>
+      <span class="month-total-label">Total en gestiones del mes</span>
       <span class="month-total-value" id="gananciasTotalValue">—</span>
     </div>
     <div id="listaGanancias"></div>
@@ -2231,6 +2236,7 @@
     <div id="gFijos"></div>
     <div class="g-resumen" id="gResumen"></div>
     <div class="g-cierre" id="gCierre"></div>
+    <details class="g-historico" id="gHistoricoBox" open><summary>📈 Resultado mes a mes</summary><div id="gHistorico"></div></details>
     <div class="g-tabla-wrap"><table class="g-tabla" id="gTabla"></table></div>
     <div class="g-categorias" id="gPorCategoria"></div>
 
@@ -2869,7 +2875,7 @@ async function eliminarMesEnSupabase(nombreMes){
 // ---- Tareas (lista global, no depende del mes) ----
 function firmaTarea(t){
   return JSON.stringify({ cedula: t.cedula || "", nombre: t.nombre || "", descripcion: t.descripcion || "",
-    tipo: t.tipo || "", ejecutor: t.ejecutor || "", fecha: t.fecha || null, hecha: !!t.hecha, valor: t.valor || 0 });
+    tipo: t.tipo || "", ejecutor: t.ejecutor || "", fecha: t.fecha || null, hecha: !!t.hecha, valor: t.valor || 0, cobrada: !!t.cobrada });
 }
 async function sincronizarTareas(){
   const lista = store.tareas || [];
@@ -2882,9 +2888,10 @@ async function sincronizarTareas(){
     const payload = {
       id: t.id, cedula: t.cedula || null, nombre: t.nombre || null, descripcion: t.descripcion || null,
       tipo: t.tipo || null, ejecutor: t.ejecutor || null, fecha: t.fecha || null, hecha: !!t.hecha,
-      valor: t.valor || 0, created_by: currentUserId,
+      valor: t.valor || 0, created_by: currentUserId, cobrada: !!t.cobrada,
     };
-    const { error } = await sb.from("tareas").upsert(payload);
+    let { error } = await sb.from("tareas").upsert(payload);
+    if (error && /cobrada/i.test(error.message || "")){ delete payload.cobrada; ({ error } = await sb.from("tareas").upsert(payload)); }
     if (error) throw error;
     tareaIdsConocidos.add(t.id);
     lastTareaSig[t.id] = firma;
@@ -3265,7 +3272,7 @@ function suscribirMesesYTareasEnVivo(){
     store.tareas = (data || []).map(row => {
       tareaIdsConocidos.add(row.id);
       const t = { id: row.id, cedula: row.cedula, nombre: row.nombre, descripcion: row.descripcion,
-        tipo: row.tipo, ejecutor: row.ejecutor, fecha: row.fecha, hecha: row.hecha, valor: row.valor, documentos: [] };
+        tipo: row.tipo, ejecutor: row.ejecutor, fecha: row.fecha, hecha: row.hecha, valor: row.valor, cobrada: !!row.cobrada, documentos: [] };
       lastTareaSig[row.id] = firmaTarea(t);
       return t;
     });
@@ -3337,7 +3344,7 @@ async function cargarStoreDesdeSupabase(){
   nuevoStore.tareas = (tareasRows || []).map(row => {
     tareaIdsConocidos.add(row.id);
     const t = { id: row.id, cedula: row.cedula, nombre: row.nombre, descripcion: row.descripcion,
-      tipo: row.tipo, ejecutor: row.ejecutor, fecha: row.fecha, hecha: row.hecha, valor: row.valor, documentos: [] };
+      tipo: row.tipo, ejecutor: row.ejecutor, fecha: row.fecha, hecha: row.hecha, valor: row.valor, cobrada: !!row.cobrada, documentos: [] };
     lastTareaSig[row.id] = firmaTarea(t);
     return t;
   });
@@ -4893,30 +4900,44 @@ document.getElementById("overlayInforme").addEventListener("click", (e) => {
   if (e.target.id === "overlayInforme") document.getElementById("overlayInforme").classList.remove("show");
 });
 
-function abrirGanancias(){
-  const conValor = getTareas().filter(t => t.valor > 0);
-  const total = conValor.reduce((acc, t) => acc + t.valor, 0);
-  document.getElementById("gananciasTotalValue").textContent = fmt(total);
-
-  const cont = document.getElementById("listaGanancias");
-  if (conValor.length === 0){
-    cont.innerHTML = `<div class="empty">Todavía no hay tareas con valor a cobrar.</div>`;
-  } else {
-    cont.innerHTML = conValor
-      .slice()
-      .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""))
-      .map(t => {
-        const fechaTexto = t.fecha ? t.fecha.split("-").reverse().join("/") : "Sin fecha";
-        return `<div class="tarea-row ${t.hecha ? "hecha" : ""}">
-          <div class="tarea-info">
-            <div class="tarea-desc">${t.descripcion}${t.nombre ? ` — ${t.nombre}` : ""}</div>
-            <div class="tarea-meta">${fechaTexto} · ${t.tipo || "Sin tipo"}${t.cedula ? ` · Cédula ${t.cedula}` : ""}${t.ejecutor ? ` · Ejecuta: ${t.ejecutor}` : ""}</div>
-          </div>
-          <span class="valor">${fmt(t.valor)}</span>
-        </div>`;
-      }).join("");
-  }
+// Ganancias de gestiones: cada tarea con valor pertenece al mes de su fecha. Solo las que no se han
+// cobrado (deudas) siguen apareciendo en los meses siguientes, hasta que se marquen como cobradas.
+function gestionesDelMes(nombreMes){ return getTareas().filter(t => t.valor > 0 && mesDeFechaISO(t.fecha) === nombreMes); }
+function deudasGestionesAnteriores(nombreMes){
+  const ini = indiceMes(nombreMes);
+  return getTareas().filter(t => t.valor > 0 && !t.cobrada && t.fecha && indiceMes(mesDeFechaISO(t.fecha)) !== null && indiceMes(mesDeFechaISO(t.fecha)) < ini);
 }
+function filaGestion(t, conBoton){
+  const fechaTexto = t.fecha ? t.fecha.split("-").reverse().join("/") : "Sin fecha";
+  return `<div class="tarea-row ${t.hecha ? "hecha" : ""}">
+    <div class="tarea-info">
+      <div class="tarea-desc">${escHtml(t.descripcion || "")}${t.nombre ? ` — ${escHtml(t.nombre)}` : ""}</div>
+      <div class="tarea-meta">${fechaTexto} · ${escHtml(t.tipo || "Sin tipo")}${t.cedula ? ` · Cédula ${escHtml(t.cedula)}` : ""}${t.ejecutor ? ` · Ejecuta: ${escHtml(t.ejecutor)}` : ""} · ${t.cobrada ? "✅ cobrada" : "⏳ por cobrar"}</div>
+    </div>
+    <span class="valor">${fmt(t.valor)}</span>
+    ${conBoton ? `<button type="button" class="btn small ${t.cobrada ? "ghost" : ""}" data-gest-cobrar="${escHtml(t.id || "")}">${t.cobrada ? "Desmarcar" : "✅ Ya pagó"}</button>` : ""}
+  </div>`;
+}
+function abrirGanancias(){
+  getTareas().forEach(t => { if (!t.id) t.id = (crypto.randomUUID ? crypto.randomUUID() : ("t" + Date.now() + Math.random())); });
+  const delMes = gestionesDelMes(store.currentMonth);
+  const deudas = deudasGestionesAnteriores(store.currentMonth);
+  const total = delMes.reduce((acc, t) => acc + t.valor, 0);
+  const porCobrar = delMes.filter(t => !t.cobrada).reduce((a, t) => a + t.valor, 0) + deudas.reduce((a, t) => a + t.valor, 0);
+  document.getElementById("gananciasTotalValue").textContent = fmt(total);
+  const cont = document.getElementById("listaGanancias");
+  const orden = (a, b) => (b.fecha || "").localeCompare(a.fecha || "");
+  cont.innerHTML = `<p class="ay-txt">Gestiones de <b>${escHtml(store.currentMonth)}</b>: ${fmt(total)} · por cobrar (incluye deudas de meses anteriores): <b>${fmt(porCobrar)}</b></p>`
+    + (delMes.length ? delMes.slice().sort(orden).map(t => filaGestion(t, true)).join("") : `<div class="empty">No hay gestiones con valor en ${escHtml(store.currentMonth)}.</div>`)
+    + (deudas.length ? `<h3 style="font-size:14px;margin:14px 0 6px;color:var(--retiro);">⏳ Deudas de meses anteriores (${deudas.length})</h3>` + deudas.slice().sort(orden).map(t => filaGestion(t, true)).join("") : "");
+}
+document.getElementById("listaGanancias").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-gest-cobrar]"); if (!b) return;
+  const t = getTareas().find(x => String(x.id) === b.dataset.gestCobrar); if (!t) return;
+  t.cobrada = !t.cobrada;
+  saveStore(); abrirGanancias(); renderList(searchInput.value);
+  showToast(t.cobrada ? "✅ Marcada como cobrada." : "Quedó otra vez por cobrar.");
+});
 document.getElementById("navGananciasBtn").addEventListener("click", () => {
   abrirGanancias();
   document.getElementById("overlayGanancias").classList.add("show");
@@ -9797,6 +9818,7 @@ function renderGastos(){
     <div class="g-tarjeta ${totIng - totGasPag < 0 ? "alerta" : ""}"><small>Resultado (ingresos − gastos pagados)</small><b>${fmt(totIng - totGasPag)}</b></div>
     ${vencidos.length ? `<div class="g-tarjeta alerta"><small>Vencidos</small><b>${vencidos.length} · ${fmt(suma(vencidos))}</b></div>` : ""}`;
   renderCierreMes(ym, ingresosMes, delMes);
+  renderResultadoMesAMes(ym);
 
   const faltan = fijosFaltantes(ym);
   document.getElementById("gFijos").innerHTML = faltan.length ? `
@@ -9860,6 +9882,35 @@ function renderCierreMes(ym, ingresos, gastosMes){
       <div class="fila"><span>Salió en efectivo</span><span>${fmt(efGas)}</span></div>
       <h3 style="margin-top:10px;"><span>📊 Resultado del mes</span><span>${fmt(suma(ingresos) - suma(pagados))}</span></h3>
       <div class="nota">Ingresos registrados menos gastos pagados de ${escHtml(nombreMes)}.</div></div>`;
+}
+
+// Resultado mes a mes: ingresos registrados, gastos pagados, resultado y acumulado (desde el primer mes con datos)
+function renderResultadoMesAMes(ymActual){
+  const meses = [...new Set(gastos.map(g => mesDeFecha(g.fecha)).filter(Boolean))].sort();
+  const cont = document.getElementById("gHistorico");
+  if (!meses.length){ cont.innerHTML = `<p class="ay-txt">Todavía no hay movimientos.</p>`; return; }
+  let acum = 0;
+  const filas = meses.map(ym => {
+    const del = gastos.filter(g => mesDeFecha(g.fecha) === ym);
+    const ing = del.filter(g => tipoMov(g) === "ingreso").reduce((a, g) => a + (Number(g.valor) || 0), 0);
+    const gas = del.filter(g => tipoMov(g) === "gasto" && g.estado === "pagado").reduce((a, g) => a + (Number(g.valor) || 0), 0);
+    const pend = del.filter(g => tipoMov(g) === "gasto" && g.estado !== "pagado").reduce((a, g) => a + (Number(g.valor) || 0), 0);
+    const res = ing - gas; acum += res;
+    return { ym, ing, gas, pend, res, acum };
+  });
+  const max = Math.max(1, ...filas.map(f => Math.max(f.ing, f.gas)));
+  cont.innerHTML = `<div class="g-tabla-wrap"><table class="g-tabla g-hist">
+    <thead><tr><th>Mes</th><th class="num">Ingresos</th><th class="num">Gastos pagados</th><th class="num">Resultado</th><th class="num">Acumulado</th><th></th></tr></thead>
+    <tbody>${filas.map(f => `<tr class="${f.ym === ymActual ? "g-hist-actual" : ""}">
+      <td>${escHtml(nombreMesISO(f.ym))}</td>
+      <td class="num g-tipo-ing">${fmt(f.ing)}</td>
+      <td class="num g-tipo-gas">${fmt(f.gas)}${f.pend ? `<div class="g-sub">pendiente ${fmt(f.pend)}</div>` : ""}</td>
+      <td class="num" style="font-weight:700;color:${f.res < 0 ? "#B4232C" : "#1E7B4F"}">${fmt(f.res)}</td>
+      <td class="num">${fmt(f.acum)}</td>
+      <td class="g-hist-barras"><span style="width:${Math.round(f.ing / max * 100)}%" class="b-ing"></span><span style="width:${Math.round(f.gas / max * 100)}%" class="b-gas"></span></td>
+    </tr>`).join("")}</tbody>
+    <tfoot><tr><th>Total</th><th class="num">${fmt(filas.reduce((a, f) => a + f.ing, 0))}</th><th class="num">${fmt(filas.reduce((a, f) => a + f.gas, 0))}</th><th class="num">${fmt(acum)}</th><th></th><th></th></tr></tfoot>
+  </table></div>`;
 }
 
 // Los enlaces a las facturas se preparan antes de tocarlos (así abren bien en iPhone).

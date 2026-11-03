@@ -72,3 +72,5 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Recordatorios: "mensajero" (y variantes) no es un responsable sino una actividad: cada mensajero recibe su recordatorio a su nombre.
 - Agregar/editar cliente: si la actividad del código ARL es de un riesgo distinto al nivel escogido, se avisa en rojo debajo del campo y NO deja guardar (claseDeActividad / errorRiesgoArl).
 - ARL: si no se reconoce la actividad (o el certificado no se leyó bien) se muestran botones con las actividades recomendadas para ese riesgo (las más usadas por los clientes primero); al tocar una, el campo queda "sura N cd 00X ac XXXXXXX". Si hay choque de riesgo, ofrece "Poner nivel X".
+- 15.2 Ganancias de gestiones: solo las del mes (por la fecha de la tarea). Campo tareas.cobrada; las no cobradas de meses anteriores salen como "Deudas de meses anteriores" con botón "✅ Ya pagó". Las anteriores a noviembre 2026 quedaron como cobradas.
+- Libro contable: recuadro "Resultado mes a mes" (ingresos, gastos pagados, pendientes, resultado y acumulado por mes).
