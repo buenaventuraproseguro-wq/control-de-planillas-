@@ -535,6 +535,9 @@
   .eps-codigo.falta{ color:var(--retiro); font-weight:600; }
   .ocr-aviso{ margin-top:6px; font-size:12.5px; border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
   .ocr-acc{ display:flex; gap:6px; }
+  .ocr-campo{ display:grid; grid-template-columns:72px minmax(0,1fr); align-items:center; gap:6px; font-weight:600; }
+  .ocr-campo input{ width:100%; min-width:0; padding:6px 8px; font:inherit; font-weight:400; }
+  .ocr-campo input.campo-error{ border-color:var(--retiro); background:var(--retiro-bg); }
   .pila-buscar{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
   .pila-buscar input{ flex:1 1 220px; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; }
   .pila-sel-resumen{ font-size:12.5px; color:var(--muted); margin:0 0 8px; }
@@ -3041,6 +3044,27 @@ function mesISODe(nombreMes){
 }
 function mesDocDe(tipo, nombreMes){ return DOCS_POR_MES.has(tipo) ? mesISODe(nombreMes || store.currentMonth) : ""; }
 function rutaDoc(cedula, tipo, mes){ return mes ? `${cedula}/${tipo}_${mes}` : `${cedula}/${tipo}`; }
+// Corrigieron la cédula de un cliente: sus archivos y filas se pasan al número nuevo.
+// Si el número nuevo ya tiene ese documento, no se pisa y el viejo queda donde estaba.
+async function moverDocumentosDeCedula(vieja, nueva){
+  if (!cloudDb || !navigator.onLine) return;
+  try{
+    const { data: filas, error } = await sb.from("documentos").select("id, tipo, mes, storage_path").eq("cedula", String(vieja));
+    if (error) throw error;
+    for (const f of filas || []){
+      const destino = rutaDoc(nueva, f.tipo, f.mes);
+      const { error: movErr } = await sb.storage.from("documentos-clientes").move(f.storage_path, destino);
+      if (movErr){ console.error("No se pudo mover el documento:", movErr); continue; }
+      const { error: dbErr } = await sb.from("documentos").update({ cedula: nueva, storage_path: destino }).eq("id", f.id);
+      if (dbErr){
+        console.error("No se pudo pasar el documento a la cédula nueva:", dbErr);
+        await sb.storage.from("documentos-clientes").move(destino, f.storage_path);
+        continue;
+      }
+      if (docsEnNube){ docsEnNube.delete(claveDocNube(vieja, f.tipo, f.mes)); docsEnNube.add(claveDocNube(nueva, f.tipo, f.mes)); }
+    }
+  }catch(e){ console.error("No se pudieron pasar los documentos a la cédula nueva:", e); }
+}
 // Guarda la fila en "documentos" (por cédula, tipo y mes). Si la base todavía no tiene la columna "mes",
 // guarda como antes (una por cédula y tipo).
 async function guardarFilaDocumento(fila){
@@ -8596,6 +8620,12 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     showToast("La cédula debe tener entre 6 y 12 números. Revísala antes de guardar.");
     return;
   }
+  // Una cédula nueva o cambiada no puede empezar en 0: casi siempre es un número mal leído.
+  if (cedula !== String(editingCedula || "") && /^0/.test(cedula)){
+    getField("Cedula").focus();
+    showToast("⚠️ Una cédula no empieza en 0: falta el primer número. Revísala en la foto.");
+    return;
+  }
   if (esServicioMuelles({ "Empresa": getField("Empresa").value })){
     const sv = leerServicios("#fServicios");
     if (sv.error){ document.getElementById("muellesSeccion").scrollIntoView({ behavior: "smooth", block: "center" }); showToast(sv.error); return; }
@@ -8779,6 +8809,8 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     }
   }
 
+  // Si se corrigió la cédula, sus documentos pasan al número nuevo antes de subir los que cambiaron
+  if (editingCedula && String(editingCedula) !== cedula) await moverDocumentosDeCedula(editingCedula, cedula);
   subirDocumentosCliente(cedula);
 
   if (editingCedula){
@@ -10297,18 +10329,14 @@ document.getElementById("msCedulaArchivo").addEventListener("change", async (e) 
   const prev = document.getElementById("msCedulaPrev"); prev.src = dataUrl; prev.hidden = false;
   aviso.innerHTML = `<div class="ocr-aviso">🔎 Leyendo la cédula…</div>`;
   try{
-    const T = await cargarTesseract();
-    const { data } = await T.recognize(esPdfArchivo(file) ? dataUrl : file, "spa");
-    const d = datosDeTextoCedula(data && data.text);
-    if (!d.cedula && !d.nombre){ aviso.innerHTML = `<div class="ocr-aviso">No pude leer los datos. Escríbalos a mano.</div>`; return; }
-    aviso.innerHTML = `<div class="ocr-aviso"><div>🔎 <b>Leí en la cédula:</b>${d.cedula ? `<br>Cédula: <b>${escHtml(d.cedula)}</b>` : ""}${d.nombre ? `<br>Nombre: <b>${escHtml(d.nombre)}</b>` : ""}</div>
-      <div class="ocr-acc"><button type="button" class="btn small primary" id="msOcrUsar">Usar estos datos</button><button type="button" class="btn small ghost" id="msOcrNo">No</button></div></div>`;
-    document.getElementById("msOcrUsar").onclick = () => {
-      if (d.cedula) document.getElementById("msCedula").value = d.cedula;
-      if (d.nombre) document.getElementById("msNombre").value = d.nombre;
+    const d = await leerCedulaConOcr(esPdfArchivo(file) ? dataUrl : file);
+    if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `<div class="ocr-aviso">No pude leer los datos. Escríbalos a mano.</div>`; return; }
+    aviso.innerHTML = `<div class="ocr-aviso"></div>`;
+    mostrarRevisionCedula(aviso.firstElementChild, d, (v) => {
+      document.getElementById("msCedula").value = v.cedula;
+      document.getElementById("msNombre").value = v.nombre;
       aviso.innerHTML = ""; showToast("✅ Datos puestos. Revíselos.");
-    };
-    document.getElementById("msOcrNo").onclick = () => { aviso.innerHTML = ""; };
+    }, () => { aviso.innerHTML = ""; });
   }catch(err){ aviso.innerHTML = `<div class="ocr-aviso">No se pudo leer la cédula. Escriba los datos a mano.</div>`; }
 });
 document.getElementById("msTelefono").addEventListener("input", (e) => {
@@ -12121,16 +12149,64 @@ function cargarTesseract(){
   });
   return _ocrCargando;
 }
+// Una cédula colombiana nunca empieza en 0, y las de 10 números empiezan en 1.
+// Devuelve "" si está bien; si no, el motivo.
+function problemaCedula(n){
+  const c = String(n || "");
+  if (!/^\d+$/.test(c)) return "Solo debe tener números.";
+  if (c.length < 6 || c.length > 10) return "Debe tener entre 6 y 10 números.";
+  if (c[0] === "0") return "Una cédula no empieza en 0: seguro falta el primer número.";
+  if (c.length === 9) return "Las cédulas no tienen 9 números: seguro falta o sobra uno.";
+  if (c.length === 10 && c[0] !== "1") return "Las cédulas de 10 números empiezan en 1.";
+  return "";
+}
+// Busca el número en el texto SIN limpiar: el 1 inicial se suele leer como l, I, | o !
+function numeroDeCedula(texto){
+  const res = { cedula: "", sugerida: "" };
+  const lineas = String(texto || "").split(/\n+/);
+  const buscar = (txt, conEspacios) => {
+    const sep = conEspacios ? "[.,\\s]{1,2}" : "\\s?[.,]\\s?";
+    const re = new RegExp(`(?:^|[^A-Za-z\\d.,])([lIL|!\\[\\]]?)[\\s.,]{0,2}(\\d{1,3}(?:${sep}\\d{3}){1,3})(?![\\d])|(?:^|[^A-Za-z\\d.,])([lIL|!\\[\\]]?)(\\d{6,10})(?![\\d])`, "g");
+    return [...txt.matchAll(re)].map(m => ((m[1] || m[3]) ? "1" : "") + (m[2] || m[4]).replace(/\D/g, ""));
+  };
+  const candidatos = [];
+  lineas.forEach((l, i) => {
+    const m = l.match(/(?:N[UÚ]MERO|NUIP|\bNo\.?)\s*[:.]?/i);
+    if (!m) return;
+    candidatos.push(...buscar(" " + l.slice(m.index + m[0].length), true));
+    if (lineas[i + 1]) candidatos.push(...buscar(" " + lineas[i + 1], true));
+  });
+  lineas.forEach(l => candidatos.push(...buscar(" " + l, false)));
+  const buena = candidatos.find(c => !problemaCedula(c));
+  if (buena) { res.cedula = buena; return res; }
+  // Sin un número seguro: "069.725.648" perdió el 1 del comienzo. Se propone, pero NO se da por bueno.
+  const dudosa = candidatos.find(c => c.length >= 6 && c.length <= 11);
+  if (dudosa) res.sugerida = (dudosa[0] === "0" ? "1" + dudosa : dudosa);
+  return res;
+}
+// Deja solo las palabras del nombre: quita signos y las letras sueltas que el lector inventa
+function palabrasDeNombre(l){
+  const pal = String(l || "").toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ ]/g, " ").split(/\s+/).filter(Boolean);
+  const conector = /^(DE|DEL|LA|LAS|LOS|EL|DA|DI|DO|Y)$/;
+  return pal.filter((w, i) => {
+    if (w.length === 1) return w === "Y" && i > 0 && i < pal.length - 1;
+    if (w.length === 2 && (i === 0 || i === pal.length - 1)) return conector.test(w);
+    return true;
+  }).join(" ");
+}
 // Saca número y nombre del texto leído (cédula amarilla, cédula digital y la parte de atrás con <<<)
 function datosDeTextoCedula(texto){
   const lineas = String(texto || "").split(/\n+/).map(l => l.replace(/[^\wÁÉÍÓÚÑÜáéíóúñü.<\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
-  const res = { cedula: "", nombre: "", partes: null, mrz: false };
+  // completo = se leyeron apellidos Y nombres. "sugerida" = número dudoso que hay que mirar en la foto.
+  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false };
   // Partes: [apellido1, apellido2, nombre1, nombre2]; el nombre queda APELLIDOS + NOMBRES como en la app
   const ponPartes = (aps, nos) => {
     aps = aps.filter(Boolean); nos = nos.filter(Boolean);
     if (!aps.length && !nos.length) return;
     res.partes = [aps[0] || "", aps.slice(1).join(" "), nos[0] || "", nos.slice(1).join(" ")].map(x => x.toUpperCase());
     res.nombre = res.partes.filter(Boolean).join(" ").toLowerCase();
+    res.apellidos = aps.join(" ").toUpperCase(); res.nombres = nos.join(" ").toUpperCase();
+    res.completo = aps.length > 0 && nos.length > 0;
   };
   // Parte de atrás (MRZ): APELLIDO<APELLIDO<<NOMBRE<NOMBRE
   const mrz = lineas.map(l => l.replace(/\s/g, "").toUpperCase()).filter(l => /</.test(l) && l.length >= 20);
@@ -12139,34 +12215,95 @@ function datosDeTextoCedula(texto){
     const [ap, no] = lineaNombre.split("<<");
     ponPartes(ap.split("<"), no.split("<")); res.mrz = true;
   }
-  const esEtiqueta = l => /^(APELLIDOS?|NOMBRES?|SURNAMES?|GIVEN|NUMERO|NÚMERO|NUIP|REPUBLICA|REPÚBLICA|COLOMBIA|IDENTIFICACION|IDENTIFICACIÓN|CEDULA|CÉDULA|PERSONAL|FIRMA|FECHA|SEXO|LUGAR|ESTATURA|NACIONALIDAD|DOCUMENTO)/i.test(l);
-  const esValor = l => l && !esEtiqueta(l) && /^[A-ZÁÉÍÓÚÑÜ ]{3,}$/.test(l) && l.split(" ").length <= 4;
+  const esEtiqueta = l => /^(APELLIDOS?|NOMBRES?|SURNAMES?|GIVEN|NUMERO|NÚMERO|NUIP|REPUBLICA|REPÚBLICA|COLOMBIA|IDENTIFICACION|IDENTIFICACIÓN|CEDULA|CÉDULA|CIUDADAN|PERSONAL|FIRMA|FECHA|SEXO|LUGAR|ESTATURA|NACIONALIDAD|DOCUMENTO|REGISTRADOR|NACIONAL|INDICE|ÍNDICE|DERECHO)/i.test(l);
+  // Devuelve la línea ya limpia si parece un nombre en MAYÚSCULAS; si no, ""
+  const valor = l => {
+    const letras = String(l || "").replace(/[^A-Za-zÁÉÍÓÚÑÜáéíóúñü]/g, "");
+    if (letras.length < 3 || letras.replace(/[^a-záéíóúñü]/g, "").length > letras.length * 0.2) return "";
+    const v = palabrasDeNombre(l);
+    return v.length >= 3 && !esEtiqueta(v) && v.split(" ").length <= 4 ? v : "";
+  };
   const valorJunto = (re) => {
     const i = lineas.findIndex(l => re.test(l));
     if (i < 0) return "";
-    const enLinea = lineas[i].replace(re, "").replace(/^[\s/:]+|SURNAMES?|GIVEN NAMES?/gi, "").trim();
-    if (esValor(enLinea.toUpperCase()) && enLinea === enLinea.toUpperCase()) return enLinea;
-    const sig = lineas[i + 1], ant = lineas[i - 1];
+    const enLinea = valor(lineas[i].replace(re, "").replace(/^[\s/:]+|SURNAMES?|GIVEN NAMES?/gi, ""));
+    if (enLinea) return enLinea;
+    const sig = valor(lineas[i + 1]), ant = valor(lineas[i - 1]);
     // Cédula digital ("Apellidos / Surnames"): el dato va DEBAJO. Cédula amarilla ("APELLIDOS"): va ENCIMA.
     const digital = /\/|SURNAME|GIVEN/i.test(lineas[i]);
-    if (digital) return esValor(sig) ? sig : (esValor(ant) ? ant : "");
-    return esValor(ant) ? ant : (esValor(sig) ? sig : "");
+    return digital ? (sig || ant) : (ant || sig);
   };
   if (!res.nombre){
-    const ap = valorJunto(/APELLIDOS?/i), no = valorJunto(/NOMBRES?/i);
-    if ((ap || no) && ap !== no) ponPartes(ap.split(" "), no.split(" "));
+    let ap = valorJunto(/APELLIDOS?/i), no = valorJunto(/NOMBRES?/i);
+    if (ap === no) no = "";
+    // Si una de las dos etiquetas no se leyó: en ambas cédulas los nombres van justo después de los apellidos
+    const valores = lineas.map(valor).filter(Boolean);
+    if (ap && !no){ const j = valores.indexOf(ap); no = j > -1 ? (valores[j + 1] || "") : ""; }
+    else if (no && !ap){ const j = valores.indexOf(no); ap = j > 0 ? valores[j - 1] : ""; }
+    if (ap || no) ponPartes(ap.split(" "), no.split(" "));
   }
-  // Número: después de NUMERO / NUIP, o el primer número con puntos de miles
-  const todo = lineas.join("\n");
   // 2.ª línea: fecha nac. + sexo + vencimiento + COL + número de cédula
   const mrzNum = mrz.map(l => (l.match(/\d{7}[MF<]\d{7}COL(\d{6,10})/) || [])[1]).find(Boolean);
-  if (mrzNum){ res.cedula = mrzNum; return res; }
-  let m = todo.match(/(?:N[UÚ]MERO|NUIP|No\.?)\s*[:.]?\s*(\d{1,3}(?:[.,\s]\d{3}){1,3}|\d{6,10})/i)
-    || todo.match(/\b(\d{1,3}(?:[.,]\d{3}){2,3})\b/)
-    || todo.match(/\b(\d{7,10})\b/);
-  if (m) res.cedula = m[1].replace(/\D/g, "");
-  if (res.cedula && (res.cedula.length < 6 || res.cedula.length > 10)) res.cedula = "";
+  if (mrzNum && !problemaCedula(mrzNum)){ res.cedula = mrzNum; return res; }
+  Object.assign(res, numeroDeCedula(texto));
   return res;
+}
+// Mejora la foto para una segunda lectura: más grande, en grises y con más contraste
+async function fotoMejoradaParaLeer(fuente){
+  const url = typeof fuente === "string" ? fuente : URL.createObjectURL(fuente);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const esc = Math.min(3, Math.max(1, 2000 / Math.max(img.width, 1)));
+    const lienzo = document.createElement("canvas");
+    lienzo.width = Math.round(img.width * esc); lienzo.height = Math.round(img.height * esc);
+    const ctx = lienzo.getContext("2d", { willReadFrequently: true });
+    ctx.filter = "grayscale(1) contrast(1.6)";
+    ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+    return lienzo.toDataURL("image/png");
+  } finally {
+    if (typeof fuente !== "string") URL.revokeObjectURL(url);
+  }
+}
+// Lee la foto. Si falta algo o el número queda dudoso, repite con la foto mejorada y junta lo mejor de las dos.
+async function leerCedulaConOcr(fuente){
+  const T = await cargarTesseract();
+  const leer = async (f) => { const { data } = await T.recognize(f, "spa"); return datosDeTextoCedula(data && data.text); };
+  const uno = await leer(fuente);
+  if (uno.cedula && uno.completo) return uno;
+  let dos = null;
+  try{ dos = await leer(await fotoMejoradaParaLeer(fuente)); }catch(e){ return uno; }
+  const res = { ...uno };
+  if (!res.cedula && (dos.cedula || (!res.sugerida && dos.sugerida))){ res.cedula = dos.cedula; res.sugerida = dos.sugerida; }
+  if (!res.completo && (dos.completo || !res.nombre)){
+    ["nombre", "partes", "apellidos", "nombres", "completo", "mrz"].forEach(k => { res[k] = dos[k]; });
+  }
+  return res;
+}
+// Muestra lo leído en recuadros que se pueden corregir. No pega nada hasta que la cédula sea válida
+// y estén los apellidos y los nombres, para que nunca quede un dato a medias en el cliente.
+function mostrarRevisionCedula(caja, d, alUsar, alCerrar){
+  const dudoso = !d.cedula, faltaAp = !d.apellidos, faltaNo = !d.nombres;
+  const hayDudas = dudoso || faltaAp || faltaNo;
+  caja.innerHTML = `<div>🔎 <b>Leí en la foto.</b> ${hayDudas ? `<span class="ocr-alerta">Hay datos que no pude leer bien: mírelos en la foto y corríjalos.</span>` : `Compárelo con la foto antes de usarlo.`}</div>
+    <label class="ocr-campo">Cédula <input type="text" inputmode="numeric" data-ocr-ced class="${dudoso ? "campo-error" : ""}" value="${escHtml(d.cedula || d.sugerida || "")}"></label>
+    <label class="ocr-campo">Apellidos <input type="text" data-ocr-ap class="${faltaAp ? "campo-error" : ""}" value="${escHtml(d.apellidos || "")}"></label>
+    <label class="ocr-campo">Nombres <input type="text" data-ocr-no-txt class="${faltaNo ? "campo-error" : ""}" value="${escHtml(d.nombres || "")}"></label>
+    <div class="ocr-alerta" data-ocr-error ${dudoso ? "" : "hidden"}>${dudoso ? (d.sugerida ? "No estoy seguro de este número." : "No pude leer el número.") : ""}</div>
+    <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Usar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>`;
+  const q = sel => caja.querySelector(sel);
+  q("[data-ocr-usar]").onclick = () => {
+    const ced = q("[data-ocr-ced]").value.replace(/\D/g, "");
+    const ap = palabrasDeNombre(q("[data-ocr-ap]").value), no = palabrasDeNombre(q("[data-ocr-no-txt]").value);
+    const error = q("[data-ocr-error]");
+    const motivo = problemaCedula(ced) || (!ap ? "Faltan los apellidos." : !no ? "Faltan los nombres." : "");
+    q("[data-ocr-ced]").classList.toggle("campo-error", !!problemaCedula(ced));
+    q("[data-ocr-ap]").classList.toggle("campo-error", !ap);
+    q("[data-ocr-no-txt]").classList.toggle("campo-error", !no);
+    if (motivo){ error.textContent = `⚠️ ${motivo}`; error.hidden = false; return; }
+    const pa = ap.split(" "), pn = no.split(" ");
+    alUsar({ cedula: ced, nombre: `${ap} ${no}`.toLowerCase(), partes: [pa[0], pa.slice(1).join(" "), pn[0], pn.slice(1).join(" ")] });
+  };
+  q("[data-ocr-no]").onclick = alCerrar;
 }
 // Compara palabra por palabra lo que hay en la app con lo leído en la cédula
 function compararNombreCedula(actual, leido){
@@ -12187,10 +12324,8 @@ async function leerCedulaDeImagen(fuente){
   if (!aviso){ aviso = document.createElement("div"); aviso.className = "ocr-aviso"; caja.appendChild(aviso); }
   aviso.innerHTML = `🔎 Leyendo la cédula…`;
   try{
-    const T = await cargarTesseract();
-    const { data } = await T.recognize(fuente, "spa");
-    const d = datosDeTextoCedula(data && data.text);
-    if (!d.cedula && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Revise el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
+    const d = await leerCedulaConOcr(fuente);
+    if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Revise el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
     const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
     const cedApp = String(editingCedula || fc.value || "").replace(/\D/g, "");
     const nomApp = fn.value.trim();
@@ -12200,7 +12335,8 @@ async function leerCedulaDeImagen(fuente){
 
     // Cliente que ya existe: se compara y se corrige lo que esté mal
     if (editingCedula && nomApp){
-      const c = d.nombre ? compararNombreCedula(nomApp, d.nombre) : null;
+      // Un nombre leído a medias no sirve para comparar ni para corregir al cliente
+      const c = d.completo ? compararNombreCedula(nomApp, d.nombre) : null;
       const otraPersona = c && c.comunes < Math.min(2, c.total) && cedOtra;
       if (otraPersona){
         aviso.innerHTML = `<div>⚠️ <b>Esta cédula parece de otra persona.</b><br>En la foto: <b>${escHtml(nombreTxt)}</b> · CC ${escHtml(d.cedula)}<br>En la app: <b>${escHtml(nomApp.toUpperCase())}</b> · CC ${escHtml(cedApp)}</div><small>No cambié nada. Revise que subió la cédula del cliente correcto.</small>`;
@@ -12217,8 +12353,10 @@ async function leerCedulaDeImagen(fuente){
         lineas.push(`✏️ <b>El nombre no coincide con la cédula.</b><br>En la app: <b>${escHtml(nomApp.toUpperCase())}</b><br>En la cédula: <b>${escHtml(nombreTxt)}</b>${c.distintas.length ? `<br><small>Diferente: ${escHtml(c.distintas.join(", ").toUpperCase())}</small>` : ""}
           <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-nombre>Usar el de la cédula</button><button type="button" class="btn small ghost" data-ocr-no>Dejar el de la app</button></div>`);
       }
+      if (!c) lineas.push(`⚠️ No pude leer el nombre completo en la foto. Dejé el de la app; revíselo a mano.`);
       if (cedOtra) lineas.push(`⚠️ <b>El número no coincide:</b> en la foto leí <b>${escHtml(d.cedula)}</b> y el cliente está con <b>${escHtml(cedApp)}</b>. Mírelo en la foto: si el error está en la app, avíseme y lo cambiamos en todos los meses; si es que la foto se leyó mal, no haga nada.`);
-      else if (d.cedula) lineas.push(`✅ El número de cédula coincide.`);
+      else if (d.cedula || d.sugerida === cedApp) lineas.push(`✅ El número de cédula coincide.`);
+      else lineas.push(`⚠️ No pude leer bien el número en la foto. Dejé el de la app.`);
       aviso.innerHTML = `<div>${lineas.join("<br>")}</div><small>Los cambios quedan al tocar <b>Guardar</b>.</small>`;
       const btnN = aviso.querySelector("[data-ocr-nombre]");
       if (btnN) btnN.onclick = () => { ponNombre(d.nombre); guardarPartesNombre(editingCedula, d.partes); btnN.parentElement.innerHTML = "✅ Nombre corregido. Toque Guardar."; };
@@ -12230,16 +12368,12 @@ async function leerCedulaDeImagen(fuente){
     }
 
     // Cliente nuevo: se ofrecen los datos leídos
-    aviso.innerHTML = `<div>🔎 <b>Leí en la foto:</b>${d.cedula ? `<br>Cédula: <b>${escHtml(d.cedula)}</b>` : ""}${d.nombre ? `<br>Nombre: <b>${escHtml(nombreTxt)}</b>` : ""}</div>
-      <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Usar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
-      <small>Revise que estén bien antes de guardar.</small>`;
-    aviso.querySelector("[data-ocr-usar]").onclick = () => {
-      if (d.cedula && !fc.readOnly && !fc.disabled){ fc.value = d.cedula; fc.dispatchEvent(new Event("input", { bubbles: true })); fc.dispatchEvent(new Event("change", { bubbles: true })); }
-      if (d.nombre) ponNombre(d.nombre);
-      guardarPartesNombre(d.cedula || fc.value, d.partes);
+    mostrarRevisionCedula(aviso, d, (v) => {
+      if (!fc.readOnly && !fc.disabled){ fc.value = v.cedula; fc.dispatchEvent(new Event("input", { bubbles: true })); fc.dispatchEvent(new Event("change", { bubbles: true })); }
+      ponNombre(v.nombre);
+      guardarPartesNombre(fc.value, v.partes);
       aviso.remove(); showToast("✅ Datos de la cédula puestos. Revíselos.");
-    };
-    aviso.querySelector("[data-ocr-no]").onclick = () => aviso.remove();
+    }, () => aviso.remove());
   }catch(e){
     aviso.innerHTML = `No se pudo leer la foto (${escHtml(e.message || "error")}).`;
     setTimeout(() => aviso.remove(), 6000);
