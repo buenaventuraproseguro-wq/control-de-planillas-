@@ -1518,6 +1518,7 @@
           <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
           <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
           <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
+          <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
           <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía solo la imagen del QR por WhatsApp">📲 Enviar QR al cliente</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
@@ -6302,6 +6303,9 @@ function showBreakdown(cedula){
   }
 
   document.getElementById("portalBtn").onclick = () => crearAccesoPortal(r);
+  const btnFacturar = document.getElementById("facturarBtn");
+  btnFacturar.style.display = esAdmin() && estadoClass(r["Estado Trámite"]) === "PAGO" && numOrZero(r["Costo Servicio"]) > 0 ? "" : "none";
+  btnFacturar.onclick = () => crearBorradorAlegra(r);
 
   // Los tres puntos de muelle (S, T, A); solo el asignado al cliente es tocable.
   document.getElementById("muelleDotsBreakdown").innerHTML = puntosMuelle(r, false);
@@ -6989,6 +6993,38 @@ function generarPasswordPortal(){
 // Crea (o restablece la contraseña de) el acceso del cliente al portal de autoservicio,
 // llamando a la Edge Function "crear-acceso-portal" (que usa la service_role key para
 // crear el usuario de autenticación; eso nunca puede hacerse desde el navegador directo).
+// Alegra: por ahora solo crea un BORRADOR (no va a la DIAN). El correo y el token están en el servidor.
+async function llamarAlegra(cuerpo){
+  const { data: sesion } = await sb.auth.getSession();
+  const token = sesion && sesion.session ? sesion.session.access_token : null;
+  if (!token) throw new Error("No hay sesión activa.");
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/alegra`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(cuerpo),
+  });
+  const r = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(r.error || "No se pudo conectar con Alegra.");
+  return r;
+}
+async function crearBorradorAlegra(r){
+  if (!sb || !navigator.onLine){ showToast("No hay conexión con la nube en este momento."); return; }
+  const btn = document.getElementById("facturarBtn");
+  const texto = btn.textContent;
+  btn.disabled = true; btn.textContent = "Conectando con Alegra…";
+  try{
+    const e = await llamarAlegra({ accion: "estado" });
+    const ok = await confirmarApp(`✅ Alegra conectado (numeración ${e.prefijo}${e.siguiente ? `, sigue la ${e.siguiente}` : ""}).\n\n¿Crear un BORRADOR para ${r["Nombre del Afiliado"]} por ${fmt(numOrZero(r["Costo Servicio"]))}?\n\nNo se envía a la DIAN. Queda en Alegra para que lo revise.`);
+    if (!ok) return;
+    btn.textContent = "Creando borrador…";
+    await llamarAlegra({ accion: "borrador", cedula: String(r["Cédula"]).trim(), mes: store.currentMonth });
+    await alertApp("✅ Borrador creado. Revíselo en Alegra → Ingresos → Facturas de venta. No se envió a la DIAN.");
+  }catch(err){
+    await alertApp("⚠️ " + err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = texto;
+  }
+}
 async function crearAccesoPortal(r){
   const cedula = String(r["Cédula"] || "").trim();
   if (!cedula){ showToast("Este cliente no tiene cédula guardada."); return; }
