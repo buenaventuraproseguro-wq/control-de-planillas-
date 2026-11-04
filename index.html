@@ -483,13 +483,15 @@
   .srv-fila small{ color:var(--muted); font-weight:500; }
   .srv-fila input[type=number]{ margin-left:auto; width:140px; }
   .srv-fila input[type=number]:disabled{ opacity:.45; }
+  .srv-fila input[type=text]{ flex:1 1 150px; min-width:0; }
+  .srv-fila input[data-srv-tipo][hidden]{ display:none; }
   .srv-total{ text-align:right; font-weight:800; font-variant-numeric:tabular-nums; }
   .srv-detalle{ margin-top:8px; border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; max-width:440px; }
   .srv-detalle-fila{ display:flex; justify-content:space-between; gap:12px; padding:3px 0; font-variant-numeric:tabular-nums; }
   .srv-detalle-total{ border-top:1px solid var(--line); margin-top:4px; padding-top:5px; }
   .ms-servicio{ white-space:nowrap; display:inline-block; margin-top:2px; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; vertical-align:middle; margin-left:4px; }
   .ms-servicio.actualizacion{ background:var(--accent-bg); color:var(--accent); }
-  .ms-servicio.enrolamiento{ background:var(--gold-bg); color:var(--gold-deep); }
+  .ms-servicio.enrolamiento, .ms-servicio.curso{ background:var(--gold-bg); color:var(--gold-deep); }
   .ms-ced-archivo{ border:1.5px solid var(--accent); background:var(--accent-bg); border-radius:var(--radius); padding:8px 10px; }
   .ms-ced-prev{ max-width:220px; max-height:140px; border-radius:8px; border:1px solid var(--line); margin-top:6px; object-fit:contain; }
   .muelles-serv-caja{ border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; }
@@ -1427,7 +1429,7 @@
           <span class="sidebar-total-value" id="sidebarTotalConductores">—</span>
         </button>
         <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="muelles">
-          <span class="sidebar-total-label">Total Muelles otras empresas (actualización y enrolamiento)</span>
+          <span class="sidebar-total-label">Total Muelles otras empresas (actualización, enrolamiento y cursos)</span>
           <span class="sidebar-total-value" id="sidebarTotalMuelles">—</span>
         </button>
         <button type="button" class="sidebar-total" style="margin-top:-2px;" data-informe="gestiones">
@@ -1785,6 +1787,7 @@
             <label class="srv-fila" data-srv-fila="act:Agua Dulce"><input type="checkbox" data-srv="act:Agua Dulce"> ⚓ Actualización muelle <b>Agua Dulce</b> <small>(cada mes)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="act:Agua Dulce" placeholder="Valor"></label>
             <label class="srv-fila srv-antigua" hidden data-srv-fila="actualizacion"><input type="checkbox" data-srv="actualizacion"> ⚓ Actualización en muelles <small>(de antes, sin muelle)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="actualizacion" placeholder="Valor"></label>
             <label class="srv-fila" data-srv-fila="enrolamiento"><input type="checkbox" data-srv="enrolamiento"> 🪪 Enrolamiento en muelles <small>(una sola vez)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="enrolamiento" placeholder="Valor"></label>
+            <label class="srv-fila" data-srv-fila="curso"><input type="checkbox" data-srv="curso"> 🎓 Curso <small>(solo este mes)</small><input type="text" data-srv-tipo list="listaCursosMuelle" maxlength="80" placeholder="¿Qué curso?" aria-label="Tipo de curso"><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="curso" placeholder="Valor"></label>
             <div class="srv-total" data-srv-total></div>
           </div>
           <p class="vehiculo-ayuda">Ponga la fecha que le dio <b>cada muelle</b> (deje vacío el muelle donde no está actualizado). Desde 30 días antes la app avisa en "Hoy" y en "Vencimientos" para ofrecerle renovarla. En «Fotos de documentos» (arriba) suba la <b>planilla</b> y el <b>comprobante</b> de la seguridad social que paga por su empresa (el PDF se guarda como imagen).</p>
@@ -1910,13 +1913,14 @@
           <img id="msCedulaPrev" class="ms-ced-prev" alt="" hidden>
           <div id="msCedulaAviso"></div>
         </div>
-        <div class="field span2" style="grid-column:1/-1;"><label>Servicios prestados * (marque en qué muelles se actualiza y/o el enrolamiento)</label>
+        <div class="field span2" style="grid-column:1/-1;"><label>Servicios prestados * (marque la actualización de cada muelle, el enrolamiento o el curso)</label>
           <div class="srv-filas" id="msServicios">
             <label class="srv-fila" data-srv-fila="act:Sociedad"><input type="checkbox" data-srv="act:Sociedad"> ⚓ Actualización muelle <b>Sociedad</b> <small>(cada mes)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="act:Sociedad" placeholder="Valor"></label>
             <label class="srv-fila" data-srv-fila="act:TC Buen"><input type="checkbox" data-srv="act:TC Buen"> ⚓ Actualización muelle <b>TC Buen</b> <small>(cada mes)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="act:TC Buen" placeholder="Valor"></label>
             <label class="srv-fila" data-srv-fila="act:Agua Dulce"><input type="checkbox" data-srv="act:Agua Dulce"> ⚓ Actualización muelle <b>Agua Dulce</b> <small>(cada mes)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="act:Agua Dulce" placeholder="Valor"></label>
             <label class="srv-fila srv-antigua" hidden data-srv-fila="actualizacion"><input type="checkbox" data-srv="actualizacion"> ⚓ Actualización en muelles <small>(de antes, sin muelle)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="actualizacion" placeholder="Valor"></label>
             <label class="srv-fila" data-srv-fila="enrolamiento"><input type="checkbox" data-srv="enrolamiento"> 🪪 Enrolamiento en muelles <small>(una sola vez)</small><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="enrolamiento" placeholder="Valor"></label>
+            <label class="srv-fila" data-srv-fila="curso"><input type="checkbox" data-srv="curso"> 🎓 Curso <small>(solo este mes)</small><input type="text" data-srv-tipo list="listaCursosMuelle" maxlength="80" placeholder="¿Qué curso?" aria-label="Tipo de curso"><input type="number" min="0" step="1" inputmode="numeric" data-srv-valor="curso" placeholder="Valor"></label>
             <div class="srv-total" data-srv-total></div>
           </div></div>
         <div class="field"><label>Cédula</label><input id="msCedula" type="text" inputmode="numeric" maxlength="12" required></div>
@@ -2434,6 +2438,7 @@
 </div>
 
 <!-- Modal de editar responsables -->
+<datalist id="listaCursosMuelle"></datalist>
 <div class="overlay" id="overlayFactura">
   <div class="modal" style="max-width:520px;">
     <h2>🧾 Crear borrador en Alegra</h2>
@@ -4933,14 +4938,16 @@ function construirInformeMuelles(){
     const valor = numOrZero(r["Costo Servicio"]);
     total += valor;
     if (r["Estado Trámite"] === "PAGO CONDUCTOR") cobrado += valor;
-    html += `<div class="informe-row"><span class="ir-label">${escHtml(r["Nombre del Afiliado"])} (${Object.keys(serviciosMuelle(r)).map(etiquetaCortaServicio).join(" + ")}) — ${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : escHtml(r["Estado Trámite"])}</span><span class="ir-valor">${fmt(valor)}</span></div>`;
+    html += `<div class="informe-row"><span class="ir-label">${escHtml(r["Nombre del Afiliado"])} (${Object.keys(serviciosMuelle(r)).map(k => k === "curso" && cursoTipoDe(r) ? `curso ${escHtml(cursoTipoDe(r))}` : etiquetaCortaServicio(k)).join(" + ")}) — ${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : escHtml(r["Estado Trámite"])}</span><span class="ir-valor">${fmt(valor)}</span></div>`;
   });
   if (lista.length === 0) html += `<div class="empty">Nadie en Actualización de Muelles este mes.</div>`;
   html += filaInforme("Ya pagado", cobrado);
   const totEnrol = lista.reduce((a, r) => a + numOrZero(serviciosMuelle(r).enrolamiento), 0);
-  html += filaInforme("Actualizaciones", total - totEnrol);
+  const totCursos = lista.reduce((a, r) => a + numOrZero(serviciosMuelle(r).curso), 0);
+  html += filaInforme("Actualizaciones", total - totEnrol - totCursos);
   html += filaInforme("Enrolamientos", totEnrol);
-  html += filaInforme("Total Muelles (actualización y enrolamiento)", total, true);
+  html += filaInforme("Cursos", totCursos);
+  html += filaInforme("Total Muelles (actualización, enrolamiento y cursos)", total, true);
   return html;
 }
 
@@ -4996,7 +5003,7 @@ function construirInformeGeneral(){
   html += filaInforme("PROSEGUROSNET (solo costo del servicio)", totalPrgGanancia + gastoRetiros);
   if (gastoRetiros) html += `<div class="informe-row"><span class="ir-label">Gasto por retiros (se resta)</span><span class="ir-valor" style="color:var(--retiro);">− ${fmt(gastoRetiros)}</span></div>`;
   html += filaInforme("Actualización de Conductores", totalCond);
-  html += filaInforme("Muelles otras empresas (actualización y enrolamiento)", totalMue);
+  html += filaInforme("Muelles otras empresas (actualización, enrolamiento y cursos)", totalMue);
   html += filaInforme("Ganancias de gestiones", totalGest);
   html += filaInforme("Ganancia real total del mes", totalPrgGanancia + totalCond + totalMue + totalGest, true);
 
@@ -5009,7 +5016,7 @@ function abrirInforme(tipo){
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
-    muelles: "Informe — Muelles otras empresas (actualización y enrolamiento)",
+    muelles: "Informe — Muelles otras empresas (actualización, enrolamiento y cursos)",
     gestiones: "Informe — Ganancias de gestiones",
     general: "Informe — Suma final del mes",
   };
@@ -5380,9 +5387,11 @@ function construirRegistroMesSiguiente(r){
       if (esServicioMuelles(r)){
         // Enrolamiento sin pagar: pasa igual, todavía debe (no se le vuelve a cobrar otro)
         const sv = serviciosMuelle(r), pago = r["Estado Trámite"] === "PAGO CONDUCTOR";
-        if (esEnrolamiento(r)) return { ...r, "Enviado": false, "Aprobado": false };
+        // El curso se queda en su mes, esté pagado o no
+        const base = sinCurso(sv);
+        if (esEnrolamiento(r)) return { ...r, ...("curso" in sv ? { "Servicios Muelle": base, "Costo Servicio": totalServicios(base) } : {}), "Enviado": false, "Aprobado": false };
         // Pagó: el mes siguiente solo se cobra la actualización. Debe: se le sigue cobrando todo.
-        const svSig = pago ? Object.fromEntries(Object.entries(sv).filter(([k]) => esClaveAct(k))) : sv;
+        const svSig = pago ? Object.fromEntries(Object.entries(base).filter(([k]) => esClaveAct(k))) : base;
         return {
           ...r,
           "Servicios Muelle": svSig,
@@ -5468,6 +5477,8 @@ advanceBtn.addEventListener("click", async () => {
     // Enrolamiento en muelles: es una sola vez; si ya lo pagó, no pasa al mes siguiente
     // (si además tiene actualización, sigue solo con la actualización)
     .filter(r => !(esServicioMuelles(r) && esEnrolamiento(r) && r["Estado Trámite"] === "PAGO CONDUCTOR"))
+    // Quien solo tomó un curso no pasa al mes siguiente
+    .filter(r => !(esServicioMuelles(r) && soloCurso(r)))
     .map(construirRegistroMesSiguiente)
     // Retiros sin soporte: pasan igual, en RETIRO, sin planilla, para recordar que falta
     .concat(retirosPendientes.map(r => {
@@ -5993,22 +6004,29 @@ const SERVICIOS_MUELLE = {
   "act:Agua Dulce": "Actualización muelle Agua Dulce",
   actualizacion: "Actualización en muelles",
   enrolamiento: "Enrolamiento en muelles",
+  curso: "Curso",
 };
 function esClaveAct(k){ return k === "actualizacion" || String(k).startsWith("act:"); }
-function etiquetaCortaServicio(k){ return k === "enrolamiento" ? "enrolamiento" : k.startsWith("act:") ? `act. ${k.slice(4)}` : "actualización"; }
+function etiquetaCortaServicio(k){ return k === "enrolamiento" ? "enrolamiento" : k === "curso" ? "curso" : k.startsWith("act:") ? `act. ${k.slice(4)}` : "actualización"; }
 // Servicios prestados a la persona, con su valor: { actualizacion: 50000, enrolamiento: 80000 }
 function serviciosMuelle(r){
   const s = r && r["Servicios Muelle"];
-  if (s && typeof s === "object" && Object.keys(s).length) return s;
+  if (s && typeof s === "object" && Object.keys(s).length){ const { _cursoTipo, ...sv } = s; return sv; }
   return { [r && r["Servicio Muelle"] === "enrolamiento" ? "enrolamiento" : "actualizacion"]: numOrZero(r && r["Costo Servicio"]) };
 }
 function tieneServicio(r, k){ const sv = serviciosMuelle(r); return k === "actualizacion" ? Object.keys(sv).some(esClaveAct) : k in sv; }
 function servicioMuelle(r){ return tieneServicio(r, "actualizacion") ? "actualizacion" : "enrolamiento"; }
 function esEnrolamiento(r){ return tieneServicio(r, "enrolamiento") && !tieneServicio(r, "actualizacion"); }
-function totalServicios(sv){ return Object.values(sv).reduce((a, v) => a + numOrZero(v), 0); }
+function totalServicios(sv){ return Object.entries(sv).reduce((a, [k, v]) => k.startsWith("_") ? a : a + numOrZero(v), 0); }
+// Curso: se queda en el mes en que se hizo, nunca pasa al mes siguiente.
+function cursoTipoDe(r){ const s = r && r["Servicios Muelle"]; return String((s && s._cursoTipo) || "").trim(); }
+function sinCurso(sv){ const { curso, _cursoTipo, ...resto } = sv || {}; return resto; }
+function soloCurso(r){ const sv = serviciosMuelle(r); return "curso" in sv && !Object.keys(sinCurso(sv)).length; }
+function nombreServicio(r, k){ const t = k === "curso" ? cursoTipoDe(r) : ""; return t ? `Curso: ${t}` : SERVICIOS_MUELLE[k]; }
+function iconoServicio(k){ return k === "enrolamiento" ? "🪪" : k === "curso" ? "🎓" : "⚓"; }
 function textoServicios(r){
   const sv = serviciosMuelle(r);
-  return Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `${k === "enrolamiento" ? "🪪" : "⚓"} ${SERVICIOS_MUELLE[k]}: ${fmt(sv[k])}`);
+  return Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `${iconoServicio(k)} ${nombreServicio(r, k)}: ${fmt(sv[k])}`);
 }
 const esEmpresaConductores = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_CONDUCTORES);
 const esServicioMuelles = (r) => normalizarEmpresa(r["Empresa"]) === normalizarEmpresa(NOMBRE_EMPRESA_MUELLES);
@@ -6369,7 +6387,7 @@ function showBreakdown(cedula){
 
   if (esServicioMuelles(r)){
     const sv = serviciosMuelle(r);
-    document.getElementById("bMeta").insertAdjacentHTML("beforeend", `<div class="srv-detalle"><b>Servicios prestados en muelles</b>${Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<div class="srv-detalle-fila"><span>${k === "enrolamiento" ? "🪪" : "⚓"} ${SERVICIOS_MUELLE[k]}${k === "enrolamiento" ? " (una sola vez)" : " (cada mes)"}</span><b>${fmt(sv[k])}</b></div>`).join("")}<div class="srv-detalle-fila srv-detalle-total"><span>Total</span><b>${fmt(totalServicios(sv))}</b></div></div>`);
+    document.getElementById("bMeta").insertAdjacentHTML("beforeend", `<div class="srv-detalle"><b>Servicios prestados en muelles</b>${Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<div class="srv-detalle-fila"><span>${iconoServicio(k)} ${escHtml(nombreServicio(r, k))}${k === "enrolamiento" ? " (una sola vez)" : k === "curso" ? " (solo este mes)" : " (cada mes)"}</span><b>${fmt(sv[k])}</b></div>`).join("")}<div class="srv-detalle-fila srv-detalle-total"><span>Total</span><b>${fmt(totalServicios(sv))}</b></div></div>`);
   }
   const thumbs = [];
   [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"], ["Imagen ComprobantePago","Comprobante de pago"], ["Imagen Licencia","Licencia de conducción"], ["Imagen SoatTecno","SOAT y tecnomecánica"], ["Imagen Poliza","Póliza del vehículo"]].forEach(([campo, etiqueta]) => {
@@ -7677,7 +7695,7 @@ function openModal(record){
   getField("VenceSoat").value = record ? record["Vence SOAT"] || "" : "";
   getField("VenceTecno").value = record ? record["Vence Tecno"] || "" : "";
   getField("VencePoliza").value = record ? record["Vence Póliza"] || "" : "";
-  ponerServicios("#fServicios", record && esServicioMuelles(record) ? serviciosMuelle(record) : {});
+  ponerServicios("#fServicios", record && esServicioMuelles(record) ? serviciosMuelle(record) : {}, record ? cursoTipoDe(record) : "");
   document.querySelectorAll("#venceMuellesGrid input[data-muelle]").forEach(i => { i.value = (record && (record["Vence Por Muelle"] || {})[i.dataset.muelle]) || ""; });
   { const tiene = record && (record["Placa"] || record["Vence Licencia"] || record["Vence SOAT"] || record["Vence Tecno"] || record["Vence Póliza"] || record["Imagen Licencia"] || record["Imagen SoatTecno"] || record["Imagen Poliza"]);
     document.getElementById("vehiculoSeccion").open = !!tiene; }
@@ -9136,6 +9154,7 @@ async function ofrecerAgregarAMesesPosteriores(cedula){
   if (pos === -1) return;
   const faltan = meses.slice(pos + 1).filter(m => !(store.months[m] || []).some(x => String(x["Cédula"]) === String(cedula)));
   if (!faltan.length) return;
+  if (esServicioMuelles(actual) && soloCurso(actual)) return; // el curso se queda en su mes
   let previo = actual;
   for (let i = pos + 1; i < meses.length; i++){
     const enEseMes = (store.months[meses[i]] || []).find(x => String(x["Cédula"]) === String(cedula));
@@ -9160,7 +9179,14 @@ function propagarAMesesPosteriores(cedula, cambios, fechaCambio){
     if (!mesArr) continue;
     const j = mesArr.findIndex(x => String(x["Cédula"]) === String(cedula));
     if (j > -1){
-      mesArr[j] = { ...mesArr[j], ...cambiosSinEstadoNiCosto };
+      const cambiosMes = { ...cambiosSinEstadoNiCosto };
+      if (cambiosMes["Servicios Muelle"]){
+        // El curso de un mes no pasa a los siguientes; cada mes conserva el suyo
+        const base = sinCurso(cambiosMes["Servicios Muelle"]), propio = mesArr[j]["Servicios Muelle"] || {};
+        if (Object.keys(base).length) cambiosMes["Servicios Muelle"] = { ...base, ...("curso" in propio ? { curso: propio.curso, _cursoTipo: propio._cursoTipo } : {}) };
+        else delete cambiosMes["Servicios Muelle"];
+      }
+      mesArr[j] = { ...mesArr[j], ...cambiosMes };
       if (fechaCambio) delete mesArr[j]["_prorrateoTransicion"];
     }
   }
@@ -10442,16 +10468,29 @@ function leerServicios(sel){
     if (v === "" || !(Number(v) >= 0)) error = `Escriba el valor de ${SERVICIOS_MUELLE[ch.dataset.srv].toLowerCase()}.`;
     sv[ch.dataset.srv] = Math.round(Number(v) || 0);
   });
-  if (!Object.keys(sv).length) error = "Marque al menos un servicio: la actualización de algún muelle o el enrolamiento.";
+  if ("curso" in sv){
+    const tipo = limpiarEspacios(document.querySelector(`${sel} [data-srv-tipo]`).value);
+    if (!tipo) error = "Escriba qué tipo de curso es.";
+    sv._cursoTipo = tipo;
+  }
+  if (!Object.keys(sv).length) error = "Marque al menos un servicio: la actualización de algún muelle, el enrolamiento o el curso.";
   return { sv, error };
 }
-function ponerServicios(sel, sv){
+function renderListaCursos(){
+  const tipos = new Map();
+  Object.values(store.months || {}).forEach(m => (m || []).forEach(r => { const t = cursoTipoDe(r); if (t) tipos.set(t.toLowerCase(), t); }));
+  document.getElementById("listaCursosMuelle").innerHTML = [...tipos.values()].sort((a, b) => a.localeCompare(b)).map(t => `<option value="${escHtml(t)}">`).join("");
+}
+function ponerServicios(sel, sv, cursoTipo = ""){
   const antigua = document.querySelector(`${sel} [data-srv-fila="actualizacion"]`);
   if (antigua) antigua.hidden = !("actualizacion" in sv);
   document.querySelectorAll(`${sel} [data-srv]`).forEach(ch => {
     ch.checked = ch.dataset.srv in sv;
     document.querySelector(`${sel} [data-srv-valor="${ch.dataset.srv}"]`).value = ch.checked ? sv[ch.dataset.srv] : "";
   });
+  const tipoInp = document.querySelector(`${sel} [data-srv-tipo]`);
+  if (tipoInp) tipoInp.value = "curso" in sv ? cursoTipo : "";
+  renderListaCursos();
   totalServiciosForm(sel);
 }
 function totalServiciosForm(sel){
@@ -10461,6 +10500,7 @@ function totalServiciosForm(sel){
     const inp = box.querySelector(`[data-srv-valor="${ch.dataset.srv}"]`);
     inp.disabled = !ch.checked;
     if (ch.checked) t += numOrZero(inp.value);
+    if (ch.dataset.srv === "curso"){ const tipo = box.querySelector("[data-srv-tipo]"); if (tipo) tipo.hidden = !ch.checked; }
   });
   box.querySelector("[data-srv-total]").textContent = `Total: ${fmt(t)}`;
   return t;
@@ -10475,8 +10515,8 @@ function totalServiciosForm(sel){
 let msFiltroServicio = "";
 function renderMuellesServicio(){
   const todos = records.filter(esServicioMuelles);
-  const nAct = todos.filter(r => tieneServicio(r, "actualizacion")).length, nEnrol = todos.filter(r => tieneServicio(r, "enrolamiento")).length;
-  document.getElementById("msFiltros").innerHTML = [["", `Todos (${todos.length})`], ["actualizacion", `⚓ Actualización (${nAct})`], ["enrolamiento", `🪪 Enrolamiento (${nEnrol})`]]
+  const nAct = todos.filter(r => tieneServicio(r, "actualizacion")).length, nEnrol = todos.filter(r => tieneServicio(r, "enrolamiento")).length, nCurso = todos.filter(r => tieneServicio(r, "curso")).length;
+  document.getElementById("msFiltros").innerHTML = [["", `Todos (${todos.length})`], ["actualizacion", `⚓ Actualización (${nAct})`], ["enrolamiento", `🪪 Enrolamiento (${nEnrol})`], ["curso", `🎓 Cursos (${nCurso})`]]
     .map(([k, t]) => `<button type="button" class="filter-pill ${msFiltroServicio === k ? "active" : ""}" data-ms-filtro="${k}">${t}</button>`).join("");
   const lista = msFiltroServicio ? todos.filter(r => tieneServicio(r, msFiltroServicio)) : todos;
   const pagados = lista.filter(r => r["Estado Trámite"] === "PAGO CONDUCTOR");
@@ -10495,7 +10535,7 @@ function renderMuellesServicio(){
     const pagaPor = String(r["Responsable / Grupo"] || "").trim();
     return `<div class="ms-row" data-ms-cedula="${escHtml(r["Cédula"])}">
       <div>
-        <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])} ${(() => { const sv = serviciosMuelle(r); return Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<span class="ms-servicio ${k === "enrolamiento" ? "enrolamiento" : "actualizacion"}">${k === "enrolamiento" ? "🪪 Enrolamiento" : k.startsWith("act:") ? `⚓ ${k.slice(4)}` : "⚓ Actualización"} ${fmt(sv[k])}</span>`).join(""); })()}</div>
+        <div class="mu-nombre" data-ms-abrir="1" title="Ver o editar">${escHtml(r["Nombre del Afiliado"])} ${(() => { const sv = serviciosMuelle(r); return Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<span class="ms-servicio ${k === "enrolamiento" || k === "curso" ? k : "actualizacion"}">${k === "enrolamiento" ? "🪪 Enrolamiento" : k === "curso" ? `🎓 ${escHtml(cursoTipoDe(r) || "Curso")}` : k.startsWith("act:") ? `⚓ ${k.slice(4)}` : "⚓ Actualización"} ${fmt(sv[k])}</span>`).join(""); })()}</div>
         <div class="mu-ced">Cédula ${escHtml(r["Cédula"])}${pagaPor ? ` · paga por ${escHtml(pagaPor)}` : ""}${MUELLES_NOMBRES.map(m => {
           const f = (r["Vence Por Muelle"] || {})[m], dv = diasHasta(f); if (dv === null) return "";
           return ` <span class="ve-dias ${dv < 0 ? "vencido" : dv <= 7 ? "pronto" : ""}" title="${escHtml(m)}">⚓ ${MUELLE_INFO[m].letra} ${dv < 0 ? "venció" : "vence"} ${fechaLarga(f).slice(0, 5)}</span>`;
@@ -12931,7 +12971,7 @@ async function imagenReciboMuelles(r, tipo = "image/png"){
   if (String(r["Responsable / Grupo"] || "").trim()) filas.push(["Empresa por la que paga", nombrePropio(r["Responsable / Grupo"])]);
   if (r["Placa"]) filas.push(["Placa", r["Placa"]]);
   const muellesAct = MUELLES_NOMBRES.filter(m => ("act:" + m) in serviciosMuelle(r));
-  const lineasMuelles = (muellesAct.length ? muellesAct : MUELLES_NOMBRES).map(m => `${m}: ${(r["AceptadoPorMuelle"] || {})[m] ? (esEnrolamiento(r) ? "enrolado ✓" : "listo ✓") : "pendiente"}${vm[m] ? ` · vence ${fechaLarga(vm[m])}` : ""}`);
+  const lineasMuelles = soloCurso(r) ? [] : (muellesAct.length ? muellesAct : MUELLES_NOMBRES).map(m => `${m}: ${(r["AceptadoPorMuelle"] || {})[m] ? (esEnrolamiento(r) ? "enrolado ✓" : "listo ✓") : "pendiente"}${vm[m] ? ` · vence ${fechaLarga(vm[m])}` : ""}`);
   const svR = serviciosMuelle(r), clavesR = Object.keys(SERVICIOS_MUELLE).filter(k => k in svR);
   const H = 250 + filas.length * 52 + 60 + clavesR.length * 48 + 70 + lineasMuelles.length * 40 + 230;
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -12956,12 +12996,12 @@ async function imagenReciboMuelles(r, tipo = "image/png"){
   c.fillStyle = "#181512"; c.font = "700 26px Inter, Arial, sans-serif"; c.fillText("Servicios prestados", pad, y); y += 46;
   clavesR.forEach(k => {
     c.textAlign = "left"; c.fillStyle = "#3A342E"; c.font = "500 25px Inter, Arial, sans-serif";
-    c.fillText(`${SERVICIOS_MUELLE[k]}${k === "enrolamiento" ? " (una sola vez)" : ""}`, pad + 10, y);
+    c.fillText(`${nombreServicio(r, k)}${k === "enrolamiento" ? " (una sola vez)" : ""}`.slice(0, 46), pad + 10, y);
     c.textAlign = "right"; c.fillStyle = "#181512"; c.font = "700 26px Inter, Arial, sans-serif"; c.fillText(fmt(svR[k]), W - pad, y);
     y += 48;
   });
   c.textAlign = "left"; y += 10; c.fillStyle = "#EDE9E2"; c.fillRect(pad, y, W - 2 * pad, 2); y += 44;
-  c.fillStyle = "#181512"; c.font = "700 26px Inter, Arial, sans-serif"; c.fillText("Muelles", pad, y); y += 40;
+  if (lineasMuelles.length){ c.fillStyle = "#181512"; c.font = "700 26px Inter, Arial, sans-serif"; c.fillText("Muelles", pad, y); y += 40; }
   lineasMuelles.forEach(l => { c.fillStyle = "#3A342E"; c.font = "500 24px Inter, Arial, sans-serif"; c.fillText("⚓ " + l, pad + 10, y); y += 40; });
   y += 20;
   c.fillStyle = pagado ? "#2F6F62" : "#C8202F"; c.fillRect(pad - 10, y, W - 2 * pad + 20, 90);
@@ -12997,7 +13037,7 @@ document.getElementById("rmEnviarBtn").addEventListener("click", () => {
   const pagado = r["Estado Trámite"] === "PAGO CONDUCTOR";
   let copiada = Promise.resolve(false);
   try{ if (navigator.clipboard && window.ClipboardItem) copiada = navigator.clipboard.write([new ClipboardItem({ "image/png": imagenReciboMuelles(r) })]).then(() => true, () => false); }catch(e){}
-  const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(String(r["Nombre del Afiliado"]).split(" ").slice(0, 2).join(" "))}, le compartimos su recibo de *servicios en los muelles* (${Object.keys(serviciosMuelle(r)).map(k => k === "enrolamiento" ? "enrolamiento" : k.startsWith("act:") ? `actualización ${k.slice(4)}` : "actualización").join(", ")}) de ${store.currentMonth}: *${fmt(r["Costo Servicio"])}*${pagado ? " (pagado ✅)" : ""}.`;
+  const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(String(r["Nombre del Afiliado"]).split(" ").slice(0, 2).join(" "))}, le compartimos su recibo de *servicios en los muelles* (${Object.keys(serviciosMuelle(r)).map(k => k === "enrolamiento" ? "enrolamiento" : k === "curso" ? (cursoTipoDe(r) ? `curso ${cursoTipoDe(r)}` : "curso") : k.startsWith("act:") ? `actualización ${k.slice(4)}` : "actualización").join(", ")}) de ${store.currentMonth}: *${fmt(r["Costo Servicio"])}*${pagado ? " (pagado ✅)" : ""}.`;
   copiada.then(ok => {
     abrirChatEnApp(conIndicativo, esCelular, texto);
     showToast(ok ? "📋 Envíe el mensaje y luego pegue el recibo (ya está copiado)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela.");
