@@ -9809,11 +9809,14 @@ async function individualesDePlanilla(datos, cedulas, numero){
   const pdf = await pdfjs.getDocument({ data: datos.slice(0) }).promise;
   const paginas = await leerFilasPlanilla(pdf);
   const todas = paginas.flatMap(p => p.filas);
+  // El archivo completo solo se usa si el otro lector de planillas también ve a una sola persona
+  let leidos = 0;
+  try{ leidos = (await LectorPILA.leerPlanillaPDF(pdfjs, datos.slice(0))).afiliados.length; }catch(e){ console.error(e); }
   const res = new Map();
   for (const ced of cedulas){
     const c = String(ced).trim();
-    if (todas.length === 1 && todas[0].cedula === c){ res.set(c, { blob: new Blob([datos], { type: "application/pdf" }), tipo: "application/pdf" }); continue; }
-    if (todas.length < 1) continue;
+    if (todas.length === 1 && leidos === 1 && todas[0].cedula === c){ res.set(c, { blob: new Blob([datos], { type: "application/pdf" }), tipo: "application/pdf" }); continue; }
+    if (todas.length < 2) continue; // un solo renglón sin confirmar: se deja para revisar
     const blob = await extractoPlanilla(paginas, c, numero);
     if (blob) res.set(c, { blob, tipo: "image/jpeg" });
   }
