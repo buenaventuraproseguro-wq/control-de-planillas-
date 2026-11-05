@@ -1988,6 +1988,12 @@
       <div class="modal-actions" style="margin-top:8px;"><button type="button" class="btn primary small" id="csPegarBtn">Agregar</button></div>
     </div>
     <div id="csLista"></div>
+    <div id="csClaveCaja" class="cs-pegar" hidden>
+      <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🔑 Clave del celular (MacroDroid)</div>
+      <div style="font-size:12.5px;margin-bottom:8px;">Al cambiarla, el celular deja de enviar hasta que pegue la clave nueva en la macro.</div>
+      <div class="modal-actions" style="margin-top:0;"><button type="button" class="btn small" id="csClaveBtn">Cambiar la clave</button></div>
+      <div id="csClaveNueva"></div>
+    </div>
     <div class="modal-actions"><button class="btn ghost" id="csCerrarBtn">Cerrar</button></div>
   </div>
 </div>
@@ -12033,15 +12039,18 @@ async function cambiarEstadoConsignacion(id, estado){
   actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
 }
 
+function limpiarClaveConsig(){ document.getElementById("csClaveNueva").innerHTML = ""; }
 document.getElementById("navConsigBtn").addEventListener("click", async () => {
+  limpiarClaveConsig();
+  document.getElementById("csClaveCaja").hidden = !esAdmin();
   document.getElementById("overlayConsig").classList.add("show");
   renderConsignaciones();
   await cargarConsignaciones();
   renderConsignaciones();
 });
-document.getElementById("csCerrarBtn").addEventListener("click", () => document.getElementById("overlayConsig").classList.remove("show"));
+document.getElementById("csCerrarBtn").addEventListener("click", () => { limpiarClaveConsig(); document.getElementById("overlayConsig").classList.remove("show"); });
 document.getElementById("overlayConsig").addEventListener("click", (e) => {
-  if (e.target.id === "overlayConsig"){ e.target.classList.remove("show"); return; }
+  if (e.target.id === "overlayConsig"){ limpiarClaveConsig(); e.target.classList.remove("show"); return; }
   const tab = e.target.closest("[data-cs-tab]");
   if (tab){ csTab = tab.dataset.csTab; renderConsignaciones(); return; }
   const a = e.target.closest("[data-cs-aplicar]"); if (a){ aplicarConsignacion(a.dataset.csAplicar); return; }
@@ -12050,6 +12059,22 @@ document.getElementById("overlayConsig").addEventListener("click", (e) => {
     return;
   }
   const u = e.target.closest("[data-cs-deshacer]"); if (u){ cambiarEstadoConsignacion(u.dataset.csDeshacer, "pendiente"); return; }
+});
+// La clave nueva solo se muestra aquí, una vez, y nunca se guarda en la app ni en un mensaje.
+document.getElementById("csClaveBtn").addEventListener("click", async () => {
+  if (!esAdmin()) return;
+  if (!(await confirmarApp("¿Cambiar la clave? El celular dejará de enviar consignaciones hasta que pegue la clave nueva en MacroDroid."))) return;
+  const { data, error } = await sb.rpc("cambiar_clave_consignaciones");
+  if (error){ await alertApp("No se pudo cambiar la clave: " + error.message); return; }
+  const caja = document.getElementById("csClaveNueva");
+  caja.innerHTML = `<p style="font-size:12.5px;margin:10px 0 6px;">Clave nueva. Cópiela y péguela en <b>p_clave</b> dentro de la macro. Al cerrar esta ventana ya no se vuelve a mostrar.</p>
+    <input type="text" id="csClaveTexto" readonly style="width:100%;font:inherit;padding:8px;" aria-label="Clave nueva">
+    <div class="modal-actions"><button type="button" class="btn small primary" id="csClaveCopiar">Copiar</button></div>`;
+  document.getElementById("csClaveTexto").value = data;
+  document.getElementById("csClaveCopiar").onclick = async () => {
+    try{ await navigator.clipboard.writeText(data); showToast("📋 Clave copiada."); }
+    catch(e){ document.getElementById("csClaveTexto").select(); showToast("Selecciónela y cópiela."); }
+  };
 });
 document.getElementById("csPegarBtn").addEventListener("click", async () => {
   const texto = document.getElementById("csPegarTexto").value.trim();
