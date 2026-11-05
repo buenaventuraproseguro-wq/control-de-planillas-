@@ -9838,6 +9838,7 @@ async function separarPlanillasDelMes(){
   if (error){ await alertApp("No se pudieron leer las planillas: " + error.message); return; }
   const hechas = new Set(data.filter(d => d.tipo === "planilla_individual").map(d => d.cedula));
   const pendientes = data.filter(d => d.tipo === "planilla_pagada" && !hechas.has(d.cedula));
+  if (!pendientes.length){ await alertApp(`✅ Las planillas de ${mes} ya están separadas: no hay nada pendiente.`); return; }
   let creadas = 0; const revisar = [];
   for (let i = 0; i < pendientes.length; i++){
     const d = pendientes[i];
