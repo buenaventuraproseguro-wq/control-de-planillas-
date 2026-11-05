@@ -9722,9 +9722,10 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
 })(typeof window !== "undefined" ? window : globalThis);
 
 /* ---- Planilla individual: cada afiliado ve solo su fila ----
-   Se dibuja la planilla como imagen, se borran las demás filas y los totales del grupo, y se marca
-   como extracto. Al ser imagen, los datos borrados no quedan escondidos dentro del archivo.
+   Se dibuja la planilla original como imagen y solo se tapan las filas de los demás afiliados; todo lo
+   demás queda igual, totales incluidos. Al ser imagen, lo tapado no queda escondido dentro del archivo.
    Si algo no cuadra no se crea nada, para no mostrarle a nadie los datos de otra persona. */
+const PLANILLA_INDIVIDUAL_DESDE = "2026-11-05T04:30:00";
 const RE_FILA_PLANILLA = /^(?:CC|CE|TI|PA|PE|PT|CD|SC)\s*(\d{5,12})\b/;
 async function leerFilasPlanilla(pdf){
   const paginas = [];
@@ -9766,45 +9767,45 @@ async function lienzoDePagina(pag, escala){
   await pag.pagina.render({ canvasContext: ctx, viewport: v }).promise;
   return c;
 }
-async function extractoPlanilla(paginas, cedula, numero){
+async function extractoPlanilla(paginas, cedula){
   const conFilas = paginas.filter(p => p.filas.length);
-  const todas = conFilas.flatMap(p => p.filas);
-  if (todas.filter(f => f.cedula === cedula).length !== 1) return null; // no está, o está repetido
-  const base = conFilas[0], origen = conFilas.find(p => p.filas.some(f => f.cedula === cedula));
-  const fila = origen.filas.find(f => f.cedula === cedula);
-  const mBase = medidasFilas(base), mOrigen = medidasFilas(origen);
-  // Filas muy juntas o una página con otro formato: mejor no arriesgarse
-  if (mBase.paso < 9 || mOrigen.paso < 9 || Math.abs(fila.x - base.filas[0].x) > 3) return null;
-  const totales = paginas.flatMap(p => p.lineas).find(l => /III\.?\s*TOTALES/i.test(l.texto));
+  if (conFilas.flatMap(p => p.filas).filter(f => f.cedula === cedula).length !== 1) return null; // no está, o está repetido
+  if (conFilas.some(p => medidasFilas(p).paso < 9)) return null; // filas muy juntas: mejor no arriesgarse
   const ESC = 2.5;
-  const lienzo = await lienzoDePagina(base, ESC);
-  const fuente = origen === base ? lienzo : await lienzoDePagina(origen, ESC);
-  const ctx = lienzo.getContext("2d");
-  const filaImg = document.createElement("canvas");
-  filaImg.width = fuente.width; filaImg.height = Math.ceil(mOrigen.mitad * 2 * ESC);
-  filaImg.getContext("2d").drawImage(fuente, 0, Math.round((fila.y - mOrigen.mitad) * ESC), fuente.width, filaImg.height, 0, 0, fuente.width, filaImg.height);
-  // Se borra desde la primera fila hasta el pie de página: las demás filas y los totales del grupo
-  const pie = base.lineas.find(l => /P[aá]gina\s+\d+\s+de|L[ií]nea Expertos/i.test(l.texto));
-  const hasta = (pie ? pie.y : base.alto * 0.87) - 8;
-  const desde = mBase.arriba;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, Math.round(desde * ESC), lienzo.width, Math.round((hasta - desde) * ESC));
-  ctx.drawImage(filaImg, 0, Math.round(desde * ESC));
-  // "Total Afiliados" es un dato del grupo
-  const lineaAf = base.lineas.find(l => /^Total Afiliados/i.test(l.texto));
-  const valorAf = lineaAf && lineaAf.partes.find(p => /^\d+$/.test(p.t));
-  if (valorAf) ctx.fillRect(Math.round((valorAf.x - 2) * ESC), Math.round((valorAf.y - 9) * ESC), Math.round(30 * ESC), Math.round(12 * ESC));
-  const y0 = desde + mBase.mitad * 2 + 22, x0 = 16;
-  ctx.fillStyle = "#181512";
-  ctx.font = `700 ${Math.round(11 * ESC)}px Arial, sans-serif`;
-  ctx.fillText(`EXTRACTO INDIVIDUAL DE LA PLANILLA N.° ${numero || ""}`, x0 * ESC, y0 * ESC);
-  ctx.font = `400 ${Math.round(9.5 * ESC)}px Arial, sans-serif`;
-  ctx.fillText(`Total de este afiliado: ${fila.total || "ver la columna Total"}. Generado por PROSEGUROSNET.`, x0 * ESC, (y0 + 15) * ESC);
-  ctx.fillText("Muestra solo a este afiliado. Los demás afiliados y los totales de la planilla se ocultaron. No reemplaza la planilla original.", x0 * ESC, (y0 + 29) * ESC);
-  return await new Promise(res => lienzo.toBlob(res, "image/jpeg", 0.86));
+  // Todo queda igual a la planilla original; solo se tapan las filas de los demás afiliados
+  const lienzos = [];
+  for (const pag of paginas){
+    const c = await lienzoDePagina(pag, ESC);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    if (pag.filas.length){
+      const { mitad } = medidasFilas(pag);
+      pag.filas.filter(f => f.cedula !== cedula).forEach(f => {
+        ctx.fillRect(0, Math.round((f.y - mitad) * ESC) + 2, c.width, Math.round(mitad * 2 * ESC) - 4);
+      });
+    }
+    lienzos.push(c);
+  }
+  // Nota pequeña debajo de los totales, para que se sepa por qué hay filas en blanco
+  const ultima = paginas.length - 1, pagFinal = paginas[ultima];
+  const totales = pagFinal.lineas.filter(l => /\$\s*[\d.,]+/.test(l.texto)).pop();
+  if (totales){
+    const ctx = lienzos[ultima].getContext("2d");
+    ctx.fillStyle = "#5A534A";
+    ctx.font = `400 ${Math.round(7.5 * ESC)}px Arial, sans-serif`;
+    ctx.fillText("Copia para el afiliado: las filas en blanco corresponden a otros afiliados de esta planilla.", 24 * ESC, (totales.y + 22) * ESC);
+  }
+  const hoja = document.createElement("canvas");
+  hoja.width = Math.max(...lienzos.map(c => c.width));
+  hoja.height = lienzos.reduce((a, c) => a + c.height, 0);
+  const h = hoja.getContext("2d");
+  h.fillStyle = "#ffffff"; h.fillRect(0, 0, hoja.width, hoja.height);
+  let y = 0;
+  lienzos.forEach(c => { h.drawImage(c, 0, y); y += c.height; });
+  return await new Promise(res => hoja.toBlob(res, "image/jpeg", 0.9));
 }
 // Devuelve el archivo individual de cada cédula: la planilla de una sola persona queda tal cual
-async function individualesDePlanilla(datos, cedulas, numero){
+async function individualesDePlanilla(datos, cedulas){
   const pdfjs = await cargarLectorPDF();
   const pdf = await pdfjs.getDocument({ data: datos.slice(0) }).promise;
   const paginas = await leerFilasPlanilla(pdf);
@@ -9817,7 +9818,7 @@ async function individualesDePlanilla(datos, cedulas, numero){
     const c = String(ced).trim();
     if (todas.length === 1 && leidos === 1 && todas[0].cedula === c){ res.set(c, { blob: new Blob([datos], { type: "application/pdf" }), tipo: "application/pdf" }); continue; }
     if (todas.length < 2) continue; // un solo renglón sin confirmar: se deja para revisar
-    const blob = await extractoPlanilla(paginas, c, numero);
+    const blob = await extractoPlanilla(paginas, c);
     if (blob) res.set(c, { blob, tipo: "image/jpeg" });
   }
   return res;
@@ -9834,9 +9835,10 @@ async function separarPlanillasDelMes(){
   if (!sb || !navigator.onLine){ showToast("Se necesita internet."); return; }
   const mesDoc = mesDocDe("planilla_individual"), mes = store.currentMonth;
   if (!(await confirmarApp(`¿Crear las planillas individuales de ${mes}? Se quedan las planillas completas para el equipo.`))) return;
-  const { data, error } = await sb.from("documentos").select("cedula, tipo, storage_path").in("tipo", ["planilla_pagada", "planilla_individual"]).eq("mes", mesDoc);
+  const { data, error } = await sb.from("documentos").select("cedula, tipo, storage_path, uploaded_at").in("tipo", ["planilla_pagada", "planilla_individual"]).eq("mes", mesDoc);
   if (error){ await alertApp("No se pudieron leer las planillas: " + error.message); return; }
-  const hechas = new Set(data.filter(d => d.tipo === "planilla_individual").map(d => d.cedula));
+  // Las creadas antes de esta fecha tienen el formato anterior y se vuelven a crear
+  const hechas = new Set(data.filter(d => d.tipo === "planilla_individual" && String(d.uploaded_at || "") >= PLANILLA_INDIVIDUAL_DESDE).map(d => d.cedula));
   const pendientes = data.filter(d => d.tipo === "planilla_pagada" && !hechas.has(d.cedula));
   if (!pendientes.length){ await alertApp(`✅ Las planillas de ${mes} ya están separadas: no hay nada pendiente.`); return; }
   let creadas = 0; const revisar = [];
@@ -9846,8 +9848,7 @@ async function separarPlanillasDelMes(){
     try{
       const { data: archivo, error: e } = await sb.storage.from("documentos-clientes").download(d.storage_path);
       if (e) throw e;
-      const r = (store.months[mes] || []).find(x => String(x["Cédula"]) === d.cedula);
-      const m = await individualesDePlanilla(new Uint8Array(await archivo.arrayBuffer()), [d.cedula], r ? r["No. Planilla Pagada"] : "");
+      const m = await individualesDePlanilla(new Uint8Array(await archivo.arrayBuffer()), [d.cedula]);
       if (!m.has(d.cedula)) throw new Error("sin fila");
       await guardarIndividual(d.cedula, mesDoc, m.get(d.cedula));
       creadas++;
@@ -10067,7 +10068,7 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
     } else {
       let individuales = new Map();
       try{
-        individuales = await individualesDePlanilla(new Uint8Array(await archivo.arrayBuffer()), elegidos.map(f => String(f.r["Cédula"])), info.numeroPlanilla);
+        individuales = await individualesDePlanilla(new Uint8Array(await archivo.arrayBuffer()), elegidos.map(f => String(f.r["Cédula"])));
       }catch(err){ console.error("No se pudieron crear las planillas individuales:", err); }
       for (const f of elegidos){
         const ced = String(f.r["Cédula"]);
