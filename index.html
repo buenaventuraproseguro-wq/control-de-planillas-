@@ -938,6 +938,23 @@
   .informe-row:last-child{ border-bottom:none; }
   .informe-row .ir-label{ color:var(--muted); }
   .informe-row .ir-valor{ font-family:inherit; font-variant-numeric:tabular-nums; font-weight:600; }
+  .ing-tarjetas{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .ing-tarjeta{ border:1px solid var(--line); border-radius:10px; padding:10px; min-width:0; }
+  .ing-tarjeta.fuerte{ grid-column:1 / -1; background:var(--accent-bg); border-color:var(--accent); }
+  .ing-tarjeta small{ display:block; font-size:12px; color:var(--muted); }
+  .ing-tarjeta b{ display:block; font-size:18px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .ing-tarjeta.fuerte b{ font-size:24px; }
+  .ing-tarjeta span{ display:block; font-size:12px; color:var(--muted); }
+  .ing-barra{ height:10px; border-radius:999px; background:var(--line); overflow:hidden; margin:4px 0 2px; }
+  .ing-barra i{ display:block; height:100%; background:var(--accent); }
+  .ing-dia{ border-bottom:1px solid var(--line); padding:7px 0; }
+  .ing-dia summary{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; cursor:pointer; font-size:13.5px; }
+  .ing-dia summary b{ font-variant-numeric:tabular-nums; text-align:right; }
+  .ing-dia summary small{ color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .ing-dia summary small:nth-child(4){ text-align:right; }
+  .ing-dia ul{ margin:6px 0 0; padding:0; list-style:none; font-size:12.5px; }
+  .ing-dia li{ display:flex; justify-content:space-between; gap:12px; padding:3px 0; }
+  .ing-nota{ font-size:12px; color:var(--muted); margin:8px 0 0; }
   .informe-row.total{ font-weight:700; font-size:14.5px; color:var(--titulo); border-top:2px solid var(--navy); margin-top:4px; padding-top:10px; }
   .informe-row.total .ir-valor{ color:var(--pago); font-size:16px; }
   .historial-mes-row{
@@ -1419,6 +1436,11 @@
       <div class="sidebar-section-title">Cartera</div>
       <button type="button" class="sidebar-link active" id="navCarteraBtn"><span class="sidebar-num">15</span><svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
       <div class="sidebar-sub" id="carteraSub">
+        <button type="button" class="sidebar-total" data-informe="ingresos">
+          <span class="sidebar-total-label">📈 Ingresos del mes</span>
+          <span class="sidebar-total-value" id="sidebarIngresosValue">—</span>
+          <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
+        </button>
         <button type="button" class="sidebar-total" id="btnInformeProsegurosnet" data-informe="prosegurosnet">
           <span class="sidebar-total-label">Total a cobrar este mes (PROSEGUROSNET)</span>
           <span class="sidebar-total-value" id="sidebarTotalValue">—</span>
@@ -5012,7 +5034,105 @@ function construirInformeGeneral(){
   return html;
 }
 
+// Ingresos del mes. "Ingreso" es lo que le queda a la empresa (servicio y recargos);
+// los aportes solo pasan por la empresa hacia EPS, ARL, AFP y caja.
+function resumenIngresos(mes, fechas){
+  const lista = mes === store.currentMonth ? records : (store.months[mes] || []);
+  const res = { pagos: 0, aplica: 0, ingreso: 0, aportes: 0, total: 0, porCobrar: 0, ingresoPorCobrar: 0, movimientos: [], lineas: {} };
+  const linea = (n) => (res.lineas[n] = res.lineas[n] || { pagos: 0, ingreso: 0 });
+  lista.forEach(r => {
+    const e = estadoClass(r["Estado Trámite"]);
+    if (e === "RETIRO") return;
+    res.aplica++;
+    const servicio = esConductorExcluido(r);
+    const total = servicio ? numOrZero(r["Costo Servicio"]) : calcularTotalPagar(r, mes);
+    const ingreso = servicio ? total : Math.min(total, numOrZero(r["Costo Servicio"]) + numOrZero(r["Recargo Mora"]));
+    if (e === "PAGO" || e === "PAGO_CONDUCTOR"){
+      const f = (fechas || {})[String(r["Cédula"])] || {};
+      res.pagos++; res.ingreso += ingreso; res.total += total; res.aportes += total - ingreso;
+      const l = linea(esEmpresaConductores(r) ? "Conductores" : esServicioMuelles(r) ? "Muelles otras empresas" : "PROSEGUROSNET");
+      l.pagos++; l.ingreso += ingreso;
+      res.movimientos.push({ fecha: f.fecha || "", aprox: !!f.aprox, nombre: nombrePropio(r["Nombre del Afiliado"] || ""), ingreso, total, pago: true });
+    } else {
+      res.porCobrar += total; res.ingresoPorCobrar += ingreso;
+    }
+  });
+  getTareas().filter(t => t.valor > 0 && mesDeFechaISO(t.fecha) === mes).forEach(t => {
+    if (!t.cobrada){ res.porCobrar += t.valor; res.ingresoPorCobrar += t.valor; return; }
+    res.ingreso += t.valor; res.total += t.valor;
+    linea("Gestiones").ingreso += t.valor;
+    res.movimientos.push({ fecha: String(t.fecha).slice(0, 10), aprox: false, nombre: `Gestión: ${t.descripcion || "sin detalle"}`, ingreso: t.valor, total: t.valor, pago: false });
+  });
+  return res;
+}
+function informeIngresosHtml(mes, r, extras, mesAnterior){
+  const pct = r.aplica ? Math.round(r.pagos * 100 / r.aplica) : 0;
+  const esperado = r.ingreso + r.ingresoPorCobrar;
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  const dias = new Map();
+  r.movimientos.forEach(m => {
+    const d = dias.get(m.fecha) || { fecha: m.fecha, pagos: 0, ingreso: 0, total: 0, aprox: false, filas: [] };
+    if (m.pago) d.pagos++;
+    d.ingreso += m.ingreso; d.total += m.total; d.aprox = d.aprox || m.aprox; d.filas.push(m);
+    dias.set(m.fecha, d);
+  });
+  const conFecha = [...dias.values()].filter(d => d.fecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  let acumulado = 0;
+  conFecha.forEach(d => { acumulado += d.ingreso; d.acumulado = acumulado; });
+  const sinFecha = dias.get("");
+  const deHoy = dias.get(hoy) || { pagos: 0, ingreso: 0 };
+  const hayAprox = r.movimientos.some(m => m.aprox);
+  const filaDia = (d) => `<details class="ing-dia">
+    <summary><span>${d.fecha ? `${fechaCorta(d.fecha)}${d.aprox ? " ≈" : ""}` : "Sin fecha"} · ${d.pagos} pago${d.pagos === 1 ? "" : "s"}</span><b>${fmt(d.ingreso)}</b>
+    <small>Recibido ${fmt(d.total)}</small><small>${d.fecha ? `Acumulado ${fmt(d.acumulado)}` : ""}</small></summary>
+    <ul>${d.filas.map(m => `<li><span>${escHtml(m.nombre)}</span><span>${fmt(m.ingreso)}</span></li>`).join("")}</ul>
+  </details>`;
+  return `<div class="ing-tarjetas">
+      <div class="ing-tarjeta fuerte"><small>Ingresos de la empresa</small><b>${fmt(r.ingreso)}</b><span>${r.pagos} pagos · promedio ${fmt(r.pagos ? Math.round(r.ingreso / r.pagos) : 0)}</span></div>
+      <div class="ing-tarjeta"><small>Hoy</small><b>${fmt(deHoy.ingreso)}</b><span>${deHoy.pagos} pago${deHoy.pagos === 1 ? "" : "s"}</span></div>
+      <div class="ing-tarjeta"><small>Por cobrar (ingreso)</small><b>${fmt(r.ingresoPorCobrar)}</b><span>Si todos pagan: ${fmt(esperado)}</span></div>
+      <div class="ing-tarjeta"><small>Aportes recibidos</small><b>${fmt(r.aportes)}</b><span>Van a EPS, ARL, AFP y caja</span></div>
+      <div class="ing-tarjeta"><small>Total recibido</small><b>${fmt(r.total)}</b><span>Ingresos + aportes</span></div>
+    </div>
+    <div class="ing-barra" role="img" aria-label="${pct} por ciento pagó"><i style="width:${pct}%"></i></div>
+    <div class="ing-nota" style="margin-top:0;">${r.pagos} de ${r.aplica} ya pagaron (${pct} %). Faltan ${fmt(r.porCobrar)} con aportes.</div>
+    <div class="informe-seccion-title">Por día</div>
+    ${[...conFecha].reverse().map(filaDia).join("") || `<div class="empty">Todavía no hay pagos este mes.</div>`}
+    ${sinFecha ? filaDia(sinFecha) : ""}
+    <div class="informe-seccion-title">Por línea</div>
+    ${Object.entries(r.lineas).sort((a, b) => b[1].ingreso - a[1].ingreso).map(([n, l]) => `<div class="informe-row"><span class="ir-label">${escHtml(n)}${l.pagos ? ` (${l.pagos})` : ""}</span><span class="ir-valor">${fmt(l.ingreso)}</span></div>`).join("") || `<div class="empty">Sin ingresos todavía.</div>`}
+    ${extras || mesAnterior ? `<div class="informe-seccion-title">Para tener en cuenta</div>` : ""}
+    ${mesAnterior ? filaInforme(`Ingresos de ${escHtml(mesAnterior.mes)}, mes completo`, mesAnterior.ingreso) : ""}
+    ${extras ? filaInforme("Cobros extra del mes (no incluidos: la app no sabe si ya se pagaron)", extras) : ""}
+    ${hayAprox ? `<p class="ing-nota">≈ Fecha aproximada: esos pagos son anteriores a este registro y se tomó el día de su última edición.</p>` : ""}`;
+}
+async function abrirInformeIngresos(){
+  const mes = store.currentMonth;
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "📈 Ingresos del mes";
+  document.getElementById("informeSubtitulo").textContent = mes;
+  cont.innerHTML = `<div class="empty">Calculando…</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+  const fechas = {};
+  const id = monthIdByName[mes];
+  if (cloudDb && navigator.onLine && id){
+    try{
+      const { data, error } = await sb.from("clients").select("cedula, fecha_pago, fecha_pago_aprox").eq("month_id", id);
+      if (error) throw error;
+      (data || []).forEach(f => {
+        if (f.fecha_pago) fechas[String(f.cedula)] = { fecha: new Date(f.fecha_pago).toLocaleDateString("en-CA", { timeZone: "America/Bogota" }), aprox: !!f.fecha_pago_aprox };
+      });
+    }catch(e){ console.error("No se pudieron leer las fechas de pago:", e); }
+  }
+  if (mes !== store.currentMonth) return;
+  const meses = sortedMonthNames(), pos = meses.indexOf(mes);
+  const previo = pos > 0 ? meses[pos - 1] : "";
+  const extras = getCobrosExtraDelMes().reduce((a, c) => a + numOrZero(c.valor), 0);
+  cont.innerHTML = informeIngresosHtml(mes, resumenIngresos(mes, fechas), extras, previo ? { mes: previo, ingreso: resumenIngresos(previo, {}).ingreso } : null);
+}
+
 function abrirInforme(tipo){
+  if (tipo === "ingresos"){ abrirInformeIngresos(); return; }
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
@@ -5689,6 +5809,9 @@ function renderMonthTotal(){
 
   // Los tres totales (PROSEGUROSNET, Conductores, Gestiones) se suman al final.
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
+  const ingresos = resumenIngresos(store.currentMonth, {});
+  document.getElementById("sidebarIngresosValue").textContent = fmt(ingresos.ingreso);
+  document.getElementById("sidebarIngresosPagos").textContent = `${ingresos.pagos} pagos · ${fmt(ingresos.total)} con aportes`;
 
   renderCobrosExtra();
 }
