@@ -1763,6 +1763,13 @@
             <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
             <button type="button" class="doc-remove" style="display:none;">Quitar</button>
           </div>
+          <div class="doc-upload" data-doc="RadicadoEps">
+            <span class="doc-label">Radicado EPS (por aprobación)</span>
+            <input type="file" accept="image/*,application/pdf" class="doc-file">
+            <img class="doc-preview" style="display:none;">
+            <a class="doc-pdf-badge" style="display:none;" target="_blank" rel="noopener">📄 Ver PDF</a>
+            <button type="button" class="doc-remove" style="display:none;">Quitar</button>
+          </div>
           <div class="doc-upload" data-doc="Afp">
             <span class="doc-label">Fondo de pensión</span>
             <input type="file" accept="image/*,application/pdf" class="doc-file">
@@ -3111,7 +3118,7 @@ document.addEventListener("visibilitychange", () => {
 // En este equipo solo se guardan los documentos que todavía NO están en la nube (para no perderlos
 // sin internet). Antes se guardaban todos como texto dentro de la copia local y el navegador se llenaba
 // ("No se pudo guardar: el almacenamiento del navegador está lleno").
-const CAMPO_A_TIPO_DOC = { "Imagen Cedula": "cedula", "Imagen Eps": "eps", "Imagen Afp": "afp", "Imagen Caja": "caja", "Imagen Arl": "arl", "Imagen PlanillaPagada": "planilla_pagada", "Imagen ComprobantePago": "comprobante_pago", "Imagen Licencia": "licencia", "Imagen SoatTecno": "soat_tecno", "Imagen Poliza": "poliza" };
+const CAMPO_A_TIPO_DOC = { "Imagen Cedula": "cedula", "Imagen Eps": "eps", "Imagen RadicadoEps": "radicado_eps", "Imagen Afp": "afp", "Imagen Caja": "caja", "Imagen Arl": "arl", "Imagen PlanillaPagada": "planilla_pagada", "Imagen ComprobantePago": "comprobante_pago", "Imagen Licencia": "licencia", "Imagen SoatTecno": "soat_tecno", "Imagen Poliza": "poliza" };
 let docsEnNube = null; // Set "cedula|tipo"; null = todavía no se sabe (entonces no se quita nada)
 // La planilla pagada y el comprobante son de CADA MES: se guardan aparte por mes ("2026-10") y al
 // pasar de mes el cliente queda sin los del mes anterior. Los demás documentos son del cliente (mes "").
@@ -3912,7 +3919,7 @@ let store = loadStore();
 let records = (store.currentMonth && store.months[store.currentMonth]) || [];
 let activeCedula = null;
 let documentosParaVer = [];
-const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla completa (solo equipo)", planilla_individual: "Planilla individual", comprobante_pago: "Comprobante de pago", licencia: "Licencia de conducción", soat_tecno: "SOAT y tecnomecánica", poliza: "Póliza del vehículo" };
+const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", radicado_eps: "Radicado EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla completa (solo equipo)", planilla_individual: "Planilla individual", comprobante_pago: "Comprobante de pago", licencia: "Licencia de conducción", soat_tecno: "SOAT y tecnomecánica", poliza: "Póliza del vehículo" };
 let consultaDocsNube = 0;
 function fechaCortaDoc(iso){
   if (!iso) return "";
@@ -6520,7 +6527,7 @@ function showBreakdown(cedula){
     document.getElementById("bMeta").insertAdjacentHTML("beforeend", `<div class="srv-detalle"><b>Servicios prestados en muelles</b>${Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<div class="srv-detalle-fila"><span>${iconoServicio(k)} ${escHtml(nombreServicio(r, k))}${k === "enrolamiento" ? " (una sola vez)" : k === "curso" ? " (solo este mes)" : " (cada mes)"}</span><b>${fmt(sv[k])}</b></div>`).join("")}<div class="srv-detalle-fila srv-detalle-total"><span>Total</span><b>${fmt(totalServicios(sv))}</b></div></div>`);
   }
   const thumbs = [];
-  [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"], ["Imagen ComprobantePago","Comprobante de pago"], ["Imagen Licencia","Licencia de conducción"], ["Imagen SoatTecno","SOAT y tecnomecánica"], ["Imagen Poliza","Póliza del vehículo"]].forEach(([campo, etiqueta]) => {
+  [["Imagen Cedula","Cédula"], ["Imagen Eps","EPS"], ["Imagen RadicadoEps","Radicado EPS"], ["Imagen Afp","Fondo pensión"], ["Imagen Caja","Caja"], ["Imagen Arl","ARL"], ["Imagen PlanillaPagada","Planilla pagada"], ["Imagen ComprobantePago","Comprobante de pago"], ["Imagen Licencia","Licencia de conducción"], ["Imagen SoatTecno","SOAT y tecnomecánica"], ["Imagen Poliza","Póliza del vehículo"]].forEach(([campo, etiqueta]) => {
     if (r[campo]) thumbs.push(armarDocumento(r[campo], etiqueta));
   });
   if (Array.isArray(r["Beneficiarios"])){
@@ -6531,7 +6538,7 @@ function showBreakdown(cedula){
   document.getElementById("bDocThumbs").innerHTML = thumbs.join("");
   // Además de los documentos guardados en este equipo, se traen siempre los que están
   // en la nube (así se ven desde cualquier computador o después de recargar la app).
-  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"],["Imagen ComprobantePago","comprobante_pago"],["Imagen Licencia","licencia"],["Imagen SoatTecno","soat_tecno"],["Imagen Poliza","poliza"]]
+  const tiposLocales = new Set([["Imagen Cedula","cedula"],["Imagen Eps","eps"],["Imagen RadicadoEps","radicado_eps"],["Imagen Afp","afp"],["Imagen Caja","caja"],["Imagen Arl","arl"],["Imagen PlanillaPagada","planilla_pagada"],["Imagen ComprobantePago","comprobante_pago"],["Imagen Licencia","licencia"],["Imagen SoatTecno","soat_tecno"],["Imagen Poliza","poliza"]]
     .filter(([campo]) => r[campo]).map(([, tipo]) => tipo));
   agregarDocumentosDeLaNube(r["Cédula"], tiposLocales);
 
@@ -7899,7 +7906,7 @@ const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn")
 // Comprime una imagen antes de guardarla (máx. 1000px de lado, calidad 0.72) para no llenar
 // el almacenamiento del navegador. Los PDF no se pueden comprimir así, se guardan tal cual.
 // ---- PDF → imagen (documentos de identificación y afiliación) ----
-const DOCS_PDF_A_IMAGEN = new Set(["Cedula", "Eps", "Afp", "Caja", "Arl", "Licencia", "SoatTecno", "Poliza"]);
+const DOCS_PDF_A_IMAGEN = new Set(["Cedula", "Eps", "RadicadoEps", "Afp", "Caja", "Arl", "Licencia", "SoatTecno", "Poliza"]);
 const MAX_PAGINAS_PDF_A_IMAGEN = 6;
 function tamanoLegible(bytes){
   if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1).replace(".", ",") + " MB";
@@ -8128,11 +8135,11 @@ function leerBeneficiarios(){
 }
 
 /* ---- Fotos/PDF de documentos (Cédula, EPS, Fondo de pensión, Caja, Planilla pagada) ---- */
-const docImagenes = { Cedula: null, Eps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null, ComprobantePago: null, Licencia: null, SoatTecno: null, Poliza: null };
+const docImagenes = { Cedula: null, Eps: null, RadicadoEps: null, Afp: null, Caja: null, Arl: null, PlanillaPagada: null, ComprobantePago: null, Licencia: null, SoatTecno: null, Poliza: null };
 // Marca qué documentos cambió el usuario en esta edición, para solo subir a la nube esos
 // (y no volver a subir cada vez los que ya estaban igual).
 let docImagenesCambiados = {};
-const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada", ComprobantePago: "comprobante_pago", Licencia: "licencia", SoatTecno: "soat_tecno", Poliza: "poliza" };
+const DOC_TIPO_DB = { Cedula: "cedula", Eps: "eps", RadicadoEps: "radicado_eps", Afp: "afp", Caja: "caja", Arl: "arl", PlanillaPagada: "planilla_pagada", ComprobantePago: "comprobante_pago", Licencia: "licencia", SoatTecno: "soat_tecno", Poliza: "poliza" };
 
 function dataUrlToBlob(dataUrl){
   const [header, base64] = dataUrl.split(",");
@@ -8255,7 +8262,7 @@ async function marcarDocumentosEnNubeFormulario(cedula){
   let docs = [];
   try{ docs = await documentosDeLaNube(cedula); }catch(e){ return; }
   if (String(editingCedula) !== String(cedula)) return;
-  const PARTE = { cedula: "Cedula", eps: "Eps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada", comprobante_pago: "ComprobantePago", licencia: "Licencia", soat_tecno: "SoatTecno", poliza: "Poliza" };
+  const PARTE = { cedula: "Cedula", eps: "Eps", radicado_eps: "RadicadoEps", afp: "Afp", caja: "Caja", arl: "Arl", planilla_pagada: "PlanillaPagada", comprobante_pago: "ComprobantePago", licencia: "Licencia", soat_tecno: "SoatTecno", poliza: "Poliza" };
   docs.forEach(d => {
     const box = document.querySelector(`.doc-upload[data-doc="${PARTE[d.tipo]}"]`);
     if (!box || !d.url) return;
@@ -9114,6 +9121,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Beneficiarios": leerBeneficiarios(),
     "Imagen Cedula": docImagenes.Cedula,
     "Imagen Eps": docImagenes.Eps,
+    "Imagen RadicadoEps": docImagenes.RadicadoEps,
     "Imagen Afp": docImagenes.Afp,
     "Imagen Caja": docImagenes.Caja,
     "Imagen Arl": docImagenes.Arl,
@@ -10867,6 +10875,7 @@ document.getElementById("msCedulaArchivo").addEventListener("change", async (e) 
   aviso.innerHTML = `<div class="ocr-aviso">🔎 Leyendo la cédula…</div>`;
   try{
     const d = await leerCedulaConOcr(esPdfArchivo(file) ? dataUrl : file);
+    if (d.tipo && d.tipo !== "cedula"){ aviso.innerHTML = `<div class="ocr-aviso">⚠️ Este documento parece ${NOMBRE_TIPO_DOC[d.tipo]}, no una cédula. No usé ningún dato.</div>`; return; }
     if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `<div class="ocr-aviso">No pude leer los datos. Escríbalos a mano.</div>`; return; }
     aviso.innerHTML = `<div class="ocr-aviso"></div>`;
     mostrarRevisionCedula(aviso.firstElementChild, d, (v) => {
@@ -12754,7 +12763,7 @@ function palabrasDeNombre(l){
 function datosDeTextoCedula(texto){
   const lineas = String(texto || "").split(/\n+/).map(l => l.replace(/[^\wÁÉÍÓÚÑÜáéíóúñü.<\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
   // completo = se leyeron apellidos Y nombres. "sugerida" = número dudoso que hay que mirar en la foto.
-  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false };
+  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false, tipo: clasificarDocumento(texto) };
   // Partes: [apellido1, apellido2, nombre1, nombre2]; el nombre queda APELLIDOS + NOMBRES como en la app
   const ponPartes = (aps, nos) => {
     aps = aps.filter(Boolean); nos = nos.filter(Boolean);
@@ -12825,6 +12834,7 @@ async function leerCedulaConOcr(fuente){
   const T = await cargarTesseract();
   const leer = async (f) => { const { data } = await T.recognize(f, "spa"); return datosDeTextoCedula(data && data.text); };
   const uno = await leer(fuente);
+  if (uno.tipo && uno.tipo !== "cedula") return uno; // no es una cédula: no se sigue leyendo
   if (uno.cedula && uno.completo) return uno;
   let dos = null;
   try{ dos = await leer(await fotoMejoradaParaLeer(fuente)); }catch(e){ return uno; }
@@ -12881,6 +12891,7 @@ async function leerCedulaDeImagen(fuente){
   aviso.innerHTML = `🔎 Leyendo la cédula…`;
   try{
     const d = await leerCedulaConOcr(fuente);
+    if (d.tipo && d.tipo !== "cedula"){ ponerAvisoCasillaEquivocada(aviso, "Cedula", d.tipo); return; }
     if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Revise el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
     const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
     const cedApp = String(editingCedula || fc.value || "").replace(/\D/g, "");
@@ -13131,12 +13142,56 @@ const NOMBRES_AFP = [["porvenir", /porvenir/], ["colpensiones", /colpensiones/],
 const NOMBRES_ARL = [["sura", /\bsura\b|suramericana/], ["positiva", /positiva/], ["colmena", /colmena/], ["bolivar", /bol[ií]var/], ["axa colpatria", /axa|colpatria/], ["equidad", /equidad/], ["alfa", /seguros\s+alfa|\balfa\b/], ["liberty", /liberty/], ["mapfre", /mapfre/]];
 const NOMBRES_CAJA = [["comfenalco valle", /comfenalco\s*valle|confenalco\s*valle|comfenalco/], ["comfandi", /comfandi/], ["compensar", /compensar/], ["cafam", /cafam/], ["colsubsidio", /colsubsidio/],
   ["comfama", /comfama\b/], ["comfacauca", /comfacauca/], ["comfamiliar", /comfamiliar/], ["comfaoriente", /comfaoriente/], ["comfachoco", /comfachoc[oó]/], ["cajasan", /cajasan/], ["comfenalco antioquia", /comfenalco\s+antioquia/]];
-function buscarNombre(t, lista){ const n = t.toLowerCase(); const x = lista.find(([, re]) => re.test(n)); return x ? x[0] : ""; }
-function cedulaEnCertificado(t){
-  const m = t.match(/(?:C\.?\s?C\.?|c[eé]dula(?:\s+de\s+ciudadan[ií]a)?|identificaci[oó]n|documento|n[uú]mero\s+de\s+documento)[^\d]{0,25}(\d{1,3}(?:[.,]\d{3}){1,3}|\d{6,10})/i);
-  const c = m ? m[1].replace(/\D/g, "") : "";
-  return c.length >= 6 && c.length <= 10 ? c : "";
+// Reconoce de qué es un documento por su contenido. Devuelve "" si no hay señales claras,
+// para no bloquear una foto borrosa.
+const SENALES_DOCUMENTO = {
+  cedula: [/republica de colombia[\s\S]{0,250}(identificacion personal|cedula de ciudadania)/, /registraduria|registrador nacional/, /estatura|indice derecho|g\.?\s?s\.?\s*rh/, /fecha de nacimiento[\s\S]{0,160}(lugar de nacimiento|sexo)/, /i<col|[a-z]<<[a-z]/],
+  arl: [/riesgos? (laborales|profesionales)/, /administradora de riesgos/, /\barl\b/, /(clase|nivel) de riesgo/, /centro de trabajo/, /actividad economica/],
+  eps: [/entidad promotora de salud/, /\beps\b/, /regimen (contributivo|subsidiado)/, /\bbdua\b|\badres\b/, /afiliad[oa].{0,40}(salud|cotizante|beneficiari)/],
+  afp: [/fondo de pensiones|pensiones y cesantias|pensiones obligatorias/, /semanas cotizadas|historia laboral/, /colpensiones|porvenir|colfondos|skandia/, /administradora de fondos/],
+  caja: [/caja de compensacion/, /subsidio familiar/, /comfenalco|comfandi|cafam|colsubsidio|comfama/, /categoria [abc]\b/],
+};
+function clasificarDocumento(texto){
+  const t = normalizarTexto(texto);
+  if (/autoliquidacion|planilla (integrada|empleados)/.test(t)) return "planilla";
+  if (/identificacion personal/.test(t) && /apellidos/.test(t) && /nombres/.test(t)) return "cedula";
+  const puntos = Object.entries(SENALES_DOCUMENTO).map(([k, res]) => [k, res.filter(re => re.test(t)).length]).sort((a, b) => b[1] - a[1]);
+  if (puntos[0][1] < 2 || puntos[0][1] === puntos[1][1]) return "";
+  if (puntos[0][0] === "eps" && /radicado|radicacion/.test(t)) return "radicado";
+  return puntos[0][0];
 }
+const CASILLA_DE_TIPO = { cedula: "Cedula", eps: "Eps", arl: "Arl", afp: "Afp", caja: "Caja", radicado: "RadicadoEps" };
+const NOMBRE_TIPO_DOC = { cedula: "una cédula", eps: "un certificado de EPS", arl: "un certificado de ARL", afp: "un certificado de pensión", caja: "un certificado de caja", radicado: "un radicado de EPS", planilla: "una planilla" };
+function ponerAvisoCasillaEquivocada(aviso, doc, tipo){
+  const destino = CASILLA_DE_TIPO[tipo];
+  aviso.innerHTML = `<div>⚠️ <b>Este documento parece ${NOMBRE_TIPO_DOC[tipo]}.</b> Está en la casilla equivocada, así que no usé ningún dato.</div>
+    <div class="ocr-acc">${destino ? `<button type="button" class="btn small primary" data-doc-mover>Pasarlo a su casilla</button>` : ""}<button type="button" class="btn small ghost" data-doc-dejar>Dejarlo aquí</button></div>`;
+  const mover = aviso.querySelector("[data-doc-mover]");
+  if (mover) mover.onclick = () => moverDocumentoACasilla(doc, destino, aviso);
+  aviso.querySelector("[data-doc-dejar]").onclick = () => aviso.remove();
+}
+function moverDocumentoACasilla(doc, destino, aviso){
+  const dato = docImagenes[doc];
+  const origen = document.querySelector(`.doc-upload[data-doc="${doc}"]`), caja = document.querySelector(`.doc-upload[data-doc="${destino}"]`);
+  if (!dato || !caja){ aviso.remove(); return; }
+  docImagenes[destino] = dato; docImagenesCambiados[destino] = true;
+  docImagenes[doc] = null; docImagenesCambiados[doc] = false; // si había uno guardado en la nube, se conserva
+  mostrarDocPreview(caja, dato); mostrarDocPreview(origen, null);
+  const inp = origen.querySelector(".doc-file"); if (inp) inp.value = "";
+  aviso.remove();
+  if (destino === "Cedula") leerCedulaDeImagen(dato);
+  else if (["Eps", "Arl", "Afp", "Caja"].includes(destino)) leerCertificadoAfiliacion(destino, dato);
+  showToast("✅ Documento pasado a su casilla.");
+}
+function buscarNombre(t, lista){ const n = t.toLowerCase(); const x = lista.find(([, re]) => re.test(n)); return x ? x[0] : ""; }
+// La empresa puede salir como aportante en el certificado: esa cédula no es la del afiliado
+const CEDULAS_APORTANTE = ["1112904783"];
+function cedulasEnCertificado(t){
+  const re = /(?:C\.?\s?C\.?|c[eé]dula(?:\s+de\s+ciudadan[ií]a)?|identificaci[oó]n|documento|n[uú]mero\s+de\s+documento)[^\d]{0,25}(\d{1,3}(?:[.,]\d{3}){1,3}|\d{6,10})/gi;
+  const res = [...t.matchAll(re)].map(m => m[1].replace(/\D/g, "")).filter(c => c.length >= 6 && c.length <= 10 && !CEDULAS_APORTANTE.includes(c));
+  return [...new Set(res)];
+}
+function cedulaEnCertificado(t){ return cedulasEnCertificado(t)[0] || ""; }
 // Fecha que sigue a las palabras dadas (fecha de afiliación, de ingreso, inicio de cobertura…)
 function fechaTrasClave(t, re){
   const fechas = fechasEnTexto(t);
@@ -13201,7 +13256,10 @@ async function leerCertificadoAfiliacion(doc, fuente){
   try{
     const T = await cargarTesseract();
     const { data } = await T.recognize(fuente, "spa");
+    const tipoLeido = clasificarDocumento(data && data.text);
+    if (tipoLeido && tipoLeido !== doc.toLowerCase()){ ponerAvisoCasillaEquivocada(aviso, doc, tipoLeido); return; }
     const d = datosCertificado(doc, data && data.text);
+    const cedulasLeidas = cedulasEnCertificado(String((data && data.text) || "").replace(/[ \t]+/g, " "));
     // Se escribe siempre igual para que la planilla lo lea bien: "sura 5 cd 005 ac 5493001"
     const arlTexto = d.nivel || d.arl || d.actividad
       ? [d.arl || "sura", d.nivel || "", d.centro ? `cd ${d.centro.padStart(3, "0")}` : "", d.actividad ? `ac ${d.actividad}` : ""].filter(Boolean).join(" ") : "";
@@ -13219,15 +13277,14 @@ async function leerCertificadoAfiliacion(doc, fuente){
     ].filter(Boolean);
     if (!filas.length){ aviso.innerHTML = "No encontré datos en el certificado. Llénelos a mano."; setTimeout(() => aviso.remove(), 7000); return; }
     const cedForm = getField("Cedula").value.trim();
-    const otraCedula = d.cedula && cedForm && d.cedula !== cedForm;
+    const otraCedula = d.cedula && cedForm && !cedulasLeidas.includes(cedForm);
     aviso.innerHTML = `<div>🔎 <b>Leí en el certificado:</b>${filas.map(([k, v]) => `<br>${k}: <b>${escHtml(v)}</b>`).join("")}</div>
       ${doc === "Arl" && d.nivel && !(d.actividad && d.actividad.length === 7) ? `<div class="ocr-alerta">No pude leer bien la actividad económica en el certificado.${botonesSugerencia(d.nivel)}</div>` : ""}
       ${otraCedula ? `<div class="ocr-alerta">⚠️ La cédula del certificado (${escHtml(d.cedula)}) no es la misma del formulario (${escHtml(cedForm)}). Revise que sea el documento de este cliente.</div>` : ""}
       <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Llenar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
-      <small>Solo se llenan estos recuadros; lo demás queda para llenarlo a mano.</small>`;
+      <small>Solo se llenan los datos de este documento. La cédula y el nombre salen únicamente de la foto de la cédula.</small>`;
     aviso.querySelector("[data-ocr-usar]").onclick = () => {
       let n = 0;
-      if (d.cedula && !cedForm && ponerCampo("fCedula", d.cedula)) n++;
       if (d.eps && ponerCampo("fEps", d.eps)) n++;
       if (d.eps && d.activo) ponerCampo("fEstadoEps", "aceptado");
       if (d.fechaIngreso && ponerCampo("fFechaIngreso", d.fechaIngreso)) n++;
