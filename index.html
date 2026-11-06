@@ -1442,7 +1442,6 @@
       <button type="button" class="sidebar-link" id="navImportBtn"><span class="sidebar-num">12</span><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Importar respaldo</button>
       <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">13</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Exportar cobro del mes</button>
       <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">14</span><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Subir planilla pagada (planilla + comprobante)</button>
-      <button type="button" class="sidebar-link" id="navSepararPilaBtn"><span class="sidebar-num">14.2</span><svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Separar planillas del mes</button>
       <button type="button" class="sidebar-link" id="navPilaBtn"><span class="sidebar-num">14.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel para SUAPORTE</button>
       <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,image/*,.csv,text/csv" multiple>
 
@@ -3978,7 +3977,7 @@ let store = loadStore();
 let records = (store.currentMonth && store.months[store.currentMonth]) || [];
 let activeCedula = null;
 let documentosParaVer = [];
-const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", radicado_eps: "Radicado EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla completa (solo equipo)", planilla_individual: "Planilla individual", comprobante_pago: "Comprobante de pago", licencia: "Licencia de conducción", soat_tecno: "SOAT y tecnomecánica", poliza: "Póliza del vehículo" };
+const ETIQUETA_DOC_NUBE = { cedula: "Cédula", eps: "EPS", radicado_eps: "Radicado EPS", afp: "Fondo pensión", caja: "Caja", arl: "ARL", planilla_pagada: "Planilla pagada (solo equipo)", planilla_individual: "Planilla individual", comprobante_pago: "Comprobante de pago", licencia: "Licencia de conducción", soat_tecno: "SOAT y tecnomecánica", poliza: "Póliza del vehículo" };
 let consultaDocsNube = 0;
 function fechaCortaDoc(iso){
   if (!iso) return "";
@@ -8530,6 +8529,61 @@ function dataUrlToBlob(dataUrl){
 // usuario cambió al editar este cliente, y actualiza la tabla "documentos" para que
 // queden disponibles entre computadores y para el portal del cliente. Es "best effort":
 // si falla (por ejemplo sin internet) no bloquea el guardado local, solo se avisa en consola.
+// ---- Documentos repetidos ----
+// Cada documento guarda una huella (SHA-256) de su contenido. Si se escoge un archivo que ya está guardado
+// en este cliente no se vuelve a subir, y si ya está en otro cliente o en otra casilla se avisa.
+const TIPOS_DOC_COMPARTIDOS = new Set(["planilla_pagada", "planilla_individual", "comprobante_pago"]);
+let docHuellaOrigen = {};
+async function huellaArchivo(datos){
+  const buf = datos instanceof ArrayBuffer ? datos : await (typeof datos === "string" ? dataUrlToBlob(datos) : datos).arrayBuffer();
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function nombreDeCedula(ced){
+  for (const m of Object.values(store.months || {})){
+    const r = (m || []).find(x => String(x["Cédula"]) === String(ced));
+    if (r) return nombrePropio(r["Nombre del Afiliado"] || "");
+  }
+  return "";
+}
+async function revisarDocumentoRepetido(doc, box){
+  box.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove());
+  const dato = docImagenes[doc];
+  if (!dato) return;
+  const tipo = DOC_TIPO_DB[doc];
+  const etiqueta = (d) => { const b = document.querySelector(`.doc-upload[data-doc="${d}"] .doc-label`); return b ? b.textContent : d; };
+  const avisar = (html, quitar) => {
+    box.insertAdjacentHTML("beforeend", `<div class="doc-aviso-dup ocr-aviso">${html}${quitar ? `<div class="ocr-acc"><button type="button" class="btn small" data-dup-quitar>Quitar este archivo</button></div>` : ""}</div>`);
+    const b = box.querySelector("[data-dup-quitar]");
+    if (b) b.onclick = () => { docImagenes[doc] = null; docImagenesCambiados[doc] = false; delete docHuellaOrigen[doc]; const f = box.querySelector(".doc-file"); if (f) f.value = ""; mostrarDocPreview(box, null); box.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove()); };
+  };
+  // 1. El mismo archivo en otra casilla de este cliente
+  const otra = Object.keys(docImagenes).find(d => d !== doc && docImagenes[d] && (docImagenes[d] === dato || (docHuellaOrigen[d] && docHuellaOrigen[d] === docHuellaOrigen[doc])));
+  if (otra){ avisar(`⚠️ Este mismo archivo ya está en la casilla <b>${escHtml(etiqueta(otra))}</b>. Revise que sea el documento correcto.`, true); return; }
+  if (!cloudDb || !navigator.onLine || TIPOS_DOC_COMPARTIDOS.has(tipo)) return;
+  let filas = [];
+  try{
+    const h = await huellaArchivo(dato), o = docHuellaOrigen[doc];
+    const { data, error } = await sb.from("documentos").select("cedula, tipo, mes").or(`huella.eq.${h}${o ? `,huella_origen.eq.${o}` : ""}`);
+    if (error) throw error;
+    filas = (data || []).filter(f => !TIPOS_DOC_COMPARTIDOS.has(f.tipo));
+  }catch(e){ console.error("No se pudo revisar si el documento ya estaba guardado:", e); return; }
+  if (docImagenes[doc] !== dato) return; // escogieron otro archivo mientras tanto
+  const ced = String(editingCedula || getField("Cedula").value || "").trim();
+  const PARTE = Object.fromEntries(Object.entries(DOC_TIPO_DB).map(([k, v]) => [v, k]));
+  if (filas.some(f => f.cedula === ced && f.tipo === tipo)){
+    docImagenesCambiados[doc] = false;
+    avisar(`☁️ Este documento ya estaba guardado en este cliente con la misma información. No se volverá a guardar.`, false);
+    return;
+  }
+  const mismoCliente = filas.find(f => f.cedula === ced);
+  if (mismoCliente){ avisar(`⚠️ Este archivo ya está guardado en este cliente como <b>${escHtml(etiqueta(PARTE[mismoCliente.tipo] || mismoCliente.tipo))}</b>. Revise que esté en la casilla correcta.`, true); return; }
+  const otro = filas.find(f => f.cedula !== ced);
+  if (otro){
+    const nom = nombreDeCedula(otro.cedula);
+    avisar(`⚠️ Este mismo archivo ya está guardado en otro cliente: <b>${escHtml(nom || "sin nombre")}</b> (${escHtml(otro.cedula)}), como ${escHtml(etiqueta(PARTE[otro.tipo] || otro.tipo))}. Revise que sea el documento de esta persona.`, true);
+  }
+}
 async function subirDocumentosCliente(cedula){
   if ((!cloudDb || !navigator.onLine) && Object.keys(docImagenesCambiados || {}).some(k => docImagenesCambiados[k])){
     showToast("Sin internet: los documentos quedaron solo en este equipo. Vuelve a subirlos cuando haya conexión para que los vea el equipo y el cliente.");
@@ -8543,10 +8597,14 @@ async function subirDocumentosCliente(cedula){
     try {
       if (docImagenes[doc]){
         const blob = dataUrlToBlob(docImagenes[doc]);
+        const h = await huellaArchivo(blob);
+        // Si ya está guardado con la misma información, no se sube otra vez
+        const { data: previa } = await sb.from("documentos").select("huella").eq("cedula", cedula).eq("tipo", tipo).eq("mes", mesDoc).maybeSingle();
+        if (previa && previa.huella === h){ (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, tipo, mesDoc)); continue; }
         const { error: upErr } = await sb.storage.from("documentos-clientes").upload(path, blob, { upsert: true, contentType: blob.type });
         if (upErr) throw upErr;
         const { error: dbErr } = await guardarFilaDocumento(
-          { cedula, tipo, mes: mesDoc, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
+          { cedula, tipo, mes: mesDoc, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString(), huella: h, huella_origen: docHuellaOrigen[doc] || null });
         if (dbErr) throw dbErr;
         (docsEnNube || (docsEnNube = new Set())).add(claveDocNube(cedula, tipo, mesDoc));
       } else {
@@ -8562,6 +8620,7 @@ async function subirDocumentosCliente(cedula){
     }
   }
   docImagenesCambiados = {};
+  docHuellaOrigen = {};
   saveStoreLocalSolo(); // libera en el equipo los documentos que ya quedaron en la nube
 }
 
@@ -8595,6 +8654,8 @@ document.querySelectorAll(".doc-upload").forEach(box => {
   fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    box.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove());
+    try{ docHuellaOrigen[doc] = await huellaArchivo(await file.arrayBuffer()); }catch(err){ delete docHuellaOrigen[doc]; }
     // Documentos de identificación y afiliación en PDF: se convierten a imagen para que pesen poco.
     // La planilla y el comprobante se dejan en PDF (la app lee su texto).
     const muellesServ = esServicioMuelles({ "Empresa": getField("Empresa").value }) && (doc === "Cedula" || doc === "PlanillaPagada" || doc === "ComprobantePago");
@@ -8605,6 +8666,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
         docImagenes[doc] = img.dataUrl;
         docImagenesCambiados[doc] = true;
         mostrarDocPreview(box, img.dataUrl);
+        revisarDocumentoRepetido(doc, box);
         if (doc === "Cedula") leerCedulaDeImagen(img.dataUrl);
         if (["Licencia", "SoatTecno", "Poliza"].includes(doc)) leerDocumentoVehiculo(doc, img.dataUrl);
         if (["Eps", "Arl", "Afp", "Caja"].includes(doc)) leerCertificadoAfiliacion(doc, img.dataUrl);
@@ -8617,6 +8679,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
       docImagenes[doc] = dataUrl;
       docImagenesCambiados[doc] = true;
       mostrarDocPreview(box, dataUrl);
+      revisarDocumentoRepetido(doc, box);
     });
     if (doc === "Cedula" && /^image\//.test(file.type || "")) leerCedulaDeImagen(file); // se lee la foto original (más nítida)
     if (["Licencia", "SoatTecno", "Poliza"].includes(doc) && /^image\//.test(file.type || "")) leerDocumentoVehiculo(doc, file);
@@ -8627,8 +8690,10 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     if (!(await confirmarApp("¿Seguro que quiere quitar este documento? Se borra al tocar \"Guardar\"."))) return;
     docImagenes[doc] = null;
     docImagenesCambiados[doc] = true;
+    delete docHuellaOrigen[doc];
     fileInput.value = "";
     mostrarDocPreview(box, null);
+    box.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove());
   });
 });
 
@@ -8665,6 +8730,8 @@ document.getElementById("overlay").addEventListener("click", async (e) => {
 });
 
 function cargarDocImagenes(record){
+  docHuellaOrigen = {};
+  document.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove());
   marcarDocumentosEnNubeFormulario(record ? record["Cédula"] : null);
   docImagenesCambiados = {};
   document.querySelectorAll(".doc-upload").forEach(box => {
@@ -10123,7 +10190,8 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
   global.LectorPILA = { renglonesDeItems, analizarTextoPlanilla, leerPlanillaPDF, novedadesPorCedula };
 })(typeof window !== "undefined" ? window : globalThis);
 
-/* ---- Planilla individual: cada afiliado ve solo su fila ----
+/* ---- Planilla individual: DESACTIVADA (6 nov. 2026) hasta tener acceso o integración con Enlace.
+   El código se deja para reactivarla; no se llama desde ningún lado. ----
    Se dibuja la planilla original como imagen y solo se tapan las filas de los demás afiliados; todo lo
    demás queda igual, totales incluidos. Al ser imagen, lo tapado no queda escondido dentro del archivo.
    Si algo no cuadra no se crea nada, para no mostrarle a nadie los datos de otra persona. */
@@ -10462,16 +10530,11 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   saveStore();
   renderList(searchInput.value);
 
-  let subidos = 0, fallidos = 0, indCreadas = 0;
-  const indFaltan = [];
+  let subidos = 0, fallidos = 0;
   if (adjuntar){
     if (!cloudDb || !navigator.onLine){
       fallidos = elegidos.length;
     } else {
-      let individuales = new Map();
-      try{
-        individuales = await individualesDePlanilla(new Uint8Array(await archivo.arrayBuffer()), elegidos.map(f => String(f.r["Cédula"])));
-      }catch(err){ console.error("No se pudieron crear las planillas individuales:", err); }
       for (const f of elegidos){
         const ced = String(f.r["Cédula"]);
         const mesDoc = mesDocDe("planilla_pagada");
@@ -10483,8 +10546,6 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
             { cedula: ced, tipo: "planilla_pagada", mes: mesDoc, storage_path: path, uploaded_by: currentUserId, uploaded_at: new Date().toISOString() });
           if (dbErr) throw dbErr;
           subidos++;
-          const ind = individuales.get(ced);
-          if (ind){ await guardarIndividual(ced, mesDocDe("planilla_individual"), ind); indCreadas++; } else indFaltan.push(ced);
         }catch(err){ console.error("No se pudo guardar la planilla de", ced, err); fallidos++; }
       }
     }
@@ -10514,11 +10575,10 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   document.getElementById("overlayPila").classList.remove("show");
   pilaEnRevision = null;
   let msg = `Planilla ${info.numeroPlanilla || ""}: ${elegidos.length} cliente(s) quedaron en PAGO.`;
-  if (adjuntar) msg += fallidos ? ` No se pudo guardar la planilla en ${fallidos} (revisa la conexión).` : ` Planilla guardada en ${subidos}. Individuales: ${indCreadas}.`;
-  if (indFaltan.length) msg += ` No se pudo separar la planilla de: ${indFaltan.join(", ")}. Revísela.`;
+  if (adjuntar) msg += fallidos ? ` No se pudo guardar la planilla en ${fallidos} (revisa la conexión).` : ` Planilla guardada en ${subidos}.`;
   if (adjuntarComp) msg += compFallidos ? ` No se pudo guardar el comprobante en ${compFallidos} (revisa la conexión).` : ` Comprobante guardado en ${compSubidos}.`;
   pilaLimpiarComprobante();
-  if (fallidos || compFallidos || indFaltan.length) alertApp(msg); else showToast(msg);
+  if (fallidos || compFallidos) alertApp(msg); else showToast(msg);
 });
 
 // Se pueden elegir los DOS archivos que entrega el operador al pagar (la planilla y el comprobante):
@@ -13563,6 +13623,7 @@ function moverDocumentoACasilla(doc, destino, aviso){
   const origen = document.querySelector(`.doc-upload[data-doc="${doc}"]`), caja = document.querySelector(`.doc-upload[data-doc="${destino}"]`);
   if (!dato || !caja){ aviso.remove(); return; }
   docImagenes[destino] = dato; docImagenesCambiados[destino] = true;
+  if (docHuellaOrigen[doc]){ docHuellaOrigen[destino] = docHuellaOrigen[doc]; delete docHuellaOrigen[doc]; }
   docImagenes[doc] = null; docImagenesCambiados[doc] = false; // si había uno guardado en la nube, se conserva
   mostrarDocPreview(caja, dato); mostrarDocPreview(origen, null);
   const inp = origen.querySelector(".doc-file"); if (inp) inp.value = "";
@@ -14526,7 +14587,6 @@ document.getElementById("pilaCuerpo").addEventListener("click", async (e) => {
   window.__ultimoExcelPila = { aoa, nombre };
   showToast(`⬇️ ${nombre}: planilla propia de ${nombrePropio(r["Nombre del Afiliado"])}. En SUAPORTE entre con su cédula y cárguelo.`);
 });
-document.getElementById("navSepararPilaBtn").addEventListener("click", separarPlanillasDelMes);
 document.getElementById("navPilaBtn").addEventListener("click", () => { _pilaSel = null; _pilaBusca = ""; abrirGenerarPila(); });
 </script>
 </body>
