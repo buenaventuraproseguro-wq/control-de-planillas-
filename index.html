@@ -963,7 +963,10 @@
   .bm-info small{ display:block; font-size:12px; color:var(--muted); }
   .bm-info .ocr-alerta{ color:var(--retiro); }
   .bm-valor{ font-weight:700; font-variant-numeric:tabular-nums; }
-  .inc-fila{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px 2px; background:none; border:0; border-bottom:1px solid var(--line); color:inherit; font:inherit; text-align:left; cursor:pointer; }
+  .inc-fila{ padding:10px 2px; border-bottom:1px solid var(--line); }
+  .inc-abrir{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+  .inc-soporte{ margin-top:8px; }
+  #incSoporteCaja[hidden]{ display:none; }
   .informe-row.total{ font-weight:700; font-size:14.5px; color:var(--titulo); border-top:2px solid var(--navy); margin-top:4px; padding-top:10px; }
   .informe-row.total .ir-valor{ color:var(--pago); font-size:16px; }
   .historial-mes-row{
@@ -4246,11 +4249,11 @@ function renderIncapacidades(){
   const lista = [...incapacidades].sort((a, b) => orden[estadoIncap(a)] - orden[estadoIncap(b)] || String(b.created_at).localeCompare(String(a.created_at)));
   document.getElementById("incLista").innerHTML = lista.map(i => {
     const e = estadoIncap(i);
-    return `<button type="button" class="inc-fila" data-inc="${escHtml(i.id)}">
+    return `<div class="inc-fila"><button type="button" class="inc-abrir" data-inc="${escHtml(i.id)}">
       <span class="bm-info"><b>${escHtml(nombrePropio(i.nombre))}</b><small>${escHtml(i.cedula)}${i.entidad ? ` · ${escHtml(i.entidad)}` : ""}${i.desde ? ` · ${fechaCorta(i.desde)}${i.hasta ? ` a ${fechaCorta(i.hasta)}` : ""}` : ""}</small>
       <small>Entró ${fmt(i.valor_recibido)} · Pagado ${fmt(i.valor_pagado)} · Comisión ${fmt(comisionIncap(i))}</small></span>
       <span class="ms-servicio ${e === "Pagada" ? "actualizacion" : "curso"}">${e}</span>
-    </button>`;
+    </button>${i.fecha_pago ? `<button type="button" class="btn small inc-soporte" data-soporte="${escHtml(i.id)}">📤 Generar soporte de pago</button>` : ""}</div>`;
   }).join("") || `<div class="empty">Todavía no hay incapacidades registradas.</div>`;
 }
 function actualizarComisionIncap(){
@@ -4295,6 +4298,8 @@ document.getElementById("incCedula").addEventListener("change", (e) => {
   }
 });
 document.getElementById("incLista").addEventListener("click", (e) => {
+  const s = e.target.closest("[data-soporte]");
+  if (s){ soporteIncapacidad(incapacidades.find(i => String(i.id) === s.dataset.soporte)); return; }
   const b = e.target.closest("[data-inc]");
   if (b) abrirFormIncap(incapacidades.find(i => String(i.id) === b.dataset.inc));
 });
