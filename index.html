@@ -8670,6 +8670,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
         if (doc === "Cedula") leerCedulaDeImagen(img.dataUrl);
         if (["Licencia", "SoatTecno", "Poliza"].includes(doc)) leerDocumentoVehiculo(doc, img.dataUrl);
         if (["Eps", "Arl", "Afp", "Caja"].includes(doc)) leerCertificadoAfiliacion(doc, img.dataUrl);
+        if (["RadicadoEps", "Licencia"].includes(doc)) revisarCedulaDeDocumento(doc, img.dataUrl);
         showToast(`✅ Listo: pasó de ${tamanoLegible(file.size)} a ${tamanoLegible(img.bytes)}.`);
         return;
       }
@@ -8684,6 +8685,7 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     if (doc === "Cedula" && /^image\//.test(file.type || "")) leerCedulaDeImagen(file); // se lee la foto original (más nítida)
     if (["Licencia", "SoatTecno", "Poliza"].includes(doc) && /^image\//.test(file.type || "")) leerDocumentoVehiculo(doc, file);
     if (["Eps", "Arl", "Afp", "Caja"].includes(doc) && /^image\//.test(file.type || "")) leerCertificadoAfiliacion(doc, file);
+    if (["RadicadoEps", "Licencia"].includes(doc) && /^image\//.test(file.type || "")) revisarCedulaDeDocumento(doc, file);
   });
 
   removeBtn.addEventListener("click", async () => {
@@ -13368,7 +13370,7 @@ async function leerCedulaDeImagen(fuente){
       const c = d.completo ? compararNombreCedula(nomApp, d.nombre) : null;
       const otraPersona = c && c.comunes < Math.min(2, c.total) && cedOtra;
       if (otraPersona){
-        aviso.innerHTML = `<div>⚠️ <b>Esta cédula parece de otra persona.</b><br>En la foto: <b>${escHtml(nombreTxt)}</b> · CC ${escHtml(d.cedula)}<br>En la app: <b>${escHtml(nomApp.toUpperCase())}</b> · CC ${escHtml(cedApp)}</div><small>No cambié nada. Revise que subió la cédula del cliente correcto.</small>`;
+        retenerDocumentoAjeno("Cedula", aviso, `<b>Esta cédula es de otra persona.</b><br>En la foto: <b>${escHtml(nombreTxt)}</b> · CC ${escHtml(d.cedula)}<br>En la app: <b>${escHtml(nomApp.toUpperCase())}</b> · CC ${escHtml(cedApp)}<br>No cambié ningún dato.`);
         return;
       }
       const lineas = [];
@@ -13644,6 +13646,7 @@ function moverDocumentoACasilla(doc, destino, aviso){
   aviso.remove();
   if (destino === "Cedula") leerCedulaDeImagen(dato);
   else if (["Eps", "Arl", "Afp", "Caja"].includes(destino)) leerCertificadoAfiliacion(destino, dato);
+  else if (destino === "RadicadoEps") revisarCedulaDeDocumento(destino, dato);
   showToast("✅ Documento pasado a su casilla.");
 }
 function buscarNombre(t, lista){ const n = t.toLowerCase(); const x = lista.find(([, re]) => re.test(n)); return x ? x[0] : ""; }
@@ -13710,6 +13713,52 @@ function ponerCampo(id, valor){
   const f = c.closest(".field"); if (f) f.classList.remove("falta");
   return true;
 }
+// Documento de otra persona: se saca de la casilla para que NO se guarde en este cliente.
+// Si fue un error de lectura, el botón lo vuelve a poner.
+function retenerDocumentoAjeno(doc, aviso, motivoHtml){
+  const caja = document.querySelector(`.doc-upload[data-doc="${doc}"]`);
+  if (!caja) return;
+  // La foto se comprime mientras se lee: se espera a que quede puesta en la casilla
+  if (!docImagenes[doc] && (aviso._esperas || 0) < 30){ aviso._esperas = (aviso._esperas || 0) + 1; setTimeout(() => retenerDocumentoAjeno(doc, aviso, motivoHtml), 100); return; }
+  const dato = docImagenes[doc], huella = docHuellaOrigen[doc];
+  if (!dato) return;
+  docImagenes[doc] = null; docImagenesCambiados[doc] = false; delete docHuellaOrigen[doc];
+  const f = caja.querySelector(".doc-file"); if (f) f.value = "";
+  mostrarDocPreview(caja, null);
+  caja.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove());
+  aviso.innerHTML = `<div>⛔ ${motivoHtml}</div><div><b>Lo quité de la casilla: no se va a guardar en este cliente.</b></div>
+    <div class="ocr-acc"><button type="button" class="btn small ghost" data-doc-es-suyo>Sí es de este cliente, dejarlo</button></div>`;
+  aviso.querySelector("[data-doc-es-suyo]").onclick = () => {
+    docImagenes[doc] = dato; docImagenesCambiados[doc] = true;
+    if (huella) docHuellaOrigen[doc] = huella;
+    mostrarDocPreview(caja, dato);
+    aviso.remove();
+    showToast("Documento puesto otra vez. Se guarda al tocar Guardar.");
+  };
+}
+// La cédula con la que está el cliente en el formulario ("" si todavía no la tiene)
+function cedulaDelFormulario(){ return String(editingCedula || getField("Cedula").value || "").replace(/\D/g, ""); }
+// Radicado de EPS y licencia: no se llenan datos, solo se revisa que sean de esta persona
+async function revisarCedulaDeDocumento(doc, fuente){
+  const caja = document.querySelector(`.doc-upload[data-doc="${doc}"]`);
+  const ced = cedulaDelFormulario();
+  if (!caja || !ced || !document.getElementById("overlay").classList.contains("show")) return;
+  const dato = docImagenes[doc];
+  try{
+    const T = await cargarTesseract();
+    const { data } = await T.recognize(fuente, "spa");
+    const texto = String((data && data.text) || "");
+    if (docImagenes[doc] !== dato && dato) return; // cambiaron el archivo mientras se leía
+    const plano = texto.replace(/[ \t]+/g, " ");
+    if (plano.replace(/\D/g, " ").split(/\s+/).includes(ced) || plano.replace(/[.,\s]/g, "").includes(ced)) return;
+    const leidas = cedulasEnCertificado(plano);
+    if (doc === "Licencia"){ const n = numeroDeCedula(texto).cedula; if (n) leidas.push(n); }
+    if (!leidas.length) return; // no se pudo leer ninguna cédula: no se bloquea
+    let aviso = caja.querySelector(".ocr-aviso");
+    if (!aviso){ aviso = document.createElement("div"); aviso.className = "ocr-aviso"; caja.appendChild(aviso); }
+    retenerDocumentoAjeno(doc, aviso, `<b>Este documento es de otra cédula.</b> En el documento: <b>${escHtml(leidas[0])}</b> · Cliente: <b>${escHtml(ced)}</b>`);
+  }catch(e){ /* sin lector: no se bloquea */ }
+}
 async function leerCertificadoAfiliacion(doc, fuente){
   const caja = document.querySelector(`.doc-upload[data-doc="${doc}"]`);
   if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
@@ -13738,12 +13787,15 @@ async function leerCertificadoAfiliacion(doc, fuente){
       d.pensionado && ["Estado AFP", d.pensionado === "Pensionado" ? "Pensionado (no paga pensión)" : "Indemnización sustitutiva o devolución de saldos (no paga pensión)"],
       d.caja && ["Caja", d.caja.toUpperCase()],
     ].filter(Boolean);
-    if (!filas.length){ aviso.innerHTML = "No encontré datos en el certificado. Llénelos a mano."; setTimeout(() => aviso.remove(), 7000); return; }
-    const cedForm = getField("Cedula").value.trim();
+    const cedForm = cedulaDelFormulario();
     const otraCedula = d.cedula && cedForm && !cedulasLeidas.includes(cedForm);
+    if (otraCedula){
+      retenerDocumentoAjeno(doc, aviso, `<b>Este certificado es de otra cédula.</b> En el certificado: <b>${escHtml(d.cedula)}</b> · Cliente: <b>${escHtml(cedForm)}</b>. No usé ningún dato.`);
+      return;
+    }
+    if (!filas.length){ aviso.innerHTML = "No encontré datos en el certificado. Llénelos a mano."; setTimeout(() => aviso.remove(), 7000); return; }
     aviso.innerHTML = `<div>🔎 <b>Leí en el certificado:</b>${filas.map(([k, v]) => `<br>${k}: <b>${escHtml(v)}</b>`).join("")}</div>
       ${doc === "Arl" && d.nivel && !(d.actividad && d.actividad.length === 7) ? `<div class="ocr-alerta">No pude leer bien la actividad económica en el certificado.${botonesSugerencia(d.nivel)}</div>` : ""}
-      ${otraCedula ? `<div class="ocr-alerta">⚠️ La cédula del certificado (${escHtml(d.cedula)}) no es la misma del formulario (${escHtml(cedForm)}). Revise que sea el documento de este cliente.</div>` : ""}
       <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Llenar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>
       <small>Solo se llenan los datos de este documento. La cédula y el nombre salen únicamente de la foto de la cédula.</small>`;
     aviso.querySelector("[data-ocr-usar]").onclick = () => {
