@@ -9873,6 +9873,20 @@ async function mostrarAppPrincipal(user){
   await iniciarAppConSupabase();
   cargarGastos();
   cargarCRM();
+  if (esAdmin()) borrarArchivosPlanillaIndividual();
+}
+
+// Limpieza: la planilla individual se desactivó (6 nov. 2026). Borra sus archivos que queden en la nube.
+async function borrarArchivosPlanillaIndividual(){
+  try{
+    const { data, error } = await sb.rpc("archivos_planilla_individual");
+    if (error || !data || !data.length) return;
+    const nombres = data.map(x => typeof x === "string" ? x : x.archivos_planilla_individual).filter(Boolean);
+    for (let i = 0; i < nombres.length; i += 100){
+      const { error: e } = await sb.storage.from("documentos-clientes").remove(nombres.slice(i, i + 100));
+      if (e){ console.error("No se pudieron borrar planillas individuales:", e); return; }
+    }
+  }catch(e){ console.error(e); }
 }
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
