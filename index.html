@@ -955,6 +955,14 @@
   .ing-dia ul{ margin:6px 0 0; padding:0; list-style:none; font-size:12.5px; }
   .ing-dia li{ display:flex; justify-content:space-between; gap:12px; padding:3px 0; }
   .ing-nota{ font-size:12px; color:var(--muted); margin:8px 0 0; }
+  .bm-barra{ display:flex; justify-content:space-between; gap:12px; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--line); font-size:13px; font-weight:600; }
+  .bm-todos{ display:flex; align-items:center; gap:7px; }
+  .bm-fila{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .bm-fila.bloqueada{ cursor:default; opacity:.75; }
+  .bm-info b{ display:block; font-size:13.5px; overflow-wrap:anywhere; }
+  .bm-info small{ display:block; font-size:12px; color:var(--muted); }
+  .bm-info .ocr-alerta{ color:var(--retiro); }
+  .bm-valor{ font-weight:700; font-variant-numeric:tabular-nums; }
   .informe-row.total{ font-weight:700; font-size:14.5px; color:var(--titulo); border-top:2px solid var(--navy); margin-top:4px; padding-top:10px; }
   .informe-row.total .ir-valor{ color:var(--pago); font-size:16px; }
   .historial-mes-row{
@@ -1442,6 +1450,7 @@
           <span class="sidebar-total-value" id="sidebarIngresosValue">—</span>
           <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
         </button>
+        <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;">🧾 Crear borradores en Alegra</button>
         <button type="button" class="sidebar-total" data-informe="aportes">
           <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
           <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
@@ -5210,6 +5219,7 @@ async function abrirInformeIngresos(){
 function abrirInforme(tipo){
   if (tipo === "ingresos"){ abrirInformeIngresos(); return; }
   if (tipo === "aportes"){ abrirInformeAportes(); return; }
+  if (tipo === "facturar"){ abrirBorradoresDelMes(); return; }
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
@@ -5886,6 +5896,7 @@ function renderMonthTotal(){
 
   // Los tres totales (PROSEGUROSNET, Conductores, Gestiones) se suman al final.
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
+  document.getElementById("navFacturarMes").style.display = esAdmin() ? "" : "none";
   const aportesMes = reporteAportes(store.currentMonth);
   document.getElementById("sidebarAportesValue").textContent = fmt(aportesMes.recibido);
   document.getElementById("sidebarAportesPagos").textContent = aportesMes.sinPlanilla.length ? `Falta planilla: ${aportesMes.sinPlanilla.length}` : "Todo con planilla";
@@ -7369,6 +7380,66 @@ async function llamarAlegra(cuerpo){
   const r = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(r.error || "No se pudo conectar con Alegra.");
   return r;
+}
+// Crea en grupo los borradores de los pagos del mes. No envía nada a la DIAN.
+function filaBorradorHtml(p, i){
+  const bloqueada = p.faltan.length > 0;
+  const detalle = p.tipo === "responsable" ? `Responsable · ${p.clientes} cliente${p.clientes === 1 ? "" : "s"}` : "Cliente";
+  return `<label class="bm-fila ${bloqueada ? "bloqueada" : ""}">
+    <input type="checkbox" data-borrador="${i}" ${bloqueada ? "disabled" : "checked"}>
+    <span class="bm-info"><b>${escHtml(nombrePropio(p.nombre || ""))}</b><small>${escHtml(detalle)}${p.documento ? ` · ${escHtml(p.documento)}` : ""}</small>
+      ${bloqueada ? `<small class="ocr-alerta">Falta ${escHtml(p.faltan.join(", "))}: complételo en Editar responsables.</small>` : p.sinCorreo ? `<small class="ocr-alerta">Sin correo</small>` : ""}</span>
+    <span class="bm-valor">${fmt(p.total)}</span>
+  </label>`;
+}
+async function abrirBorradoresDelMes(){
+  if (!esAdmin() || !sb || !navigator.onLine){ showToast("Solo el administrador puede crear borradores, con internet."); return; }
+  const mes = store.currentMonth;
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "🧾 Crear borradores en Alegra";
+  document.getElementById("informeSubtitulo").textContent = `${mes}. No se envía nada a la DIAN.`;
+  cont.innerHTML = `<div class="empty">Buscando pagos sin factura…</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+  let datos;
+  try{ datos = await llamarAlegra({ accion: "pendientes", mes }); }
+  catch(err){ cont.innerHTML = `<div class="empty">⚠️ ${escHtml(err.message)}</div>`; return; }
+  if (mes !== store.currentMonth) return;
+  const lista = datos.pendientes || [];
+  if (!lista.length){ cont.innerHTML = `<div class="empty">✅ No hay pagos pendientes. Ya hay ${datos.yaCreadas} cliente${datos.yaCreadas === 1 ? "" : "s"} con factura este mes.</div>`; return; }
+  cont.innerHTML = `<div class="bm-barra"><label class="bm-todos"><input type="checkbox" id="bmTodos" checked> Marcar todos</label><span id="bmResumen"></span></div>
+    <div>${lista.map(filaBorradorHtml).join("")}</div>
+    <div class="field" style="margin-top:12px;"><label for="bmMedio">Medio de pago de los marcados</label>
+      <select id="bmMedio"><option value="">Escoja cómo pagaron</option><option value="BANK_DEPOSIT">Consignación bancaria</option><option value="CREDIT_TRANSFER_BANK">Transferencia bancaria</option><option value="CASH">Efectivo</option><option value="MUTUAL_AGREEMENT">Otro</option></select></div>
+    <p class="ing-nota">Si pagaron de formas distintas, cree primero un grupo con un medio de pago y luego el otro.</p>
+    <div class="modal-actions"><button type="button" class="btn primary" id="bmCrearBtn">Crear borradores</button></div>
+    <div id="bmResultado"></div>`;
+  const cajas = () => [...cont.querySelectorAll("[data-borrador]:not(:disabled)")];
+  const refrescar = () => {
+    const marcadas = cajas().filter(c => c.checked);
+    const total = marcadas.reduce((a, c) => a + lista[Number(c.dataset.borrador)].total, 0);
+    document.getElementById("bmResumen").textContent = `${marcadas.length} factura${marcadas.length === 1 ? "" : "s"} · ${fmt(total)}`;
+    document.getElementById("bmCrearBtn").disabled = !marcadas.length;
+    document.getElementById("bmTodos").checked = marcadas.length === cajas().length;
+  };
+  cont.querySelectorAll("[data-borrador]").forEach(c => c.addEventListener("change", refrescar));
+  document.getElementById("bmTodos").addEventListener("change", (e) => { cajas().forEach(c => { c.checked = e.target.checked; }); refrescar(); });
+  refrescar();
+  document.getElementById("bmCrearBtn").addEventListener("click", async () => {
+    const medioPago = document.getElementById("bmMedio").value;
+    if (!medioPago){ showToast("Escoja el medio de pago."); return; }
+    const marcadas = cajas().filter(c => c.checked).map(c => lista[Number(c.dataset.borrador)]);
+    if (!(await confirmarApp(`¿Crear ${marcadas.length} borrador${marcadas.length === 1 ? "" : "es"} en Alegra? No se enviarán a la DIAN.`))) return;
+    const btn = document.getElementById("bmCrearBtn"), caja = document.getElementById("bmResultado");
+    btn.disabled = true;
+    let creados = 0; const fallos = [];
+    for (let i = 0; i < marcadas.length; i++){
+      caja.innerHTML = `<p class="ing-nota">Creando ${i + 1} de ${marcadas.length}… No cierre esta ventana.</p>`;
+      try{ await llamarAlegra({ accion: "borrador", cedula: marcadas[i].cedula, mes, medioPago }); creados++; }
+      catch(err){ fallos.push(`${nombrePropio(marcadas[i].nombre || "")}: ${err.message}`); }
+    }
+    await alertApp(`✅ Borradores creados: ${creados} de ${marcadas.length}. Revíselos en Alegra → Ingresos → Facturas de venta. No se envió nada a la DIAN.${fallos.length ? `\n\nNo se pudieron crear:\n${fallos.join("\n")}` : ""}`);
+    abrirBorradoresDelMes();
+  });
 }
 async function crearBorradorAlegra(r){
   if (!sb || !navigator.onLine){ showToast("No hay conexión con la nube en este momento."); return; }
