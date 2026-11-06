@@ -1442,6 +1442,11 @@
           <span class="sidebar-total-value" id="sidebarIngresosValue">—</span>
           <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
         </button>
+        <button type="button" class="sidebar-total" data-informe="aportes">
+          <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
+          <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
+          <span class="sidebar-total-pagos" id="sidebarAportesPagos">—</span>
+        </button>
         <button type="button" class="sidebar-total" id="btnInformeProsegurosnet" data-informe="prosegurosnet">
           <span class="sidebar-total-label">Total a cobrar este mes (PROSEGUROSNET)</span>
           <span class="sidebar-total-value" id="sidebarTotalValue">—</span>
@@ -2110,19 +2115,20 @@
       <div class="recibo-slogan">Protegemos lo que más importa</div>
     </div>
   </div>
-  <h2>Comprobante de pago</h2>
+  <h2>Recibo detallado</h2>
   <table class="recibo-tabla">
     <tr><td>Cliente</td><td id="rcNombre"></td></tr>
     <tr><td>Cédula</td><td id="rcCedula"></td></tr>
     <tr><td>Mes</td><td id="rcMes"></td></tr>
     <tr><td>No. Planilla</td><td id="rcPlanilla"></td></tr>
-    <tr><td>Fecha del comprobante</td><td id="rcFecha"></td></tr>
+    <tr><td>Fecha del recibo</td><td id="rcFecha"></td></tr>
   </table>
+  <table class="recibo-tabla" id="rcDetalle"></table>
   <div class="recibo-total-box">
-    <span>Total pagado</span>
+    <span id="rcTotalEtiqueta">Total pagado</span>
     <span id="rcTotal"></span>
   </div>
-  <div class="recibo-pie">Este comprobante fue generado por la app de control de planillas de PROSEGUROSNET.</div>
+  <div class="recibo-pie">Los aportes se pagan a EPS, pensión, ARL y caja mediante la planilla y no son ingreso de PROSEGUROSNET. Este recibo no reemplaza la factura electrónica del servicio.</div>
 </div>
 
 <!-- Visor de documentos (imagen o PDF) dentro de la misma app -->
@@ -5120,13 +5126,7 @@ function informeIngresosHtml(mes, r, extras, mesAnterior){
     ${extras ? filaInforme("Cobros extra del mes (no incluidos: la app no sabe si ya se pagaron)", extras) : ""}
     ${hayAprox ? `<p class="ing-nota">≈ Fecha aproximada: esos pagos son anteriores a este registro y se tomó el día de su última edición.</p>` : ""}`;
 }
-async function abrirInformeIngresos(){
-  const mes = store.currentMonth;
-  const cont = document.getElementById("informeContenido");
-  document.getElementById("informeTitulo").textContent = "📈 Ingresos del mes";
-  document.getElementById("informeSubtitulo").textContent = mes;
-  cont.innerHTML = `<div class="empty">Calculando…</div>`;
-  document.getElementById("overlayInforme").classList.add("show");
+async function fechasDePago(mes){
   const fechas = {};
   const id = monthIdByName[mes];
   if (cloudDb && navigator.onLine && id){
@@ -5138,6 +5138,68 @@ async function abrirInformeIngresos(){
       });
     }catch(e){ console.error("No se pudieron leer las fechas de pago:", e); }
   }
+  return fechas;
+}
+// Reporte de aportes: plata de terceros que entró a la cuenta y si ya salió con su planilla.
+// Los valores son los de la app; el valor real pagado está en cada planilla.
+function reporteAportes(mes){
+  const lista = (mes === store.currentMonth ? records : (store.months[mes] || [])).filter(r => !esConductorExcluido(r) && pagadoEsteMes(r));
+  const filas = lista.map(r => ({ r, d: desgloseRecibo(r, mes), planilla: String(r["No. Planilla Pagada"] || "").trim() })).filter(f => f.d.total > 0);
+  const suma = (arr, k) => arr.reduce((a, f) => a + f.d[k], 0);
+  const conPlanilla = filas.filter(f => f.planilla), sinPlanilla = filas.filter(f => !f.planilla && f.d.aportes > 0);
+  const planillas = new Map();
+  conPlanilla.forEach(f => { const p = planillas.get(f.planilla) || { numero: f.planilla, afiliados: 0, valor: 0 }; p.afiliados++; p.valor += f.d.aportes; planillas.set(f.planilla, p); });
+  const ap = (f) => f.d.aportes;
+  return { filas, conPlanilla, sinPlanilla, planillas: [...planillas.values()].sort((a, b) => b.valor - a.valor),
+    recibido: filas.reduce((a, f) => a + ap(f), 0), pagado: conPlanilla.reduce((a, f) => a + ap(f), 0), pendiente: sinPlanilla.reduce((a, f) => a + ap(f), 0),
+    salud: suma(filas, "salud"), pension: suma(filas, "pension"), arl: suma(filas, "arl"), caja: suma(filas, "caja") };
+}
+function informeAportesHtml(mes, a){
+  return `<div class="ing-tarjetas">
+      <div class="ing-tarjeta fuerte"><small>Aportes recibidos de clientes</small><b>${fmt(a.recibido)}</b><span>${a.filas.length} clientes pagados · plata de terceros, no es ganancia</span></div>
+      <div class="ing-tarjeta"><small>Con planilla pagada</small><b>${fmt(a.pagado)}</b><span>${a.conPlanilla.length} clientes</span></div>
+      <div class="ing-tarjeta"><small>Falta planilla</small><b>${fmt(a.pendiente)}</b><span>${a.sinPlanilla.length} clientes</span></div>
+    </div>
+    <div class="informe-seccion-title">Por subsistema</div>
+    ${filaInforme("Salud (EPS)", a.salud)}${filaInforme("Pensión", a.pension)}${filaInforme("Riesgos laborales (ARL)", a.arl)}${filaInforme("Caja de compensación", a.caja)}
+    <div class="informe-seccion-title">Por planilla</div>
+    ${a.planillas.map(p => `<div class="informe-row"><span class="ir-label">N.° ${escHtml(p.numero)} · ${p.afiliados} afiliado${p.afiliados === 1 ? "" : "s"}</span><span class="ir-valor">${fmt(p.valor)}</span></div>`).join("") || `<div class="empty">Todavía no hay planillas este mes.</div>`}
+    ${a.sinPlanilla.length ? `<div class="informe-seccion-title">Recibieron pago y falta planilla</div>
+      ${a.sinPlanilla.map(f => `<div class="informe-row"><span class="ir-label">${escHtml(nombrePropio(f.r["Nombre del Afiliado"] || ""))}</span><span class="ir-valor">${fmt(f.d.aportes)}</span></div>`).join("")}` : ""}
+    <p class="ing-nota">Valores de la app. Compare el total de cada planilla con su comprobante y con el banco: la planilla puede traer intereses u otros ajustes.</p>
+    <div class="modal-actions"><button type="button" class="btn small primary" id="aportesExcelBtn">⬇️ Descargar para el contador</button></div>`;
+}
+function descargarReporteAportes(mes, a, fechas){
+  const c = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const enc = ["Cédula", "Nombre", "Estado", "Fecha de pago", "Fecha aproximada", "No. planilla", "Salud", "Pensión", "ARL", "Caja", "Total aportes", "Servicio", "Recargo", "Total recibido"];
+  const filas = [enc.map(c).join(";")].concat(a.filas.map(f => {
+    const fp = fechas[String(f.r["Cédula"])] || {};
+    return [f.r["Cédula"], f.r["Nombre del Afiliado"], f.r["Estado Trámite"], fp.fecha || "", fp.aprox ? "Sí" : "", f.planilla, f.d.salud, f.d.pension, f.d.arl, f.d.caja, f.d.aportes, f.d.servicio, f.d.recargo, f.d.total].map(c).join(";");
+  }));
+  const a2 = document.createElement("a");
+  a2.href = URL.createObjectURL(new Blob(["\ufeff" + filas.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+  a2.download = `aportes_${mes.replace(/\s+/g, "_")}.csv`;
+  document.body.appendChild(a2); a2.click(); a2.remove();
+  setTimeout(() => URL.revokeObjectURL(a2.href), 2000);
+}
+async function abrirInformeAportes(){
+  const mes = store.currentMonth;
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "🧾 Aportes recibidos y pagados";
+  document.getElementById("informeSubtitulo").textContent = mes;
+  const a = reporteAportes(mes);
+  cont.innerHTML = informeAportesHtml(mes, a);
+  document.getElementById("overlayInforme").classList.add("show");
+  document.getElementById("aportesExcelBtn").onclick = async () => descargarReporteAportes(mes, a, await fechasDePago(mes));
+}
+async function abrirInformeIngresos(){
+  const mes = store.currentMonth;
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "📈 Ingresos del mes";
+  document.getElementById("informeSubtitulo").textContent = mes;
+  cont.innerHTML = `<div class="empty">Calculando…</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+  const fechas = await fechasDePago(mes);
   if (mes !== store.currentMonth) return;
   const meses = sortedMonthNames(), pos = meses.indexOf(mes);
   const previo = pos > 0 ? meses[pos - 1] : "";
@@ -5147,6 +5209,7 @@ async function abrirInformeIngresos(){
 
 function abrirInforme(tipo){
   if (tipo === "ingresos"){ abrirInformeIngresos(); return; }
+  if (tipo === "aportes"){ abrirInformeAportes(); return; }
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
@@ -5823,6 +5886,9 @@ function renderMonthTotal(){
 
   // Los tres totales (PROSEGUROSNET, Conductores, Gestiones) se suman al final.
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
+  const aportesMes = reporteAportes(store.currentMonth);
+  document.getElementById("sidebarAportesValue").textContent = fmt(aportesMes.recibido);
+  document.getElementById("sidebarAportesPagos").textContent = aportesMes.sinPlanilla.length ? `Falta planilla: ${aportesMes.sinPlanilla.length}` : "Todo con planilla";
   const ingresos = resumenIngresos(store.currentMonth, {});
   document.getElementById("sidebarIngresosValue").textContent = fmt(ingresos.ingreso);
   document.getElementById("sidebarIngresosPagos").textContent = `${ingresos.pagos} pagos · ${fmt(ingresos.total)} con aportes`;
@@ -6407,6 +6473,17 @@ function calcularAportesApp(r, mesActual){
   return d;
 }
 
+// Separa lo que paga el cliente: ingreso de PROSEGUROSNET por un lado y aportes de terceros por otro
+function desgloseRecibo(r, mes){
+  const total = calcularTotalPagar(r, mes);
+  const recargo = numOrZero(r["Recargo Mora"]);
+  const afiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
+  const ap = afiliacion ? { salud: 0, pension: 0, arl: 0, caja: 0, total: 0 } : calcularAportesApp(r, mes);
+  return { ...ap, aportes: ap.total, total, recargo, servicio: total - ap.total - recargo };
+}
+function filasRecibo(d){
+  return [["Servicio PROSEGUROSNET", d.servicio], ["Recargo por mora", d.recargo], ["Salud (EPS)", d.salud], ["Pensión", d.pension], ["Riesgos laborales (ARL)", d.arl], ["Caja de compensación", d.caja]].filter(([, v], i) => i === 0 || v > 0);
+}
 function showBreakdown(cedula){
   const r = records.find(x => String(x["Cédula"]) === String(cedula));
   if (!r){ breakdown.classList.remove("show"); activeCedula = null; return; }
@@ -8725,9 +8802,10 @@ async function compartirReciboComoImagen(){
 
   const total = calcularTotalPagar(r, store.currentMonth);
   const fechaTexto = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"long", year:"numeric"});
+  const detalle = filasRecibo(desgloseRecibo(r, store.currentMonth));
 
   const canvas = document.createElement("canvas");
-  canvas.width = 900; canvas.height = 620;
+  canvas.width = 900; canvas.height = 700 + detalle.length * 36;
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = "#ffffff";
@@ -8751,14 +8829,14 @@ async function compartirReciboComoImagen(){
 
   ctx.fillStyle = "#173A5E";
   ctx.font = "bold 22px 'Inter', sans-serif";
-  ctx.fillText("Comprobante de pago", 40, 168);
+  ctx.fillText("Recibo detallado", 40, 168);
 
   const filas = [
     ["Cliente", r["Nombre del Afiliado"]],
     ["Cédula", r["Cédula"]],
     ["Mes", store.currentMonth],
     ["No. Planilla", r["No. Planilla Pagada"] || "—"],
-    ["Fecha del comprobante", fechaTexto],
+    ["Fecha del recibo", fechaTexto],
   ];
   let y = 220;
   filas.forEach(([label, valor]) => {
@@ -8773,14 +8851,22 @@ async function compartirReciboComoImagen(){
     y += 44;
   });
 
-  y += 20;
+  y += 14;
+  detalle.forEach(([label, valor]) => {
+    ctx.textAlign = "left"; ctx.fillStyle = "#555555"; ctx.font = "15px 'Inter', sans-serif"; ctx.fillText(label, 40, y);
+    ctx.textAlign = "right"; ctx.fillStyle = "#1a1a1a"; ctx.font = "bold 16px 'Inter', sans-serif"; ctx.fillText(fmt(valor), 860, y);
+    y += 36;
+  });
+  ctx.textAlign = "left";
+
+  y += 6;
   ctx.fillStyle = "#E1F1E9";
   ctx.fillRect(40, y, 820, 70);
   ctx.strokeStyle = "#2E7D5B"; ctx.lineWidth = 2;
   ctx.strokeRect(40, y, 820, 70);
   ctx.fillStyle = "#173A5E";
   ctx.font = "bold 17px 'Inter', sans-serif";
-  ctx.fillText("Total pagado", 60, y + 44);
+  ctx.fillText(pagadoEsteMes(r) ? "Total pagado" : "Total a pagar", 60, y + 44);
   ctx.font = "bold 26px 'Inter', sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(fmt(total), 840, y + 46);
@@ -8788,7 +8874,8 @@ async function compartirReciboComoImagen(){
 
   ctx.fillStyle = "#999999";
   ctx.font = "12px 'Inter', sans-serif";
-  ctx.fillText("Este comprobante fue generado por la app de control de planillas de PROSEGUROSNET.", 40, canvas.height - 24);
+  ctx.fillText("Los aportes se pagan a EPS, pensión, ARL y caja mediante la planilla y no son ingreso de PROSEGUROSNET.", 40, canvas.height - 42);
+  ctx.fillText("Este recibo no reemplaza la factura electrónica del servicio.", 40, canvas.height - 24);
 
   canvas.toBlob(async (blob) => {
     const nombreArchivo = `recibo_${r["Cédula"]}_${store.currentMonth.replace(/\s+/g, "_")}.png`;
@@ -8797,8 +8884,8 @@ async function compartirReciboComoImagen(){
       try{
         await navigator.share({
           files: [file],
-          title: "Comprobante de pago",
-          text: `Hola ${r["Nombre del Afiliado"]}, aquí está tu comprobante de pago de ${store.currentMonth}.`,
+          title: "Recibo detallado",
+          text: `Hola ${r["Nombre del Afiliado"]}, aquí está tu recibo detallado de ${store.currentMonth}.`,
         });
         return;
       }catch(err){
@@ -8925,6 +9012,8 @@ document.getElementById("reciboBtn").addEventListener("click", () => {
   document.getElementById("rcPlanilla").textContent = r["No. Planilla Pagada"] || "—";
   document.getElementById("rcFecha").textContent = new Date().toLocaleDateString("es-CO", {day:"2-digit", month:"long", year:"numeric"});
   document.getElementById("rcTotal").textContent = fmt(total);
+  document.getElementById("rcTotalEtiqueta").textContent = pagadoEsteMes(r) ? "Total pagado" : "Total a pagar";
+  document.getElementById("rcDetalle").innerHTML = filasRecibo(desgloseRecibo(r, store.currentMonth)).map(([k, v]) => `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`).join("");
   setTimeout(() => window.print(), 100);
 });
 document.getElementById("deleteBtn").addEventListener("click", async () => {
