@@ -1969,6 +1969,7 @@
         <div class="modal-actions" style="margin-top:6px;"><button type="button" class="btn small" id="incFacturaBtn">🧾 Crear borrador en Alegra</button></div>
       </div>
       <p class="ing-nota" id="incFacturaEstado"></p>
+      <div class="modal-actions" id="incSoporteCaja" hidden style="justify-content:flex-start;"><button type="button" class="btn small" id="incSoporteBtn">📤 Generar soporte de pago</button></div>
       <div class="modal-actions">
         <button type="button" class="btn danger" id="incBorrarBtn" hidden>Eliminar</button>
         <button type="button" class="btn ghost" id="incCancelarBtn">Cancelar</button>
@@ -4266,6 +4267,7 @@ function abrirFormIncap(i){
   const facturable = !!(i && esAdmin() && i.fecha_pago && comisionIncap(i) > 0 && !i.alegra_id);
   document.getElementById("incFactura").hidden = !facturable;
   document.getElementById("incMedio").value = "";
+  document.getElementById("incSoporteCaja").hidden = !(i && i.fecha_pago);
   document.getElementById("incFacturaEstado").textContent = i && i.alegra_id ? "🧾 La comisión ya tiene factura en Alegra. El contador la revisa allá." : "";
   document.getElementById("incForm").hidden = false;
   actualizarComisionIncap();
@@ -4309,6 +4311,48 @@ document.getElementById("incForm").addEventListener("submit", async (e) => {
   cerrarFormIncap(); renderIncapacidades(); renderMonthTotal();
   showToast("✅ Incapacidad guardada.");
 });
+// Soporte de la incapacidad: lo que entró, la comisión y lo que recibió la persona. No es factura.
+async function soporteIncapacidad(i){
+  const filas = [["Persona", nombrePropio(i.nombre)], ["Cédula", i.cedula]];
+  if (i.entidad) filas.push(["Entidad que pagó", i.entidad]);
+  if (i.desde) filas.push(["Incapacidad", `${fechaCorta(i.desde)}${i.hasta ? ` a ${fechaCorta(i.hasta)}` : ""}`]);
+  filas.push(["Dinero recibido", `${fmt(i.valor_recibido)} (${fechaCorta(i.fecha_recibido)})`]);
+  filas.push(["Comisión PROSEGUROSNET", fmt(comisionIncap(i))]);
+  filas.push(["Fecha de pago", fechaCorta(i.fecha_pago)]);
+  const c = document.createElement("canvas");
+  c.width = 900; c.height = 420 + filas.length * 48;
+  const x = c.getContext("2d");
+  x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = "#173A5E"; x.font = "bold 32px Arial, sans-serif"; x.fillText("PROSEGUROSNET", 40, 70);
+  x.fillStyle = "#C0272D"; x.font = "bold 15px Arial, sans-serif"; x.fillText("Protegemos lo que más importa", 40, 98);
+  x.fillStyle = "#181512"; x.font = "bold 24px Arial, sans-serif"; x.fillText("Soporte de pago de incapacidad", 40, 150);
+  let y = 205;
+  filas.forEach(([k, v]) => {
+    x.textAlign = "left"; x.fillStyle = "#5A534A"; x.font = "17px Arial, sans-serif"; x.fillText(k, 40, y);
+    x.textAlign = "right"; x.fillStyle = "#181512"; x.font = "bold 18px Arial, sans-serif"; x.fillText(String(v).slice(0, 44), 860, y);
+    y += 48;
+  });
+  x.textAlign = "left"; y += 4;
+  x.fillStyle = "#E1F1E9"; x.fillRect(40, y, 820, 72);
+  x.fillStyle = "#173A5E"; x.font = "bold 20px Arial, sans-serif"; x.fillText("Valor pagado a la persona", 60, y + 44);
+  x.textAlign = "right"; x.font = "bold 28px Arial, sans-serif"; x.fillText(fmt(i.valor_pagado), 840, y + 46);
+  x.textAlign = "left"; x.fillStyle = "#5A534A"; x.font = "14px Arial, sans-serif";
+  x.fillText("Este soporte no es una factura. La comisión se factura por aparte.", 40, c.height - 42);
+  x.fillText("Generado por la app de PROSEGUROSNET.", 40, c.height - 22);
+  const blob = await new Promise(res => c.toBlob(res, "image/png"));
+  const nombre = `soporte_incapacidad_${i.cedula}_${i.fecha_pago}.png`;
+  const file = new File([blob], nombre, { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    try{ await navigator.share({ files: [file], title: "Soporte de pago de incapacidad", text: `Hola ${nombrePropio(i.nombre)}, aquí está el soporte del pago de tu incapacidad.` }); return; }
+    catch(err){ if (err && err.name === "AbortError") return; }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast("Soporte descargado como imagen. Adjúntelo en WhatsApp.");
+}
+document.getElementById("incSoporteBtn").addEventListener("click", () => { if (incEditando) soporteIncapacidad(incEditando); });
 document.getElementById("incFacturaBtn").addEventListener("click", async () => {
   if (!incEditando || !esAdmin()) return;
   const medioPago = document.getElementById("incMedio").value;
