@@ -963,6 +963,7 @@
   .bm-info small{ display:block; font-size:12px; color:var(--muted); }
   .bm-info .ocr-alerta{ color:var(--retiro); }
   .bm-valor{ font-weight:700; font-variant-numeric:tabular-nums; }
+  .inc-fila{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px 2px; background:none; border:0; border-bottom:1px solid var(--line); color:inherit; font:inherit; text-align:left; cursor:pointer; }
   .informe-row.total{ font-weight:700; font-size:14.5px; color:var(--titulo); border-top:2px solid var(--navy); margin-top:4px; padding-top:10px; }
   .informe-row.total .ir-valor{ color:var(--pago); font-size:16px; }
   .historial-mes-row{
@@ -1942,12 +1943,50 @@
 </div>
 
 <!-- Muelles de independientes que pagan su seguridad social por otras empresas (solo servicio) -->
+<div class="overlay" id="overlayIncap">
+  <div class="modal" style="max-width:620px;">
+    <h2>🩺 Pagos de incapacidades</h2>
+    <div class="modal-sub">Registre la plata que entra y lo que se le paga a la persona. Solo la comisión cuenta como ingreso.</div>
+    <div class="ing-tarjetas" id="incTarjetas"></div>
+    <div class="modal-actions" style="justify-content:flex-start;margin:0 0 10px;"><button type="button" class="btn primary" id="incNuevaBtn">➕ Registrar incapacidad</button></div>
+    <form id="incForm" hidden autocomplete="off">
+      <div class="form-grid">
+        <div class="field"><label for="incCedula">Cédula *</label><input id="incCedula" inputmode="numeric" maxlength="12"></div>
+        <div class="field"><label for="incNombre">Nombre *</label><input id="incNombre" maxlength="120"></div>
+        <div class="field"><label for="incEntidad">Entidad que paga</label><input id="incEntidad" maxlength="80" placeholder="EPS o ARL"></div>
+        <div class="field"><label for="incDesde">Incapacidad desde</label><input id="incDesde" type="date"></div>
+        <div class="field"><label for="incHasta">Incapacidad hasta</label><input id="incHasta" type="date"></div>
+        <div class="field"><label for="incRecibido">Dinero que entra</label><input id="incRecibido" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="incFechaRecibido">Fecha en que entró</label><input id="incFechaRecibido" type="date"></div>
+        <div class="field"><label for="incPagado">Pago a la persona</label><input id="incPagado" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="incFechaPago">Fecha de pago</label><input id="incFechaPago" type="date"></div>
+        <div class="field span2" style="grid-column:1/-1;"><label for="incNota">Nota</label><input id="incNota" maxlength="200"></div>
+      </div>
+      <p class="ing-nota" id="incComision"></p>
+      <div id="incFactura" class="cs-pegar" hidden>
+        <div class="field"><label for="incMedio">Factura de la comisión en Alegra (borrador)</label>
+          <select id="incMedio"><option value="">Escoja cómo pagó la comisión</option><option value="BANK_DEPOSIT">Consignación bancaria</option><option value="CREDIT_TRANSFER_BANK">Transferencia bancaria</option><option value="CASH">Efectivo</option><option value="MUTUAL_AGREEMENT">Otro</option></select></div>
+        <div class="modal-actions" style="margin-top:6px;"><button type="button" class="btn small" id="incFacturaBtn">🧾 Crear borrador en Alegra</button></div>
+      </div>
+      <p class="ing-nota" id="incFacturaEstado"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="incBorrarBtn" hidden>Eliminar</button>
+        <button type="button" class="btn ghost" id="incCancelarBtn">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+    <div id="incLista"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="incCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlayMuellesServicio">
   <div class="modal">
     <h2>⚓ Muelles · Independientes (otras empresas)</h2>
     <div class="modal-sub">Personas que pagan su seguridad social por otra empresa y a quienes PROSEGUROSNET les presta el servicio de <b>actualización</b> (cada mes) o de <b>enrolamiento</b> (una sola vez) en los muelles. Solo se cobra el valor del servicio; no entran en la cartera de planillas.</div>
     <div class="modal-actions" style="justify-content:flex-start; margin:0 0 12px;">
       <button type="button" class="btn primary" id="msNuevoBtn">➕ Agregar persona</button>
+      <button type="button" class="btn" id="msIncapBtn">🩺 Pagos de incapacidades</button>
     </div>
     <form id="msForm" autocomplete="off">
       <div class="form-grid">
@@ -3465,6 +3504,7 @@ async function cargarStoreDesdeSupabase(){
   Object.keys(nuevoStore.months).forEach(m => { nuevoStore.months[m] = ordenarPorNumero(nuevoStore.months[m]); });
 
   const { data: tareasRows } = await sb.from("tareas").select("*");
+  await cargarIncapacidades();
   nuevoStore.tareas = (tareasRows || []).map(row => {
     tareaIdsConocidos.add(row.id);
     const t = { id: row.id, cedula: row.cedula, nombre: row.nombre, descripcion: row.descripcion,
@@ -4173,6 +4213,138 @@ function renderFaltanFactura(lista){
   </details>` : `<div class="faltan-caja">✅ Están los datos para facturar a responsables y clientes.</div>`;
 }
 function claveValidaResp(r){ return !!normResp(r["Responsable / Grupo"]); }
+// Pagos de incapacidades. La plata que entra es de la persona: el ingreso es solo la comisión.
+let incapacidades = [];
+let incEditando = null;
+function estadoIncap(i){
+  if (i.fecha_pago) return "Pagada";
+  return numOrZero(i.valor_recibido) > 0 ? "Por pagar" : "Por recibir";
+}
+function comisionIncap(i){ return Math.max(0, numOrZero(i.valor_recibido) - numOrZero(i.valor_pagado)); }
+async function cargarIncapacidades(){
+  if (!sb) return;
+  try{
+    const { data, error } = await sb.from("incapacidades").select("*");
+    if (error) throw error;
+    incapacidades = data || [];
+  }catch(e){ console.error("No se pudieron cargar las incapacidades:", e); }
+}
+function renderIncapacidades(){
+  const mes = store.currentMonth;
+  const delMes = (f) => !!f && mesDeFechaISO(f) === mes;
+  const entro = incapacidades.filter(i => delMes(i.fecha_recibido)).reduce((a, i) => a + numOrZero(i.valor_recibido), 0);
+  const salio = incapacidades.filter(i => delMes(i.fecha_pago)).reduce((a, i) => a + numOrZero(i.valor_pagado), 0);
+  const comision = incapacidades.filter(i => delMes(i.fecha_pago)).reduce((a, i) => a + comisionIncap(i), 0);
+  const porPagar = incapacidades.filter(i => estadoIncap(i) === "Por pagar");
+  document.getElementById("incTarjetas").innerHTML = `
+    <div class="ing-tarjeta"><small>Por pagar a personas</small><b>${fmt(porPagar.reduce((a, i) => a + numOrZero(i.valor_recibido), 0))}</b><span>${porPagar.length} pendiente${porPagar.length === 1 ? "" : "s"}</span></div>
+    <div class="ing-tarjeta"><small>Comisión del mes</small><b>${fmt(comision)}</b><span>${escHtml(mes)}</span></div>
+    <div class="ing-tarjeta"><small>Entró este mes</small><b>${fmt(entro)}</b></div>
+    <div class="ing-tarjeta"><small>Pagado este mes</small><b>${fmt(salio)}</b></div>`;
+  const orden = { "Por pagar": 0, "Por recibir": 1, "Pagada": 2 };
+  const lista = [...incapacidades].sort((a, b) => orden[estadoIncap(a)] - orden[estadoIncap(b)] || String(b.created_at).localeCompare(String(a.created_at)));
+  document.getElementById("incLista").innerHTML = lista.map(i => {
+    const e = estadoIncap(i);
+    return `<button type="button" class="inc-fila" data-inc="${escHtml(i.id)}">
+      <span class="bm-info"><b>${escHtml(nombrePropio(i.nombre))}</b><small>${escHtml(i.cedula)}${i.entidad ? ` · ${escHtml(i.entidad)}` : ""}${i.desde ? ` · ${fechaCorta(i.desde)}${i.hasta ? ` a ${fechaCorta(i.hasta)}` : ""}` : ""}</small>
+      <small>Entró ${fmt(i.valor_recibido)} · Pagado ${fmt(i.valor_pagado)} · Comisión ${fmt(comisionIncap(i))}</small></span>
+      <span class="ms-servicio ${e === "Pagada" ? "actualizacion" : "curso"}">${e}</span>
+    </button>`;
+  }).join("") || `<div class="empty">Todavía no hay incapacidades registradas.</div>`;
+}
+function actualizarComisionIncap(){
+  const r = numOrZero(document.getElementById("incRecibido").value), p = numOrZero(document.getElementById("incPagado").value);
+  document.getElementById("incComision").textContent = r || p ? `Comisión: ${fmt(Math.max(0, r - p))}. ${p > r ? "⚠️ El pago es mayor que lo que entró." : ""}` : "";
+}
+function abrirFormIncap(i){
+  incEditando = i || null;
+  const v = i || {};
+  const pon = (id, x) => { document.getElementById(id).value = x ?? ""; };
+  pon("incCedula", v.cedula); pon("incNombre", v.nombre); pon("incEntidad", v.entidad); pon("incDesde", v.desde); pon("incHasta", v.hasta);
+  pon("incRecibido", v.valor_recibido || ""); pon("incFechaRecibido", v.fecha_recibido); pon("incPagado", v.valor_pagado || ""); pon("incFechaPago", v.fecha_pago); pon("incNota", v.nota);
+  document.getElementById("incBorrarBtn").hidden = !(i && esAdmin());
+  const facturable = !!(i && esAdmin() && i.fecha_pago && comisionIncap(i) > 0 && !i.alegra_id);
+  document.getElementById("incFactura").hidden = !facturable;
+  document.getElementById("incMedio").value = "";
+  document.getElementById("incFacturaEstado").textContent = i && i.alegra_id ? "🧾 La comisión ya tiene factura en Alegra. El contador la revisa allá." : "";
+  document.getElementById("incForm").hidden = false;
+  actualizarComisionIncap();
+  document.getElementById("incCedula").focus();
+}
+function cerrarFormIncap(){ incEditando = null; document.getElementById("incForm").hidden = true; }
+document.getElementById("msIncapBtn").addEventListener("click", async () => {
+  await cargarIncapacidades();
+  cerrarFormIncap();
+  renderIncapacidades();
+  document.getElementById("overlayIncap").classList.add("show");
+});
+document.getElementById("incCerrarBtn").addEventListener("click", () => document.getElementById("overlayIncap").classList.remove("show"));
+document.getElementById("incNuevaBtn").addEventListener("click", () => abrirFormIncap(null));
+document.getElementById("incCancelarBtn").addEventListener("click", cerrarFormIncap);
+document.getElementById("incRecibido").addEventListener("input", actualizarComisionIncap);
+document.getElementById("incPagado").addEventListener("input", actualizarComisionIncap);
+document.getElementById("incCedula").addEventListener("change", (e) => {
+  const c = e.target.value.replace(/\D/g, ""), nom = document.getElementById("incNombre");
+  e.target.value = c;
+  if (nom.value.trim()) return;
+  for (const m of Object.values(store.months || {})){
+    const r = (m || []).find(x => String(x["Cédula"]) === c);
+    if (r){ nom.value = nombrePropio(r["Nombre del Afiliado"] || ""); break; }
+  }
+});
+document.getElementById("incLista").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-inc]");
+  if (b) abrirFormIncap(incapacidades.find(i => String(i.id) === b.dataset.inc));
+});
+document.getElementById("incForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const v = id => document.getElementById(id).value.trim();
+  const fila = { cedula: v("incCedula").replace(/\D/g, ""), nombre: limpiarEspacios(v("incNombre")).toLowerCase(), entidad: v("incEntidad") || null, desde: v("incDesde") || null, hasta: v("incHasta") || null,
+    valor_recibido: Math.round(numOrZero(v("incRecibido"))), fecha_recibido: v("incFechaRecibido") || null, valor_pagado: Math.round(numOrZero(v("incPagado"))), fecha_pago: v("incFechaPago") || null, nota: v("incNota") || null, updated_at: new Date().toISOString() };
+  const error = validarIncap(fila);
+  if (error){ showToast("⚠️ " + error); return; }
+  const r = incEditando ? await sb.from("incapacidades").update(fila).eq("id", incEditando.id) : await sb.from("incapacidades").insert(fila);
+  if (r.error){ await alertApp("No se pudo guardar: " + r.error.message); return; }
+  await cargarIncapacidades();
+  cerrarFormIncap(); renderIncapacidades(); renderMonthTotal();
+  showToast("✅ Incapacidad guardada.");
+});
+document.getElementById("incFacturaBtn").addEventListener("click", async () => {
+  if (!incEditando || !esAdmin()) return;
+  const medioPago = document.getElementById("incMedio").value;
+  if (!medioPago){ showToast("Escoja el medio de pago."); return; }
+  if (!(await confirmarApp(`¿Crear en Alegra el borrador de la comisión de ${fmt(comisionIncap(incEditando))}? No se envía a la DIAN.`))) return;
+  const btn = document.getElementById("incFacturaBtn");
+  btn.disabled = true;
+  try{
+    await llamarAlegra({ accion: "incapacidad", incapacidad: incEditando.id, medioPago });
+    await cargarIncapacidades();
+    cerrarFormIncap(); renderIncapacidades();
+    showToast("✅ Borrador creado en Alegra.");
+  }catch(err){ await alertApp("⚠️ " + err.message); }
+  finally{ btn.disabled = false; }
+});
+document.getElementById("incBorrarBtn").addEventListener("click", async () => {
+  if (!incEditando || !esAdmin()) return;
+  if (incEditando.alegra_id){ await alertApp("Tiene una factura en Alegra. Revísela allá antes de eliminar este registro."); return; }
+  if (!(await confirmarApp(`¿Eliminar la incapacidad de ${nombrePropio(incEditando.nombre)}?`))) return;
+  const { error } = await sb.from("incapacidades").delete().eq("id", incEditando.id);
+  if (error){ await alertApp("No se pudo eliminar: " + error.message); return; }
+  await cargarIncapacidades();
+  cerrarFormIncap(); renderIncapacidades(); renderMonthTotal();
+});
+function validarIncap(f){
+  if (f.cedula.length < 6 || f.cedula.length > 10 || /^0/.test(f.cedula)) return "Revise la cédula.";
+  if (f.nombre.length < 3) return "Escriba el nombre.";
+  if (f.desde && f.hasta && f.hasta < f.desde) return "La fecha final es anterior a la inicial.";
+  if (f.valor_recibido > 0 && !f.fecha_recibido) return "Ponga la fecha en que entró el dinero.";
+  if (f.fecha_recibido && !f.valor_recibido) return "Ponga el dinero que entró.";
+  if (f.valor_pagado > 0 && !f.fecha_pago) return "Ponga la fecha de pago.";
+  if (f.fecha_pago && !f.valor_pagado) return "Ponga el valor pagado a la persona.";
+  if (f.fecha_pago && !f.valor_recibido) return "No se puede pagar antes de registrar el dinero que entró.";
+  if (f.valor_pagado > f.valor_recibido) return "El pago no puede ser mayor que el dinero que entró.";
+  return "";
+}
 async function cargarResponsablesCreados(){
   if (!cloudDb) return;
   try{
@@ -5091,6 +5263,13 @@ function resumenIngresos(mes, fechas){
     res.ingreso += t.valor; res.total += t.valor;
     linea("Gestiones").ingreso += t.valor;
     res.movimientos.push({ fecha: String(t.fecha).slice(0, 10), aprox: false, nombre: `Gestión: ${t.descripcion || "sin detalle"}`, ingreso: t.valor, total: t.valor, pago: false });
+  });
+  // De una incapacidad solo la comisión es de la empresa
+  incapacidades.filter(i => i.fecha_pago && mesDeFechaISO(i.fecha_pago) === mes && comisionIncap(i) > 0).forEach(i => {
+    const c = comisionIncap(i);
+    res.ingreso += c; res.total += c;
+    linea("Incapacidades").ingreso += c;
+    res.movimientos.push({ fecha: String(i.fecha_pago).slice(0, 10), aprox: false, nombre: `Incapacidad: ${nombrePropio(i.nombre)}`, ingreso: c, total: c, pago: false });
   });
   return res;
 }
