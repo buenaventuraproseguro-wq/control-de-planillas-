@@ -5305,6 +5305,17 @@ function resumenIngresos(mes, fechas){
     const servicio = esConductorExcluido(r);
     const total = servicio ? numOrZero(r["Costo Servicio"]) : calcularTotalPagar(r, mes);
     const ingreso = servicio ? total : Math.min(total, numOrZero(r["Costo Servicio"]) + numOrZero(r["Recargo Mora"]));
+    // Afiliación: se cobra al afiliar y todo es de la empresa (no lleva aportes ese mes).
+    // Su día es la fecha de ingreso; si no cae en este mes, va en "Sin fecha".
+    if (e === "AFILIACION"){
+      const fi = toInputDate(r["Fecha de Ingreso"]) || "";
+      const fecha = fi && mesDeFechaISO(fi) === mes ? fi : "";
+      res.pagos++; res.afiliaciones = (res.afiliaciones || 0) + 1;
+      res.ingreso += total; res.total += total;
+      const l = linea("Afiliaciones"); l.pagos++; l.ingreso += total;
+      res.movimientos.push({ fecha, aprox: false, nombre: `Afiliación: ${nombrePropio(r["Nombre del Afiliado"] || "")}`, ingreso: total, total, pago: true });
+      return;
+    }
     if (e === "PAGO" || e === "PAGO_CONDUCTOR"){
       const f = (fechas || {})[String(r["Cédula"])] || {};
       res.pagos++; res.ingreso += ingreso; res.total += total; res.aportes += total - ingreso;
@@ -5353,7 +5364,7 @@ function informeIngresosHtml(mes, r, extras, mesAnterior){
     <ul>${d.filas.map(m => `<li><span>${escHtml(m.nombre)}</span><span>${fmt(m.ingreso)}</span></li>`).join("")}</ul>
   </details>`;
   return `<div class="ing-tarjetas">
-      <div class="ing-tarjeta fuerte"><small>Ingresos de la empresa</small><b>${fmt(r.ingreso)}</b><span>${r.pagos} pagos · promedio ${fmt(r.pagos ? Math.round(r.ingreso / r.pagos) : 0)}</span></div>
+      <div class="ing-tarjeta fuerte"><small>Ingresos de la empresa</small><b>${fmt(r.ingreso)}</b><span>${r.pagos} pagos${r.afiliaciones ? ` (${r.afiliaciones} afiliaci${r.afiliaciones === 1 ? "ón" : "ones"})` : ""} · promedio ${fmt(r.pagos ? Math.round(r.ingreso / r.pagos) : 0)}</span></div>
       <div class="ing-tarjeta"><small>Hoy</small><b>${fmt(deHoy.ingreso)}</b><span>${deHoy.pagos} pago${deHoy.pagos === 1 ? "" : "s"}</span></div>
       <div class="ing-tarjeta"><small>Por cobrar (ingreso)</small><b>${fmt(r.ingresoPorCobrar)}</b><span>Si todos pagan: ${fmt(esperado)}</span></div>
       <div class="ing-tarjeta"><small>Aportes recibidos</small><b>${fmt(r.aportes)}</b><span>Van a EPS, ARL, AFP y caja</span></div>
