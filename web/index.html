@@ -140,6 +140,7 @@ a{color:#B3121F}a:hover{color:#8A0E18}
       <nav style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; font-size: 15px">
         <a href="#servicios" style="color: #E4E4E7; text-decoration: none">Servicios</a>
         <a href="#cotizar" style="color: #E4E4E7; text-decoration: none">Cotizar</a>
+        <a href="#conductores" style="color: #E4E4E7; text-decoration: none">Conductores</a>
         <a href="#como" style="color: #E4E4E7; text-decoration: none">Cómo funciona</a>
         <a href="#nosotros" style="color: #E4E4E7; text-decoration: none">Nosotros</a>
         <a href="#preguntas" style="color: #E4E4E7; text-decoration: none">Preguntas</a>
@@ -156,7 +157,7 @@ a{color:#B3121F}a:hover{color:#8A0E18}
         <p style="margin: 0; font-size: 19px; line-height: 1.6; color: #D4D4D8; max-width: 560px">Afiliamos y pagamos su planilla de salud, pensión, ARL y caja cada mes. Usted paga por QR o Bre-B y recibe su planilla y su comprobante por WhatsApp.</p>
         <div style="display: flex; flex-wrap: wrap; gap: 12px">
           <a href="#cotizar" style="background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 16px; padding: 16px 24px; border-radius: 10px">Cotizar ahora</a>
-          <a href="https://wa.me/573116133523" style="background: #FFFFFF; color: #18181B; text-decoration: none; font-weight: 700; font-size: 16px; padding: 16px 24px; border-radius: 10px">Escribir por WhatsApp</a>
+          <a href="#conductores" style="background: #FFFFFF; color: #18181B; text-decoration: none; font-weight: 700; font-size: 16px; padding: 16px 24px; border-radius: 10px">Soy conductor: actualizar</a>
         </div>
       </div>
       <div style="flex: 1 1 360px; min-width: 0; display: flex; justify-content: center">
@@ -280,6 +281,57 @@ a{color:#B3121F}a:hover{color:#8A0E18}
         <span style="border: 1px solid #D4D4D8; border-radius: 10px; padding: 12px 18px; font-size: 15px; font-weight: 600; color: #3F3F46">SURA</span>
         <span style="border: 1px solid #D4D4D8; border-radius: 10px; padding: 12px 18px; font-size: 15px; font-weight: 600; color: #3F3F46">Todas las EPS</span>
       </div>
+    </div>
+  </section>
+
+  <section id="conductores" style="background: #18181B; color: #FFFFFF">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start">
+      <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <p style="margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #F87171">Solo conductores</p>
+        <h2 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 800; font-size: 52px; line-height: 1">Actualice su seguridad social</h2>
+        <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #D4D4D8">Envíenos sus documentos desde aquí, sin ir a la oficina. Los revisamos y le confirmamos por WhatsApp.</p>
+        <ul style="margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.8; color: #E4E4E7">
+          <li>Foto de su cédula</li>
+          <li>Su planilla de seguridad social</li>
+          <li>El comprobante de pago</li>
+        </ul>
+        <p style="margin: 0; font-size: 14px; color: #A1A1AA">Fotos o PDF de hasta 8 MB cada uno. Sus documentos solo los ve nuestro equipo.</p>
+      </div>
+      <form id="formConductor" autocomplete="off" style="flex: 1 1 460px; min-width: 0; background: #F4F4F5; color: #18181B; border-radius: 20px; padding: 32px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="con-nombre" style="font-size: 14px; font-weight: 600">Nombre completo</label>
+          <input id="con-nombre" type="text" required maxlength="120" placeholder="Como aparece en la cédula" style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0">
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="con-cedula" style="font-size: 14px; font-weight: 600">Cédula</label>
+            <input id="con-cedula" type="text" inputmode="numeric" required placeholder="Solo números" style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="con-telefono" style="font-size: 14px; font-weight: 600">Celular (WhatsApp)</label>
+            <input id="con-telefono" type="tel" inputmode="numeric" required placeholder="3001234567" style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0">
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="con-placa" style="font-size: 14px; font-weight: 600">Placa del vehículo <span style="font-weight: 400; color: #52525B">(opcional)</span></label>
+          <input id="con-placa" type="text" maxlength="10" placeholder="ABC123" style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0; text-transform: uppercase">
+        </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; background: #FFFFFF; border: 1px dashed #A1A1AA; border-radius: 12px; padding: 14px">
+            <label for="con-doc-cedula" style="font-size: 14px; font-weight: 600">Foto de la cédula</label>
+            <input id="con-doc-cedula" type="file" accept="image/*,application/pdf" required style="font: inherit; font-size: 14px; min-width: 0">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; background: #FFFFFF; border: 1px dashed #A1A1AA; border-radius: 12px; padding: 14px">
+            <label for="con-doc-planilla" style="font-size: 14px; font-weight: 600">Planilla de seguridad social <span style="font-weight: 400; color: #52525B">(si la tiene)</span></label>
+            <input id="con-doc-planilla" type="file" accept="image/*,application/pdf" style="font: inherit; font-size: 14px; min-width: 0">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; background: #FFFFFF; border: 1px dashed #A1A1AA; border-radius: 12px; padding: 14px">
+            <label for="con-doc-comprobante" style="font-size: 14px; font-weight: 600">Comprobante de pago <span style="font-weight: 400; color: #52525B">(si la tiene)</span></label>
+            <input id="con-doc-comprobante" type="file" accept="image/*,application/pdf" style="font: inherit; font-size: 14px; min-width: 0">
+          </div>
+        <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: #3F3F46"><input id="con-autoriza" type="checkbox" required style="width: 20px; height: 20px; flex: none; margin-top: 1px"> Autorizo a PROSEGUROSNET a recibir y tratar mis documentos y datos para actualizar mi seguridad social (Ley 1581 de 2012).</label>
+        <button id="con-enviar" type="submit" style="font: inherit; font-size: 17px; font-weight: 700; color: #FFFFFF; background: #C8102E; border: 0; border-radius: 10px; padding: 16px; cursor: pointer">Enviar documentos</button>
+        <p id="con-estado" role="status" style="margin: 0; font-size: 15px; line-height: 1.5; text-align: center; color: #3F3F46"></p>
+      </form>
     </div>
   </section>
 
@@ -487,5 +539,45 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
  ['cot-tipo','cot-riesgo','cotPension','cotCaja','cotAfil','cotAutoriza','cot-cedula'].forEach(function(id){document.getElementById(id).addEventListener(id==='cot-cedula'?'input':'change',calc);});
  function limpiar(){document.querySelector('#cotizar form').reset(); calc();}
  limpiar(); window.addEventListener('pageshow',limpiar);
+})();
+
+(function(){
+ var URL_SB="https://jjygarfwdmhzspqonvql.supabase.co", KEY="sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s", MAX=8*1024*1024;
+ var f=document.getElementById('formConductor'), est=document.getElementById('con-estado'), btn=document.getElementById('con-enviar');
+ function solo(id,n){var e=document.getElementById(id); e.addEventListener('input',function(){e.value=e.value.replace(/\D/g,'').slice(0,n);});}
+ solo('con-cedula',12); solo('con-telefono',12);
+ function uuid(){return crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c=='x'?r:(r&3|8)).toString(16);});}
+ function aviso(t,color){est.textContent=t; est.style.color=color||'#3F3F46';}
+ f.addEventListener('submit',async function(ev){
+  ev.preventDefault();
+  var nombre=document.getElementById('con-nombre').value.trim(), ced=document.getElementById('con-cedula').value, tel=document.getElementById('con-telefono').value, placa=document.getElementById('con-placa').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
+  if(nombre.length<3){aviso('Escriba su nombre completo.','#B3121F');return;}
+  if(!/^\d{5,12}$/.test(ced)){aviso('Revise el número de cédula.','#B3121F');return;}
+  if(!/^\d{7,12}$/.test(tel)){aviso('Revise el número de celular.','#B3121F');return;}
+  var docs=[['cedula','con-doc-cedula'],['planilla','con-doc-planilla'],['comprobante','con-doc-comprobante']].map(function(d){return [d[0],document.getElementById(d[1]).files[0]];}).filter(function(d){return d[1];});
+  if(!docs.some(function(d){return d[0]==='cedula';})){aviso('Falta la foto de la cédula.','#B3121F');return;}
+  for(var i=0;i<docs.length;i++){ if(docs[i][1].size>MAX){aviso('El archivo "'+docs[i][1].name+'" pesa más de 8 MB. Tómele una foto más liviana.','#B3121F');return;} }
+  if(!document.getElementById('con-autoriza').checked){aviso('Debe marcar la autorización de datos.','#B3121F');return;}
+  btn.disabled=true; btn.style.opacity='.6'; aviso('Enviando sus documentos… no cierre la página.');
+  var id=uuid(), subidos=[];
+  try{
+   for(var j=0;j<docs.length;j++){
+    var tipo=docs[j][0], file=docs[j][1], ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'jpg';
+    var ruta='pendiente/'+id+'/'+tipo+'.'+ext;
+    var r=await fetch(URL_SB+'/storage/v1/object/solicitudes-conductores/'+ruta,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':file.type||'application/octet-stream','x-upsert':'false'},body:file});
+    if(!r.ok) throw new Error('archivo');
+    subidos.push({tipo:tipo,ruta:ruta,nombre:file.name.slice(0,80)});
+   }
+   var r2=await fetch(URL_SB+'/rest/v1/solicitudes_conductores',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({id:id,nombre:nombre,cedula:ced,telefono:tel,placa:placa||null,archivos:subidos,autoriza:true})});
+   if(!r2.ok) throw new Error('registro');
+   var num='SC-'+id.slice(0,6).toUpperCase();
+   f.reset();
+   aviso('✅ Recibimos sus documentos. Su número de solicitud es '+num+'. Le confirmamos por WhatsApp.','#15803D');
+   var wa=document.createElement('a'); wa.href='https://wa.me/573116133523?text='+encodeURIComponent('Hola PROSEGUROSNET, envié mis documentos para actualizar mi seguridad social. Solicitud '+num+', cédula '+ced+'.');
+   wa.textContent='Avisar por WhatsApp'; wa.style.cssText='display:block;margin-top:8px;font-weight:700'; est.appendChild(wa);
+  }catch(e){
+   aviso('No se pudieron enviar los documentos. Revise su internet e intente de nuevo, o escríbanos por WhatsApp al 311 613 3523.','#B3121F');
+  }finally{ btn.disabled=false; btn.style.opacity=''; }
+ });
 })();
 </script></body></html>
