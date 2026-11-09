@@ -308,6 +308,21 @@ a{color:#B3121F}a:hover{color:#8A0E18}
             <option value="curso">Curso para los muelles</option>
           </select>
         </div>
+        <div id="con-pago" style="background: #FFFFFF; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+            <span style="font-size: 14px; font-weight: 600">Valor del trámite</span>
+            <b id="con-valor" style="font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-size: 30px; color: #C8102E">Le confirmamos el valor</b>
+          </div>
+          <p id="con-valor-nota" style="margin: 0; font-size: 13px; color: #52525B">Le confirmamos el valor por WhatsApp antes de pagar.</p>
+          <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; border-top: 1px solid #E4E4E7; padding-top: 10px">
+            <img src="../qr_pago_prosegurosnet.jpg" alt="Código QR de pago de PROSEGUROSNET" style="width: 96px; height: 96px; object-fit: contain; border-radius: 8px; background: #F4F4F5">
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.5">
+              <b>Cómo pagar</b>
+              <span>Escanee el QR desde la app de su banco, o use la llave <b>Bre-B 0078275062</b>.</span>
+              <span>Luego suba aquí el comprobante.</span>
+            </div>
+          </div>
+        </div>
         <div style="display: flex; flex-direction: column; gap: 6px">
           <label for="con-nombre" style="font-size: 14px; font-weight: 600">Nombre completo</label>
           <input id="con-nombre" type="text" required maxlength="120" placeholder="Como aparece en la cédula" style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0">
@@ -335,7 +350,7 @@ a{color:#B3121F}a:hover{color:#8A0E18}
             <input id="con-doc-planilla" type="file" accept="image/*,application/pdf" style="font: inherit; font-size: 14px; min-width: 0">
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; background: #FFFFFF; border: 1px dashed #A1A1AA; border-radius: 12px; padding: 14px">
-            <label for="con-doc-comprobante" style="font-size: 14px; font-weight: 600">Comprobante de pago <span style="font-weight: 400; color: #52525B">(si la tiene)</span></label>
+            <label for="con-doc-comprobante" style="font-size: 14px; font-weight: 600">Comprobante de pago <span id="con-comp-nota" style="font-weight: 400; color: #52525B">(si lo tiene)</span></label>
             <input id="con-doc-comprobante" type="file" accept="image/*,application/pdf" style="font: inherit; font-size: 14px; min-width: 0">
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; background: #FFFFFF; border: 1px dashed #A1A1AA; border-radius: 12px; padding: 14px">
@@ -587,7 +602,16 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
 (function(){
  var URL_SB="https://jjygarfwdmhzspqonvql.supabase.co", KEY="sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s", MAX=8*1024*1024;
  var SERV={actualizacion_conductor:'actualizar mi seguridad social',actualizacion_muelles:'la actualización en los muelles',enrolamiento:'el enrolamiento en los muelles',curso:'un curso para los muelles'};
- document.querySelectorAll('[data-servicio]').forEach(function(b){b.addEventListener('click',function(){document.getElementById('con-servicio').value=b.getAttribute('data-servicio');});});
+ // Valores de la app (muelles otras empresas). Conductores: se confirma por WhatsApp.
+ var PRECIO={actualizacion_conductor:['Le confirmamos el valor','Le confirmamos el valor por WhatsApp antes de pagar.',false],
+   actualizacion_muelles:['Desde $5.000','Por cada muelle: Sociedad Portuaria $10.000; Agua Dulce y TC Buen $5.000 cada uno.',true],
+   enrolamiento:['$30.000','Una sola vez.',true],
+   curso:['Desde $70.000','Según el curso. Ejemplo: curso PBIP Agua Dulce $70.000.',true]};
+ function verPrecio(){ var v=PRECIO[document.getElementById('con-servicio').value]; document.getElementById('con-valor').textContent=v[0]; document.getElementById('con-valor-nota').textContent=v[1];
+   var c=document.getElementById('con-doc-comprobante'); c.required=v[2]; document.getElementById('con-comp-nota').textContent=v[2]?'(obligatorio)':'(si lo tiene)'; }
+ document.getElementById('con-servicio').addEventListener('change',verPrecio);
+ document.querySelectorAll('[data-servicio]').forEach(function(b){b.addEventListener('click',function(){document.getElementById('con-servicio').value=b.getAttribute('data-servicio'); verPrecio();});});
+ verPrecio();
  var f=document.getElementById('formConductor'), est=document.getElementById('con-estado'), btn=document.getElementById('con-enviar');
  function solo(id,n){var e=document.getElementById(id); e.addEventListener('input',function(){e.value=e.value.replace(/\D/g,'').slice(0,n);});}
  solo('con-cedula',12); solo('con-telefono',12);
@@ -601,6 +625,7 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
   if(!/^\d{7,12}$/.test(tel)){aviso('Revise el número de celular.','#B3121F');return;}
   var docs=[['cedula','con-doc-cedula'],['planilla','con-doc-planilla'],['comprobante','con-doc-comprobante'],['otro','con-doc-otro']].map(function(d){return [d[0],document.getElementById(d[1]).files[0]];}).filter(function(d){return d[1];});
   if(!docs.some(function(d){return d[0]==='cedula';})){aviso('Falta la foto de la cédula.','#B3121F');return;}
+  if(PRECIO[document.getElementById('con-servicio').value][2] && !docs.some(function(d){return d[0]==='comprobante';})){aviso('Falta el comprobante de pago.','#B3121F');return;}
   for(var i=0;i<docs.length;i++){ if(docs[i][1].size>MAX){aviso('El archivo "'+docs[i][1].name+'" pesa más de 8 MB. Tómele una foto más liviana.','#B3121F');return;} }
   if(!document.getElementById('con-autoriza').checked){aviso('Debe marcar la autorización de datos.','#B3121F');return;}
   btn.disabled=true; btn.style.opacity='.6'; aviso('Enviando sus documentos… no cierre la página.');
@@ -616,7 +641,7 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
    var r2=await fetch(URL_SB+'/rest/v1/solicitudes_conductores',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({id:id,servicio:servEnv,nombre:nombre,cedula:ced,telefono:tel,placa:placa||null,archivos:subidos,autoriza:true})});
    if(!r2.ok) throw new Error('registro');
    var num='SC-'+id.slice(0,6).toUpperCase();
-   f.reset();
+   f.reset(); verPrecio();
    aviso('✅ Recibimos sus documentos. Su número de solicitud es '+num+'. Le confirmamos por WhatsApp.','#15803D');
    var wa=document.createElement('a'); wa.href='https://wa.me/573116133523?text='+encodeURIComponent('Hola PROSEGUROSNET, envié mis documentos para '+SERV[servEnv]+'. Solicitud '+num+', cédula '+ced+'.');
    wa.textContent='Avisar por WhatsApp'; wa.style.cssText='display:block;margin-top:8px;font-weight:700'; est.appendChild(wa);
