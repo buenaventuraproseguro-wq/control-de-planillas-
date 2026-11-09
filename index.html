@@ -8011,16 +8011,29 @@ let soportePreparado = null; // { item, archivos, mensaje, error }
 function clientesSoporteSinEnviar(){
   return records.filter(r => pagadoEsteMes(r) && !r["Soporte Enviado"] && String(r["Teléfono"] || "").trim());
 }
-function mensajeSoporte(x){
-  const mes = store.currentMonth;
-  const planillas = [...new Set((x.grupo ? x.clientes : [x]).map(c => String(c["No. Planilla Pagada"] || "").trim()).filter(Boolean))];
+let mesSoporte = null; // mes que se envía (otro mes solo al reenviar desde la ficha)
+function clientesDeItem(x){ return x.grupo ? x.clientes : [x]; }
+function esReenvio(x){ return mesSoporte !== store.currentMonth || clientesDeItem(x).some(c => c["Soporte Enviado"]); }
+// Datos del cliente en el mes que se envía (la planilla de otro mes está en ese mes)
+function registroDelMes(c, mes){
+  if (mes === store.currentMonth) return c;
+  return (store.months[mes] || []).find(o => String(o["Cédula"]) === String(c["Cédula"])) || c;
+}
+function mensajeSoporte(x, fechaPago, adjunto){
+  const mes = mesSoporte || store.currentMonth;
+  const planillas = [...new Set(clientesDeItem(x).map(c => String(registroDelMes(c, mes)["No. Planilla Pagada"] || "").trim()).filter(Boolean))];
   const nPlan = planillas.length ? `\nPlanilla N° ${planillas.join(", ")}` : "";
-  const fin = `\n\nAdjuntamos la planilla y el comprobante de pago.\n\n*PROSEGUROSNET*`;
-  if (x.grupo){
-    const n = x.clientes.length;
-    return `Hola, ${nombrePropio(x.responsable)} 👋\n\nLa seguridad social de *${mes}* de ${n === 1 ? "su afiliado" : `sus ${n} afiliados`} quedó pagada ✅\n${x.clientes.map(c => `• ${nombrePropio(c["Nombre del Afiliado"])}`).join("\n")}${nPlan}${fin}`;
+  const fin = `\n\nAdjuntamos ${adjunto || "la planilla y el comprobante de pago"}.\n\n*PROSEGUROSNET*`;
+  const saludo = `Hola, ${nombrePropio(x.grupo ? x.responsable : x["Nombre del Afiliado"])} 👋\n\n`;
+  const n = clientesDeItem(x).length;
+  const lista = x.grupo ? `\n${x.clientes.map(c => `• ${nombrePropio(c["Nombre del Afiliado"])}`).join("\n")}` : "";
+  if (esReenvio(x)){
+    const de = x.grupo ? (n === 1 ? " de su afiliado" : ` de sus ${n} afiliados`) : "";
+    const fecha = fechaPago ? `, con fecha de pago ${fechaCorta(fechaPago)}` : "";
+    return `${saludo}Como lo solicitó, le reenviamos la planilla pagada de *${mes}*${de}${fecha}.${lista}${nPlan}${fin}`;
   }
-  return `Hola, ${nombrePropio(x["Nombre del Afiliado"])} 👋\n\nSu seguridad social de *${mes}* quedó pagada ✅${nPlan}${fin}`;
+  if (x.grupo) return `${saludo}La seguridad social de *${mes}* de ${n === 1 ? "su afiliado" : `sus ${n} afiliados`} quedó pagada ✅${lista}${nPlan}${fin}`;
+  return `${saludo}Su seguridad social de *${mes}* quedó pagada ✅${nPlan}${fin}`;
 }
 // Une la planilla y el comprobante en un solo PDF: WhatsApp repite el mensaje en cada archivo
 const PDFLIB_URL = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
@@ -8070,9 +8083,9 @@ function extensionDe(blob){
 }
 // Trae de la nube la planilla y el comprobante del mes de los clientes; los repetidos se mandan una vez
 async function archivosSoporte(x){
-  const clientes = x.grupo ? x.clientes : [x];
+  const clientes = clientesDeItem(x);
   const ceds = clientes.map(c => String(c["Cédula"]));
-  const mes = mesISODe(store.currentMonth);
+  const mes = mesISODe(mesSoporte || store.currentMonth);
   const { data, error } = await sb.from("documentos").select("cedula, tipo, storage_path").in("cedula", ceds).eq("mes", mes).in("tipo", ["planilla_pagada", "comprobante_pago"]);
   if (error) throw error;
   const vistos = new Set(), archivos = [];
@@ -8094,7 +8107,7 @@ async function archivosSoporte(x){
   if (archivos.length > 1){
     const quien = x.grupo ? x.responsable : String(x["Nombre del Afiliado"] || "").trim().split(/\s+/)[0];
     const limpio = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
-    try{ unidos = [await unirEnUnPdf(archivos, `Soporte_de_pago_${limpio(store.currentMonth).replace(/_de_/g, "_")}_${limpio(nombrePropio(quien))}.pdf`)]; }
+    try{ unidos = [await unirEnUnPdf(archivos, `Soporte_de_pago_${limpio(mesSoporte || store.currentMonth).replace(/_de_/g, "_")}_${limpio(nombrePropio(quien))}.pdf`)]; }
     catch(e){ console.error("No se pudieron unir los PDF:", e); }
   }
   return { archivos: unidos, faltaPlanilla: !cuenta.planilla_pagada, faltaComprobante: !cuenta.comprobante_pago };
@@ -8103,17 +8116,29 @@ async function prepararSoporte(){
   const x = colaSoportes[0];
   soportePreparado = null;
   if (!x) return;
-  const prep = { item: x, archivos: [], mensaje: mensajeSoporte(x), error: "" };
+  const mes = mesSoporte || store.currentMonth;
+  const prep = { item: x, mes, archivos: [], mensaje: mensajeSoporte(x), error: "", meses: [] };
   try{
     if (!cloudDb || !navigator.onLine) throw new Error("Sin internet");
     Object.assign(prep, await archivosSoporte(x));
+    // Fecha de pago (para el mensaje de reenvío)
+    const fechas = await fechasDePago(mes);
+    const fp = clientesDeItem(x).map(c => (fechas[String(c["Cédula"])] || {}).fecha).filter(Boolean).sort().pop() || "";
+    const adjunto = prep.faltaComprobante ? "la planilla" : prep.faltaPlanilla ? "el comprobante de pago" : "";
+    prep.mensaje = mensajeSoporte(x, fp, adjunto);
+    // Un solo cliente o responsable: meses que tienen planilla o comprobante, para reenviar uno anterior
+    if (totalColaSoportes === 1){
+      const { data } = await sb.from("documentos").select("mes").in("cedula", clientesDeItem(x).map(c => String(c["Cédula"]))).in("tipo", ["planilla_pagada", "comprobante_pago"]);
+      prep.meses = [...new Set((data || []).map(d => d.mes).filter(Boolean))].sort().reverse().map(m => mesDeFechaISO(m + "-01")).filter(Boolean);
+    }
   }catch(e){ prep.error = e.message || "error"; }
-  if (colaSoportes[0] === x){ soportePreparado = prep; mostrarPanelSoportes(); }
+  if (colaSoportes[0] === x && prep.mes === (mesSoporte || store.currentMonth)){ soportePreparado = prep; mostrarPanelSoportes(); }
 }
 function empezarColaSoportes(lista, unoSolo){
   if (!lista.length){ showToast("No hay planillas pagadas por enviar en este mes."); return; }
   // Un cliente de un responsable: el mensaje va al responsable, igual que en el envío de todos
   colaSoportes = agruparPorResponsable(lista);
+  mesSoporte = store.currentMonth;
   totalColaSoportes = colaSoportes.length; enviadosSoportes = 0; procesadosSoportes = 0;
   actualizarBarraRecordatorios();
   mostrarPanelSoportes();
@@ -8135,7 +8160,7 @@ function mostrarPanelSoportes(){
   let estado;
   if (!prep) estado = `<p class="record-nota">⏳ Preparando la planilla y el comprobante…</p>`;
   else if (prep.error) estado = `<p class="ocr-alerta">No se pudieron traer los archivos (${escHtml(prep.error)}). Revise el internet y toque Reintentar.</p>`;
-  else if (!prep.archivos.length) estado = `<p class="ocr-alerta">Este cliente no tiene planilla ni comprobante guardados en ${escHtml(store.currentMonth)}. Súbalos en su ficha o sáltelo.</p>`;
+  else if (!prep.archivos.length) estado = `<p class="ocr-alerta">Este cliente no tiene planilla ni comprobante guardados en ${escHtml(mesSoporte || store.currentMonth)}. Súbalos en su ficha o sáltelo.</p>`;
   else estado = `<p class="record-dato">📎 ${prep.archivos.map(f => escHtml(f.name)).join(" · ")}</p>
     ${prep.faltaPlanilla ? `<p class="ocr-alerta">Falta la planilla: solo va el comprobante.</p>` : ""}${prep.faltaComprobante ? `<p class="ocr-alerta">Falta el comprobante: solo va la planilla.</p>` : ""}`;
   const listo = prep && !prep.error && prep.archivos.length;
@@ -8145,6 +8170,8 @@ function mostrarPanelSoportes(){
     <p class="record-nombre">${escHtml(x.grupo ? nombrePropio(x.responsable) : nombrePropio(x["Nombre del Afiliado"]))}</p>
     ${x.grupo ? `<ul class="record-lista">${x.clientes.map(c => `<li>${escHtml(nombrePropio(c["Nombre del Afiliado"]))}</li>`).join("")}</ul>` : ""}
     <p class="record-dato">📱 ${escHtml(telefonoDeItem(x))}${yaEnviado ? " · ya se había enviado" : ""}</p>
+    ${prep && prep.meses && prep.meses.length > 1 ? `<label class="record-dato">Mes a enviar: <select data-sop-mes>${(prep.meses.includes(mesSoporte) ? prep.meses : [mesSoporte, ...prep.meses]).map(m => `<option${m === mesSoporte ? " selected" : ""}>${escHtml(m)}</option>`).join("")}</select></label>` : ""}
+    ${prep && !prep.error && esReenvio(x) ? `<p class="record-nota">🔁 Se envía como <b>reenvío</b>${prep.mensaje.includes("fecha de pago") ? ", con la fecha de pago" : ""}.</p>` : ""}
     ${estado}
     <div class="record-opciones">
       ${listo ? `<button type="button" class="btn primary whatsapp-lleno" data-sop="enviar">${esCelular ? "Enviar por WhatsApp" : "Abrir chat y descargar archivos"}</button>` : ""}
@@ -8158,6 +8185,7 @@ function mostrarPanelSoportes(){
   ov.classList.add("show");
 }
 function marcarSoporteEnviado(x){
+  if (mesSoporte && mesSoporte !== store.currentMonth) return; // reenvío de un mes anterior: no cambia este mes
   const ahora = new Date().toISOString();
   (x.grupo ? x.clientes : [x]).forEach(c => { c["Soporte Enviado"] = ahora; c["_ultimaEdicion"] = ahora; });
   saveStore();
@@ -8197,6 +8225,13 @@ async function enviarSoporteActual(){
   showToast(`📎 ${prep.archivos.length} archivo(s) en Descargas: arrástrelos al chat de WhatsApp.`);
   enviadosSoportes++; marcarSoporteEnviado(x); siguienteSoporte();
 }
+document.getElementById("overlaySoportes").addEventListener("change", (e) => {
+  if (!e.target.matches("[data-sop-mes]")) return;
+  const meses = soportePreparado && soportePreparado.meses;
+  mesSoporte = e.target.value;
+  soportePreparado = null; mostrarPanelSoportes();
+  prepararSoporte().then(() => { if (soportePreparado && !soportePreparado.meses.length && meses) soportePreparado.meses = meses; mostrarPanelSoportes(); });
+});
 document.getElementById("overlaySoportes").addEventListener("click", (e) => {
   const ov = e.currentTarget;
   if (e.target === ov){ ov.classList.remove("show"); return; }
