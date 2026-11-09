@@ -10186,6 +10186,14 @@ async function mostrarAppPrincipal(user){
 let solicitudesCon = [], solConTab = "nueva";
 const SOLCON_A_TIPO = { cedula: "cedula", planilla: "planilla_pagada", comprobante: "comprobante_pago" };
 const SOLCON_NOMBRE = { cedula: "Cédula", planilla: "Planilla", comprobante: "Comprobante de pago", otro: "Otro documento" };
+// Qué es cada archivo según el trámite (conductores: comprobante = pago de la planilla, otro = pago del servicio)
+function nombreArchivoSol(x, tipo){
+  if (x.servicio === "actualizacion_conductor" || !x.servicio){
+    if (tipo === "comprobante") return "Comprobante de pago de la planilla";
+    if (tipo === "otro") return "Pago del servicio (pantallazo)";
+  } else if (tipo === "comprobante") return "Pago del servicio";
+  return SOLCON_NOMBRE[tipo] || tipo;
+}
 const SOLCON_SERVICIO = { actualizacion_conductor: "Actualizar seguridad social (conductor)", actualizacion_muelles: "Actualización en los muelles", enrolamiento: "Enrolamiento en los muelles", curso: "Curso para los muelles" };
 async function cargarSolicitudesConductores(){
   if (!cloudDb || !navigator.onLine) return;
@@ -10220,7 +10228,7 @@ async function renderSolicitudesConductores(){
       <div style="font-size:13px;font-weight:700;color:var(--accent, #B3121F)">${escHtml(SOLCON_SERVICIO[x.servicio] || "Actualizar seguridad social")}</div>
       <div><b>${escHtml(nombrePropio(x.nombre))}</b> · CC ${escHtml(x.cedula)} · Tel ${escHtml(x.telefono)}${x.placa ? " · Placa " + escHtml(x.placa) : ""}</div>
       <div style="font-size:13px;opacity:.8">SC-${escHtml(String(x.id).slice(0, 6).toUpperCase())} · ${escHtml(fecha)} · ${cliente ? `Cliente: <b>${escHtml(nombrePropio(cliente["Nombre del Afiliado"]))}</b>` : "<b>No está en este mes</b>"}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">${(x.archivos || []).map(a => links[a.ruta] ? `<a class="btn small" href="${escHtml(links[a.ruta])}" target="_blank" rel="noopener">📎 ${escHtml(SOLCON_NOMBRE[a.tipo] || a.tipo)}</a>` : `<span class="btn small" aria-disabled="true">${escHtml(SOLCON_NOMBRE[a.tipo] || a.tipo)} (no disponible)</span>`).join("")}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${(x.archivos || []).map(a => links[a.ruta] ? `<a class="btn small" href="${escHtml(links[a.ruta])}" target="_blank" rel="noopener">📎 ${escHtml(nombreArchivoSol(x, a.tipo))}</a>` : `<span class="btn small" aria-disabled="true">${escHtml(nombreArchivoSol(x, a.tipo))} (no disponible)</span>`).join("")}</div>
       ${x.estado === "nueva" ? `<div style="display:flex;flex-wrap:wrap;gap:8px">
         ${cliente ? `<button type="button" class="btn small primary" data-sc-acc="guardar">Guardar en el cliente</button><button type="button" class="btn small" data-sc-acc="abrir">Abrir cliente</button>` : ""}
         <button type="button" class="btn small whatsapp" data-sc-acc="whatsapp">Responder por WhatsApp</button>
@@ -10242,6 +10250,8 @@ async function guardarSolicitudEnCliente(x){
   let ok = 0, fallos = 0;
   for (const a of x.archivos || []){
     const tipo = SOLCON_A_TIPO[a.tipo]; if (!tipo) continue;
+    // En muelles el comprobante es del pago del servicio, no de la planilla: no va a la casilla del comprobante
+    if (tipo === "comprobante_pago" && x.servicio && x.servicio !== "actualizacion_conductor") continue;
     try{
       const { data: blob, error } = await sb.storage.from("solicitudes-conductores").download(a.ruta);
       if (error || !blob) throw error || new Error("sin archivo");
