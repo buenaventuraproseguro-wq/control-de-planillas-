@@ -8014,13 +8014,55 @@ function clientesSoporteSinEnviar(){
 function mensajeSoporte(x){
   const mes = store.currentMonth;
   const planillas = [...new Set((x.grupo ? x.clientes : [x]).map(c => String(c["No. Planilla Pagada"] || "").trim()).filter(Boolean))];
-  const nPlan = planillas.length ? `\n🧾 Planilla N° ${planillas.join(", ")}` : "";
-  const fin = `\n\nTe enviamos la planilla y el comprobante de pago 📎\n\nGracias por confiar en nosotros ❤️\n— Equipo PROSEGUROSNET 🛡️`;
+  const nPlan = planillas.length ? `\nPlanilla N° ${planillas.join(", ")}` : "";
+  const fin = `\n\nAdjuntamos la planilla y el comprobante de pago.\n\n*PROSEGUROSNET*`;
   if (x.grupo){
     const n = x.clientes.length;
-    return `¡Hola 👋😊, ${nombrePropio(x.responsable)}!\nLa seguridad social de *${mes}* de ${n === 1 ? "tu afiliado ya quedó pagada" : `tus ${n} afiliados ya quedó pagada`} ✅\n\n${x.clientes.map(c => `• ${nombrePropio(c["Nombre del Afiliado"])}`).join("\n")}${nPlan}${fin}`;
+    return `Hola, ${nombrePropio(x.responsable)} 👋\n\nLa seguridad social de *${mes}* de ${n === 1 ? "su afiliado" : `sus ${n} afiliados`} quedó pagada ✅\n${x.clientes.map(c => `• ${nombrePropio(c["Nombre del Afiliado"])}`).join("\n")}${nPlan}${fin}`;
   }
-  return `¡Hola 👋😊, ${nombrePropio(x["Nombre del Afiliado"])}!\nTu seguridad social de *${mes}* ya quedó pagada ✅${nPlan}${fin}`;
+  return `Hola, ${nombrePropio(x["Nombre del Afiliado"])} 👋\n\nSu seguridad social de *${mes}* quedó pagada ✅${nPlan}${fin}`;
+}
+// Une la planilla y el comprobante en un solo PDF: WhatsApp repite el mensaje en cada archivo
+const PDFLIB_URL = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
+let _pdfLib = null;
+function cargarPdfLib(){
+  if (_pdfLib) return _pdfLib;
+  _pdfLib = new Promise((res, rej) => {
+    if (window.PDFLib) return res(window.PDFLib);
+    const sc = document.createElement("script");
+    sc.src = PDFLIB_URL;
+    sc.onload = () => window.PDFLib ? res(window.PDFLib) : rej(new Error("PDF"));
+    sc.onerror = () => { _pdfLib = null; rej(new Error("No se pudo cargar el unidor de PDF")); };
+    document.head.appendChild(sc);
+  });
+  return _pdfLib;
+}
+async function imagenAPng(blob){
+  const url = URL.createObjectURL(blob);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext("2d").drawImage(img, 0, 0);
+    return new Uint8Array(await (await fetch(c.toDataURL("image/png"))).arrayBuffer());
+  }finally{ URL.revokeObjectURL(url); }
+}
+async function unirEnUnPdf(archivos, nombre){
+  const { PDFDocument } = await cargarPdfLib();
+  const doc = await PDFDocument.create();
+  for (const f of archivos){
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (/pdf/.test(f.type) || /\.pdf$/i.test(f.name)){
+      const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      (await doc.copyPages(src, src.getPageIndices())).forEach(pg => doc.addPage(pg));
+    } else {
+      const img = /jpe?g/.test(f.type) ? await doc.embedJpg(bytes) : await doc.embedPng(/png/.test(f.type) ? bytes : await imagenAPng(f));
+      // Página tamaño carta con la imagen centrada
+      const W = 612, H = 792, m = 24, k = Math.min((W - 2 * m) / img.width, (H - 2 * m) / img.height, 1);
+      const pg = doc.addPage([W, H]);
+      pg.drawImage(img, { x: (W - img.width * k) / 2, y: (H - img.height * k) / 2, width: img.width * k, height: img.height * k });
+    }
+  }
+  return new File([await doc.save()], nombre, { type: "application/pdf" });
 }
 function extensionDe(blob){
   const t = String(blob.type || "");
@@ -8048,7 +8090,14 @@ async function archivosSoporte(x){
       archivos.push(new File([blob], nombre, { type: blob.type || "application/pdf" }));
     }
   }
-  return { archivos, faltaPlanilla: !cuenta.planilla_pagada, faltaComprobante: !cuenta.comprobante_pago };
+  let unidos = archivos;
+  if (archivos.length > 1){
+    const quien = x.grupo ? x.responsable : String(x["Nombre del Afiliado"] || "").trim().split(/\s+/)[0];
+    const limpio = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    try{ unidos = [await unirEnUnPdf(archivos, `Soporte_de_pago_${limpio(store.currentMonth).replace(/_de_/g, "_")}_${limpio(nombrePropio(quien))}.pdf`)]; }
+    catch(e){ console.error("No se pudieron unir los PDF:", e); }
+  }
+  return { archivos: unidos, faltaPlanilla: !cuenta.planilla_pagada, faltaComprobante: !cuenta.comprobante_pago };
 }
 async function prepararSoporte(){
   const x = colaSoportes[0];
