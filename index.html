@@ -8073,14 +8073,33 @@ async function imagenAPng(blob){
     return new Uint8Array(await (await fetch(c.toDataURL("image/png"))).arrayBuffer());
   }finally{ URL.revokeObjectURL(url); }
 }
+// Dibuja cada página de un PDF como imagen (para los PDF protegidos, que al copiarlos salen en blanco)
+async function pdfComoImagenes(doc, bytes){
+  const pdfjs = await cargarLectorPDF();
+  const pdf = await pdfjs.getDocument({ data: bytes.slice(0) }).promise;
+  for (let i = 1; i <= pdf.numPages; i++){
+    const pagina = await pdf.getPage(i);
+    const base = pagina.getViewport({ scale: 1 });
+    const vista = pagina.getViewport({ scale: 2 });
+    const c = document.createElement("canvas"); c.width = Math.ceil(vista.width); c.height = Math.ceil(vista.height);
+    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
+    const png = new Uint8Array(await (await fetch(c.toDataURL("image/png"))).arrayBuffer());
+    const img = await doc.embedPng(png);
+    const pg = doc.addPage([base.width, base.height]);
+    pg.drawImage(img, { x: 0, y: 0, width: base.width, height: base.height });
+  }
+}
 async function unirEnUnPdf(archivos, nombre){
   const { PDFDocument } = await cargarPdfLib();
   const doc = await PDFDocument.create();
   for (const f of archivos){
     const bytes = new Uint8Array(await f.arrayBuffer());
     if (/pdf/.test(f.type) || /\.pdf$/i.test(f.name)){
-      const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
-      (await doc.copyPages(src, src.getPageIndices())).forEach(pg => doc.addPage(pg));
+      let src = null;
+      try{ src = await PDFDocument.load(bytes, { ignoreEncryption: true }); }catch(e){ src = null; }
+      if (src && !src.isEncrypted) (await doc.copyPages(src, src.getPageIndices())).forEach(pg => doc.addPage(pg));
+      else await pdfComoImagenes(doc, bytes);
     } else {
       const img = /jpe?g/.test(f.type) ? await doc.embedJpg(bytes) : await doc.embedPng(/png/.test(f.type) ? bytes : await imagenAPng(f));
       // Página tamaño carta con la imagen centrada

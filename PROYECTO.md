@@ -97,3 +97,8 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - 9 nov. 2026: conductores mandan cédula, planilla y comprobante desde /web/ (sección #conductores). Tabla solicitudes_conductores (anon solo inserta; equipo ve/atiende) y bucket privado solicitudes-conductores (anon solo sube a pendiente/, 8 MB, imagen o PDF). En la app: menú "Documentos de conductores (web)" con contador; "Guardar en el cliente" copia cédula → cedula, planilla → planilla_pagada y comprobante → comprobante_pago del mes que se ve.
 - 9 nov. 2026: el formulario de documentos de la web sirve también para muelles (columna servicio: actualizacion_conductor, actualizacion_muelles, enrolamiento, curso; archivo extra "otro"). Las tarjetas de muelles llevan primero al formulario. En la app el menú se llama "Documentos recibidos (web)" y muestra el trámite.
 - 9 nov. 2026: dominio prosegurosnet.com (Hostinger, 3 años, en revisión). La página pública vive en el repo buenaventuraproseguro-wq/prosegurosnet-web (CNAME prosegurosnet.com; atajos /muelles /conductores /cotizar /documentos). Se arma con el script del tablero de diseño; /web/ de este repo queda como copia.
+
+## 9 nov. 2026 — Soporte de pago en blanco
+- Los comprobantes en PDF protegido (con contraseña de dueño) salían en blanco al unirlos con pdf-lib.
+  Ahora `unirEnUnPdf` detecta `isEncrypted` (o un PDF que pdf-lib no abre) y dibuja esas páginas como imagen con pdf.js (`pdfComoImagenes`).
+- Se marcaron como enviados (soporte_enviado = 9 nov.) los 37 clientes de noviembre en PAGO / PAGO CONDUCTOR / RETIRO que estaban sin marcar, a pedido del usuario: desde ahora la cola solo muestra los nuevos pagos.
