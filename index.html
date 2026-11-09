@@ -12863,7 +12863,7 @@ function renderConsignaciones(){
     }
     return `<div class="cs-card ${otra && !c.relacion ? "otra-cuenta" : ""}" data-cs-id="${c.id}">
       <div class="cs-top"><span class="cs-valor">${info.valor != null ? fmt(info.valor) : "—"}</span>
-        <span class="cs-meta">${escHtml(info.banco || "Banco")} · ${quien} · ${escHtml(cuando)}${c.origen === "pegado" ? " · pegado" : ""}</span></div>
+        <span class="cs-meta">${escHtml(info.banco || "Banco")} · ${quien} · ${escHtml(cuando)}${c.origen === "pegado" ? " · pegado" : c.origen === "correo" ? " · 📧 correo" : ""}</span></div>
       ${otra
         ? `<div class="cs-meta" style="color:#8A5A0B;">ℹ️ Llegó por ${escHtml(textoOrigenCuenta(info))}, no a la de los seguros (*${CUENTA_SEGUROS}).${c.relacion ? ` Se tomó porque tiene relación con planillas: <b>${escHtml(c.relacion.replace(/\s*\(llegó a la cuenta \*\d{4}\)$/, ""))}</b>.` : ""}</div>`
         : `<div class="cs-meta" style="color:var(--pago);">🏦 Cuenta de los seguros *${CUENTA_SEGUROS}</div>`}
