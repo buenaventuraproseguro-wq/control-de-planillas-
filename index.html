@@ -1424,7 +1424,7 @@
     <button type="button" class="sidebar-link" id="navAddBtn"><span class="sidebar-num">1</span><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
     <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
     <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;"><span class="sidebar-num">3</span><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg>Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
-    <button type="button" class="sidebar-link" id="navSolConBtn"><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Documentos de conductores (web) <span class="sidebar-badge" id="solConBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navSolConBtn"><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Documentos recibidos (web) <span class="sidebar-badge" id="solConBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
 
     <button type="button" class="sidebar-link" id="navMenuBtn"><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>Ver más opciones</button>
@@ -2042,7 +2042,7 @@
 <div class="overlay" id="overlaySolCon">
   <div class="modal">
     <h2>🚚 Documentos de conductores</h2>
-    <div class="modal-sub">Lo que mandan los conductores desde la página web. Revise los archivos y guárdelos en el cliente; nada se guarda solo.</div>
+    <div class="modal-sub">Lo que mandan conductores y trabajadores de muelles desde la página web. Revise los archivos y guárdelos en el cliente; nada se guarda solo.</div>
     <div class="cs-tabs" id="solConTabs">
       <button type="button" data-sc-tab="nueva" class="active">Nuevas</button>
       <button type="button" data-sc-tab="atendida">Atendidas</button>
@@ -10185,7 +10185,8 @@ async function mostrarAppPrincipal(user){
    El público solo puede enviar; el equipo los ve aquí y decide guardarlos en el cliente. */
 let solicitudesCon = [], solConTab = "nueva";
 const SOLCON_A_TIPO = { cedula: "cedula", planilla: "planilla_pagada", comprobante: "comprobante_pago" };
-const SOLCON_NOMBRE = { cedula: "Cédula", planilla: "Planilla", comprobante: "Comprobante de pago" };
+const SOLCON_NOMBRE = { cedula: "Cédula", planilla: "Planilla", comprobante: "Comprobante de pago", otro: "Otro documento" };
+const SOLCON_SERVICIO = { actualizacion_conductor: "Actualizar seguridad social (conductor)", actualizacion_muelles: "Actualización en los muelles", enrolamiento: "Enrolamiento en los muelles", curso: "Curso para los muelles" };
 async function cargarSolicitudesConductores(){
   if (!cloudDb || !navigator.onLine) return;
   try{
@@ -10216,6 +10217,7 @@ async function renderSolicitudesConductores(){
     const cliente = records.find(r => String(r["Cédula"]) === String(x.cedula));
     const fecha = new Date(x.creado).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium", timeStyle: "short" });
     filas.push(`<div class="cs-item" data-sol="${escHtml(x.id)}" style="border:1px solid var(--line, #e4e4e7);border-radius:12px;padding:14px;margin:10px 0;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--accent, #B3121F)">${escHtml(SOLCON_SERVICIO[x.servicio] || "Actualizar seguridad social")}</div>
       <div><b>${escHtml(nombrePropio(x.nombre))}</b> · CC ${escHtml(x.cedula)} · Tel ${escHtml(x.telefono)}${x.placa ? " · Placa " + escHtml(x.placa) : ""}</div>
       <div style="font-size:13px;opacity:.8">SC-${escHtml(String(x.id).slice(0, 6).toUpperCase())} · ${escHtml(fecha)} · ${cliente ? `Cliente: <b>${escHtml(nombrePropio(cliente["Nombre del Afiliado"]))}</b>` : "<b>No está en este mes</b>"}</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px">${(x.archivos || []).map(a => links[a.ruta] ? `<a class="btn small" href="${escHtml(links[a.ruta])}" target="_blank" rel="noopener">📎 ${escHtml(SOLCON_NOMBRE[a.tipo] || a.tipo)}</a>` : `<span class="btn small" aria-disabled="true">${escHtml(SOLCON_NOMBRE[a.tipo] || a.tipo)} (no disponible)</span>`).join("")}</div>
@@ -10271,7 +10273,7 @@ document.getElementById("solConLista").addEventListener("click", async (e) => {
   const acc = b.dataset.scAcc;
   if (acc === "abrir"){ document.getElementById("overlaySolCon").classList.remove("show"); showBreakdown(x.cedula); return; }
   if (acc === "whatsapp"){
-    abrirWhatsappConMensaje(x.telefono, `Hola, ${nombrePropio(String(x.nombre).split(/\s+/)[0])} 👋\n\nRecibimos sus documentos (solicitud SC-${String(x.id).slice(0, 6).toUpperCase()}). Los estamos revisando y le confirmamos su actualización.\n\n*PROSEGUROSNET*`);
+    abrirWhatsappConMensaje(x.telefono, `Hola, ${nombrePropio(String(x.nombre).split(/\s+/)[0])} 👋\n\nRecibimos sus documentos para *${(SOLCON_SERVICIO[x.servicio] || "actualizar su seguridad social").toLowerCase()}* (solicitud SC-${String(x.id).slice(0, 6).toUpperCase()}). Los estamos revisando y le confirmamos su actualización.\n\n*PROSEGUROSNET*`);
     return;
   }
   b.disabled = true;

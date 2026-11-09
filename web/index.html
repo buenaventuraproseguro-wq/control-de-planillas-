@@ -288,9 +288,9 @@ a{color:#B3121F}a:hover{color:#8A0E18}
   <section id="conductores" style="background: #18181B; color: #FFFFFF">
     <div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start">
       <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
-        <p style="margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #F87171">Solo conductores</p>
-        <h2 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 800; font-size: 52px; line-height: 1">Actualice su seguridad social</h2>
-        <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #D4D4D8">Envíenos sus documentos desde aquí, sin ir a la oficina. Los revisamos y le confirmamos por WhatsApp.</p>
+        <p style="margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #F87171">Conductores y muelles</p>
+        <h2 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 800; font-size: 52px; line-height: 1">Envíe sus documentos</h2>
+        <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #D4D4D8">Para actualizar su seguridad social, la actualización en los muelles, el enrolamiento o un curso. Súbalos aquí, sin ir a la oficina; los revisamos y le confirmamos por WhatsApp.</p>
         <ul style="margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.8; color: #E4E4E7">
           <li>Foto de su cédula</li>
           <li>Su planilla de seguridad social</li>
@@ -299,6 +299,15 @@ a{color:#B3121F}a:hover{color:#8A0E18}
         <p style="margin: 0; font-size: 14px; color: #A1A1AA">Fotos o PDF de hasta 8 MB cada uno. Sus documentos solo los ve nuestro equipo.</p>
       </div>
       <form id="formConductor" autocomplete="off" style="flex: 1 1 460px; min-width: 0; background: #F4F4F5; color: #18181B; border-radius: 20px; padding: 32px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="con-servicio" style="font-size: 14px; font-weight: 600">Trámite</label>
+          <select id="con-servicio" required style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0">
+            <option value="actualizacion_conductor">Actualizar seguridad social (conductores)</option>
+            <option value="actualizacion_muelles">Actualización en los muelles</option>
+            <option value="enrolamiento">Enrolamiento en los muelles</option>
+            <option value="curso">Curso para los muelles</option>
+          </select>
+        </div>
         <div style="display: flex; flex-direction: column; gap: 6px">
           <label for="con-nombre" style="font-size: 14px; font-weight: 600">Nombre completo</label>
           <input id="con-nombre" type="text" required maxlength="120" placeholder="Como aparece en la cédula" style="font: inherit; font-size: 16px; padding: 14px; border: 1px solid #A1A1AA; border-radius: 10px; background: #FFFFFF; min-width: 0">
@@ -329,6 +338,10 @@ a{color:#B3121F}a:hover{color:#8A0E18}
             <label for="con-doc-comprobante" style="font-size: 14px; font-weight: 600">Comprobante de pago <span style="font-weight: 400; color: #52525B">(si la tiene)</span></label>
             <input id="con-doc-comprobante" type="file" accept="image/*,application/pdf" style="font: inherit; font-size: 14px; min-width: 0">
           </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; background: #FFFFFF; border: 1px dashed #A1A1AA; border-radius: 12px; padding: 14px">
+            <label for="con-doc-otro" style="font-size: 14px; font-weight: 600">Otro documento <span style="font-weight: 400; color: #52525B">(si se lo pidieron)</span></label>
+            <input id="con-doc-otro" type="file" accept="image/*,application/pdf" style="font: inherit; font-size: 14px; min-width: 0">
+          </div>
         <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: #3F3F46"><input id="con-autoriza" type="checkbox" required style="width: 20px; height: 20px; flex: none; margin-top: 1px"> Autorizo a PROSEGUROSNET a recibir y tratar mis documentos y datos para actualizar mi seguridad social (Ley 1581 de 2012).</label>
         <button id="con-enviar" type="submit" style="font: inherit; font-size: 17px; font-weight: 700; color: #FFFFFF; background: #C8102E; border: 0; border-radius: 10px; padding: 16px; cursor: pointer">Enviar documentos</button>
         <p id="con-estado" role="status" style="margin: 0; font-size: 15px; line-height: 1.5; text-align: center; color: #3F3F46"></p>
@@ -347,17 +360,17 @@ a{color:#B3121F}a:hover{color:#8A0E18}
         <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 12px">
           <h3 style="margin: 0; font-size: 22px; font-weight: 700">Actualización en los muelles</h3>
           <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525B; flex: 1">Mantenga al día sus datos y documentos para seguir ingresando a los muelles.</p>
-          <a href="https://wa.me/573116133523?text=Hola%20PROSEGUROSNET%2C%20quiero%20la%20actualizaci%C3%B3n%20en%20los%20muelles." style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Solicitar por WhatsApp</a>
+          <a href="#conductores" data-servicio="actualizacion_muelles" style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Enviar mis documentos</a>
         </div>
         <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 12px">
           <h3 style="margin: 0; font-size: 22px; font-weight: 700">Enrolamiento</h3>
           <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525B; flex: 1">Lo inscribimos para que pueda empezar a trabajar en los muelles.</p>
-          <a href="https://wa.me/573116133523?text=Hola%20PROSEGUROSNET%2C%20quiero%20hacer%20el%20enrolamiento%20en%20los%20muelles." style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Solicitar por WhatsApp</a>
+          <a href="#conductores" data-servicio="enrolamiento" style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Enviar mis documentos</a>
         </div>
         <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 12px">
           <h3 style="margin: 0; font-size: 22px; font-weight: 700">Cursos</h3>
           <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525B; flex: 1">Le inscribimos en los cursos que piden los muelles y le avisamos fechas y valores.</p>
-          <a href="https://wa.me/573116133523?text=Hola%20PROSEGUROSNET%2C%20quiero%20informaci%C3%B3n%20de%20los%20cursos%20para%20los%20muelles." style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Solicitar por WhatsApp</a>
+          <a href="#conductores" data-servicio="curso" style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Enviar mis documentos</a>
         </div>
       </div>
     </div>
@@ -573,6 +586,8 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
 
 (function(){
  var URL_SB="https://jjygarfwdmhzspqonvql.supabase.co", KEY="sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s", MAX=8*1024*1024;
+ var SERV={actualizacion_conductor:'actualizar mi seguridad social',actualizacion_muelles:'la actualización en los muelles',enrolamiento:'el enrolamiento en los muelles',curso:'un curso para los muelles'};
+ document.querySelectorAll('[data-servicio]').forEach(function(b){b.addEventListener('click',function(){document.getElementById('con-servicio').value=b.getAttribute('data-servicio');});});
  var f=document.getElementById('formConductor'), est=document.getElementById('con-estado'), btn=document.getElementById('con-enviar');
  function solo(id,n){var e=document.getElementById(id); e.addEventListener('input',function(){e.value=e.value.replace(/\D/g,'').slice(0,n);});}
  solo('con-cedula',12); solo('con-telefono',12);
@@ -584,12 +599,12 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
   if(nombre.length<3){aviso('Escriba su nombre completo.','#B3121F');return;}
   if(!/^\d{5,12}$/.test(ced)){aviso('Revise el número de cédula.','#B3121F');return;}
   if(!/^\d{7,12}$/.test(tel)){aviso('Revise el número de celular.','#B3121F');return;}
-  var docs=[['cedula','con-doc-cedula'],['planilla','con-doc-planilla'],['comprobante','con-doc-comprobante']].map(function(d){return [d[0],document.getElementById(d[1]).files[0]];}).filter(function(d){return d[1];});
+  var docs=[['cedula','con-doc-cedula'],['planilla','con-doc-planilla'],['comprobante','con-doc-comprobante'],['otro','con-doc-otro']].map(function(d){return [d[0],document.getElementById(d[1]).files[0]];}).filter(function(d){return d[1];});
   if(!docs.some(function(d){return d[0]==='cedula';})){aviso('Falta la foto de la cédula.','#B3121F');return;}
   for(var i=0;i<docs.length;i++){ if(docs[i][1].size>MAX){aviso('El archivo "'+docs[i][1].name+'" pesa más de 8 MB. Tómele una foto más liviana.','#B3121F');return;} }
   if(!document.getElementById('con-autoriza').checked){aviso('Debe marcar la autorización de datos.','#B3121F');return;}
   btn.disabled=true; btn.style.opacity='.6'; aviso('Enviando sus documentos… no cierre la página.');
-  var id=uuid(), subidos=[];
+  var id=uuid(), subidos=[], servEnv=document.getElementById('con-servicio').value;
   try{
    for(var j=0;j<docs.length;j++){
     var tipo=docs[j][0], file=docs[j][1], ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'jpg';
@@ -598,12 +613,12 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
     if(!r.ok) throw new Error('archivo');
     subidos.push({tipo:tipo,ruta:ruta,nombre:file.name.slice(0,80)});
    }
-   var r2=await fetch(URL_SB+'/rest/v1/solicitudes_conductores',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({id:id,nombre:nombre,cedula:ced,telefono:tel,placa:placa||null,archivos:subidos,autoriza:true})});
+   var r2=await fetch(URL_SB+'/rest/v1/solicitudes_conductores',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({id:id,servicio:servEnv,nombre:nombre,cedula:ced,telefono:tel,placa:placa||null,archivos:subidos,autoriza:true})});
    if(!r2.ok) throw new Error('registro');
    var num='SC-'+id.slice(0,6).toUpperCase();
    f.reset();
    aviso('✅ Recibimos sus documentos. Su número de solicitud es '+num+'. Le confirmamos por WhatsApp.','#15803D');
-   var wa=document.createElement('a'); wa.href='https://wa.me/573116133523?text='+encodeURIComponent('Hola PROSEGUROSNET, envié mis documentos para actualizar mi seguridad social. Solicitud '+num+', cédula '+ced+'.');
+   var wa=document.createElement('a'); wa.href='https://wa.me/573116133523?text='+encodeURIComponent('Hola PROSEGUROSNET, envié mis documentos para '+SERV[servEnv]+'. Solicitud '+num+', cédula '+ced+'.');
    wa.textContent='Avisar por WhatsApp'; wa.style.cssText='display:block;margin-top:8px;font-weight:700'; est.appendChild(wa);
   }catch(e){
    aviso('No se pudieron enviar los documentos. Revise su internet e intente de nuevo, o escríbanos por WhatsApp al 311 613 3523.','#B3121F');
