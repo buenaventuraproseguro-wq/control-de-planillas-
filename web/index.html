@@ -384,7 +384,7 @@ a{color:#B3121F}a:hover{color:#8A0E18}
         </div>
         <div style="background: #FFFFFF; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 12px">
           <h3 style="margin: 0; font-size: 22px; font-weight: 700">Cursos</h3>
-          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525B; flex: 1">Le inscribimos en los cursos que piden los muelles y le avisamos fechas y valores.</p>
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #52525B; flex: 1">Le orientamos sobre los cursos que piden los muelles y le confirmamos fechas y valor por WhatsApp.</p>
           <a href="#conductores" data-servicio="curso" style="align-self: flex-start; background: #C8102E; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 10px">Enviar mis documentos</a>
         </div>
       </div>
@@ -604,9 +604,9 @@ document.getElementById('entrarBtn').addEventListener('click',function(){
  var SERV={actualizacion_conductor:'actualizar mi seguridad social',actualizacion_muelles:'la actualización en los muelles',enrolamiento:'el enrolamiento en los muelles',curso:'un curso para los muelles'};
  // Valores de la app (muelles otras empresas). Conductores: se confirma por WhatsApp.
  var PRECIO={actualizacion_conductor:['Le confirmamos el valor','Le confirmamos el valor por WhatsApp antes de pagar.',false],
-   actualizacion_muelles:['Desde $5.000','Por cada muelle: Sociedad Portuaria $10.000; Agua Dulce y TC Buen $5.000 cada uno.',true],
+   actualizacion_muelles:['$20.000','Los tres muelles: $20.000. Si es solo uno: $10.000 cada muelle.',true],
    enrolamiento:['$30.000','Una sola vez.',true],
-   curso:['Desde $70.000','Según el curso. Ejemplo: curso PBIP Agua Dulce $70.000.',true]};
+   curso:['Le confirmamos el valor','Le informamos el curso, la fecha y el valor por WhatsApp antes de pagar.',false]};
  function verPrecio(){ var v=PRECIO[document.getElementById('con-servicio').value]; document.getElementById('con-valor').textContent=v[0]; document.getElementById('con-valor-nota').textContent=v[1];
    var c=document.getElementById('con-doc-comprobante'); c.required=v[2]; document.getElementById('con-comp-nota').textContent=v[2]?'(obligatorio)':'(si lo tiene)'; }
  document.getElementById('con-servicio').addEventListener('change',verPrecio);
