@@ -116,3 +116,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 
 ## 10 nov. 2026 — Presunción de costos
 - Menú Clientes → 10.1 Presunción de costos (independientes): calculadora (Res. UGPP 532 de 2024, porcentajes por CIIU, ARL 1-5, caja opcional, sin/con presunción) y botón para bajar Presuncion_de_costos_independientes.xlsx (en la raíz del repo).
+- Presunción: con la cédula trae nombre, celular, servicio y ARL del cliente; "Trabajadores a su cargo" (sugiere los que tienen el mismo celular) suma su total del mes; botón Enviar cobro por WhatsApp y Copiar mensaje.

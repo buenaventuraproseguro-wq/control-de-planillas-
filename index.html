@@ -7913,11 +7913,22 @@ function calcularPresuncion(ingreso, pct, costosReales, nivelArl, conCaja, smmlv
   const salud = ap(0.125), pension = ap(0.16), arl = ap(ARL_TARIFAS[nivelArl - 1] || 0), caja = conCaja ? ap(0.02) : 0;
   return { costo, neto, debe, ibc, salud, pension, arl, caja, total: salud + pension + arl + caja };
 }
+// Nombre para el saludo: si el nombre ya se separó para PILA, nombres primero; si no, como está guardado
+function nombreParaSaludo(r){
+  const partes = (typeof pilaNombres !== "undefined" && pilaNombres) ? pilaNombres[String(r["Cédula"])] : null;
+  if (Array.isArray(partes) && partes[2]) return nombrePropio([partes[2], partes[3], partes[0], partes[1]].filter(Boolean).join(" "));
+  return nombrePropio(String(r["Nombre del Afiliado"] || "").trim());
+}
 function abrirPresuncionCostos(){
   const cont = document.getElementById("informeContenido");
   document.getElementById("informeTitulo").textContent = "Presunción de costos (independientes)";
   document.getElementById("informeSubtitulo").textContent = "Cuánto cotiza un independiente por cuenta propia según sus ingresos. Res. UGPP 532 de 2024; confirme con el contador.";
   cont.innerHTML = `<div class="pc-grid">
+      <div class="field"><label for="pcCedula">Cédula del cliente (opcional)</label><input id="pcCedula" inputmode="numeric" placeholder="Trae sus datos de la app"><small id="pcClienteInfo" class="ing-nota"></small></div>
+      <div class="field"><label for="pcNombre">Nombre</label><input id="pcNombre" maxlength="80" placeholder="Para el mensaje"></div>
+      <div class="field"><label for="pcTelefono">Celular</label><input id="pcTelefono" inputmode="numeric" placeholder="3xx xxx xxxx"></div>
+      <div class="field"><label for="pcTrabajadores">Trabajadores a su cargo (cédulas)</label><input id="pcTrabajadores" inputmode="numeric" placeholder="Ej: 1111788152, 94416424"><small id="pcTrabInfo" class="ing-nota"></small></div>
+      <div class="field"><label for="pcServicio">Valor de nuestro servicio</label><input id="pcServicio" inputmode="numeric" placeholder="0"></div>
       <div class="field"><label for="pcIngreso">Ingreso bruto del mes, sin IVA</label><input id="pcIngreso" inputmode="numeric" placeholder="Ej: 12.170.000"></div>
       <div class="field"><label for="pcActividad">Actividad</label><select id="pcActividad">${COSTOS_PRESUNTOS.map((a, i) => `<option value="${i}" ${i === 5 ? "selected" : ""}>${escHtml(a[0])} (${(a[1] * 100).toFixed(2).replace(".", ",")}%)</option>`).join("")}</select></div>
       <div class="field"><label for="pcReales">Costos reales con soporte (opcional)</label><input id="pcReales" inputmode="numeric" placeholder="0"></div>
@@ -7928,8 +7939,57 @@ function abrirPresuncionCostos(){
     <div style="overflow-x:auto;"><table class="pc-tabla" id="pcTabla"></table></div>
     <p class="ing-nota" id="pcAhorro"></p>
     <p class="ing-nota">La presunción aplica a quien trabaja por cuenta propia o con insumos (vehículo, ayudantes, materiales). El contratista de prestación de servicios personales cotiza sobre el 40% sin descontar costos. Aportes redondeados como en PILA. El costo presunto solo sirve para seguridad social, no para la renta.</p>
-    <div class="modal-actions"><a class="btn small ghost" href="Presuncion_de_costos_independientes.xlsx" download>⬇️ Descargar el Excel</a></div>`;
+    <div class="field" style="margin-top:12px;"><label for="pcCobrar">Cobrar al cliente</label><select id="pcCobrar"><option value="con">Con presunción de costos</option><option value="sin">Sin presunción (40% del ingreso)</option></select></div>
+    <div class="modal-actions" style="flex-wrap:wrap;"><button type="button" class="btn primary" id="pcEnviarBtn">📤 Enviar cobro por WhatsApp</button><button type="button" class="btn small ghost" id="pcCopiarBtn">Copiar mensaje</button><a class="btn small ghost" href="Presuncion_de_costos_independientes.xlsx" download>⬇️ Descargar el Excel</a></div>`;
   const num = (id) => soloNumero(document.getElementById(id).value);
+  let ultimo = null;
+  // Con la cédula trae nombre, celular, valor del servicio y nivel de ARL del cliente
+  document.getElementById("pcCedula").addEventListener("input", (e) => {
+    const ced = String(e.target.value).replace(/\D/g, "");
+    const r = ced.length >= 5 ? records.find(x => String(x["Cédula"]) === ced) : null;
+    document.getElementById("pcClienteInfo").textContent = ced.length >= 5 ? (r ? `✅ ${nombrePropio(r["Nombre del Afiliado"] || "")}` : "No está en el mes actual") : "";
+    if (!r) return;
+    // En la app el nombre va APELLIDOS + NOMBRES; para el saludo se pone nombres primero
+    document.getElementById("pcNombre").value = nombreParaSaludo(r);
+    // Sugiere como trabajadores a cargo a los clientes con el mismo celular
+    const tel = String(r["Teléfono"] || "").replace(/\D/g, "");
+    const otros = tel.length >= 10 ? records.filter(x => String(x["Cédula"]) !== ced && String(x["Teléfono"] || "").replace(/\D/g, "") === tel) : [];
+    if (otros.length && !document.getElementById("pcTrabajadores").value.trim()) document.getElementById("pcTrabajadores").value = otros.map(x => x["Cédula"]).join(", ");
+    document.getElementById("pcTelefono").value = String(r["Teléfono"] || "").replace(/\D/g, "");
+    if (Number(r["Costo Servicio"]) > 0) document.getElementById("pcServicio").value = Number(r["Costo Servicio"]);
+    const nivel = Number(r["ARL Nivel"]);
+    if (nivel >= 1 && nivel <= 5) document.getElementById("pcArl").value = String(nivel);
+    pintar();
+  });
+  const trabajadores = () => String(document.getElementById("pcTrabajadores").value).split(/[^0-9]+/).filter(c => c.length >= 5)
+    .map(c => records.find(x => String(x["Cédula"]) === c) || { faltante: c });
+  const mensajeCobro = () => {
+    if (!ultimo || !ultimo.ingreso) return "";
+    const { pct, actividad, nivel, sin, con } = ultimo;
+    const usar = document.getElementById("pcCobrar").value === "sin" ? sin : con;
+    const servicio = num("pcServicio");
+    const trab = trabajadores().filter(t => !t.faltante).map(t => ({ nombre: nombreParaSaludo(t), total: calcularTotalPagar(t, store.currentMonth) }));
+    const totalTrab = trab.reduce((a, t) => a + t.total, 0);
+    const nombre = document.getElementById("pcNombre").value.trim();
+    const mes = store.currentMonth;
+    const lineas = [
+      `Hola${nombre ? ", " + nombre : ""} 👋`, "",
+      `Esta es la liquidación de su seguridad social de *${mes}*:`, "",
+      `Ingreso reportado: ${fmt(ultimo.ingreso)}`,
+      ...(usar === con ? [`Costos presuntos (${actividad.replace(/^[A-Z] · /, "").replace(/ \(.*\)$/, "")}, ${(pct * 100).toFixed(2).replace(".", ",")}%): ${fmt(con.costo)}`] : []),
+      `Base de cotización (IBC): ${fmt(usar.ibc)}`, "",
+      `• Salud: ${fmt(usar.salud)}`, `• Pensión: ${fmt(usar.pension)}`, `• ARL nivel ${nivel}: ${fmt(usar.arl)}`,
+      ...(usar.caja ? [`• Caja de compensación: ${fmt(usar.caja)}`] : []),
+      ...(servicio ? [`• Servicio PROSEGUROSNET: ${fmt(servicio)}`] : []),
+      ...(trab.length ? ["", `Subtotal suyo: ${fmt(usar.total + servicio)}`, "", "Trabajadores a su cargo:",
+        ...trab.map(t => `• ${t.nombre}: ${fmt(t.total)}`)] : []),
+      "", `*Total a pagar: ${fmt(usar.total + servicio + totalTrab)}*`, "",
+      "Fecha límite de pago: día 16 del mes.",
+      "Puede pagar por Bre-B 0078275062 o Nequi 311 613 3523 y enviarnos el comprobante por aquí.", "",
+      "*PROSEGUROSNET*",
+    ];
+    return lineas.join("\n");
+  };
   const pintar = () => {
     const ingreso = num("pcIngreso"), smmlv = num("pcSmmlv") || 1750905;
     const pct = COSTOS_PRESUNTOS[Number(document.getElementById("pcActividad").value)][1];
@@ -7946,7 +8006,27 @@ function abrirPresuncionCostos(){
       + (caja ? fila("Caja 2%", fmt(sin.caja), fmt(con.caja)) : "")
       + fila("Total a pagar", fmt(sin.total), fmt(con.total), "pc-total");
     document.getElementById("pcAhorro").textContent = ingreso ? `Con la presunción paga ${fmt(sin.total - con.total)} menos al mes.` : "Escriba el ingreso del mes.";
+    ultimo = { ingreso, pct, actividad: COSTOS_PRESUNTOS[Number(document.getElementById("pcActividad").value)][0], nivel, sin, con };
   };
+  const infoTrab = () => {
+    const t = trabajadores();
+    document.getElementById("pcTrabInfo").textContent = t.length ? t.map(x => x.faltante ? `⚠️ ${x.faltante} no está en el mes` : `✅ ${nombrePropio(x["Nombre del Afiliado"] || "")}: ${fmt(calcularTotalPagar(x, store.currentMonth))}`).join(" · ") : "";
+  };
+  document.getElementById("pcTrabajadores").addEventListener("input", infoTrab);
+  document.getElementById("pcCedula").addEventListener("input", infoTrab);
+  document.getElementById("pcCopiarBtn").addEventListener("click", async () => {
+    const m = mensajeCobro();
+    if (!m){ showToast("⚠️ Escriba el ingreso del mes."); return; }
+    showToast(await copiarTexto(m) ? "Mensaje copiado. Péguelo en el chat del cliente." : "⚠️ No se pudo copiar.");
+  });
+  document.getElementById("pcEnviarBtn").addEventListener("click", () => {
+    const m = mensajeCobro();
+    if (!m){ showToast("⚠️ Escriba el ingreso del mes."); return; }
+    const numero = String(document.getElementById("pcTelefono").value).replace(/\D/g, "");
+    if (numero.length < 10){ showToast("⚠️ Escriba el celular del cliente."); return; }
+    const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
+    abrirChatEnApp(conIndicativo, /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ""), m);
+  });
   cont.querySelectorAll("input, select").forEach(el => el.addEventListener("input", pintar));
   pintar();
   document.getElementById("overlayInforme").classList.add("show");
