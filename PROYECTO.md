@@ -113,3 +113,6 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Pendiente de verificar con el primer recibo real: formato exacto que Alegra acepta en /payments (bankAccount, paymentMethod, categories).
 - 10 nov. 2026 (mensajes de Neider, contador): recibo de APORTES separado ("Otros ingresos", cuenta 2815) que se hace ANTES de emitir la factura; recibo de HONORARIOS (pago a la factura) después de emitida; PAGO (egreso, tipo out) a Enlace Operativo por planilla, desde la 2815. Cada recibo y pago se descarga de Alegra en PDF y se guarda en documentos-clientes/alegra/<mes>/ (botón Ver PDF). Tablas recibos_caja (tipo aportes|honorarios, pdf_path) y pagos_enlace. Configuración: banco, cuenta 2815 y proveedor Enlace (configuracion.alegra).
 - 10 nov. 2026: la gestión de cobro de incapacidades NO se factura (indicación del contador). Se quitó el botón y la acción de la función.
+
+## 10 nov. 2026 — Presunción de costos
+- Menú Clientes → 10.1 Presunción de costos (independientes): calculadora (Res. UGPP 532 de 2024, porcentajes por CIIU, ARL 1-5, caja opcional, sin/con presunción) y botón para bajar Presuncion_de_costos_independientes.xlsx (en la raíz del repo).

@@ -963,6 +963,11 @@
   .bm-info small{ display:block; font-size:12px; color:var(--muted); }
   .bm-info .ocr-alerta{ color:var(--retiro); }
   .bm-valor{ font-weight:700; font-variant-numeric:tabular-nums; }
+  .pc-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
+  .pc-tabla{ width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  .pc-tabla th, .pc-tabla td{ padding:7px 6px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums; }
+  .pc-tabla th:first-child, .pc-tabla td:first-child{ text-align:left; }
+  .pc-tabla tr.pc-total td{ font-weight:700; border-top:2px solid var(--line); }
   .rc-factura{ border:1px solid var(--line); border-radius:12px; padding:12px; margin:10px 0; }
   .rc-cab{ display:flex; justify-content:space-between; gap:10px; align-items:baseline; flex-wrap:wrap; }
   .rc-cab b{ font-size:14px; overflow-wrap:anywhere; }
@@ -1450,6 +1455,7 @@
       <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">8</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Trabajados recientemente</button>
       <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">9</span><svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Historial de cliente</button>
       <button type="button" class="sidebar-link" id="navGuiaEpsBtn"><span class="sidebar-num">10</span><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía de afiliaciones por EPS</button>
+      <button type="button" class="sidebar-link" id="navPresuncionBtn"><span class="sidebar-num">10.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Presunción de costos (independientes)</button>
 
       <div class="sidebar-section-title">Reportes</div>
       <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">11</span><svg class="ico" aria-hidden="true"><use href="#i-bajar"/></svg>Exportar respaldo</button>
@@ -7251,6 +7257,7 @@ async function abrirGuiaEps(){
   if (guiaEditando === null) renderGuiaEps();
 }
 document.getElementById("navGuiaEpsBtn").addEventListener("click", abrirGuiaEps);
+document.getElementById("navPresuncionBtn").addEventListener("click", abrirPresuncionCostos);
 document.getElementById("guiaCerrarBtn").addEventListener("click", () => document.getElementById("overlayGuiaEps").classList.remove("show"));
 document.getElementById("overlayGuiaEps").addEventListener("click", (e) => { if (e.target.id === "overlayGuiaEps") e.target.classList.remove("show"); });
 document.getElementById("guiaBuscar").addEventListener("input", renderGuiaEps);
@@ -7881,6 +7888,68 @@ async function abrirRecibosDeCaja(){
       abrirRecibosDeCaja();
     }catch(err){ btn.disabled = false; btn.textContent = "Crear pago"; alertApp(err.message); }
   }));
+}
+// Presunción de costos de independientes (Res. UGPP 532 de 2024). Igual que el Excel Presuncion_de_costos_independientes.xlsx.
+const COSTOS_PRESUNTOS = [
+  ["A · Agricultura, ganadería, caza, silvicultura y pesca", 0.6685], ["B · Explotación de minas y canteras", 0.5639],
+  ["C · Industrias manufactureras", 0.6234], ["D · Electricidad, gas, vapor y aire acondicionado", 0.6030],
+  ["E · Agua, aguas residuales, desechos y saneamiento", 0.6515], ["F · Construcción (incluye instalación de redes)", 0.6289],
+  ["G · Comercio; reparación de vehículos y motocicletas", 0.6697], ["H · Transporte y almacenamiento", 0.6379],
+  ["I · Alojamiento y servicios de comida", 0.6167], ["J · Información y comunicaciones", 0.6117],
+  ["K · Actividades financieras y de seguros", 0.6065], ["L · Actividades inmobiliarias", 0.6173],
+  ["M · Actividades profesionales, científicas y técnicas", 0.6204], ["N · Servicios administrativos y de apoyo", 0.5910],
+  ["O · Administración pública y defensa", 0.6525], ["P · Educación", 0.6708], ["Q · Salud humana y asistencia social", 0.6324],
+  ["R · Artísticas, entretenimiento y recreación", 0.5692], ["S · Otras actividades de servicios", 0.5633],
+  ["T · Hogares como empleadores", 0.5601], ["U · Organizaciones extraterritoriales", 0.6426],
+  ["No clasificados en otra parte", 0.6253], ["Presunción media", 0.6288], ["Rentistas de capital (arriendos, dividendos)", 0.2808],
+];
+const ARL_TARIFAS = [0.00522, 0.01044, 0.02436, 0.0435, 0.0696];
+function calcularPresuncion(ingreso, pct, costosReales, nivelArl, conCaja, smmlv){
+  const costo = pct > 0 ? Math.max(Math.round(ingreso * pct), costosReales) : 0;
+  const neto = ingreso - costo;
+  const debe = neto >= smmlv;
+  const ibc = debe ? Math.min(25 * smmlv, Math.max(smmlv, Math.ceil(neto * 0.4))) : 0;
+  const ap = (t) => Math.ceil(ibc * t / 100) * 100;
+  const salud = ap(0.125), pension = ap(0.16), arl = ap(ARL_TARIFAS[nivelArl - 1] || 0), caja = conCaja ? ap(0.02) : 0;
+  return { costo, neto, debe, ibc, salud, pension, arl, caja, total: salud + pension + arl + caja };
+}
+function abrirPresuncionCostos(){
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "Presunción de costos (independientes)";
+  document.getElementById("informeSubtitulo").textContent = "Cuánto cotiza un independiente por cuenta propia según sus ingresos. Res. UGPP 532 de 2024; confirme con el contador.";
+  cont.innerHTML = `<div class="pc-grid">
+      <div class="field"><label for="pcIngreso">Ingreso bruto del mes, sin IVA</label><input id="pcIngreso" inputmode="numeric" placeholder="Ej: 12.170.000"></div>
+      <div class="field"><label for="pcActividad">Actividad</label><select id="pcActividad">${COSTOS_PRESUNTOS.map((a, i) => `<option value="${i}" ${i === 5 ? "selected" : ""}>${escHtml(a[0])} (${(a[1] * 100).toFixed(2).replace(".", ",")}%)</option>`).join("")}</select></div>
+      <div class="field"><label for="pcReales">Costos reales con soporte (opcional)</label><input id="pcReales" inputmode="numeric" placeholder="0"></div>
+      <div class="field"><label for="pcArl">Nivel de ARL</label><select id="pcArl">${ARL_TARIFAS.map((t, i) => `<option value="${i + 1}" ${i === 0 ? "selected" : ""}>Nivel ${i + 1} (${(t * 100).toFixed(3).replace(".", ",")}%)</option>`).join("")}</select></div>
+      <div class="field"><label for="pcCaja">¿Paga caja?</label><select id="pcCaja"><option value="0">No</option><option value="1">Sí (2%)</option></select></div>
+      <div class="field"><label for="pcSmmlv">Salario mínimo</label><input id="pcSmmlv" inputmode="numeric" value="${typeof PILA_SALARIO !== "undefined" ? PILA_SALARIO : 1750905}"></div>
+    </div>
+    <div style="overflow-x:auto;"><table class="pc-tabla" id="pcTabla"></table></div>
+    <p class="ing-nota" id="pcAhorro"></p>
+    <p class="ing-nota">La presunción aplica a quien trabaja por cuenta propia o con insumos (vehículo, ayudantes, materiales). El contratista de prestación de servicios personales cotiza sobre el 40% sin descontar costos. Aportes redondeados como en PILA. El costo presunto solo sirve para seguridad social, no para la renta.</p>
+    <div class="modal-actions"><a class="btn small ghost" href="Presuncion_de_costos_independientes.xlsx" download>⬇️ Descargar el Excel</a></div>`;
+  const num = (id) => soloNumero(document.getElementById(id).value);
+  const pintar = () => {
+    const ingreso = num("pcIngreso"), smmlv = num("pcSmmlv") || 1750905;
+    const pct = COSTOS_PRESUNTOS[Number(document.getElementById("pcActividad").value)][1];
+    const nivel = Number(document.getElementById("pcArl").value), caja = document.getElementById("pcCaja").value === "1";
+    const sin = calcularPresuncion(ingreso, 0, 0, nivel, caja, smmlv), con = calcularPresuncion(ingreso, pct, num("pcReales"), nivel, caja, smmlv);
+    const fila = (t, a, b, cls) => `<tr class="${cls || ""}"><td>${t}</td><td>${a}</td><td>${b}</td></tr>`;
+    document.getElementById("pcTabla").innerHTML = `<tr><th></th><th>Sin presunción</th><th>Con presunción</th></tr>`
+      + fila("Costo que se descuenta", fmt(sin.costo), fmt(con.costo))
+      + fila("Ingreso neto", fmt(sin.neto), fmt(con.neto))
+      + fila("IBC (40%)", sin.debe ? fmt(sin.ibc) : "No cotiza", con.debe ? fmt(con.ibc) : "No cotiza")
+      + fila("Salud 12,5%", fmt(sin.salud), fmt(con.salud))
+      + fila("Pensión 16%", fmt(sin.pension), fmt(con.pension))
+      + fila(`ARL nivel ${nivel}`, fmt(sin.arl), fmt(con.arl))
+      + (caja ? fila("Caja 2%", fmt(sin.caja), fmt(con.caja)) : "")
+      + fila("Total a pagar", fmt(sin.total), fmt(con.total), "pc-total");
+    document.getElementById("pcAhorro").textContent = ingreso ? `Con la presunción paga ${fmt(sin.total - con.total)} menos al mes.` : "Escriba el ingreso del mes.";
+  };
+  cont.querySelectorAll("input, select").forEach(el => el.addEventListener("input", pintar));
+  pintar();
+  document.getElementById("overlayInforme").classList.add("show");
 }
 async function crearBorradorAlegra(r){
   if (!sb || !navigator.onLine){ showToast("No hay conexión con la nube en este momento."); return; }
