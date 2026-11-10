@@ -963,6 +963,19 @@
   .bm-info small{ display:block; font-size:12px; color:var(--muted); }
   .bm-info .ocr-alerta{ color:var(--retiro); }
   .bm-valor{ font-weight:700; font-variant-numeric:tabular-nums; }
+  .rc-factura{ border:1px solid var(--line); border-radius:12px; padding:12px; margin:10px 0; }
+  .rc-cab{ display:flex; justify-content:space-between; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .rc-cab b{ font-size:14px; overflow-wrap:anywhere; }
+  .rc-cab small{ color:var(--muted); font-size:12px; }
+  .rc-cli{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; padding:8px 0; border-top:1px dashed var(--line); font-size:13px; }
+  .rc-cli small{ display:block; color:var(--muted); font-size:11.5px; }
+  .rc-cli input[type=text]{ width:110px; text-align:right; font-variant-numeric:tabular-nums; }
+  .rc-caja{ grid-column:1 / -1; display:flex; align-items:center; gap:7px; font-size:12.5px; }
+  .rc-tot{ display:grid; grid-template-columns:1fr auto; gap:3px 12px; font-size:13px; margin-top:8px; padding-top:8px; border-top:1px solid var(--line); }
+  .rc-tot span:nth-child(even){ text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  .rc-acc{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .rc-acc select{ flex:1 1 180px; }
+  .rc-ok{ color:var(--pago, #15803d); font-size:13px; font-weight:600; margin-top:6px; }
   .inc-fila{ padding:10px 2px; border-bottom:1px solid var(--line); }
   .inc-abrir{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
   .inc-soporte{ margin-top:8px; }
@@ -1455,6 +1468,7 @@
           <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
         </button>
         <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;">🧾 Crear borradores en Alegra</button>
+        <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;">🧾 Recibos de caja en Alegra</button>
         <button type="button" class="sidebar-total" data-informe="aportes">
           <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
           <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
@@ -5482,6 +5496,7 @@ function abrirInforme(tipo){
   if (tipo === "ingresos"){ abrirInformeIngresos(); return; }
   if (tipo === "aportes"){ abrirInformeAportes(); return; }
   if (tipo === "facturar"){ abrirBorradoresDelMes(); return; }
+  if (tipo === "recibos"){ abrirRecibosDeCaja(); return; }
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
@@ -6159,6 +6174,7 @@ function renderMonthTotal(){
   // Los tres totales (PROSEGUROSNET, Conductores, Gestiones) se suman al final.
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
   document.getElementById("navFacturarMes").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navRecibosCaja").style.display = esAdmin() ? "" : "none";
   const aportesMes = reporteAportes(store.currentMonth);
   document.getElementById("sidebarAportesValue").textContent = fmt(aportesMes.recibido);
   document.getElementById("sidebarAportesPagos").textContent = aportesMes.sinPlanilla.length ? `Falta planilla: ${aportesMes.sinPlanilla.length}` : "Todo con planilla";
@@ -7708,6 +7724,104 @@ async function abrirBorradoresDelMes(){
     await alertApp(`✅ Borradores creados: ${creados} de ${marcadas.length}. Revíselos en Alegra → Ingresos → Facturas de venta. No se envió nada a la DIAN.${fallos.length ? `\n\nNo se pudieron crear:\n${fallos.join("\n")}` : ""}`);
     abrirBorradoresDelMes();
   });
+}
+// Recibos de caja (guía del contador, 10 nov. 2026): la factura lleva solo los honorarios;
+// el recibo cruza la factura y manda los aportes de la planilla a la cuenta 2815 (ingresos para terceros).
+const soloNumero = (v) => Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+async function configurarRecibos(cont, alTerminar){
+  cont.innerHTML = `<div class="empty">Leyendo cuentas de Alegra…</div>`;
+  let c;
+  try{ c = await llamarAlegra({ accion: "recibos_config" }); }
+  catch(err){ cont.innerHTML = `<div class="empty">⚠️ ${escHtml(err.message)}</div>`; return; }
+  const opc = (lista, sel, txt) => lista.map(x => `<option value="${escHtml(x.id)}" ${x.id === sel ? "selected" : ""}>${escHtml(txt(x))}</option>`).join("");
+  cont.innerHTML = `<p class="ing-nota" style="margin-top:0;">Escoja una sola vez en qué cuenta entra la plata y la cuenta de <b>ingresos recibidos para terceros</b> (2815). Si no aparece la 2815, pídale a su contador que la cree en Alegra.</p>
+    <div class="field"><label for="rcBanco">Cuenta de banco donde entra la plata</label><select id="rcBanco"><option value="">Escoja</option>${opc(c.bancos, c.banco_id, x => x.nombre)}</select></div>
+    <div class="field"><label for="rcCuenta">Cuenta de ingresos recibidos para terceros</label><select id="rcCuenta"><option value="">Escoja</option>${opc(c.cuentas, c.cuenta_id || (c.cuentas[0] && c.cuentas[0].codigo.startsWith("2815") ? c.cuentas[0].id : ""), x => `${x.codigo ? x.codigo + " · " : ""}${x.nombre}`)}</select></div>
+    ${c.cuentas.length ? "" : `<p class="ing-nota ocr-alerta">⚠️ No encontré en Alegra una cuenta 28 ni una cuenta "para terceros".</p>`}
+    <div class="modal-actions"><button type="button" class="btn primary" id="rcGuardarCfg">Guardar</button></div>`;
+  document.getElementById("rcGuardarCfg").onclick = async () => {
+    const banco_id = document.getElementById("rcBanco").value, cuenta_id = document.getElementById("rcCuenta").value;
+    if (!banco_id || !cuenta_id){ showToast("⚠️ Escoja las dos cuentas."); return; }
+    try{ await llamarAlegra({ accion: "recibos_config_guardar", banco_id, cuenta_id }); showToast("Cuentas guardadas."); alTerminar(); }
+    catch(err){ alertApp(err.message); }
+  };
+}
+function facturaReciboHtml(f, i){
+  const titulo = `<div class="rc-cab"><b>${escHtml(nombrePropio(f.cliente || ""))}</b><small>${f.numero ? `Factura ${escHtml(f.numero)}` : "Factura sin número"} · Honorarios ${fmt(f.honorarios)}</small></div>`;
+  if (f.recibo) return `<div class="rc-factura">${titulo}<div class="rc-ok">✅ Recibo de caja creado: honorarios ${fmt(f.recibo.honorarios)} + aportes para terceros ${fmt(f.recibo.aportes)}.</div></div>`;
+  if (f.estado === "draft") return `<div class="rc-factura">${titulo}<p class="ing-nota">📝 En borrador. Cuando su contador la emita en Alegra, aquí podrá hacer el recibo.</p></div>`;
+  if (f.estado === "void") return `<div class="rc-factura">${titulo}<p class="ing-nota">Anulada en Alegra.</p></div>`;
+  const clientes = f.clientes.map((c, j) => {
+    const base = c.eps + c.pension + c.arl;
+    return `<div class="rc-cli">
+      <span><b>${escHtml(nombrePropio(c.nombre || ""))}</b><small>CC ${escHtml(c.cedula)} · EPS ${fmt(c.eps)} · Pensión ${fmt(c.pension)} · ARL ${fmt(c.arl)}</small></span>
+      <span><input type="text" inputmode="numeric" data-rc-valor="${i}:${j}" value="${base + c.caja}" aria-label="Valor de la planilla de ${escHtml(c.nombre || "")}"></span>
+      <label class="rc-caja"><input type="checkbox" data-rc-caja="${i}:${j}" ${c.caja > 0 ? "checked" : ""}> Paga caja${c.cajaNombre ? ` (${escHtml(c.cajaNombre)})` : ""}: <input type="text" inputmode="numeric" data-rc-cajav="${i}:${j}" value="${c.caja}" style="width:90px;text-align:right;"></label>
+    </div>`;
+  }).join("");
+  return `<div class="rc-factura" data-rc="${i}">${titulo}${clientes}
+    <div class="rc-tot"><span>Honorarios (cruza la factura)</span><span>${fmt(f.saldo != null ? f.saldo : f.honorarios)}</span>
+      <span>Aportes planilla (cuenta 2815, para terceros)</span><span data-rc-aportes="${i}"></span>
+      <span>Total del recibo</span><span data-rc-total="${i}"></span></div>
+    <div class="rc-acc"><select data-rc-medio="${i}"><option value="">¿Cómo pagó?</option><option value="CREDIT_TRANSFER_BANK">Transferencia</option><option value="BANK_DEPOSIT">Consignación</option><option value="CASH">Efectivo</option><option value="MUTUAL_AGREEMENT">Otro</option></select>
+      <button type="button" class="btn primary small" data-rc-crear="${i}">Crear recibo de caja</button></div>
+  </div>`;
+}
+async function abrirRecibosDeCaja(){
+  if (!esAdmin() || !sb || !navigator.onLine){ showToast("Solo el administrador puede crear recibos, con internet."); return; }
+  const mes = store.currentMonth;
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "🧾 Recibos de caja en Alegra";
+  document.getElementById("informeSubtitulo").textContent = `${mes}. La factura lleva solo sus honorarios; el valor de la planilla entra como ingreso para terceros (2815). No va a la DIAN.`;
+  cont.innerHTML = `<div class="empty">Buscando facturas del mes…</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+  let cfg, datos;
+  try{
+    [cfg, datos] = await Promise.all([llamarAlegra({ accion: "recibos_config" }), llamarAlegra({ accion: "recibos_pendientes", mes })]);
+  }catch(err){ cont.innerHTML = `<div class="empty">⚠️ ${escHtml(err.message)}</div>`; return; }
+  if (mes !== store.currentMonth) return;
+  if (!cfg.banco_id || !cfg.cuenta_id){ configurarRecibos(cont, abrirRecibosDeCaja); return; }
+  const lista = datos.facturas || [];
+  const listas = lista.filter(f => !f.recibo && f.estado !== "draft" && f.estado !== "void").length;
+  const borr = lista.filter(f => f.estado === "draft").length, hechos = lista.filter(f => f.recibo).length;
+  cont.innerHTML = `<div class="bm-barra"><span>${listas} por hacer · ${hechos} hecho${hechos === 1 ? "" : "s"} · ${borr} en borrador</span><button type="button" class="btn small ghost" id="rcCfgBtn">Cuentas</button></div>
+    ${lista.length ? lista.map(facturaReciboHtml).join("") : `<div class="empty">No hay facturas de ${escHtml(mes)} creadas desde la app.</div>`}
+    <p class="ing-nota">Revise el valor de la planilla de cada persona y si paga caja este mes. El valor se toma de la ficha del cliente; lo que cambie aquí solo cambia el recibo.</p>`;
+  document.getElementById("rcCfgBtn").onclick = () => configurarRecibos(cont, abrirRecibosDeCaja);
+  const total = (i) => {
+    const f = lista[i];
+    const aportes = f.clientes.reduce((s, c, j) => s + soloNumero(cont.querySelector(`[data-rc-valor="${i}:${j}"]`).value), 0);
+    const hon = f.saldo != null ? f.saldo : f.honorarios;
+    cont.querySelector(`[data-rc-aportes="${i}"]`).textContent = fmt(aportes);
+    cont.querySelector(`[data-rc-total="${i}"]`).textContent = fmt(aportes + hon);
+  };
+  cont.querySelectorAll("[data-rc]").forEach(el => total(Number(el.dataset.rc)));
+  cont.querySelectorAll("[data-rc-valor]").forEach(inp => inp.addEventListener("input", () => total(Number(inp.dataset.rcValor.split(":")[0]))));
+  // Paga caja sí/no: suma o resta el valor de la caja al valor de la planilla
+  const ajustarCaja = (clave) => {
+    const [i, j] = clave.split(":").map(Number);
+    const c = lista[i].clientes[j];
+    const marcada = cont.querySelector(`[data-rc-caja="${clave}"]`).checked;
+    const vCaja = soloNumero(cont.querySelector(`[data-rc-cajav="${clave}"]`).value);
+    cont.querySelector(`[data-rc-valor="${clave}"]`).value = c.eps + c.pension + c.arl + (marcada ? vCaja : 0);
+    total(i);
+  };
+  cont.querySelectorAll("[data-rc-caja]").forEach(ch => ch.addEventListener("change", () => ajustarCaja(ch.dataset.rcCaja)));
+  cont.querySelectorAll("[data-rc-cajav]").forEach(inp => inp.addEventListener("input", () => ajustarCaja(inp.dataset.rcCajav)));
+  cont.querySelectorAll("[data-rc-crear]").forEach(btn => btn.addEventListener("click", async () => {
+    const i = Number(btn.dataset.rcCrear), f = lista[i];
+    const medioPago = cont.querySelector(`[data-rc-medio="${i}"]`).value;
+    if (!medioPago){ showToast("⚠️ Escoja cómo pagó."); return; }
+    const clientes = f.clientes.map((c, j) => ({ cedula: c.cedula, nombre: c.nombre, valor: soloNumero(cont.querySelector(`[data-rc-valor="${i}:${j}"]`).value), caja: cont.querySelector(`[data-rc-caja="${i}:${j}"]`).checked }));
+    const aportes = clientes.reduce((s, c) => s + c.valor, 0), hon = f.saldo != null ? f.saldo : f.honorarios;
+    if (!(await confirmarApp(`¿Crear el recibo de caja de ${nombrePropio(f.cliente || "")} en Alegra?\n\nHonorarios (factura ${f.numero || ""}): ${fmt(hon)}\nAportes para terceros (2815): ${fmt(aportes)}\nTotal recibido: ${fmt(hon + aportes)}`))) return;
+    btn.disabled = true; btn.textContent = "Creando…";
+    try{
+      await llamarAlegra({ accion: "recibo", alegra_id: f.alegra_id, mes, medioPago, clientes });
+      showToast("Recibo de caja creado en Alegra.");
+      abrirRecibosDeCaja();
+    }catch(err){ btn.disabled = false; btn.textContent = "Crear recibo de caja"; alertApp(err.message); }
+  }));
 }
 async function crearBorradorAlegra(r){
   if (!sb || !navigator.onLine){ showToast("No hay conexión con la nube en este momento."); return; }

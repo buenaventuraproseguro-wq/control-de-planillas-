@@ -105,3 +105,9 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 
 ## 9 nov. 2026 — Cambiar contraseña
 - Botón "🔑 Clave" junto a "Salir": el usuario con sesión abierta cambia su propia contraseña (sb.auth.updateUser). Nadie más la ve.
+
+## 10 nov. 2026 — Recibos de caja en Alegra (guía del contador)
+- Modelo: la factura electrónica lleva SOLO los honorarios. El recibo de caja (pago tipo "in" en Alegra) cruza la factura por los honorarios y lleva los aportes de la planilla a la cuenta 2815 "Ingresos recibidos para terceros". Nada va a la DIAN.
+- 15 Cartera → 🧾 Recibos de caja en Alegra (solo administrador): lista las facturas del mes creadas por la app. Borrador = aún no se puede (hay que emitirla en Alegra). Por factura: valor de la planilla por persona (EPS + pensión + ARL + caja, de la ficha) editable, casilla "Paga caja" con su valor, medio de pago y botón Crear recibo.
+- Función alegra (archivo recibos.ts): acciones recibos_config, recibos_config_guardar (banco y cuenta 2815 guardados en configuracion.alegra), recibos_pendientes, recibo. Tabla recibos_caja (una por factura; si el recibo se borra en Alegra, la factura queda libre).
+- Pendiente de verificar con el primer recibo real: formato exacto que Alegra acepta en /payments (bankAccount, paymentMethod, categories).
