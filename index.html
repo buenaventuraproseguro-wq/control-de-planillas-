@@ -7987,7 +7987,11 @@ function abrirPresuncionCostos(inicial){
         ...trab.map(t => `• ${t.nombre}: ${fmt(t.total)}`)] : []),
       "", `*Total a pagar: ${fmt(usar.total + servicio + totalTrab)}*`, "",
       "Fecha límite de pago: día 16 del mes.",
-      "Puede pagar por Bre-B 0078275062 o Nequi 311 613 3523 y enviarnos el comprobante por aquí.", "",
+      "💳 Puede pagar por Bancolombia:",
+      `🔑 Llave Bre-B: ${LLAVE_BREB}`,
+      `🏦 Cuenta de ahorros: ${CUENTA_BANCOLOMBIA}`,
+      `👤 A nombre de: ${TITULAR_CUENTA}`, "",
+      "Luego envíenos el comprobante por aquí ✅", "",
       "*PROSEGUROSNET*",
     ];
     return lineas.join("\n");
@@ -10015,6 +10019,8 @@ document.getElementById("compartirReciboBtn").addEventListener("click", comparti
 // ---- Enviar el QR de pago al cliente, con instrucciones cortas ----
 const QR_URL = "qr_pago_prosegurosnet.jpg";
 const LLAVE_BREB = "0078275062";
+const CUENTA_BANCOLOMBIA = "84317568222"; // cuenta de ahorros Bancolombia
+const TITULAR_CUENTA = "Nestor Fabian Garzón — prosegurosnet";
 // Enlace público a la imagen del QR (WhatsApp muestra la imagen y el cliente la puede abrir o guardar)
 function enlaceQR(){ try{ return new URL(QR_URL, location.href).href; }catch(e){ return QR_URL; } }
 function textoInstruccionesQR(r){
@@ -10023,6 +10029,8 @@ function textoInstruccionesQR(r){
 ${valor ? `Valor a pagar: *${fmt(valor)}*\n` : ""}Pague por *Bre-B* desde la app de su banco con esta llave:
 \`\`\`${LLAVE_BREB}\`\`\`
 _(mantenga presionada la llave para copiarla)_
+O consigne en Bancolombia, cuenta de ahorros \`\`\`${CUENTA_BANCOLOMBIA}\`\`\`
+A nombre de: ${TITULAR_CUENTA}
 Luego envíenos el comprobante ✅`;
 }
 // Arma UNA imagen: el QR y debajo una explicación breve con el valor del cliente.
@@ -13825,7 +13833,7 @@ async function imagenEstadoCuenta(g, tipo = "image/png"){
   c.fillStyle = "#181512"; c.textAlign = "center"; c.font = "600 26px Inter, Arial, sans-serif";
   c.fillText(`Pague por Bre-B con la llave ${LLAVE_BREB}`, W / 2, y);
   c.fillStyle = "#7A7268"; c.font = "500 22px Inter, Arial, sans-serif";
-  c.fillText("Luego envíenos el comprobante. ¡Gracias!", W / 2, y + 36);
+  c.fillText(`O cuenta de ahorros Bancolombia ${CUENTA_BANCOLOMBIA} · Nestor Fabian Garzón`, W / 2, y + 36);
   return await new Promise(res => cv.toBlob(res, tipo, 0.92));
 }
 function nombreArchivoEC(g){ return `estado_cuenta_${nombrePropio(g.nombre).replace(/[^\wáéíóúñ]+/gi, "_")}_${store.currentMonth.replace(/\s+/g, "_")}.png`; }
