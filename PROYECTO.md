@@ -102,3 +102,6 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Los comprobantes en PDF protegido (con contraseña de dueño) salían en blanco al unirlos con pdf-lib.
   Ahora `unirEnUnPdf` detecta `isEncrypted` (o un PDF que pdf-lib no abre) y dibuja esas páginas como imagen con pdf.js (`pdfComoImagenes`).
 - Se marcaron como enviados (soporte_enviado = 9 nov.) los 37 clientes de noviembre en PAGO / PAGO CONDUCTOR / RETIRO que estaban sin marcar, a pedido del usuario: desde ahora la cola solo muestra los nuevos pagos.
+
+## 9 nov. 2026 — Cambiar contraseña
+- Botón "🔑 Clave" junto a "Salir": el usuario con sesión abierta cambia su propia contraseña (sb.auth.updateUser). Nadie más la ve.

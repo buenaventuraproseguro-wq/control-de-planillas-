@@ -1516,6 +1516,7 @@
     <div class="header-right" style="margin-left:auto;">
       <span class="user-chip"><span class="dot"></span><span id="whoAmI"></span></span>
       <span class="sync-chip" id="cloudStatus" title="Estado de sincronización">💾 Conectando…</span>
+      <button type="button" class="btn small ghost" id="claveBtn" title="Cambiar mi contraseña" style="margin-right:4px;">🔑 Clave</button>
       <button type="button" class="btn small ghost" id="logoutBtn" style="margin-right:6px;">Salir</button>
       <button type="button" class="bell-btn" id="helpBtn" title="Ayuda">❓</button>
       <button type="button" class="bell-btn" id="bellBtn" title="Alertas">
@@ -8349,7 +8350,7 @@ function pedirDatosApp(titulo, campos, textoOk){
     document.getElementById("pedirTitulo").textContent = titulo;
     document.getElementById("pedirOkBtn").textContent = textoOk || "Guardar";
     document.getElementById("pedirCampos").innerHTML = campos.map(c => `<div class="field"><label for="pedir_${c.id}">${escHtml(c.label)}</label>
-      <input id="pedir_${c.id}" type="text" ${c.tipo === "number" ? 'inputmode="numeric"' : ""} placeholder="${escHtml(c.placeholder || "")}" autocomplete="off"></div>`).join("");
+      <input id="pedir_${c.id}" type="${c.tipo === "password" ? "password" : "text"}" ${c.tipo === "number" ? 'inputmode="numeric"' : ""} placeholder="${escHtml(c.placeholder || "")}" autocomplete="${c.tipo === "password" ? "new-password" : "off"}"></div>`).join("");
     ov.classList.add("show");
     const primero = document.getElementById("pedir_" + campos[0].id); setTimeout(() => primero.focus(), 50);
     const ok = document.getElementById("pedirOkBtn"), cancel = document.getElementById("pedirCancelBtn");
@@ -8358,7 +8359,7 @@ function pedirDatosApp(titulo, campos, textoOk){
       const out = {};
       for (const c of campos){
         const el = document.getElementById("pedir_" + c.id);
-        let v = el.value.trim().replace(/\s+/g, " ");
+        let v = c.tipo === "password" ? el.value : el.value.trim().replace(/\s+/g, " ");
         if (c.tipo === "number") v = v.replace(/[^0-9]/g, "");
         if (!v){ showToast(`⚠️ Escriba ${c.label.toLowerCase()}.`); el.focus(); return; }
         out[c.id] = c.tipo === "number" ? Number(v) : v;
@@ -10344,6 +10345,25 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
 });
 document.getElementById("loginPass").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("loginBtn").click();
+});
+// Cambiar la contraseña del usuario que tiene la sesión abierta (la escribe él mismo; no pasa por nadie más)
+document.getElementById("claveBtn").addEventListener("click", async () => {
+  const d = await pedirDatosApp("Cambiar mi contraseña", [
+    { id: "nueva", label: "Contraseña nueva", placeholder: "Mínimo 8 caracteres", tipo: "password" },
+    { id: "repite", label: "Repita la contraseña nueva", placeholder: "Escríbala otra vez", tipo: "password" }
+  ], "Cambiar");
+  if (!d) return;
+  if (d.nueva.length < 8) return alertApp("La contraseña debe tener mínimo 8 caracteres.");
+  if (d.nueva !== d.repite) return alertApp("Las dos contraseñas no son iguales. Intente de nuevo.");
+  if (!navigator.onLine) return alertApp("Sin internet: se necesita conexión para cambiar la contraseña.");
+  const { error } = await sb.auth.updateUser({ password: d.nueva });
+  if (error){
+    const m = /same|different/i.test(error.message) ? "La contraseña nueva debe ser distinta de la actual."
+      : /reauth|recent/i.test(error.message) ? "Por seguridad, salga y vuelva a entrar, y cambie la contraseña enseguida."
+      : "No se pudo cambiar la contraseña: " + error.message;
+    return alertApp(m);
+  }
+  alertApp("✅ Contraseña cambiada. La próxima vez que entre use la nueva.");
 });
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   if (!(await confirmarApp("¿Cerrar sesión?"))) return;
