@@ -15272,7 +15272,7 @@ async function abrirGenerarPila(){
       return `<div class="pila-ind"><p class="ay-txt">🏢 <b>Otras empresas</b>: sus empleados van en la planilla E <b>de esa empresa</b> (el aportante es el dueño). Se calculan igual que los de PROSEGUROSNET: salario mínimo, salud 4 %, caja Comfenalco ($100 si no tiene) y ARL Sura.</p>
         <ul class="ay-txt">${grupos.map(g => `<li><b>${escHtml(g.empresa)}</b> · aportante: ${g.ap ? `<b>${escHtml(g.ap.nombre)}</b> CC ${escHtml(g.ap.cedula)}` : `<span style="color:var(--retiro);font-weight:700;">falta</span>`} <button type="button" class="pila-nom-btn" data-pila-aportante="${escHtml(g.clave)}" title="Escribir el nombre y la cédula del dueño de la empresa">✏️</button>
           <br>${g.listos.length} listo(s) para la planilla: ${g.listos.map(r => `${escHtml(pilaNombreDe(r).filter(Boolean).join(" "))} <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button>`).join(", ") || "nadie ha pagado todavía"}${g.pendientes.length ? ` · ${g.pendientes.length} sin pagar` : ""}
-          <button type="button" class="btn small" data-pila-empresa="${escHtml(g.clave)}" ${g.ap && g.listos.length ? "" : "disabled"}>⬇️ Excel de ${escHtml(g.empresa)}</button></li>`).join("")}</ul>${lineaOtras}</div>`;
+          <button type="button" class="btn small" data-pila-empresa="${escHtml(g.clave)}" ${g.ap && (g.listos.length || g.pendientes.length) ? "" : "disabled"}>⬇️ Excel de ${escHtml(g.empresa)}</button></li>`).join("")}</ul>${lineaOtras}</div>`;
     })()
   + `<details class="pila-codigos"><summary>Códigos de EPS, AFP y caja que usa la planilla</summary>
       <p class="ay-txt">Los vacíos hay que llenarlos con el código que aparece en SUAPORTE. Se guardan para todo el equipo.</p>
@@ -15515,8 +15515,16 @@ document.getElementById("pilaCuerpo").addEventListener("click", async (e) => {
   const be = e.target.closest("[data-pila-empresa]");
   if (be){
     const g = pilaOtrasEmpresas().find(x => x.clave === be.dataset.pilaEmpresa);
-    if (!g || !g.ap || !g.listos.length) return;
-    const filas = g.listos.map((r, i) => pilaFila(r, i + 1));
+    if (!g || !g.ap) return;
+    let lista = g.listos;
+    // Si alguno todavía no ha pagado, preguntar si se incluye igual (por ejemplo, el responsable paga hoy)
+    if (g.pendientes.length){
+      const nombres = g.pendientes.map(r => nombrePropio(r["Nombre del Afiliado"] || "")).join(", ");
+      const incluir = await confirmarApp(`${nombres} ${g.pendientes.length === 1 ? "todavía no aparece" : "todavía no aparecen"} como PAGO este mes.\n\n¿Incluirlo${g.pendientes.length === 1 ? "" : "s"} igual en la planilla de ${g.empresa}?`);
+      if (incluir) lista = g.listos.concat(g.pendientes);
+    }
+    if (!lista.length){ showToast("Nadie de esta empresa ha pagado todavía."); return; }
+    const filas = lista.map((r, i) => pilaFila(r, i + 1));
     const aoa = [PILA_ENC1, pilaFila1(filas, { nombre: g.ap.nombre, cedula: g.ap.cedula, arl: pilaCodigos.arl.sura || "14-11", tipoI: false }), PILA_ENC2, ...filas.map(f => f.v.slice())];
     const blob = XLSXMin.libro(aoa, "Planilla base");
     const nombre = `PILA_CC${g.ap.cedula}_${pilaPeriodo().replace("-", "") || "mes"}_empleados.xlsx`;
