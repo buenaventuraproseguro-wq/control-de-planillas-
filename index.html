@@ -1608,6 +1608,7 @@
           <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
           <button type="button" class="btn small whatsapp" id="soporteClienteBtn" style="display:none;">📤 Enviar planilla y comprobante</button>
           <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía solo la imagen del QR por WhatsApp">📲 Enviar QR al cliente</button>
+          <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
           <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
           <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
@@ -6946,6 +6947,7 @@ function showBreakdown(cedula){
   sopBtn.style.display = pagadoEsteMes(r) && String(r["Teléfono"] || "").trim() ? "inline-flex" : "none";
   sopBtn.textContent = r["Soporte Enviado"] ? "📤 Reenviar planilla y comprobante" : "📤 Enviar planilla y comprobante";
   sopBtn.onclick = () => empezarColaSoportes([r], true);
+  pintarBotonPresuncion(r);
 
   // Botón de WhatsApp: solo si el cliente tiene teléfono guardado
   const waBtn = document.getElementById("whatsappBtn");
@@ -7919,7 +7921,7 @@ function nombreParaSaludo(r){
   if (Array.isArray(partes) && partes[2]) return nombrePropio([partes[2], partes[3], partes[0], partes[1]].filter(Boolean).join(" "));
   return nombrePropio(String(r["Nombre del Afiliado"] || "").trim());
 }
-function abrirPresuncionCostos(){
+function abrirPresuncionCostos(inicial){
   const cont = document.getElementById("informeContenido");
   document.getElementById("informeTitulo").textContent = "Presunción de costos (independientes)";
   document.getElementById("informeSubtitulo").textContent = "Cuánto cotiza un independiente por cuenta propia según sus ingresos. Res. UGPP 532 de 2024; confirme con el contador.";
@@ -8028,7 +8030,103 @@ function abrirPresuncionCostos(){
     abrirChatEnApp(conIndicativo, /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ""), m);
   });
   cont.querySelectorAll("input, select").forEach(el => el.addEventListener("input", pintar));
+  if (inicial && inicial.cedula){
+    document.getElementById("pcCedula").value = inicial.cedula;
+    if (inicial.ingreso) document.getElementById("pcIngreso").value = inicial.ingreso;
+    if (inicial.actividad != null) document.getElementById("pcActividad").value = String(inicial.actividad);
+    if (inicial.reales) document.getElementById("pcReales").value = inicial.reales;
+    document.getElementById("pcCedula").dispatchEvent(new Event("input"));
+  }
   pintar();
+  document.getElementById("overlayInforme").classList.add("show");
+}
+// Clientes que liquidan cada mes con sus ingresos y presunción de costos.
+// configuracion "presuncion_costos": cédula → { activa, actividad, meses: { "<mes>": { ingreso, reales, ibc } } }
+let presuncionCfg = null;
+async function cargarPresuncionCfg(){
+  if (presuncionCfg) return presuncionCfg;
+  presuncionCfg = {};
+  if (cloudDb) try{
+    const { data } = await sb.from("configuracion").select("valor").eq("clave", "presuncion_costos").maybeSingle();
+    if (data && data.valor) presuncionCfg = data.valor;
+  }catch(e){}
+  return presuncionCfg;
+}
+async function pintarBotonPresuncion(r){
+  const btn = document.getElementById("presuncionClienteBtn");
+  btn.onclick = () => abrirPresuncionCliente(r);
+  const cfg = (await cargarPresuncionCfg())[String(r["Cédula"])];
+  if (String(activeCedula) !== String(r["Cédula"])) return;
+  if (!cfg || !cfg.activa){ btn.textContent = "📊 Presunción de costos"; btn.classList.remove("primary"); return; }
+  const hecho = cfg.meses && cfg.meses[store.currentMonth];
+  btn.textContent = hecho ? `📊 Presunción ✅ ${fmt(hecho.ibc)}` : `📊 Presunción: falta el ingreso de ${store.currentMonth}`;
+  btn.classList.toggle("primary", !hecho);
+}
+async function abrirPresuncionCliente(r){
+  const ced = String(r["Cédula"]), mes = store.currentMonth;
+  const todo = await cargarPresuncionCfg();
+  const cfg = todo[ced] || { activa: false, actividad: 5, meses: {} };
+  const previo = cfg.meses && cfg.meses[mes];
+  const nivel = Number(r["ARL Nivel"]) || 1;
+  const pagaCaja = numOrZero(r["Valor Caja"]) > CAJA_MINIMA;
+  const pagaArl = numOrZero(r["Valor ARL"]) > 0;
+  const pagaPension = numOrZero(r["Valor Pensión (AFP)"]) > 0;
+  const cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = `📊 Presunción de costos · ${nombrePropio(r["Nombre del Afiliado"] || "")}`;
+  document.getElementById("informeSubtitulo").textContent = `${mes}. Calcula el IBC con los ingresos del mes y deja los aportes listos en la ficha y en la planilla.`;
+  cont.innerHTML = `<label class="bm-todos" style="margin-bottom:10px;"><input type="checkbox" id="pclActiva" ${cfg.activa ? "checked" : ""}> Este cliente liquida <b>cada mes</b> con sus ingresos y presunción de costos</label>
+    <div class="pc-grid">
+      <div class="field"><label for="pclIngreso">Ingreso bruto de ${escHtml(mes)}, sin IVA</label><input id="pclIngreso" inputmode="numeric" value="${previo ? previo.ingreso : ""}" placeholder="Ej: 12.170.000"></div>
+      <div class="field"><label for="pclActividad">Actividad</label><select id="pclActividad">${COSTOS_PRESUNTOS.map((a, i) => `<option value="${i}" ${i === Number(cfg.actividad) ? "selected" : ""}>${escHtml(a[0])} (${(a[1] * 100).toFixed(2).replace(".", ",")}%)</option>`).join("")}</select></div>
+      <div class="field"><label for="pclReales">Costos reales con soporte (opcional)</label><input id="pclReales" inputmode="numeric" value="${previo && previo.reales ? previo.reales : ""}" placeholder="0"></div>
+    </div>
+    <div style="overflow-x:auto;"><table class="pc-tabla" id="pclTabla"></table></div>
+    <p class="ing-nota">Usa ARL nivel ${nivel}${pagaArl ? "" : " (este cliente no tiene ARL: queda en $0)"}, ${pagaCaja ? "con caja 2%" : "sin caja"}${pagaPension ? "" : " y sin pensión"}, como está en su ficha. Al aplicar se cambian salud, pensión, ARL y caja de este mes, y la base para el Excel de SUAPORTE.</p>
+    <div class="modal-actions" style="flex-wrap:wrap;"><button type="button" class="btn primary" id="pclAplicarBtn">Aplicar a ${escHtml(mes)}</button><button type="button" class="btn small whatsapp" id="pclCobroBtn">📤 Enviar cobro</button></div>`;
+  let res = null;
+  const pintar = () => {
+    const ingreso = soloNumero(document.getElementById("pclIngreso").value);
+    const act = Number(document.getElementById("pclActividad").value);
+    res = calcularPresuncion(ingreso, COSTOS_PRESUNTOS[act][1], soloNumero(document.getElementById("pclReales").value), nivel, pagaCaja, PILA_SALARIO);
+    if (!pagaArl) res.arl = 0;
+    if (!pagaPension) res.pension = 0;
+    res.total = res.salud + res.pension + res.arl + res.caja;
+    const f = (t, v) => `<tr><td>${t}</td><td>${v}</td></tr>`;
+    document.getElementById("pclTabla").innerHTML = !ingreso ? `<tr><td>Escriba el ingreso del mes.</td></tr>`
+      : f("Costo presunto", fmt(res.costo)) + f("Ingreso neto", fmt(res.neto)) + f("IBC (40%)", res.debe ? fmt(res.ibc) : "No cotiza (neto menor a 1 mínimo)")
+        + f("Salud 12,5%", fmt(res.salud)) + f("Pensión 16%", fmt(res.pension)) + f(`ARL nivel ${nivel}`, fmt(res.arl)) + (pagaCaja ? f("Caja 2%", fmt(res.caja)) : "")
+        + `<tr class="pc-total"><td>Aportes del mes</td><td>${fmt(res.total)}</td></tr>`;
+  };
+  cont.querySelectorAll("input, select").forEach(el => el.addEventListener("input", pintar));
+  pintar();
+  const guardarCfg = async (extra) => {
+    const nuevo = { ...cfg, activa: document.getElementById("pclActiva").checked, actividad: Number(document.getElementById("pclActividad").value), meses: { ...(cfg.meses || {}), ...(extra || {}) } };
+    presuncionCfg = { ...(await cargarPresuncionCfg()), [ced]: nuevo };
+    await pilaGuardarConfig("presuncion_costos", presuncionCfg);
+    Object.assign(cfg, nuevo);
+  };
+  document.getElementById("pclActiva").addEventListener("change", async () => { await guardarCfg(); pintarBotonPresuncion(r); });
+  document.getElementById("pclAplicarBtn").onclick = async () => {
+    const ingreso = soloNumero(document.getElementById("pclIngreso").value);
+    if (!ingreso){ showToast("⚠️ Escriba el ingreso del mes."); return; }
+    if (!res.debe){ await alertApp("Con ese ingreso el neto queda por debajo de un salario mínimo: este mes no está obligado a cotizar. No se cambió nada."); return; }
+    if (!(await confirmarApp(`¿Aplicar a ${mes}?\n\nIBC ${fmt(res.ibc)}\nSalud ${fmt(res.salud)} · Pensión ${fmt(res.pension)} · ARL ${fmt(res.arl)}${pagaCaja ? ` · Caja ${fmt(res.caja)}` : ""}`))) return;
+    const ahora = new Date().toISOString();
+    r["Valor EPS"] = res.salud; r["Valor Pensión (AFP)"] = res.pension; r["Valor ARL"] = res.arl;
+    if (pagaCaja) r["Valor Caja"] = res.caja;
+    r["_ultimaEdicion"] = ahora;
+    saveStore();
+    pilaBaseInd[ced] = res.ibc;
+    await pilaGuardarConfig("pila_base_independientes", pilaBaseInd);
+    await guardarCfg({ [mes]: { ingreso, reales: soloNumero(document.getElementById("pclReales").value), ibc: res.ibc } });
+    showToast(`✅ ${mes}: aportes con presunción guardados.`);
+    if (String(activeCedula) === ced) showBreakdown(ced);
+    renderList(searchInput.value);
+  };
+  document.getElementById("pclCobroBtn").onclick = () => abrirPresuncionCostos({
+    cedula: ced, ingreso: soloNumero(document.getElementById("pclIngreso").value),
+    actividad: Number(document.getElementById("pclActividad").value), reales: soloNumero(document.getElementById("pclReales").value),
+  });
   document.getElementById("overlayInforme").classList.add("show");
 }
 async function crearBorradorAlegra(r){
