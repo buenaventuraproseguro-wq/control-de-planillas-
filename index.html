@@ -1468,7 +1468,7 @@
           <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
         </button>
         <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;">🧾 Crear borradores en Alegra</button>
-        <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;">🧾 Recibos de caja en Alegra</button>
+        <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;">🧾 Recibos y pagos en Alegra</button>
         <button type="button" class="sidebar-total" data-informe="aportes">
           <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
           <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
@@ -4304,7 +4304,8 @@ function abrirFormIncap(i){
   pon("incCedula", v.cedula); pon("incNombre", v.nombre); pon("incEntidad", v.entidad); pon("incDesde", v.desde); pon("incHasta", v.hasta);
   pon("incRecibido", v.valor_recibido || ""); pon("incFechaRecibido", v.fecha_recibido); pon("incPagado", v.valor_pagado || ""); pon("incFechaPago", v.fecha_pago); pon("incNota", v.nota);
   document.getElementById("incBorrarBtn").hidden = !(i && esAdmin());
-  const facturable = !!(i && esAdmin() && i.fecha_pago && comisionIncap(i) > 0 && !i.alegra_id);
+  // El contador indicó (10 nov. 2026) que la gestión de cobro de incapacidades no se factura
+  const facturable = false;
   document.getElementById("incFactura").hidden = !facturable;
   document.getElementById("incMedio").value = "";
   document.getElementById("incSoporteCaja").hidden = !(i && i.fecha_pago);
@@ -7725,77 +7726,118 @@ async function abrirBorradoresDelMes(){
     abrirBorradoresDelMes();
   });
 }
-// Recibos de caja (guía del contador, 10 nov. 2026): la factura lleva solo los honorarios;
-// el recibo cruza la factura y manda los aportes de la planilla a la cuenta 2815 (ingresos para terceros).
+// Recibos de caja y pagos en Alegra (guía y mensajes del contador, 10 nov. 2026):
+// - Recibo de APORTES ("Otros ingresos", cuenta 2815): se puede hacer antes de emitir la factura.
+// - Recibo de HONORARIOS: pago a la factura, cuando ya está emitida.
+// - PAGO (egreso) a Enlace Operativo: sale de la 2815 cuando se paga la planilla.
+// - Cada uno queda en PDF (botón Ver PDF).
 const soloNumero = (v) => Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+const MEDIOS_RECIBO = `<option value="">¿Cómo?</option><option value="CREDIT_TRANSFER_BANK">Transferencia</option><option value="BANK_DEPOSIT">Consignación</option><option value="CASH">Efectivo</option><option value="MUTUAL_AGREEMENT">Otro</option>`;
+async function abrirPdfAlegra(de, id, btn){
+  const ventana = window.open("", "_blank");
+  if (btn){ btn.disabled = true; }
+  try{
+    const r = await llamarAlegra({ accion: "pdf", de, id });
+    if (ventana) ventana.location.href = r.url; else window.location.href = r.url;
+  }catch(err){ if (ventana) ventana.close(); alertApp(err.message); }
+  finally{ if (btn) btn.disabled = false; }
+}
 async function configurarRecibos(cont, alTerminar){
   cont.innerHTML = `<div class="empty">Leyendo cuentas de Alegra…</div>`;
   let c;
   try{ c = await llamarAlegra({ accion: "recibos_config" }); }
   catch(err){ cont.innerHTML = `<div class="empty">⚠️ ${escHtml(err.message)}</div>`; return; }
   const opc = (lista, sel, txt) => lista.map(x => `<option value="${escHtml(x.id)}" ${x.id === sel ? "selected" : ""}>${escHtml(txt(x))}</option>`).join("");
-  cont.innerHTML = `<p class="ing-nota" style="margin-top:0;">Escoja una sola vez en qué cuenta entra la plata y la cuenta de <b>ingresos recibidos para terceros</b> (2815). Si no aparece la 2815, pídale a su contador que la cree en Alegra.</p>
-    <div class="field"><label for="rcBanco">Cuenta de banco donde entra la plata</label><select id="rcBanco"><option value="">Escoja</option>${opc(c.bancos, c.banco_id, x => x.nombre)}</select></div>
-    <div class="field"><label for="rcCuenta">Cuenta de ingresos recibidos para terceros</label><select id="rcCuenta"><option value="">Escoja</option>${opc(c.cuentas, c.cuenta_id || (c.cuentas[0] && c.cuentas[0].codigo.startsWith("2815") ? c.cuentas[0].id : ""), x => `${x.codigo ? x.codigo + " · " : ""}${x.nombre}`)}</select></div>
+  const cuentaSel = c.cuenta_id || (c.cuentas[0] && c.cuentas[0].codigo.startsWith("2815") ? c.cuentas[0].id : "");
+  const enlaceSel = c.enlace_id || (c.proveedores.length === 1 ? c.proveedores[0].id : "");
+  cont.innerHTML = `<p class="ing-nota" style="margin-top:0;">Escoja una sola vez las cuentas. Si no aparece la <b>2815 Ingresos recibidos para terceros</b> o el proveedor <b>Enlace Operativo</b>, pídale a su contador que los cree en Alegra.</p>
+    <div class="field"><label for="rcBanco">Cuenta de banco donde entra y sale la plata</label><select id="rcBanco"><option value="">Escoja</option>${opc(c.bancos, c.banco_id, x => x.nombre)}</select></div>
+    <div class="field"><label for="rcCuenta">Cuenta de ingresos recibidos para terceros</label><select id="rcCuenta"><option value="">Escoja</option>${opc(c.cuentas, cuentaSel, x => `${x.codigo ? x.codigo + " · " : ""}${x.nombre}`)}</select></div>
     ${c.cuentas.length ? "" : `<p class="ing-nota ocr-alerta">⚠️ No encontré en Alegra una cuenta 28 ni una cuenta "para terceros".</p>`}
+    <div class="field"><label for="rcEnlace">Proveedor para los pagos de la planilla</label><select id="rcEnlace"><option value="">Escoja</option>${opc(c.proveedores, enlaceSel, x => `${x.nombre}${x.documento ? " · " + x.documento : ""}`)}</select></div>
+    ${c.proveedores.length ? "" : `<p class="ing-nota ocr-alerta">⚠️ No encontré a Enlace Operativo como contacto en Alegra. Créelo como proveedor para poder hacer los pagos.</p>`}
     <div class="modal-actions"><button type="button" class="btn primary" id="rcGuardarCfg">Guardar</button></div>`;
   document.getElementById("rcGuardarCfg").onclick = async () => {
-    const banco_id = document.getElementById("rcBanco").value, cuenta_id = document.getElementById("rcCuenta").value;
-    if (!banco_id || !cuenta_id){ showToast("⚠️ Escoja las dos cuentas."); return; }
-    try{ await llamarAlegra({ accion: "recibos_config_guardar", banco_id, cuenta_id }); showToast("Cuentas guardadas."); alTerminar(); }
+    const banco_id = document.getElementById("rcBanco").value, cuenta_id = document.getElementById("rcCuenta").value, enlace_id = document.getElementById("rcEnlace").value;
+    if (!banco_id || !cuenta_id){ showToast("⚠️ Escoja la cuenta del banco y la 2815."); return; }
+    try{ await llamarAlegra({ accion: "recibos_config_guardar", banco_id, cuenta_id, enlace_id }); showToast("Cuentas guardadas."); alTerminar(); }
     catch(err){ alertApp(err.message); }
   };
 }
+function hechoHtml(texto, de, r){
+  return `<div class="rc-ok">✅ ${texto} <button type="button" class="btn small ghost" data-rc-pdf="${de}:${escHtml(r.id)}">Ver PDF</button></div>`;
+}
 function facturaReciboHtml(f, i){
-  const titulo = `<div class="rc-cab"><b>${escHtml(nombrePropio(f.cliente || ""))}</b><small>${f.numero ? `Factura ${escHtml(f.numero)}` : "Factura sin número"} · Honorarios ${fmt(f.honorarios)}</small></div>`;
-  if (f.recibo) return `<div class="rc-factura">${titulo}<div class="rc-ok">✅ Recibo de caja creado: honorarios ${fmt(f.recibo.honorarios)} + aportes para terceros ${fmt(f.recibo.aportes)}.</div></div>`;
-  if (f.estado === "draft") return `<div class="rc-factura">${titulo}<p class="ing-nota">📝 En borrador. Cuando su contador la emita en Alegra, aquí podrá hacer el recibo.</p></div>`;
+  const titulo = `<div class="rc-cab"><b>${escHtml(nombrePropio(f.cliente || ""))}</b><small>${f.numero ? `Factura ${escHtml(f.numero)}` : "Factura en borrador"} · Honorarios ${fmt(f.honorarios)}</small></div>`;
   if (f.estado === "void") return `<div class="rc-factura">${titulo}<p class="ing-nota">Anulada en Alegra.</p></div>`;
-  const clientes = f.clientes.map((c, j) => {
-    const base = c.eps + c.pension + c.arl;
-    return `<div class="rc-cli">
-      <span><b>${escHtml(nombrePropio(c.nombre || ""))}</b><small>CC ${escHtml(c.cedula)} · EPS ${fmt(c.eps)} · Pensión ${fmt(c.pension)} · ARL ${fmt(c.arl)}</small></span>
-      <span><input type="text" inputmode="numeric" data-rc-valor="${i}:${j}" value="${base + c.caja}" aria-label="Valor de la planilla de ${escHtml(c.nombre || "")}"></span>
-      <label class="rc-caja"><input type="checkbox" data-rc-caja="${i}:${j}" ${c.caja > 0 ? "checked" : ""}> Paga caja${c.cajaNombre ? ` (${escHtml(c.cajaNombre)})` : ""}: <input type="text" inputmode="numeric" data-rc-cajav="${i}:${j}" value="${c.caja}" style="width:90px;text-align:right;"></label>
-    </div>`;
-  }).join("");
-  return `<div class="rc-factura" data-rc="${i}">${titulo}${clientes}
-    <div class="rc-tot"><span>Honorarios (cruza la factura)</span><span>${fmt(f.saldo != null ? f.saldo : f.honorarios)}</span>
-      <span>Aportes planilla (cuenta 2815, para terceros)</span><span data-rc-aportes="${i}"></span>
-      <span>Total del recibo</span><span data-rc-total="${i}"></span></div>
-    <div class="rc-acc"><select data-rc-medio="${i}"><option value="">¿Cómo pagó?</option><option value="CREDIT_TRANSFER_BANK">Transferencia</option><option value="BANK_DEPOSIT">Consignación</option><option value="CASH">Efectivo</option><option value="MUTUAL_AGREEMENT">Otro</option></select>
-      <button type="button" class="btn primary small" data-rc-crear="${i}">Crear recibo de caja</button></div>
-  </div>`;
+  // 1. Recibo de aportes (otros ingresos 2815)
+  let aportes;
+  if (f.reciboAportes) aportes = hechoHtml(`Recibo de aportes (2815): ${fmt(f.reciboAportes.aportes)}.`, "recibo", f.reciboAportes);
+  else {
+    const clientes = f.clientes.map((c, j) => {
+      const base = c.eps + c.pension + c.arl;
+      return `<div class="rc-cli">
+        <span><b>${escHtml(nombrePropio(c.nombre || ""))}</b><small>CC ${escHtml(c.cedula)} · EPS ${fmt(c.eps)} · Pensión ${fmt(c.pension)} · ARL ${fmt(c.arl)}</small></span>
+        <span><input type="text" inputmode="numeric" data-rc-valor="${i}:${j}" value="${base + c.caja}" aria-label="Valor de la planilla de ${escHtml(c.nombre || "")}"></span>
+        <label class="rc-caja"><input type="checkbox" data-rc-caja="${i}:${j}" ${c.caja > 0 ? "checked" : ""}> Paga caja${c.cajaNombre ? ` (${escHtml(c.cajaNombre)})` : ""}: <input type="text" inputmode="numeric" data-rc-cajav="${i}:${j}" value="${c.caja}" style="width:90px;text-align:right;"></label>
+      </div>`;
+    }).join("");
+    aportes = `${clientes}
+      <div class="rc-tot"><span>1. Recibo de aportes (otros ingresos, 2815)</span><span data-rc-aportes="${i}"></span></div>
+      <div class="rc-acc"><select data-rc-medio="a${i}">${MEDIOS_RECIBO}</select><button type="button" class="btn primary small" data-rc-crear="aportes:${i}">Crear recibo de aportes</button></div>`;
+  }
+  // 2. Recibo de honorarios (pago a la factura)
+  let honorarios;
+  if (f.reciboHonorarios) honorarios = hechoHtml(`Recibo de honorarios: ${fmt(f.reciboHonorarios.honorarios)}.`, "recibo", f.reciboHonorarios);
+  else if (f.estado === "draft") honorarios = `<p class="ing-nota">2. Recibo de honorarios: cuando el contador emita la factura.</p>`;
+  else honorarios = `<div class="rc-tot"><span>2. Recibo de honorarios (cierra la factura)</span><span>${fmt(f.saldo != null ? f.saldo : f.honorarios)}</span></div>
+      <div class="rc-acc"><select data-rc-medio="h${i}">${MEDIOS_RECIBO}</select><button type="button" class="btn primary small" data-rc-crear="honorarios:${i}">Crear recibo de honorarios</button></div>`;
+  return `<div class="rc-factura" data-rc="${i}">${titulo}${aportes}${honorarios}</div>`;
+}
+function planillaPagoHtml(p, k){
+  const cab = `<div class="rc-cab"><b>Planilla N° ${escHtml(p.planilla)}</b><small>${p.personas} persona${p.personas === 1 ? "" : "s"} · ${escHtml(p.nombres.map(x => nombrePropio(x || "")).join(", "))}${p.personas > p.nombres.length ? "…" : ""}</small></div>`;
+  if (p.pago) return `<div class="rc-factura">${cab}${hechoHtml(`Pago a Enlace: ${fmt(p.pago.valor)}.`, "pago", p.pago)}</div>`;
+  return `<div class="rc-factura">${cab}
+    <div class="rc-cli"><span>Valor pagado a Enlace<small>Según la app. Corríjalo con el valor exacto del comprobante.</small></span><span><input type="text" inputmode="numeric" data-pe-valor="${k}" value="${p.valor}"></span></div>
+    <div class="rc-acc"><select data-pe-medio="${k}">${MEDIOS_RECIBO}</select><button type="button" class="btn primary small" data-pe-crear="${k}">Crear pago</button></div></div>`;
 }
 async function abrirRecibosDeCaja(){
   if (!esAdmin() || !sb || !navigator.onLine){ showToast("Solo el administrador puede crear recibos, con internet."); return; }
   const mes = store.currentMonth;
   const cont = document.getElementById("informeContenido");
-  document.getElementById("informeTitulo").textContent = "🧾 Recibos de caja en Alegra";
-  document.getElementById("informeSubtitulo").textContent = `${mes}. La factura lleva solo sus honorarios; el valor de la planilla entra como ingreso para terceros (2815). No va a la DIAN.`;
-  cont.innerHTML = `<div class="empty">Buscando facturas del mes…</div>`;
+  document.getElementById("informeTitulo").textContent = "🧾 Recibos y pagos en Alegra";
+  document.getElementById("informeSubtitulo").textContent = `${mes}. Aportes = otros ingresos (2815, para terceros). Honorarios = pago a la factura. Pagos = salida a Enlace desde la 2815. No va a la DIAN.`;
+  cont.innerHTML = `<div class="empty">Buscando facturas y planillas del mes…</div>`;
   document.getElementById("overlayInforme").classList.add("show");
-  let cfg, datos;
+  let cfg, datos, pagos;
   try{
-    [cfg, datos] = await Promise.all([llamarAlegra({ accion: "recibos_config" }), llamarAlegra({ accion: "recibos_pendientes", mes })]);
+    [cfg, datos, pagos] = await Promise.all([
+      llamarAlegra({ accion: "recibos_config" }),
+      llamarAlegra({ accion: "recibos_pendientes", mes }),
+      llamarAlegra({ accion: "pagos_pendientes", mes }),
+    ]);
   }catch(err){ cont.innerHTML = `<div class="empty">⚠️ ${escHtml(err.message)}</div>`; return; }
   if (mes !== store.currentMonth) return;
   if (!cfg.banco_id || !cfg.cuenta_id){ configurarRecibos(cont, abrirRecibosDeCaja); return; }
-  const lista = datos.facturas || [];
-  const listas = lista.filter(f => !f.recibo && f.estado !== "draft" && f.estado !== "void").length;
-  const borr = lista.filter(f => f.estado === "draft").length, hechos = lista.filter(f => f.recibo).length;
-  cont.innerHTML = `<div class="bm-barra"><span>${listas} por hacer · ${hechos} hecho${hechos === 1 ? "" : "s"} · ${borr} en borrador</span><button type="button" class="btn small ghost" id="rcCfgBtn">Cuentas</button></div>
+  const lista = datos.facturas || [], planillas = pagos.planillas || [];
+  const faltanAp = lista.filter(f => !f.reciboAportes && f.estado !== "void").length;
+  const faltanHon = lista.filter(f => !f.reciboHonorarios && f.estado !== "draft" && f.estado !== "void").length;
+  const faltanPago = planillas.filter(p => !p.pago).length;
+  cont.innerHTML = `<div class="bm-barra"><span>Por hacer: ${faltanAp} de aportes · ${faltanHon} de honorarios · ${faltanPago} pago${faltanPago === 1 ? "" : "s"}</span><button type="button" class="btn small ghost" id="rcCfgBtn">Cuentas</button></div>
+    <h3 style="margin:14px 0 4px;font-size:15px;">Recibos de caja</h3>
     ${lista.length ? lista.map(facturaReciboHtml).join("") : `<div class="empty">No hay facturas de ${escHtml(mes)} creadas desde la app.</div>`}
-    <p class="ing-nota">Revise el valor de la planilla de cada persona y si paga caja este mes. El valor se toma de la ficha del cliente; lo que cambie aquí solo cambia el recibo.</p>`;
+    <p class="ing-nota">Revise el valor de la planilla de cada persona y si paga caja este mes. Sale de la ficha del cliente; lo que cambie aquí solo cambia el recibo.</p>
+    <h3 style="margin:18px 0 4px;font-size:15px;">Pagos a Enlace Operativo (egresos)</h3>
+    ${cfg.enlace_id ? "" : `<p class="ing-nota ocr-alerta">⚠️ Falta escoger a Enlace Operativo como proveedor en Cuentas.</p>`}
+    ${planillas.length ? planillas.map(planillaPagoHtml).join("") : `<div class="empty">No hay planillas pagadas con número en ${escHtml(mes)}.</div>`}`;
   document.getElementById("rcCfgBtn").onclick = () => configurarRecibos(cont, abrirRecibosDeCaja);
+  cont.querySelectorAll("[data-rc-pdf]").forEach(b => b.addEventListener("click", () => { const [de, id] = b.dataset.rcPdf.split(":"); abrirPdfAlegra(de, id, b); }));
   const total = (i) => {
-    const f = lista[i];
-    const aportes = f.clientes.reduce((s, c, j) => s + soloNumero(cont.querySelector(`[data-rc-valor="${i}:${j}"]`).value), 0);
-    const hon = f.saldo != null ? f.saldo : f.honorarios;
-    cont.querySelector(`[data-rc-aportes="${i}"]`).textContent = fmt(aportes);
-    cont.querySelector(`[data-rc-total="${i}"]`).textContent = fmt(aportes + hon);
+    const el = cont.querySelector(`[data-rc-aportes="${i}"]`);
+    if (!el) return;
+    el.textContent = fmt(lista[i].clientes.reduce((s, c, j) => s + soloNumero(cont.querySelector(`[data-rc-valor="${i}:${j}"]`).value), 0));
   };
-  cont.querySelectorAll("[data-rc]").forEach(el => total(Number(el.dataset.rc)));
+  lista.forEach((f, i) => total(i));
   cont.querySelectorAll("[data-rc-valor]").forEach(inp => inp.addEventListener("input", () => total(Number(inp.dataset.rcValor.split(":")[0]))));
   // Paga caja sí/no: suma o resta el valor de la caja al valor de la planilla
   const ajustarCaja = (clave) => {
@@ -7809,18 +7851,35 @@ async function abrirRecibosDeCaja(){
   cont.querySelectorAll("[data-rc-caja]").forEach(ch => ch.addEventListener("change", () => ajustarCaja(ch.dataset.rcCaja)));
   cont.querySelectorAll("[data-rc-cajav]").forEach(inp => inp.addEventListener("input", () => ajustarCaja(inp.dataset.rcCajav)));
   cont.querySelectorAll("[data-rc-crear]").forEach(btn => btn.addEventListener("click", async () => {
-    const i = Number(btn.dataset.rcCrear), f = lista[i];
-    const medioPago = cont.querySelector(`[data-rc-medio="${i}"]`).value;
+    const [tipo, iTxt] = btn.dataset.rcCrear.split(":"), i = Number(iTxt), f = lista[i];
+    const medioPago = cont.querySelector(`[data-rc-medio="${tipo === "aportes" ? "a" : "h"}${i}"]`).value;
     if (!medioPago){ showToast("⚠️ Escoja cómo pagó."); return; }
-    const clientes = f.clientes.map((c, j) => ({ cedula: c.cedula, nombre: c.nombre, valor: soloNumero(cont.querySelector(`[data-rc-valor="${i}:${j}"]`).value), caja: cont.querySelector(`[data-rc-caja="${i}:${j}"]`).checked }));
-    const aportes = clientes.reduce((s, c) => s + c.valor, 0), hon = f.saldo != null ? f.saldo : f.honorarios;
-    if (!(await confirmarApp(`¿Crear el recibo de caja de ${nombrePropio(f.cliente || "")} en Alegra?\n\nHonorarios (factura ${f.numero || ""}): ${fmt(hon)}\nAportes para terceros (2815): ${fmt(aportes)}\nTotal recibido: ${fmt(hon + aportes)}`))) return;
+    let cuerpo = { accion: "recibo", tipo, alegra_id: f.alegra_id, mes, medioPago }, texto;
+    if (tipo === "aportes"){
+      cuerpo.clientes = f.clientes.map((c, j) => ({ cedula: c.cedula, nombre: c.nombre, valor: soloNumero(cont.querySelector(`[data-rc-valor="${i}:${j}"]`).value), caja: cont.querySelector(`[data-rc-caja="${i}:${j}"]`).checked }));
+      texto = `¿Crear el recibo de APORTES de ${nombrePropio(f.cliente || "")}?\n\nOtros ingresos, cuenta 2815 (para terceros): ${fmt(cuerpo.clientes.reduce((s, c) => s + c.valor, 0))}`;
+    } else texto = `¿Crear el recibo de HONORARIOS de ${nombrePropio(f.cliente || "")}?\n\nPago a la factura ${f.numero || ""}: ${fmt(f.saldo != null ? f.saldo : f.honorarios)}`;
+    if (!(await confirmarApp(texto))) return;
     btn.disabled = true; btn.textContent = "Creando…";
     try{
-      await llamarAlegra({ accion: "recibo", alegra_id: f.alegra_id, mes, medioPago, clientes });
-      showToast("Recibo de caja creado en Alegra.");
+      const r = await llamarAlegra(cuerpo);
+      showToast(r.pdf ? "Recibo creado en Alegra y guardado en PDF." : "Recibo creado en Alegra.");
       abrirRecibosDeCaja();
-    }catch(err){ btn.disabled = false; btn.textContent = "Crear recibo de caja"; alertApp(err.message); }
+    }catch(err){ btn.disabled = false; btn.textContent = tipo === "aportes" ? "Crear recibo de aportes" : "Crear recibo de honorarios"; alertApp(err.message); }
+  }));
+  cont.querySelectorAll("[data-pe-crear]").forEach(btn => btn.addEventListener("click", async () => {
+    const k = Number(btn.dataset.peCrear), p = planillas[k];
+    const valor = soloNumero(cont.querySelector(`[data-pe-valor="${k}"]`).value);
+    const medioPago = cont.querySelector(`[data-pe-medio="${k}"]`).value;
+    if (!medioPago){ showToast("⚠️ Escoja cómo se pagó."); return; }
+    if (!(valor > 0)){ showToast("⚠️ Escriba el valor pagado."); return; }
+    if (!(await confirmarApp(`¿Crear en Alegra el PAGO de la planilla N° ${p.planilla} a Enlace Operativo?\n\nSale de la cuenta 2815: ${fmt(valor)}`))) return;
+    btn.disabled = true; btn.textContent = "Creando…";
+    try{
+      const r = await llamarAlegra({ accion: "pago_enlace", planilla: p.planilla, mes, valor, medioPago });
+      showToast(r.pdf ? "Pago creado en Alegra y guardado en PDF." : "Pago creado en Alegra.");
+      abrirRecibosDeCaja();
+    }catch(err){ btn.disabled = false; btn.textContent = "Crear pago"; alertApp(err.message); }
   }));
 }
 async function crearBorradorAlegra(r){
