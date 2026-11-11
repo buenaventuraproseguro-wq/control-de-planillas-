@@ -3001,6 +3001,7 @@ async function sincronizarClientesMes(nombreMes){
   const idsMes = clientIdByMonthCedula[nombreMes] || (clientIdByMonthCedula[nombreMes] = {});
   const firmas = lastClientSig[nombreMes] || (lastClientSig[nombreMes] = {});
   const vistos = new Set();
+  let errorFila = null;
   for (const r of registros){
     const ced = String(r["Cédula"] || "").trim();
     if (!ced) continue;
@@ -3027,18 +3028,42 @@ async function sincronizarClientesMes(nombreMes){
       cambios.updated_at = ahoraIso;
       cambios.ultima_edicion = r["_ultimaEdicion"] || ahoraIso;
       const { error } = await sb.from("clients").update(cambios).eq("id", idsMes[ced]);
-      if (error) throw error;
+      if (error){ if (!errorFila) errorFila = error; continue; }
     } else {
       payload.updated_by = currentUserId;
       payload.updated_at = ahoraIso;
       payload.ultima_edicion = r["_ultimaEdicion"] || ahoraIso;
       const { data, error } = await sb.from("clients").insert(payload).select("id").single();
-      if (error) throw error;
+      if (error && error.code === "23505"){
+        // La cédula ya estaba en la nube en este mes (la agregó otro compañero o el formulario web):
+        // no se pisa lo de la nube; solo se llenan los datos que allá están vacíos.
+        try{
+          const { data: fila } = await sb.from("clients").select("*").eq("month_id", monthId).eq("cedula", ced).maybeSingle();
+          if (!fila) throw error;
+          const vacio = (v) => v == null || v === "" || (Array.isArray(v) && !v.length);
+          const relleno = {};
+          Object.keys(payload).forEach(k => { if (!["updated_by", "updated_at", "ultima_edicion", "row_no", "month_id", "cedula"].includes(k) && vacio(fila[k]) && !vacio(payload[k])) relleno[k] = payload[k]; });
+          if (Object.keys(relleno).length){
+            relleno.updated_by = currentUserId; relleno.updated_at = ahoraIso;
+            const { error: e2 } = await sb.from("clients").update(relleno).eq("id", fila.id);
+            if (e2) throw e2;
+          }
+          const unido = dbRowToEsRecord({ ...fila, ...relleno });
+          Object.keys(r).forEach(k => { if (!k.startsWith("_")) delete r[k]; });
+          Object.assign(r, unido);
+          idsMes[ced] = fila.id; r._supabaseId = fila.id;
+          firmas[ced] = JSON.stringify(esRecordToDbRow(r, monthId));
+          if (typeof showToast === "function") showToast(`ℹ️ ${nombrePropio(r["Nombre del Afiliado"] || ced)} ya estaba en ${nombreMes}: se unieron los datos.`);
+          continue;
+        }catch(e){ if (!errorFila) errorFila = e; continue; }
+      }
+      if (error){ if (!errorFila) errorFila = error; continue; } // un cliente con error no detiene a los demás
       idsMes[ced] = data.id;
       r._supabaseId = data.id;
     }
     firmas[ced] = firma;
   }
+  if (errorFila){ console.error("Clientes que no se pudieron subir:", errorFila); throw errorFila; } // se reintenta; los demás ya quedaron
   for (const ced of Object.keys(idsMes)){
     if (!vistos.has(ced)){
       try{ await sb.from("clients").delete().eq("id", idsMes[ced]); }catch(e){ console.error(e); }
