@@ -6836,6 +6836,7 @@ function showBreakdown(cedula){
   const tieneRecordatorioMeta = tieneRecordatorioVencido(r);
 
   document.getElementById("bMeta").innerHTML =
+    (r["No."] ? `<b class="meta-resaltado" title="Número en la lista del mes">N.º ${escHtml(r["No."])}</b> · ` : "") +
     `<button type="button" class="meta-resaltado ced-copiar" data-copiar-cedula="${escHtml(r["Cédula"])}" title="Tocar para copiar la cédula">Cédula ${escHtml(r["Cédula"])} <span aria-hidden="true">📋</span></button> · ${r["Responsable / Grupo"] || "—"} · ${ubicacion}` +
     (planillaVigente ? ` · Planilla pagada: ${planillaVigente}` : "") +
     (r["Muelle"] ? ` · Muelle: ${r["Muelle"]}` : "") +
