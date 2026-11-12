@@ -1473,6 +1473,69 @@
     .sidebar-section-title{ padding-top:12px; padding-bottom:3px; }
   }
   #navAyudasBtn[aria-expanded="true"] .sidebar-mas-flecha{ transform:rotate(90deg); }
+
+  /* ===== Pantalla "Hoy" (paso 2 del nuevo diseño) ===== */
+  .hoy-modal{ max-width:1040px !important; width:100%; }
+  .hoy-cab{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .hoy-cab h2{ margin:0; }
+  .hoy-btn-principal{ background:var(--gold-deep, #C2410C); border-color:var(--gold-deep, #C2410C); color:#fff; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+  .hoy-btn-principal:hover{ filter:brightness(.95); }
+  .hoy-btn-principal .ico{ margin:0; opacity:1; }
+  .hoy-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
+  .hoy-kpi{ display:flex; flex-direction:column; gap:4px; text-align:left; font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; cursor:pointer; transition:border-color .12s ease, box-shadow .12s ease; }
+  .hoy-kpi:not([data-hoy]){ cursor:default; }
+  .hoy-kpi[data-hoy]:hover{ border-color:var(--muted); box-shadow:var(--sombra, 0 2px 8px rgba(0,0,0,.06)); }
+  .hoy-kpi-l{ font-size:12.5px; font-weight:600; color:var(--muted); }
+  .hoy-kpi-v{ font-size:30px; font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .hoy-kpi.ok .hoy-kpi-v{ color:#067647; }
+  .hoy-kpi.mal .hoy-kpi-v{ color:#B42318; }
+  .hoy-kpi.aviso .hoy-kpi-v{ color:#B54708; }
+  .hoy-kpi-p{ font-size:12px; color:var(--muted); }
+  .hoy-barra{ display:block; height:6px; border-radius:99px; background:var(--line); overflow:hidden; margin-top:4px; }
+  .hoy-barra i{ display:block; height:100%; background:#12A15C; border-radius:99px; }
+  .hoy-columnas{ display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; align-items:flex-start; }
+  .hoy-panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; min-width:0; }
+  .hoy-izq{ flex:999 1 480px; }
+  .hoy-der{ flex:1 1 280px; padding-bottom:12px; }
+  .hoy-panel-h{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 14px; border-bottom:1px solid var(--line); }
+  .hoy-panel-h h3{ margin:0; font-size:15px; flex:1; }
+  .hoy-tabla-caja{ overflow-x:auto; }
+  .hoy-tabla{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .hoy-tabla th{ text-align:left; font-size:12px; font-weight:600; color:var(--muted); padding:8px 10px; white-space:nowrap; }
+  .hoy-tabla td{ padding:9px 10px; border-top:1px solid var(--line); }
+  .hoy-tabla th:first-child, .hoy-tabla td:first-child{ padding-left:14px; }
+  .hoy-tabla .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .hoy-tabla .muted{ color:var(--muted); }
+  .hoy-tabla tbody tr{ cursor:pointer; }
+  .hoy-tabla tbody tr:hover td, .hoy-tabla tbody tr:focus-visible td{ background:var(--gold-bg, #FFF4EC); }
+  .hoy-chip{ display:inline-block; font-size:11.5px; font-weight:700; border-radius:999px; padding:2px 9px; white-space:nowrap; background:#FEF3F2; color:#B42318; }
+  .hoy-chip.mal{ background:#B42318; color:#fff; }
+  .hoy-chip.aviso{ background:#FFF4EC; color:#B54708; }
+  .hoy-tabla-pie{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+  .hoy-vacio{ padding:16px 14px; color:#067647; font-weight:600; font-size:14px; }
+  .hoy-tareas{ display:flex; flex-direction:column; gap:8px; padding:12px 12px 0; }
+  .hoy-tarea{ display:block; width:100%; text-align:left; font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:0; cursor:pointer; }
+  button.hoy-tarea, .hoy-tarea > summary{ display:flex; align-items:center; gap:10px; padding:10px 12px; }
+  .hoy-tarea > summary{ list-style:none; cursor:pointer; }
+  .hoy-tarea > summary::-webkit-details-marker{ display:none; }
+  .hoy-tarea:hover{ border-color:var(--muted); }
+  .hoy-det{ padding:0 12px 8px; }
+  .hoy-ico{ width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .hoy-ico .ico{ margin:0; width:18px; height:18px; opacity:1; }
+  .hoy-ico.naranja{ background:#FFF4EC; color:#B54708; } .hoy-ico.azul{ background:#EFF4FF; color:#1F3D70; }
+  .hoy-ico.verde{ background:#ECFDF3; color:#067647; } .hoy-ico.rojo{ background:#FEF3F2; color:#B42318; } .hoy-ico.gris{ background:var(--bg); color:var(--muted); }
+  .hoy-t{ display:flex; flex-direction:column; min-width:0; flex:1; }
+  .hoy-t b{ font-size:13.5px; } .hoy-t small{ font-size:12px; color:var(--muted); }
+  .hoy-n{ min-width:28px; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; background:var(--bg); border-radius:999px; padding:2px 8px; font-size:13px; }
+  .hoy-atajo{ margin:12px 12px 0; font-size:12.5px; color:var(--muted); }
+  .hoy-atajo kbd{ font:inherit; font-size:11px; font-weight:600; border:1px solid var(--line); border-radius:5px; padding:1px 6px; background:var(--bg); }
+  @media (prefers-color-scheme: dark){
+    .hoy-chip{ background:#3A1917; color:#F7A39E; } .hoy-chip.aviso{ background:#3A2712; color:#F5B26B; }
+    .hoy-ico.naranja{ background:#3A2712; color:#F5B26B; } .hoy-ico.azul{ background:#16243A; color:#9DB7E6; }
+    .hoy-ico.verde{ background:#12301F; color:#6CE0A0; } .hoy-ico.rojo{ background:#3A1917; color:#F7A39E; }
+    .hoy-kpi.ok .hoy-kpi-v{ color:#6CE0A0; } .hoy-kpi.mal .hoy-kpi-v{ color:#F7A39E; } .hoy-kpi.aviso .hoy-kpi-v{ color:#F5B26B; }
+    .hoy-vacio{ color:#6CE0A0; }
+  }
 </style>
 </head>
 <body>
@@ -2201,9 +2264,11 @@
 </div>
 
 <div class="overlay" id="overlayHoy">
-  <div class="modal" style="max-width:640px;">
-    <h2>Hoy: lo que toca hacer</h2>
-    <div class="modal-sub" id="hoySub"></div>
+  <div class="modal hoy-modal">
+    <div class="hoy-cab">
+      <div><h2>Hoy: lo que toca hacer</h2><div class="modal-sub" id="hoySub"></div></div>
+      <button type="button" class="btn hoy-btn-principal" id="hoyNuevoBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
+    </div>
     <div id="hoyCuerpo" class="ay-cuerpo"></div>
     <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
   </div>
@@ -13969,27 +14034,83 @@ function datosHoy(){
 }
 function abrirHoy(){
   const d = datosHoy();
-  const sec = (titulo, n, cuerpo, boton = "") => `<div class="ay-sec ${n ? "" : "ay-sec-ok"}"><div class="ay-sec-h"><b>${titulo}</b><span class="ay-n">${n}</span>${boton}</div>${n ? cuerpo : ""}</div>`;
-  const lista = (arr, sub, max = 6) => arr.slice(0, max).map(r => ayFila(escHtml(r["Nombre del Afiliado"]), sub(r), r["Cédula"], "overlayHoy")).join("") + (arr.length > max ? `<p class="ay-mas">y ${arr.length - max} más…</p>` : "");
+  const activos = records.filter(r => !esConductorExcluido(r));
+  const aplica = activos.filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" || pagadoEsteMes(r));
+  const pagadas = activos.filter(pagadoEsteMes).length;
+  const pct = aplica.length ? Math.round(pagadas * 100 / aplica.length) : 0;
+  const soportes = clientesSoporteSinEnviar();
   const totalCobrar = d.cobrar.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
-  let html = "";
-  html += sec("💰 Por cobrar este mes", d.cobrar.length,
-    `<p class="ay-txt">Suman <b>${fmt(totalCobrar)}</b>${d.cobrar.filter(estaAtrasado).length ? ` · <b>${d.cobrar.filter(estaAtrasado).length}</b> ya pasaron el día 16` : ""}.</p>`,
-    d.cobrar.length ? `<button type="button" class="btn small primary" data-hoy="cobrar">Enviar recordatorios</button>` : "");
-  html += sec("🚪 Retiros que todavía deben planilla", d.retiros.length, lista(d.retiros, r => `${escHtml(r["Empresa"] || "")}${r["Responsable / Grupo"] ? " · " + escHtml(nombrePropio(r["Responsable / Grupo"])) : ""}`),
-    d.retiros.length ? `<button type="button" class="btn small" data-hoy="retiros">Ver lista</button>` : "");
-  html += sec("📎 Retiros de otra empresa sin soporte", d.soportes.length, lista(d.soportes, r => escHtml(r["Empresa"] || "")));
-  html += sec(`⏳ Afiliaciones sin confirmar (${DIAS_ALERTA_CONFIRMACION}+ días)`, d.afiliaciones.length, lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`));
-  html += sec("📝 Tareas para hoy o vencidas", d.tareas.length, d.tareas.slice(0, 6).map(t => ayFila(escHtml(t.descripcion || "Tarea"), `${t.fecha ? t.fecha.split("-").reverse().join("/") : ""}${t.nombre ? " · " + escHtml(t.nombre) : ""}`, "", "")).join(""),
-    d.tareas.length ? `<button type="button" class="btn small" data-hoy="tareas">Abrir tareas</button>` : "");
-  html += sec("🔔 Recordatorios de clientes", d.recordatorios.length, lista(d.recordatorios, r => escHtml(r["Observación"] || "")));
-  html += sec("🚗 Licencias, SOAT, tecnomecánicas y pólizas por vencer (sin avisar)", d.vencen.length,
-    d.vencen.slice(0, 6).map(x => ayFila(escHtml(x.r["Nombre del Afiliado"]), x.docs.map(dd => `${escHtml(dd.nombre)} ${textoDias(dd)}`).join(" · "), x.r["Cédula"], "overlayHoy")).join(""),
-    d.vencen.length ? `<button type="button" class="btn small primary" data-hoy="vencen">Avisar</button>` : "");
-  html += sec("🏦 Consignaciones por revisar", d.consig.length, `<p class="ay-txt">Llegaron pagos que hay que relacionar con un cliente.</p>`,
-    d.consig.length ? `<button type="button" class="btn small" data-hoy="consig">Revisar</button>` : "");
-  html += sec("🧹 Datos con problemas", d.problemas, `<p class="ay-txt">Cédulas repetidas, teléfonos mal escritos, nombres de EPS o empresas distintos, PAGO sin planilla.</p>`,
-    d.problemas ? `<button type="button" class="btn small" data-hoy="revision">Revisar</button>` : "");
+  const atrasados = d.cobrar.filter(estaAtrasado).length;
+
+  // 1) Resumen del mes
+  const tarjeta = (accion, etiqueta, valor, clase, pie) => `
+    <button type="button" class="hoy-kpi ${clase}" ${accion ? `data-hoy="${accion}"` : ""}>
+      <span class="hoy-kpi-l">${etiqueta}</span><span class="hoy-kpi-v">${valor}</span>${pie}
+    </button>`;
+  let html = `<div class="hoy-kpis">
+    ${tarjeta("todos", "Clientes del mes", aplica.length, "", `<span class="hoy-kpi-p">${activos.length - aplica.length ? `${activos.length - aplica.length} en retiro` : "Activos este mes"}</span>`)}
+    ${tarjeta("pagadas", "Planillas pagadas", pagadas, "ok", `<span class="hoy-barra" aria-hidden="true"><i style="width:${pct}%"></i></span><span class="hoy-kpi-p">${pct}% del mes</span>`)}
+    ${tarjeta("pendientes", "Pendientes de pago", d.cobrar.length, "mal", `<span class="hoy-kpi-p">${atrasados ? `<b>${atrasados}</b> ya pasaron el día 16` : "Pagar antes del día 16"}</span>`)}
+    ${tarjeta(soportes.length ? "soportes" : "", "Soportes por enviar", soportes.length, "aviso", `<span class="hoy-kpi-p">Pagadas sin enviar al cliente</span>`)}
+  </div>`;
+
+  // 2) Tabla de pendientes de pago
+  const estadoChip = (r) => {
+    if (estaAtrasado(r)) return `<span class="hoy-chip mal">Pasó el día 16</span>`;
+    if (r["Último Recordatorio"]) return `<span class="hoy-chip aviso">Cobro enviado</span>`;
+    return `<span class="hoy-chip">Sin pago</span>`;
+  };
+  const filas = d.cobrar.slice().sort((a, b) => (Number(a["No."]) || 0) - (Number(b["No."]) || 0));
+  const maxFilas = 8;
+  const tabla = filas.length ? `
+    <div class="hoy-tabla-caja"><table class="hoy-tabla">
+      <thead><tr><th>N.º</th><th>Cliente</th><th>Responsable</th><th class="num">Valor</th><th>Estado</th></tr></thead>
+      <tbody>${filas.slice(0, maxFilas).map(r => `
+        <tr data-ay-ced="${escHtml(r["Cédula"])}" data-ay-ov="overlayHoy" tabindex="0" title="Abrir la ficha">
+          <td class="muted">${escHtml(r["No."] ?? "")}</td>
+          <td><b>${escHtml(r["Nombre del Afiliado"] || "")}</b></td>
+          <td class="muted">${escHtml(nombrePropio(r["Responsable / Grupo"] || "") || r["Empresa"] || "")}</td>
+          <td class="num">${fmt(calcularTotalPagar(r, store.currentMonth))}</td>
+          <td>${estadoChip(r)}</td>
+        </tr>`).join("")}</tbody>
+    </table></div>
+    <div class="hoy-tabla-pie"><span>${filas.length > maxFilas ? `y ${filas.length - maxFilas} más · ` : ""}Suman <b>${fmt(totalCobrar)}</b></span>
+      <button type="button" class="btn small" data-hoy="pendientes">Ver todos en la lista</button></div>`
+    : `<div class="hoy-vacio">✓ Todas las planillas del mes están pagadas.</div>`;
+  const izquierda = `<section class="hoy-panel hoy-izq">
+    <div class="hoy-panel-h"><h3>Pendientes de pago</h3>
+      ${d.cobrar.length ? `<button type="button" class="btn small whatsapp" data-hoy="cobrar">Enviar recordatorios</button>` : ""}</div>
+    ${tabla}
+  </section>`;
+
+  // 3) Para hoy: tarjetas que llevan directo a la sección
+  const lista = (arr, sub, max = 6) => arr.slice(0, max).map(r => ayFila(escHtml(r["Nombre del Afiliado"]), sub(r), r["Cédula"], "overlayHoy")).join("") + (arr.length > max ? `<p class="ay-mas">y ${arr.length - max} más…</p>` : "");
+  const tarea = (ico, tono, titulo, n, sub, accion, detalle) => {
+    if (!n) return "";
+    const cab = `<span class="hoy-ico ${tono}"><svg class="ico" aria-hidden="true"><use href="#${ico}"/></svg></span>
+      <span class="hoy-t"><b>${titulo}</b><small>${sub}</small></span><span class="hoy-n">${n}</span>`;
+    return detalle
+      ? `<details class="hoy-tarea"><summary>${cab}</summary><div class="hoy-det">${detalle}</div></details>`
+      : `<button type="button" class="hoy-tarea" data-hoy="${accion}">${cab}</button>`;
+  };
+  const tareas = [
+    tarea("i-mensaje", "naranja", "Enviar soportes", soportes.length, "Planillas pagadas sin enviar", "soportes"),
+    tarea("i-billete", "azul", "Aplicar consignaciones", d.consig.length, "Pagos de la cuenta *8222 por relacionar", "consig"),
+    tarea("i-check", "verde", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo", "tareas"),
+    tarea("i-reloj", "naranja", "Documentos por vencer", d.vencen.length, "Licencias, SOAT, tecnomecánicas y pólizas sin avisar", "vencen"),
+    tarea("i-bandeja", "rojo", "Retiros que deben planilla", d.retiros.length, "Todavía no se ha subido el retiro", "retiros"),
+    tarea("i-ancla", "gris", "Retiros de otra empresa sin soporte", d.soportes.length, "Falta la imagen o planilla", "", lista(d.soportes, r => escHtml(r["Empresa"] || ""))),
+    tarea("i-contacto", "azul", `Afiliaciones sin confirmar`, d.afiliaciones.length, `${DIAS_ALERTA_CONFIRMACION}+ días esperando`, "", lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`)),
+    tarea("i-sol", "gris", "Recordatorios de clientes", d.recordatorios.length, "Notas que vencieron", "", lista(d.recordatorios, r => escHtml(r["Observación"] || ""))),
+    tarea("i-lupa", "gris", "Datos con problemas", d.problemas, "Cédulas repetidas, teléfonos, nombres distintos", "revision"),
+  ].join("");
+  const derecha = `<aside class="hoy-panel hoy-der" aria-label="Para hoy">
+    <div class="hoy-panel-h"><h3>Para hoy</h3></div>
+    <div class="hoy-tareas">${tareas || `<div class="hoy-vacio">✓ No hay nada pendiente. ¡Todo al día!</div>`}</div>
+    <div class="hoy-atajo">Atajo: presione <kbd>Ctrl K</kbd> y escriba una cédula para abrir la ficha.</div>
+  </aside>`;
+  html += `<div class="hoy-columnas">${izquierda}${derecha}</div>`;
+
   const hoy = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
   document.getElementById("hoySub").textContent = `${hoy.charAt(0).toUpperCase() + hoy.slice(1)} · ${store.currentMonth}`;
   document.getElementById("hoyCuerpo").innerHTML = html;
@@ -14004,8 +14125,17 @@ document.getElementById("hoyCuerpo").addEventListener("click", (e) => {
   else if (a === "consig") document.getElementById("navConsigBtn").click();
   else if (a === "revision") abrirRevision();
   else if (a === "vencen") abrirVencimientos();
+  else if (a === "soportes") document.getElementById("enviarSoportesBtn").click();
+  else if (a === "pendientes"){ filtroEstado = "__PENDIENTES__"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior:"smooth", block:"start" }); }
+  else if (a === "pagadas"){ filtroEstado = "PAGO"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior:"smooth", block:"start" }); }
+  else if (a === "todos"){ filtroEstado = ""; renderList(searchInput.value); }
+  else if (a === "nuevo") openModal(null);
+});
+document.getElementById("hoyCuerpo").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.matches("tr[data-ay-ced]")) e.target.click();
 });
 document.getElementById("navHoyBtn").addEventListener("click", abrirHoy);
+document.getElementById("hoyNuevoBtn").addEventListener("click", () => { ayCerrar("overlayHoy"); openModal(null); });
 // Se abre sola la primera vez del día en cada equipo (si hay algo pendiente)
 let _hoyRevisado = false;
 function mostrarHoySiToca(){
