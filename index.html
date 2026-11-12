@@ -1630,7 +1630,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   #filterPills .filter-pill.active::before{ background:#fff; }
   :root[data-tema="naranja"] #filterPills .filter-pill.active{ background:#C2410C; border-color:#C2410C; }
   /* Lista de clientes: filas limpias, resaltado suave, etiquetas debajo del nombre */
-  .list-table-head, .row{ grid-template-columns: 22px 44px minmax(0,1fr) 112px 150px 72px 28px; }
+  .list-table-head, .row{ grid-template-columns: 22px 44px 178px minmax(0,1fr) 112px 72px 28px; column-gap:14px; }
   .list-table-head{ padding:8px 14px; border-width:1px; border-radius:12px 12px 0 0; }
   .list{ border-radius:0 0 12px 12px; box-shadow:none; }
   .row{ padding:9px 14px; min-height:48px; }
@@ -1652,10 +1652,22 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .row .row-tags > *{ margin-left:0 !important; font-size:11px; }
   .row .estado{ font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; justify-self:start; max-width:100%; text-transform:lowercase; }
   .row .estado::first-letter{ text-transform:uppercase; }
+  /* Estado como barra de color sólido, justo después del número */
+  .list .row .estado{ display:block; width:100%; justify-self:stretch; box-sizing:border-box; text-align:center; text-transform:uppercase;
+    font-size:11px; font-weight:800; letter-spacing:.02em; padding:6px 8px; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff !important; }
+  .list .row .estado::first-letter{ text-transform:uppercase; }
+  .list .row .estado.PAGO, .list .row .estado.PAGO_CONDUCTOR{ background:#12A15C !important; }
+  .list .row .estado.SIN_PAGO{ background:#D92D20 !important; }
+  .list .row .estado.DIAS_PROPORCIONALES{ background:#E8590C !important; }
+  .list .row .estado.AFILIACION{ background:#1F3D70 !important; }
+  .list .row .estado.DEBE{ background:#7A2E0E !important; }
+  .list .row .estado.RETIRO{ background:#667085 !important; }
+  .list .row .estado.SIN_INICIAR, .list .row .estado.SIN_ESTADO{ background:#D0D5DD !important; color:#344054 !important; box-shadow:none !important; }
+  @media (max-width:600px){ .list .row .estado{ font-size:9px; padding:5px 3px; white-space:normal; line-height:1.15; text-overflow:clip; letter-spacing:0; } }
   .row .muelle-dots{ gap:5px; }
   .row .chev{ font-size:18px; }
   @media (max-width:600px){
-    .row{ grid-template-columns: 18px 26px minmax(0,1fr) 84px 20px; padding:9px 10px; }
+    .row{ grid-template-columns: 18px 24px 104px minmax(0,1fr) 18px; padding:9px 10px; column-gap:7px; }
     .row .muelle-dots{ display:none; }
     .row .estado{ font-size:10.5px; padding:2px 7px; }
     .row .name .nm{ white-space:normal; line-height:1.25; }
@@ -1941,7 +1953,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <h2 id="listLabel">Todos los afiliados</h2>
   </div>
   <div class="list-table-head">
-    <span></span><span>No.</span><span>Nombre</span><span>Cédula</span><span>Estado</span><span>Muelle</span><span></span>
+    <span></span><span>No.</span><span>Estado</span><span>Nombre</span><span>Cédula</span><span>Muelle</span><span></span>
   </div>
   <div class="list" id="list"></div>
 
@@ -7086,6 +7098,7 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
+      <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="name">${(() => {
         const tags = enRetiros
           ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
@@ -7093,7 +7106,6 @@ function renderList(filterText){
         return `<span class="nm">${r["Nombre del Afiliado"]}</span>${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
       })()}</div>
       <div class="ced">${r["Cédula"]}</div>
-      <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
       <div class="chev">›</div>
     </div>`;
