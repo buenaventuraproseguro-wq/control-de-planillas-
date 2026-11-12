@@ -165,3 +165,10 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - 12:15 p. m.: un celular Android (cuenta admin) abrió la app con una copia guardada de inicios de mes; la app la tomó como "cambios hechos sin internet" y reescribió 92 clientes de Noviembre (estado SIN PAGO, sin planilla, ARL y valores de Octubre).
 - Restaurado: copia del 12-nov antes de restaurar en respaldos id 6; clientes restaurados desde el respaldo id 5 (9-nov) y 13 pagos posteriores marcados PAGO según las planillas subidas (sin número de planilla: hay que escribirlo).
 - Arreglo: filtrarPendientesSeguros() — un cambio local solo se envía si es más nuevo que la nube, nunca quita un pago/planilla, y una copia de más de 2 días no se envía (tampoco tareas/cobros).
+
+## Regla fija (pedida por Nestor, 12-nov-2026)
+Todo cambio a la app debe hacerse SIN afectar la información guardada:
+1. Antes de publicar un cambio: crear un respaldo (`select public.crear_respaldo('antes de cambio: <descripción>')`) y anotar cuántos clientes, pagos y planillas tiene el mes actual.
+2. Los cambios de diseño o de pantallas no tocan la base de datos ni la forma de guardar/sincronizar.
+3. Si un cambio sí toca cómo se guarda o sincroniza: nunca borra ni reemplaza datos de la nube, solo agrega o completa; y se prueba antes de publicar.
+4. Después de publicar: volver a contar clientes, pagos y planillas del mes y comparar con el paso 1.
