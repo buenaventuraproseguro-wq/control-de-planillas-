@@ -1596,6 +1596,52 @@
     .stat-card{ scroll-snap-align:start; }
     .month-bar .recordatorios-bar{ margin-left:0; flex-basis:100%; }
   }
+
+  /* ===== Paso 3.2 (parte de abajo): filtros, lista de clientes y buscador ===== */
+  /* Buscador con lupa, más bajito */
+  .search-panel{ padding:8px 10px; border-radius:12px; box-shadow:0 2px 8px rgba(16,24,40,.05); }
+  .search-row input{ font-size:14.5px; padding:9px 12px 9px 38px; border-width:1px; border-radius:10px;
+    background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center / 17px; }
+  .search-row .btn{ padding:8px 12px; }
+  /* Filtros en una sola fila que se desliza; el activo resaltado; punto con el color del estado */
+  #filterPills{ flex-wrap:nowrap; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:thin; }
+  #filterPills .filter-pill{ flex-shrink:0; border-width:1px; display:inline-flex; align-items:center; gap:6px; color:var(--ink); }
+  #filterPills .filter-pill:hover{ border-color:var(--muted); }
+  #filterPills .filter-pill::before{ content:""; width:8px; height:8px; border-radius:50%; background:#98A2B3; flex-shrink:0; }
+  #filterPills .filter-pill[data-estado="SIN PAGO"]::before{ background:#D92D20; }
+  #filterPills .filter-pill[data-estado="DIAS PROPORCIONALES"]::before{ background:#F79009; }
+  #filterPills .filter-pill[data-estado="AFILIACION"]::before{ background:#2E5BDB; }
+  #filterPills .filter-pill[data-estado="RETIRO"]::before{ background:#667085; }
+  #filterPills .filter-pill[data-estado="SIN INICIAR"]::before{ background:#D0D5DD; }
+  #filterPills .filter-pill[data-estado^="__"]::before{ display:none; }
+  #filterPills .filter-pill.active{ color:#fff; }
+  #filterPills .filter-pill.active::before{ background:#fff; }
+  :root[data-tema="naranja"] #filterPills .filter-pill.active{ background:#C2410C; border-color:#C2410C; }
+  /* Lista de clientes: filas limpias, resaltado suave, etiquetas debajo del nombre */
+  .list-table-head, .row{ grid-template-columns: 22px 44px minmax(0,1fr) 112px 150px 72px 28px; }
+  .list-table-head{ padding:8px 14px; border-width:1px; border-radius:12px 12px 0 0; }
+  .list{ border-radius:0 0 12px 12px; box-shadow:none; }
+  .row{ padding:9px 14px; min-height:48px; }
+  .row:nth-child(even){ background:transparent; }
+  .row:hover{ background:color-mix(in srgb, var(--gold) 7%, var(--panel)); box-shadow:inset 3px 0 0 var(--gold); }
+  .row.active{ background:color-mix(in srgb, var(--gold) 12%, var(--panel)); box-shadow:inset 3px 0 0 var(--gold); }
+  .row.pagado{ background:transparent; box-shadow:inset 3px 0 0 #12A15C; }
+  .row.pagado:hover{ background:color-mix(in srgb, #12A15C 6%, var(--panel)); }
+  .row.atrasado{ background:color-mix(in srgb, #D92D20 5%, var(--panel)); box-shadow:inset 3px 0 0 #D92D20; }
+  .row .name{ white-space:normal; overflow:visible; display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .row .name .nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .row-tags{ display:flex; flex-wrap:wrap; gap:4px; }
+  .row .row-tags > *{ margin-left:0 !important; font-size:11px; }
+  .row .estado{ font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; justify-self:start; max-width:100%; text-transform:lowercase; }
+  .row .estado::first-letter{ text-transform:uppercase; }
+  .row .muelle-dots{ gap:5px; }
+  .row .chev{ font-size:18px; }
+  @media (max-width:600px){
+    .row{ grid-template-columns: 18px 26px minmax(0,1fr) 84px 20px; padding:9px 10px; }
+    .row .muelle-dots{ display:none; }
+    .row .estado{ font-size:10.5px; padding:2px 7px; }
+    .row .name .nm{ white-space:normal; line-height:1.25; }
+  }
 </style>
 </head>
 <body>
@@ -6890,9 +6936,12 @@ function renderList(filterText){
     return `<div class="row ${active} ${atrasado} ${pagado}" data-cedula="${r["Cédula"]}">
       <input type="checkbox" class="chk" data-chk-cedula="${r["Cédula"]}" ${marcado}>
       <div class="no">${r["No."]}</div>
-      <div class="name">${enRetiros
-        ? `${r["Nombre del Afiliado"]}${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
-        : `${r["Nombre del Afiliado"]}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`}</div>
+      <div class="name">${(() => {
+        const tags = enRetiros
+          ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
+          : `${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
+        return `<span class="nm">${r["Nombre del Afiliado"]}</span>${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
+      })()}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
