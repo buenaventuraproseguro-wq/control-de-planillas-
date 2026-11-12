@@ -1883,7 +1883,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   <div class="search-panel">
     <div class="search-row">
-      <input id="searchInput" type="text" inputmode="numeric" placeholder="Escribe una cédula o un nombre para buscar…" autocomplete="off">
+      <input id="searchInput" type="text" inputmode="numeric" placeholder="Cédula, nombre o N.º del cliente (ej.: 45)…" autocomplete="off">
       <button class="btn ghost" id="clearBtn">Limpiar</button>
     </div>
 
@@ -7031,7 +7031,11 @@ function renderList(filterText){
   } else {
     filtered = filtered.filter(r => !esConductorExcluido(r)); // "Todos" nunca incluye conductores
   }
-  if (q){
+  // Número corto (1 a 3 cifras, o "#45" / "n 45"): busca por el N.º del cliente en la lista
+  const qNum = (q.match(/^(?:#|n\.?\s*º?|no\.?\s*)?\s*(\d{1,3})$/) || [])[1];
+  if (qNum){
+    filtered = filtered.filter(r => String(r["No."]) === String(Number(qNum)));
+  } else if (q){
     filtered = filtered.filter(r =>
       String(r["Cédula"]).toLowerCase().includes(q) ||
       String(r["Nombre del Afiliado"]).toLowerCase().includes(q) ||
@@ -9313,6 +9317,13 @@ searchInput.addEventListener("input", () => {
   const exact = records.find(x => String(x["Cédula"]) === searchInput.value.trim());
   if (exact) showBreakdown(exact["Cédula"]);
   else { breakdown.classList.remove("show"); activeCedula = null; }
+});
+
+// Enter: abre el cliente que aparece primero (sirve para buscar por N.º y entrar directo)
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const primera = listEl.querySelector(".row[data-cedula]");
+  if (primera){ e.preventDefault(); showBreakdown(primera.dataset.cedula); }
 });
 
 clearBtn.addEventListener("click", () => {
