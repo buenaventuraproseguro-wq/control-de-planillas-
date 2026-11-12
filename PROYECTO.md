@@ -128,3 +128,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - La última opción tocada queda iluminada (clase `active` + barra de luz `::before` con `--gold`) aunque se cierre la ventana; se recuerda en `localStorage` ("prosegurosnet_nav_activo"). Función: `marcarNavActivo`.
 - Tema nuevo "Azul y naranja" (`data-tema="naranja"`), por defecto en equipos que no han escogido colores.
 - Barra de arriba: chip del mes de trabajo (`#mesChip`, copia de `#monthSelect`) y buscador rápido Ctrl+K (`#overlayBuscarRapido`): busca opciones del menú por nombre o número y, con una cédula o nombre, llena `#searchInput`.
+- Grupo "Lo más usado" justo debajo de Hoy: Agregar cliente (1), Guía de afiliaciones por EPS (10) y Enlaces rápidos (17).
