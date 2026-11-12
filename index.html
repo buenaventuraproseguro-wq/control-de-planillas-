@@ -1608,14 +1608,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .search-row input{ font-size:14.5px; padding:9px 12px 9px 38px; border-width:1px; border-radius:10px;
     background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center / 17px; }
   .search-row .btn{ padding:8px 12px; }
-  /* Buscador con "luz" como la opción activa del menú lateral: barrita naranja que brilla a la izquierda y un degradado suave */
-  .search-panel{ position:relative; overflow:visible; }
-  .search-row{ position:relative; }
-  .search-row input{ font-size:15px; font-weight:600; padding:10px 14px 10px 42px; border:1px solid color-mix(in srgb, #F2803F 30%, var(--line)); border-radius:10px; color:var(--titulo, #13213A);
-    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F2803F' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 13px center / 18px,
-      linear-gradient(90deg, rgba(242,128,63,.16) 0%, rgba(242,128,63,.05) 45%, var(--panel, #fff) 100%); box-shadow:none; }
-  .search-row::before{ content:""; position:absolute; left:-10px; top:7px; bottom:7px; width:4px; border-radius:0 4px 4px 0; background:#F2803F; pointer-events:none;
-    box-shadow:0 0 8px 2px #F2803F, 0 0 20px 5px rgba(242,128,63,.45), 0 0 36px 9px rgba(242,128,63,.18); }
+  /* Buscador sencillo: fondo blanco, borde fino y lupa naranja (sin luz) */
+  .search-row input{ font-size:15px; font-weight:600; padding:10px 14px 10px 42px; border:1px solid var(--line); border-radius:10px; color:var(--titulo, #13213A);
+    background:var(--panel, #fff) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F2803F' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 13px center / 18px; box-shadow:none; }
   .search-row input::placeholder{ color:var(--muted); font-weight:500; }
   .search-row input:focus{ outline:none; border-color:color-mix(in srgb, #F2803F 55%, var(--line)); box-shadow:0 0 0 3px rgba(242,128,63,.14); }
   /* Filtros en una sola fila que se desliza; el activo resaltado; punto con el color del estado */
