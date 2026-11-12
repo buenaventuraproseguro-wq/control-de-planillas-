@@ -4032,6 +4032,34 @@ function contarPendientes(){
   return p.clientes.length + p.tareas.length + p.cobros.length;
 }
 
+// Protección (12-nov-2026): un celular con una copia vieja guardada creyó que sus datos
+// viejos eran "cambios sin internet" y borró los pagos de Noviembre en la nube.
+// Ahora un cambio local solo se envía si es MÁS NUEVO que lo que hay en la nube, nunca
+// quita un pago ni una planilla, y una copia de hace más de 2 días no se envía.
+function filtrarPendientesSeguros(nuevoStore, pend, estado){
+  const ms = (v) => { const t = v ? Date.parse(v) : NaN; return isNaN(t) ? 0 : t; };
+  const fechaSync = (estado && estado.fecha) || 0;
+  const vieja = !fechaSync || (Date.now() - fechaSync) > 2 * 86400000;
+  const pagado = (x) => !!x && (/^PAGO/i.test(String(x["Estado Trámite"] || "")) || !!String(x["No. Planilla Pagada"] || "").trim());
+  let descartados = 0;
+  const clientes = pend.clientes.filter(({ mes, ced, tipo, r }) => {
+    const nube = (nuevoStore.months[mes] || []).find(x => String(x["Cédula"]) === ced);
+    if (vieja && nube){ descartados++; return false; }
+    if (tipo === "borrado"){
+      if (nube && ms(nube["_ultimaEdicion"]) > fechaSync){ descartados++; return false; }
+      return true;
+    }
+    if (!nube) return true; // cliente nuevo creado sin internet
+    if (pagado(nube) && !pagado(r)){ descartados++; return false; }
+    if (!r || ms(r["_ultimaEdicion"]) <= ms(nube["_ultimaEdicion"])){ descartados++; return false; }
+    return true;
+  });
+  // Con una copia vieja tampoco se reenvían tareas ni cobros (revivía tareas ya borradas)
+  const tareas = vieja ? [] : pend.tareas, cobros = vieja ? [] : pend.cobros;
+  descartados += (pend.tareas.length - tareas.length) + (pend.cobros.length - cobros.length);
+  return { pend: { ...pend, clientes, tareas, cobros }, descartados };
+}
+
 // Al volver la conexión: la nube manda, salvo en lo que se cambió en este equipo sin internet.
 function aplicarPendientesSobreNube(nuevoStore, pend){
   pend.clientes.forEach(({ mes, ced, tipo, r }) => {
@@ -4083,8 +4111,11 @@ async function iniciarAppConSupabase(){
   try{
     await detectarColumnasConfirmacion();
     // Cambios hechos en este equipo sin internet (comparados con la última sincronización).
-    const pend = calcularPendientes(store, leerEstadoSync());
+    const estadoSync = leerEstadoSync();
+    const pendBruto = calcularPendientes(store, estadoSync);
     const nuevoStore = await cargarStoreDesdeSupabase();
+    const { pend, descartados } = filtrarPendientesSeguros(nuevoStore, pendBruto, estadoSync);
+    if (descartados) console.warn(`Se ignoraron ${descartados} cambio(s) viejos de este equipo: la nube tenía datos más nuevos.`);
     const hayPendientes = pend.clientes.length + pend.tareas.length + pend.cobros.length;
     if (hayPendientes){
       const mesVisto = store.currentMonth;

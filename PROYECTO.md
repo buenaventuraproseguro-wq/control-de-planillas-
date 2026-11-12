@@ -160,3 +160,8 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - "Historial de cliente" acepta cédula o nombre (`buscarClientePorNombreTodosLosMeses`: busca en `store.months` y, con internet, en la tabla `clients`). Si hay varias personas, muestra la lista para escoger.
 - Nuevo bloque "Afiliación y retiro" (mes de afiliación/primera aparición y mes de retiro con su planilla) y botón "Ir a ese mes" (también "Ir ›" en cada fila) que cambia al mes y abre la ficha.
 - Ctrl+K: opción "Buscar … en todos los meses (afiliación y retiro)" que abre este historial.
+
+## 12-nov-2026 · Pagos de Noviembre borrados por un celular con copia vieja
+- 12:15 p. m.: un celular Android (cuenta admin) abrió la app con una copia guardada de inicios de mes; la app la tomó como "cambios hechos sin internet" y reescribió 92 clientes de Noviembre (estado SIN PAGO, sin planilla, ARL y valores de Octubre).
+- Restaurado: copia del 12-nov antes de restaurar en respaldos id 6; clientes restaurados desde el respaldo id 5 (9-nov) y 13 pagos posteriores marcados PAGO según las planillas subidas (sin número de planilla: hay que escribirlo).
+- Arreglo: filtrarPendientesSeguros() — un cambio local solo se envía si es más nuevo que la nube, nunca quita un pago/planilla, y una copia de más de 2 días no se envía (tampoco tareas/cobros).
