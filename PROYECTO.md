@@ -130,3 +130,4 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Barra de arriba: chip del mes de trabajo (`#mesChip`, copia de `#monthSelect`) y buscador rápido Ctrl+K (`#overlayBuscarRapido`): busca opciones del menú por nombre o número y, con una cédula o nombre, llena `#searchInput`.
 - Grupo "Lo más usado" justo debajo de Hoy: Agregar cliente (1), Guía de afiliaciones por EPS (10) y Enlaces rápidos (17).
 - Números del menú: ahora se ponen solos en orden (1, 2, 3…) de arriba hacia abajo con `numerarMenu()`; las opciones ocultas no cuentan y las de adentro de Cartera llevan 5.1, 5.2… Se vuelven a numerar cuando una opción aparece o se oculta.
+- "Hoy" (ícono de casita) y "Agregar cliente" van sin número; la numeración empieza en 1 con la siguiente opción.
