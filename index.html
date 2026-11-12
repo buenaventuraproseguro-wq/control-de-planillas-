@@ -2,6 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Envío masivo de planillas pagadas: EN PAUSA (no se quitó) mientras Enlace Operativo da la API.
+   Para volver a activarlo: poner ENVIO_PLANILLAS_EN_PAUSA = false. */
+var ENVIO_PLANILLAS_EN_PAUSA = true;
+</script>
 <script>try{ document.documentElement.dataset.tema = localStorage.getItem("prosegurosnet_tema") || "naranja"; }catch(e){ document.documentElement.dataset.tema = "naranja"; }</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PROSEGUROSNET</title>
@@ -1668,6 +1673,8 @@
   .card.total .label{ color:rgba(255,255,255,.8); font-size:13px; margin:0; }
   .card.total .value{ color:#fff; font-size:24px; font-weight:800; }
   @media (max-width:560px){ .cards{ grid-template-columns:repeat(2, 1fr); } .card.total{ grid-column:1 / -1; } }
+
+  .btn.en-pausa{ opacity:.6; filter:grayscale(.6); cursor:not-allowed; border-style:dashed; }
 </style>
 </head>
 <body>
@@ -8558,6 +8565,11 @@ function actualizarBarraRecordatorios(){
   if (bs){
     bs.style.display = porEnviar.length || colaSoportes.length ? "" : "none";
     bs.textContent = colaSoportes.length ? `📤 Continuar envío de planillas (${colaSoportes.length})` : `📤 Enviar planillas pagadas (${porEnviar.length})`;
+    if (ENVIO_PLANILLAS_EN_PAUSA){
+      bs.textContent = `⏸️ Enviar planillas pagadas (${porEnviar.length}) · en pausa`;
+      bs.classList.add("en-pausa"); bs.setAttribute("aria-disabled", "true");
+      bs.title = "En pausa mientras Enlace Operativo entrega la API (ahora las planillas se descargan en el computador). Se puede seguir enviando una por una desde la ficha del cliente.";
+    }
   }
   btn.style.display = pendientes.length ? "" : "none";
   if (!pendientes.length){
@@ -9026,6 +9038,11 @@ document.getElementById("overlaySoportes").addEventListener("click", (e) => {
     colaSoportes = []; soportePreparado = null; actualizarBarraRecordatorios(); ov.classList.remove("show");
   }
 });
+document.getElementById("enviarSoportesBtn").addEventListener("click", (e) => {
+  if (!ENVIO_PLANILLAS_EN_PAUSA) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  showToast("⏸️ El envío de planillas pagadas está en pausa mientras Enlace entrega la API. Si necesita enviar una, hágalo desde la ficha del cliente.");
+}, true);
 document.getElementById("enviarSoportesBtn").addEventListener("click", async () => {
   if (colaSoportes.length){ mostrarPanelSoportes(); return; }
   if (cloudDb && cloudReady && navigator.onLine){
@@ -14250,7 +14267,7 @@ function abrirHoy(){
       : `<button type="button" class="hoy-tarea" data-hoy="${accion}">${cab}</button>`;
   };
   const tareas = [
-    tarea("i-mensaje", "naranja", "Enviar soportes", soportes.length, "Planillas pagadas sin enviar", "soportes"),
+    tarea("i-mensaje", "naranja", "Enviar soportes", soportes.length, ENVIO_PLANILLAS_EN_PAUSA ? "En pausa hasta tener la API de Enlace" : "Planillas pagadas sin enviar", "soportes"),
     tarea("i-billete", "azul", "Aplicar consignaciones", d.consig.length, "Pagos de la cuenta *8222 por relacionar", "consig"),
     tarea("i-check", "verde", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo", "tareas"),
     tarea("i-reloj", "naranja", "Documentos por vencer", d.vencen.length, "Licencias, SOAT, tecnomecánicas y pólizas sin avisar", "vencen"),

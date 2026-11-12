@@ -151,3 +151,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Nombre grande con su estado; debajo N.º, cédula y datos.
 - Botones agrupados en `.acc-grupo` (mismos IDs): Cliente (Editar en naranja, Facturar, Presunción, Portal) · Enviar al cliente (WhatsApp, planilla y comprobante, QR, recibo, correo) · Pago y recibos (recibo PDF, QR) · Retiro (Retirar, Retirar sin soporte, Eliminar) aparte con borde punteado. Un grupo sin botones visibles se oculta solo (`:has`).
 - Tarjetas de valores más claras y "Total a pagar" en una franja oscura grande.
+
+## Envío masivo de planillas pagadas: EN PAUSA (12 nov 2026)
+- `var ENVIO_PLANILLAS_EN_PAUSA = true` (arriba del todo, en el primer <script>). El botón `#enviarSoportesBtn` se sigue viendo con "· en pausa", gris y punteado; al tocarlo solo muestra un aviso (se intercepta el clic en fase de captura). La tarjeta de Hoy dice "En pausa hasta tener la API de Enlace".
+- El envío uno por uno desde la ficha (`#soporteClienteBtn`) sigue activo. Para reactivar el masivo: poner la variable en `false`.
