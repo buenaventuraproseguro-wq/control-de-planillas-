@@ -136,3 +136,8 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 ## Nuevo diseño · Paso 2 (pantalla "Hoy") — nov 2026
 - `abrirHoy()` ahora arma: 4 tarjetas (clientes del mes, planillas pagadas con barra, pendientes de pago, soportes por enviar), tabla de pendientes de pago (N.º, cliente, responsable, valor, estado: Sin pago / Cobro enviado / Pasó el día 16; tocar una fila abre la ficha) y el panel "Para hoy" con tarjetas que llevan a cada sección (soportes, consignaciones, tareas, vencimientos, retiros, datos con problemas; las que son listas se despliegan).
 - Botón naranja "Agregar cliente" arriba. Acciones nuevas en `data-hoy`: soportes, pendientes (filtro `__PENDIENTES__`), pagadas, todos, nuevo. La lógica de `datosHoy()` no cambió. Sigue abriéndose sola la primera vez del día como antes.
+
+## Nuevo diseño · Paso 3.1 (lo que se repite) — nov 2026
+- Estados con colores fijos en modo claro: PAGO verde, SIN PAGO rojo, AFILIACIÓN/DEBE azul, DÍAS PROPORCIONALES naranja, RETIRO gris, SIN INICIAR gris claro (etiquetas redondas).
+- Botones con borde fino y esquinas de 10 px; en el tema "Azul y naranja" el botón principal (`.btn.primary`) es naranja oscuro (#C2410C, buen contraste) y "danger" rojo.
+- Ventanas: esquinas de 16 px, sombra suave, títulos de 19 px y botón × arriba a la derecha que usa el botón Cerrar/Cancelar de esa ventana (solo se agrega si existe, para no romper ventanas con lógica propia).

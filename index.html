@@ -1536,6 +1536,42 @@
     .hoy-kpi.ok .hoy-kpi-v{ color:#6CE0A0; } .hoy-kpi.mal .hoy-kpi-v{ color:#F7A39E; } .hoy-kpi.aviso .hoy-kpi-v{ color:#F5B26B; }
     .hoy-vacio{ color:#6CE0A0; }
   }
+
+  /* ===== Nuevo diseño · Paso 3.1: lo que se repite en toda la app ===== */
+  /* Estados con los mismos colores en todas partes (modo claro) */
+  @media not all and (prefers-color-scheme: dark){
+    .estado.PAGO, .estado.PAGO_CONDUCTOR{ color:#067647 !important; background:#ECFDF3 !important; }
+    .estado.SIN_PAGO{ color:#B42318 !important; background:#FEF3F2 !important; }
+    .estado.AFILIACION, .estado.DEBE{ color:#1849A9 !important; background:#EFF4FF !important; }
+    .estado.DIAS_PROPORCIONALES{ color:#B54708 !important; background:#FFF4EC !important; }
+    .estado.RETIRO{ color:#475467 !important; background:#F2F4F7 !important; }
+    .estado.SIN_INICIAR, .estado.SIN_ESTADO{ color:#667085 !important; background:#F9FAFB !important; box-shadow:inset 0 0 0 1px #E4E7EC; }
+  }
+  .estado{ border-radius:999px; font-weight:700; letter-spacing:0; }
+
+  /* Botones: blancos con borde; el principal (primary) en el color fuerte del tema */
+  .btn{ border-width:1px; border-radius:10px; }
+  .btn:hover{ border-color:var(--muted); }
+  .btn.primary{ box-shadow:0 1px 2px rgba(16,24,40,.08); }
+  .btn.primary:hover{ transform:none; box-shadow:0 2px 6px rgba(16,24,40,.14); }
+  .btn.danger{ border-color:color-mix(in srgb, var(--danger) 35%, transparent); }
+  @media not all and (prefers-color-scheme: dark){
+    :root[data-tema="naranja"] .btn.primary{ background:#C2410C; border-color:#C2410C; color:#fff; }
+    :root[data-tema="naranja"] .btn.primary:hover{ background:#9A3412; border-color:#9A3412; }
+    :root[data-tema="naranja"] .btn.danger{ color:#B42318; }
+    :root[data-tema="naranja"] .btn.danger:hover{ background:#FEF3F2; border-color:#B42318; }
+  }
+
+  /* Ventanas: mismo encabezado, espacios y esquinas; botón × para cerrar */
+  .overlay{ background:rgba(16,24,40,.45); }
+  .modal{ position:relative; border-radius:16px; padding:22px 24px 20px; box-shadow:0 12px 40px rgba(16,24,40,.18); }
+  .modal h2{ font-size:19px; font-weight:700; letter-spacing:-.01em; line-height:1.25; padding-right:36px; }
+  .modal .modal-sub{ font-size:13px; line-height:1.45; }
+  .modal-actions{ border-top:1px solid var(--line); padding-top:14px; }
+  .modal-x{ position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:9px; border:0; background:transparent;
+    color:var(--muted); font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .modal-x:hover{ background:var(--bg); color:var(--ink); }
+  @media (max-width:560px){ .modal{ padding:18px 16px 16px; } }
 </style>
 </head>
 <body>
@@ -10072,6 +10108,19 @@ document.getElementById("sidebar").addEventListener("click", (e) => {
   marcarNavActivo(destino);
   try{ if (destino.id) localStorage.setItem("prosegurosnet_nav_activo", destino.id); }catch(e){}
 });
+
+/* ---- Ventanas: botón × arriba a la derecha (usa el mismo botón Cerrar/Cancelar que ya tiene la ventana) ---- */
+(function(){
+  document.querySelectorAll(".overlay > .modal").forEach(modal => {
+    if (modal.querySelector(".modal-x")) return;
+    const cerrar = [...modal.querySelectorAll("button")].find(b => b.hasAttribute("data-ay-cerrar") || /^(cerrar|cancelar)$/i.test(b.textContent.trim()));
+    if (!cerrar) return;
+    const x = document.createElement("button");
+    x.type = "button"; x.className = "modal-x"; x.setAttribute("aria-label", "Cerrar"); x.textContent = "×";
+    x.addEventListener("click", () => cerrar.click());
+    modal.insertBefore(x, modal.firstChild);
+  });
+})();
 
 /* ---- Menú lateral: "Guía y enlaces" se despliega y se recuerda abierto o cerrado ---- */
 (function(){
