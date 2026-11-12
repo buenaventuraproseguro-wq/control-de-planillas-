@@ -172,3 +172,8 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 2. Los cambios de diseño o de pantallas no tocan la base de datos ni la forma de guardar/sincronizar.
 3. Si un cambio sí toca cómo se guarda o sincroniza: nunca borra ni reemplaza datos de la nube, solo agrega o completa; y se prueba antes de publicar.
 4. Después de publicar: volver a contar clientes, pagos y planillas del mes y comparar con el paso 1.
+
+## 12-nov-2026 · Segunda protección (en la base de datos)
+- Trigger `a_bloquear_copia_vieja` (BEFORE UPDATE en clients): si un usuario manda un cliente con `ultima_edicion` más de 12 horas más vieja que la de la nube, el cambio se ignora (queda igual) y se anota en `escrituras_bloqueadas` (solo admin la lee).
+- Probado: copia vieja que intentaba poner SIN PAGO → bloqueada; edición normal → pasa.
+- El equipo con la copia vieja se corrige solo: al refrescar (cada 30 s) toma lo de la nube.
