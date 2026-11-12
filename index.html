@@ -7275,6 +7275,13 @@ function showBreakdown(cedula){
   sopBtn.style.display = pagadoEsteMes(r) && String(r["Teléfono"] || "").trim() ? "inline-flex" : "none";
   sopBtn.textContent = r["Soporte Enviado"] ? "📤 Reenviar planilla y comprobante" : "📤 Enviar planilla y comprobante";
   sopBtn.onclick = () => empezarColaSoportes([r], true);
+  sopBtn.classList.toggle("en-pausa", !!ENVIO_PLANILLAS_EN_PAUSA);
+  if (ENVIO_PLANILLAS_EN_PAUSA){
+    sopBtn.textContent = "⏸️ Enviar planilla y comprobante · en pausa";
+    sopBtn.setAttribute("aria-disabled", "true");
+    sopBtn.title = "En pausa mientras Enlace Operativo entrega la API.";
+    sopBtn.onclick = () => showToast("⏸️ El envío de planilla y comprobante está en pausa mientras Enlace entrega la API.");
+  }
   pintarBotonPresuncion(r);
 
   // Botón de WhatsApp: solo si el cliente tiene teléfono guardado
@@ -9041,7 +9048,7 @@ document.getElementById("overlaySoportes").addEventListener("click", (e) => {
 document.getElementById("enviarSoportesBtn").addEventListener("click", (e) => {
   if (!ENVIO_PLANILLAS_EN_PAUSA) return;
   e.stopImmediatePropagation(); e.preventDefault();
-  showToast("⏸️ El envío de planillas pagadas está en pausa mientras Enlace entrega la API. Si necesita enviar una, hágalo desde la ficha del cliente.");
+  showToast("⏸️ El envío de planillas pagadas está en pausa mientras Enlace entrega la API. Se reactiva cuando haya API.");
 }, true);
 document.getElementById("enviarSoportesBtn").addEventListener("click", async () => {
   if (colaSoportes.length){ mostrarPanelSoportes(); return; }
