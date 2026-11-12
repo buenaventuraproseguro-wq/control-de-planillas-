@@ -122,3 +122,9 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - 10 nov. 2026: Excel SUAPORTE de "Otras empresas": si hay empleados que aún no están en PAGO, pregunta si se incluyen (antes el botón quedaba deshabilitado; caso Jhonatan Muriel Ríos, empresa renovat, aportante Sebastián Muriel Ríos).
 - 10 nov. 2026: consignaciones automáticas (correo y celular) SOLO de la cuenta *8222; se borraron las de otras cuentas no aplicadas. Tareas "Correo a la app" y "Resumen diario" actualizadas.
 - 11 nov. 2026: sincronización de clientes: si la cédula ya existe en la nube en ese mes (error 23505), no se bloquea todo: se toma la fila de la nube y solo se llenan los campos vacíos; un cliente con error no detiene a los demás. Caso: operador proseguros44 con su cola trabada (409 cada 9 s).
+
+## Nuevo diseño · Paso 1 (menú lateral y barra de arriba) — nov 2026
+- Menú lateral reagrupado (mismos botones e IDs): Hoy · **Mes actual** (Cartera, Consignaciones, Subir planilla, SUAPORTE, Documentos web) · **Clientes** · **Equipo y empresa** · "Más opciones" (Consultas, Respaldos y archivos, Ajustes). Los números viejos (1–24) se conservan.
+- La opción donde se está trabajando se ilumina (clase `active` + barra de luz `::before` con `--gold`). Al cerrar la ventana (`.overlay.show`) la luz vuelve a "Cartera" (`NAV_INICIO`). Funciones: `marcarNavActivo`, `volverNavInicioSiNoHayVentana`.
+- Tema nuevo "Azul y naranja" (`data-tema="naranja"`), por defecto en equipos que no han escogido colores.
+- Barra de arriba: chip del mes de trabajo (`#mesChip`, copia de `#monthSelect`) y buscador rápido Ctrl+K (`#overlayBuscarRapido`): busca opciones del menú por nombre o número y, con una cédula o nombre, llena `#searchInput`.
