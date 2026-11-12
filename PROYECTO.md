@@ -125,6 +125,6 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 
 ## Nuevo diseño · Paso 1 (menú lateral y barra de arriba) — nov 2026
 - Menú lateral reagrupado (mismos botones e IDs): Hoy · **Mes actual** (Cartera, Consignaciones, Subir planilla, SUAPORTE, Documentos web) · **Clientes** · **Equipo y empresa** · "Más opciones" (Consultas, Respaldos y archivos, Ajustes). Los números viejos (1–24) se conservan.
-- La opción donde se está trabajando se ilumina (clase `active` + barra de luz `::before` con `--gold`). Al cerrar la ventana (`.overlay.show`) la luz vuelve a "Cartera" (`NAV_INICIO`). Funciones: `marcarNavActivo`, `volverNavInicioSiNoHayVentana`.
+- La última opción tocada queda iluminada (clase `active` + barra de luz `::before` con `--gold`) aunque se cierre la ventana; se recuerda en `localStorage` ("prosegurosnet_nav_activo"). Función: `marcarNavActivo`.
 - Tema nuevo "Azul y naranja" (`data-tema="naranja"`), por defecto en equipos que no han escogido colores.
 - Barra de arriba: chip del mes de trabajo (`#mesChip`, copia de `#monthSelect`) y buscador rápido Ctrl+K (`#overlayBuscarRapido`): busca opciones del menú por nombre o número y, con una cédula o nombre, llena `#searchInput`.

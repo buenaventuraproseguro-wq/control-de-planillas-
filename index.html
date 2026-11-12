@@ -9974,28 +9974,26 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-/* ---- Menú lateral: la opción donde está trabajando queda iluminada ---- */
+/* ---- Menú lateral: la última opción que tocó queda iluminada (aunque cierre la ventana) ---- */
 const NAV_INICIO = "navCarteraBtn";
 function marcarNavActivo(el){
   document.querySelectorAll("#sidebar .sidebar-link.active").forEach(b => { b.classList.remove("active"); b.removeAttribute("aria-current"); });
   if (el){ el.classList.add("active"); el.setAttribute("aria-current", "page"); }
 }
-function hayVentanaAbierta(){ return !!document.querySelector(".overlay.show:not(#overlayBuscarRapido)"); }
-function volverNavInicioSiNoHayVentana(){ if (!hayVentanaAbierta()) marcarNavActivo(document.getElementById(NAV_INICIO)); }
-marcarNavActivo(document.getElementById(NAV_INICIO));
+(function(){
+  let guardado = null;
+  try{ guardado = localStorage.getItem("prosegurosnet_nav_activo"); }catch(e){}
+  const el = guardado && document.getElementById(guardado);
+  marcarNavActivo(el && el.classList.contains("sidebar-link") ? el : document.getElementById(NAV_INICIO));
+})();
 document.getElementById("sidebar").addEventListener("click", (e) => {
   const b = e.target.closest(".sidebar-link, .sidebar-total");
   if (!b || ["navMenuBtn", "navEnlacesBtn"].includes(b.id)) return;
   // Los totales de cartera se iluminan en "Cartera"; cada opción, en sí misma.
   const destino = b.classList.contains("sidebar-total") ? document.getElementById("navCarteraBtn") : b;
   marcarNavActivo(destino);
-  // Si la opción no abrió ninguna ventana (p. ej. exportar), la luz vuelve al inicio.
-  setTimeout(() => { if (destino.id !== NAV_INICIO && !hayVentanaAbierta()) volverNavInicioSiNoHayVentana(); }, 700);
+  try{ if (destino.id) localStorage.setItem("prosegurosnet_nav_activo", destino.id); }catch(e){}
 });
-// Al cerrar la ventana de la opción, la luz vuelve a "Cartera (cobros del mes)", la pantalla principal.
-new MutationObserver((muts) => {
-  if (muts.some(m => m.target.classList && m.target.classList.contains("overlay"))) volverNavInicioSiNoHayVentana();
-}).observe(document.body, { subtree:true, attributes:true, attributeFilter:["class"] });
 
 /* ---- Barra de arriba: mes en el que está trabajando ---- */
 function pintarMesChip(){
