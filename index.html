@@ -1642,6 +1642,32 @@
     .row .estado{ font-size:10.5px; padding:2px 7px; }
     .row .name .nm{ white-space:normal; line-height:1.25; }
   }
+
+  /* ===== Paso 3.3: ficha del cliente ===== */
+  .breakdown{ border-top:1px solid var(--line); margin-top:12px; padding-top:16px; }
+  .breakdown .who-row{ flex-direction:column; align-items:stretch; gap:12px; }
+  .breakdown .who{ font-size:21px; font-weight:800; letter-spacing:-.01em; color:var(--titulo); display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; line-height:1.25; }
+  .breakdown .who .badge, .breakdown .who > span{ margin-left:0 !important; }
+  .breakdown .who .badge{ font-size:12px; padding:3px 10px; border-radius:999px; text-transform:none; }
+  .breakdown .meta{ font-size:13px; line-height:1.5; margin-bottom:0; }
+  .breakdown .actions{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; }
+  .acc-grupo{ display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:10px; min-width:0; }
+  .acc-grupo:not(:has(> .btn:not([style*="display:none"]):not([style*="display: none"]))){ display:none; }
+  .acc-t{ flex-basis:100%; font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:2px; }
+  .acc-grupo .btn{ background:var(--panel); }
+  .acc-grupo .btn.primary{ background:var(--navy); }
+  :root[data-tema="naranja"] .acc-grupo .btn.primary{ background:#C2410C; }
+  .acc-peligro{ background:transparent; border-style:dashed; }
+  .breakdown .actions > .muelle-dots{ grid-column:1 / -1; }
+  .breakdown .actions > .muelle-dots:empty{ display:none; }
+  .cards{ gap:10px; margin-top:14px; }
+  .card{ background:var(--panel); border-radius:12px; padding:12px 14px; }
+  .card .label{ font-size:12px; font-weight:600; letter-spacing:0; }
+  .card .value{ font-size:17px; font-weight:700; }
+  .card.total{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--navy-deep); border-color:var(--navy-deep); }
+  .card.total .label{ color:rgba(255,255,255,.8); font-size:13px; margin:0; }
+  .card.total .value{ color:#fff; font-size:24px; font-weight:800; }
+  @media (max-width:560px){ .cards{ grid-template-columns:repeat(2, 1fr); } .card.total{ grid-column:1 / -1; } }
 </style>
 </head>
 <body>
@@ -1842,20 +1868,28 @@
           <div class="meta" id="bMeta">—</div>
         </div>
         <div class="actions">
-          <button class="btn small" id="editBtn">Editar</button>
-          <button class="btn small" id="retirarBtn">🚪 Retirar</button>
-          <button class="btn small danger" id="retiroSinSoporteBtn" style="display:none;" title="Otra empresa: retirar de una vez aunque no haya soporte">✅ Retirar sin soporte</button>
-          <button class="btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
-          <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
-          <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
-          <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
-          <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
-          <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
-          <button type="button" class="btn small whatsapp" id="soporteClienteBtn" style="display:none;">📤 Enviar planilla y comprobante</button>
-          <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía solo la imagen del QR por WhatsApp">📲 Enviar QR al cliente</button>
-          <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
-          <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
-          <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
+          <div class="acc-grupo"><span class="acc-t">Cliente</span>
+            <button class="btn small primary" id="editBtn">Editar</button>
+            <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
+            <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
+            <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
+          </div>
+          <div class="acc-grupo"><span class="acc-t">Enviar al cliente</span>
+            <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
+            <button type="button" class="btn small whatsapp" id="soporteClienteBtn" style="display:none;">📤 Enviar planilla y comprobante</button>
+            <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía solo la imagen del QR por WhatsApp">📲 Enviar QR al cliente</button>
+            <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
+            <button class="btn small" id="correoBtn" style="display:none;">✉️ Enviar correo</button>
+          </div>
+          <div class="acc-grupo"><span class="acc-t">Pago y recibos</span>
+            <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
+            <a class="btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
+          </div>
+          <div class="acc-grupo acc-peligro"><span class="acc-t">Retiro</span>
+            <button class="btn small" id="retirarBtn">🚪 Retirar</button>
+            <button class="btn small danger" id="retiroSinSoporteBtn" style="display:none;" title="Otra empresa: retirar de una vez aunque no haya soporte">✅ Retirar sin soporte</button>
+            <button class="btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
+          </div>
           <div class="muelle-dots" id="muelleDotsBreakdown"></div>
         </div>
       </div>

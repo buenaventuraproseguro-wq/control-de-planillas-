@@ -146,3 +146,8 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Orden nuevo: barra de arriba → barra del mes (selector compacto, "Avanzar al siguiente mes", fecha del sistema y, a la derecha, `#recordatoriosBar` con "Enviar recordatorio" y "Enviar planillas pagadas") → resumen (`#statsStrip`) en una sola fila compacta (en celular se desliza de lado) → aviso de otro mes → buscador.
 - Se oculta el chip del mes de la barra de arriba (`#mesChip`) y el texto "Trabajando en" cuando es el mes actual, para no repetir el mes. `.wrap` sube a 1200 px.
 - Paso 3.2 (abajo): buscador con lupa y más bajito; filtros (`#filterPills`) en una fila deslizable con punto de color por estado y el activo en naranja; filas de la lista más limpias (resaltado suave, borde verde si pagó, rojo si atrasado), estado como etiqueta redonda con mayúscula inicial, y las etiquetas extra (reingreso, retiro, caja, etc.) en una línea debajo del nombre (`.nm` + `.row-tags` en `renderList`).
+
+## Nuevo diseño · Paso 3.3 (ficha del cliente) — nov 2026
+- Nombre grande con su estado; debajo N.º, cédula y datos.
+- Botones agrupados en `.acc-grupo` (mismos IDs): Cliente (Editar en naranja, Facturar, Presunción, Portal) · Enviar al cliente (WhatsApp, planilla y comprobante, QR, recibo, correo) · Pago y recibos (recibo PDF, QR) · Retiro (Retirar, Retirar sin soporte, Eliminar) aparte con borde punteado. Un grupo sin botones visibles se oculta solo (`:has`).
+- Tarjetas de valores más claras y "Total a pagar" en una franja oscura grande.
