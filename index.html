@@ -9997,6 +9997,31 @@ document.getElementById("sidebar").addEventListener("click", (e) => {
   try{ if (destino.id) localStorage.setItem("prosegurosnet_nav_activo", destino.id); }catch(e){}
 });
 
+/* ---- Menú lateral: números en orden (1, 2, 3…) de arriba hacia abajo ----
+   Se numeran solas las opciones que se ven; las de adentro de una opción llevan su número .1, .2… */
+function numerarMenu(){
+  const sb = document.getElementById("sidebar");
+  let n = 0, padre = null, sub = 0;
+  sb.querySelectorAll(".sidebar-link").forEach(el => {
+    if (el.id === "navMenuBtn") return;
+    const oculto = el.style.display === "none";
+    const esSub = !!el.closest("#carteraSub, #enlacesLista");
+    if (esSub && !el.closest("#carteraSub")) return; // enlaces del usuario: sin número
+    let num = el.querySelector(":scope > .sidebar-num");
+    if (oculto){ return; }
+    let txt;
+    if (esSub){ sub++; txt = `${padre || n}.${sub}`; }
+    else { n++; padre = n; sub = 0; txt = String(n); }
+    if (!num){
+      num = document.createElement("span"); num.className = "sidebar-num";
+      el.insertBefore(num, el.firstChild);
+    }
+    if (num.textContent !== txt) num.textContent = txt;
+  });
+}
+numerarMenu();
+new MutationObserver(() => numerarMenu()).observe(document.getElementById("sidebar"), { subtree:true, attributes:true, attributeFilter:["style"] });
+
 /* ---- Barra de arriba: mes en el que está trabajando ---- */
 function pintarMesChip(){
   const sel = document.getElementById("monthSelect");
