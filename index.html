@@ -1465,6 +1465,14 @@
   .br-item.sel .ico, .br-item.sel .br-num{ color:var(--gold-deep); }
   .br-vacio{ padding:14px; color:var(--muted); font-size:13px; }
   .br-ayuda{ display:flex; gap:14px; flex-wrap:wrap; padding:9px 16px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+
+  /* Más espacio en la barra lateral: más ancha y opciones más compactas */
+  @media (min-width:761px){
+    .sidebar{ width:296px; }
+    .sidebar-link{ padding:7px 10px; line-height:1.25; }
+    .sidebar-section-title{ padding-top:12px; padding-bottom:3px; }
+  }
+  #navAyudasBtn[aria-expanded="true"] .sidebar-mas-flecha{ transform:rotate(90deg); }
 </style>
 </head>
 <body>
@@ -1502,9 +1510,12 @@
 
     <div class="sidebar-section-title">Lo más usado</div>
     <button type="button" class="sidebar-link" id="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
-    <button type="button" class="sidebar-link" id="navGuiaEpsBtn"><span class="sidebar-num">10</span><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía de afiliaciones por EPS</button>
-    <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><span class="sidebar-num">17</span><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
-    <div class="sidebar-sub" id="enlacesLista"></div>
+    <button type="button" class="sidebar-link" id="navAyudasBtn" aria-expanded="false" aria-controls="ayudasSub"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía y enlaces <span class="sidebar-mas-flecha" aria-hidden="true">▸</span></button>
+    <div class="sidebar-sub" id="ayudasSub">
+      <button type="button" class="sidebar-link" id="navGuiaEpsBtn"><span class="sidebar-num">10</span><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Guía de afiliaciones por EPS</button>
+      <button type="button" class="sidebar-link" id="navEnlacesBtn" aria-expanded="false"><span class="sidebar-num">17</span><svg class="ico" aria-hidden="true"><use href="#i-enlace"/></svg>Enlaces rápidos <span id="enlacesFlecha">▸</span></button>
+      <div class="sidebar-sub" id="enlacesLista"></div>
+    </div>
 
     <div class="sidebar-section-title">Mes actual</div>
     <button type="button" class="sidebar-link" id="navCarteraBtn"><span class="sidebar-num">15</span><svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
@@ -9966,7 +9977,7 @@ document.getElementById("veloPrincipal").addEventListener("click", () => {
 });
 document.getElementById("sidebar").addEventListener("click", (e) => {
   const b = e.target.closest(".sidebar-link, .sidebar-total");
-  if (!b || ["navMenuBtn", "navCarteraBtn", "navEnlacesBtn"].includes(b.id)) return;
+  if (!b || ["navMenuBtn", "navCarteraBtn", "navEnlacesBtn", "navAyudasBtn"].includes(b.id)) return;
   enfocarBarraLateral(false); // escogió una opción: la pantalla vuelve a verse clara
 });
 document.addEventListener("keydown", (e) => {
@@ -9990,12 +10001,24 @@ function marcarNavActivo(el){
 })();
 document.getElementById("sidebar").addEventListener("click", (e) => {
   const b = e.target.closest(".sidebar-link, .sidebar-total");
-  if (!b || ["navMenuBtn", "navEnlacesBtn"].includes(b.id)) return;
+  if (!b || ["navMenuBtn", "navEnlacesBtn", "navAyudasBtn"].includes(b.id)) return;
   // Los totales de cartera se iluminan en "Cartera"; cada opción, en sí misma.
   const destino = b.classList.contains("sidebar-total") ? document.getElementById("navCarteraBtn") : b;
   marcarNavActivo(destino);
   try{ if (destino.id) localStorage.setItem("prosegurosnet_nav_activo", destino.id); }catch(e){}
 });
+
+/* ---- Menú lateral: "Guía y enlaces" se despliega y se recuerda abierto o cerrado ---- */
+(function(){
+  const btn = document.getElementById("navAyudasBtn"), sub = document.getElementById("ayudasSub");
+  function poner(abierto){ sub.classList.toggle("show", abierto); btn.setAttribute("aria-expanded", abierto ? "true" : "false"); }
+  let abierto = false; try{ abierto = localStorage.getItem("prosegurosnet_menu_ayudas") === "1"; }catch(e){}
+  poner(abierto);
+  btn.addEventListener("click", () => {
+    const a = !sub.classList.contains("show"); poner(a);
+    try{ localStorage.setItem("prosegurosnet_menu_ayudas", a ? "1" : "0"); }catch(e){}
+  });
+})();
 
 /* ---- Menú lateral: números en orden (1, 2, 3…) de arriba hacia abajo ----
    Se numeran solas las opciones que se ven; las de adentro de una opción llevan su número .1, .2… */
@@ -10003,7 +10026,7 @@ function numerarMenu(){
   const sb = document.getElementById("sidebar");
   let n = 0, padre = null, sub = 0;
   sb.querySelectorAll(".sidebar-link").forEach(el => {
-    if (el.id === "navMenuBtn") return;
+    if (el.id === "navMenuBtn" || el.id === "navAyudasBtn") return;
     if (["navHoyBtn", "navAddBtn"].includes(el.id)){ const x = el.querySelector(":scope > .sidebar-num"); if (x) x.remove(); return; }
     const oculto = el.style.display === "none";
     const esSub = !!el.closest("#carteraSub, #enlacesLista");
@@ -10041,7 +10064,7 @@ function opcionesDelMenu(){
   let grupo = "Inicio";
   document.querySelectorAll("#sidebar .sidebar-section-title, #sidebar .sidebar-link, #sidebar .sidebar-total").forEach(el => {
     if (el.classList.contains("sidebar-section-title")){ grupo = el.textContent.trim(); return; }
-    if (["navMenuBtn", "navEnlacesBtn"].includes(el.id)) return;
+    if (["navMenuBtn", "navEnlacesBtn", "navAyudasBtn"].includes(el.id)) return;
     if (el.style.display === "none" || el.closest('[style*="display:none"], [style*="display: none"]')) return;
     const c = el.cloneNode(true);
     c.querySelectorAll(".sidebar-badge, .sidebar-total-value, .sidebar-total-pagos, .sidebar-num, svg, #enlacesFlecha").forEach(x => x.remove());
