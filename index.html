@@ -1572,6 +1572,30 @@
     color:var(--muted); font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .modal-x:hover{ background:var(--bg); color:var(--ink); }
   @media (max-width:560px){ .modal{ padding:18px 16px 16px; } }
+
+  /* ===== Paso 3.2 (parte de arriba): mes, botones y resumen en poco espacio ===== */
+  .wrap{ max-width:1200px; }
+  #mesChip{ display:none; } /* el mes ya se ve en la barra del mes, justo debajo */
+  .month-bar{ gap:8px; margin:6px 0 8px; }
+  .month-select-wrap{ padding:3px 6px 3px 12px; border-width:1px; gap:6px; }
+  .month-select-wrap select{ font-size:15px; font-weight:700; padding:5px 6px; }
+  .month-bar > .btn{ padding:8px 12px; font-size:13px; }
+  .month-bar .recordatorios-bar{ margin:0 0 0 auto; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .month-bar .recordatorios-bar[style*="display:none"], .month-bar .recordatorios-bar[style*="display: none"]{ display:none !important; }
+  .month-bar .fecha-sistema{ flex-basis:100%; order:5; margin:0; }
+  .fecha-sistema .fs-mes:not(.otro){ display:none; }
+  .stats-strip{ grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)); gap:8px; margin-bottom:8px; }
+  .stat-card{ padding:8px 11px; border-radius:10px; box-shadow:none; border-top-width:3px; min-width:0; }
+  .stat-card:hover{ transform:none; }
+  .stat-card .stat-label{ font-size:11.5px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  @media (max-width:760px){ .month-bar > .btn{ flex:1 1 auto; } }
+  .stat-card .stat-value{ font-size:18px; margin-top:1px; line-height:1.2; }
+  .stat-card .stat-detalle, .stat-card .stat-sub{ font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+  @media (max-width:760px){
+    .stats-strip{ grid-auto-flow:column; grid-template-columns:none; grid-auto-columns:minmax(132px, 42%); overflow-x:auto; padding-bottom:4px; scroll-snap-type:x proximity; }
+    .stat-card{ scroll-snap-align:start; }
+    .month-bar .recordatorios-bar{ margin-left:0; flex-basis:100%; }
+  }
 </style>
 </head>
 <body>
@@ -1722,14 +1746,6 @@
     </div>
   </header>
 
-  <div class="stats-strip" id="statsStrip"></div>
-
-  <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
-    <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
-    <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
-    <button type="button" class="btn small whatsapp" id="enviarSoportesBtn" style="display:none;">📤 Enviar planillas pagadas</button>
-  </div>
-
   <div class="month-bar">
     <div class="month-select-wrap" id="monthSelectWrap">
       <label for="monthSelect">Mes</label>
@@ -1737,7 +1753,15 @@
     </div>
     <button class="btn primary" id="advanceBtn">Avanzar al siguiente mes</button>
     <div class="fecha-sistema" id="fechaSistema" aria-live="polite"></div>
+    <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
+      <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
+      <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
+      <button type="button" class="btn small whatsapp" id="enviarSoportesBtn" style="display:none;">📤 Enviar planillas pagadas</button>
+    </div>
   </div>
+
+  <div class="stats-strip" id="statsStrip"></div>
+
 
   <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
 

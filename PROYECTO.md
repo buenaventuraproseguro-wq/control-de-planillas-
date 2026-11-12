@@ -141,3 +141,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Estados con colores fijos en modo claro: PAGO verde, SIN PAGO rojo, AFILIACIÓN/DEBE azul, DÍAS PROPORCIONALES naranja, RETIRO gris, SIN INICIAR gris claro (etiquetas redondas).
 - Botones con borde fino y esquinas de 10 px; en el tema "Azul y naranja" el botón principal (`.btn.primary`) es naranja oscuro (#C2410C, buen contraste) y "danger" rojo.
 - Ventanas: esquinas de 16 px, sombra suave, títulos de 19 px y botón × arriba a la derecha que usa el botón Cerrar/Cancelar de esa ventana (solo se agrega si existe, para no romper ventanas con lógica propia).
+
+## Nuevo diseño · Paso 3.2 (parte de arriba de la pantalla principal) — nov 2026
+- Orden nuevo: barra de arriba → barra del mes (selector compacto, "Avanzar al siguiente mes", fecha del sistema y, a la derecha, `#recordatoriosBar` con "Enviar recordatorio" y "Enviar planillas pagadas") → resumen (`#statsStrip`) en una sola fila compacta (en celular se desliza de lado) → aviso de otro mes → buscador.
+- Se oculta el chip del mes de la barra de arriba (`#mesChip`) y el texto "Trabajando en" cuando es el mes actual, para no repetir el mes. `.wrap` sube a 1200 px.
