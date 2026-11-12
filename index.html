@@ -1675,6 +1675,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   @media (max-width:560px){ .cards{ grid-template-columns:repeat(2, 1fr); } .card.total{ grid-column:1 / -1; } }
 
   .btn.en-pausa{ opacity:.6; filter:grayscale(.6); cursor:not-allowed; border-style:dashed; }
+
+  .hist-hito{ align-items:center; gap:10px; }
+  .hist-hito .btn{ margin-left:auto; }
 </style>
 </head>
 <body>
@@ -2587,9 +2590,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <div class="overlay" id="overlayHistorial">
   <div class="modal">
     <h2>Historial de cliente</h2>
-    <div class="modal-sub">Busca por cédula para ver todo lo que se le ha cobrado y gestionado, mes por mes.</div>
+    <div class="modal-sub">Busque por cédula o por nombre, aunque ya se haya retirado. Le muestra en qué mes se afilió, en qué mes se retiró y todo lo cobrado mes por mes; con "Ir a ese mes" lo abre directo para revisarlo en aportes.</div>
     <div class="resp-row" style="margin-bottom:16px;">
-      <input type="text" inputmode="numeric" id="fHistorialCedula" placeholder="Escribe la cédula">
+      <input type="text" id="fHistorialCedula" placeholder="Cédula o nombre (ej.: hermes garzon)" autocomplete="off">
       <button type="button" class="btn small primary" id="buscarHistorialBtn">Buscar</button>
     </div>
     <div id="resultadoHistorial"></div>
@@ -5332,12 +5335,49 @@ function esHoyOAyer(isoString){
 }
 
 /* ---- Historial de cliente (todos los meses + tareas, buscado por cédula) ---- */
-function buscarHistorialCliente(){
-  const cedula = document.getElementById("fHistorialCedula").value.trim();
+// Busca por nombre en todos los meses (los del equipo y, si hay internet, también en la nube).
+async function buscarClientePorNombreTodosLosMeses(texto){
+  const palabras = sinTildes(texto).split(/\s+/).filter(p => p.length >= 2);
+  const casa = (nombre) => { const n = sinTildes(nombre || ""); return palabras.every(p => n.includes(p)); };
+  const porCed = new Map();
+  const anotar = (ced, nombre, mes) => {
+    ced = String(ced || "").trim(); if (!ced) return;
+    if (!porCed.has(ced)) porCed.set(ced, { cedula: ced, nombre, meses: new Set() });
+    const x = porCed.get(ced); x.nombre = nombre || x.nombre; if (mes) x.meses.add(mes);
+  };
+  sortedMonthNames().forEach(mes => (store.months[mes] || []).forEach(r => { if (casa(r["Nombre del Afiliado"])) anotar(r["Cédula"], r["Nombre del Afiliado"], mes); }));
+  if (cloudDb && navigator.onLine && palabras.length){
+    try{
+      let q = sb.from("clients").select("cedula,nombre,month_id").limit(300);
+      palabras.slice(0, 3).forEach(p => { q = q.ilike("nombre", `%${p}%`); });
+      const [{ data }, { data: meses }] = await Promise.all([q, sb.from("months").select("id,name")]);
+      const nombreMes = new Map((meses || []).map(m => [m.id, m.name]));
+      (data || []).forEach(r => { if (casa(r.nombre)) anotar(r.cedula, r.nombre, nombreMes.get(r.month_id)); });
+    }catch(e){}
+  }
+  return [...porCed.values()];
+}
+async function buscarHistorialCliente(){
+  let cedula = document.getElementById("fHistorialCedula").value.trim();
   const cont = document.getElementById("resultadoHistorial");
   if (!cedula){
-    cont.innerHTML = `<div class="empty">Escribe una cédula para buscar.</div>`;
+    cont.innerHTML = `<div class="empty">Escriba una cédula o un nombre para buscar.</div>`;
     return;
+  }
+  if (!/^\d{4,}$/.test(cedula)){
+    cont.innerHTML = `<div class="empty">Buscando en todos los meses…</div>`;
+    const hallados = await buscarClientePorNombreTodosLosMeses(cedula);
+    if (!hallados.length){ cont.innerHTML = `<div class="empty">No se encontró a nadie con el nombre "${escHtml(cedula)}" en ningún mes.</div>`; return; }
+    if (hallados.length > 1){
+      const orden = sortedMonthNames();
+      cont.innerHTML = `<div class="reciente-group-title">Se encontraron ${hallados.length} personas. Toque la que busca:</div>` + hallados.map(h => {
+        const ms = [...h.meses].sort((a, b) => (orden.indexOf(a) - orden.indexOf(b)));
+        return `<button type="button" class="ay-fila" data-hist-ced="${escHtml(h.cedula)}"><span class="ay-fila-t">${escHtml(nombrePropio(h.nombre || ""))}</span><span class="ay-fila-s">Cédula ${escHtml(h.cedula)} · ${ms.length ? `${escHtml(ms[0])}${ms.length > 1 ? ` a ${escHtml(ms[ms.length - 1])}` : ""}` : ""}</span></button>`;
+      }).join("");
+      return;
+    }
+    cedula = hallados[0].cedula;
+    document.getElementById("fHistorialCedula").value = cedula;
   }
 
   // Recorre todos los meses en orden y recoge cada vez que esa cédula aparece.
@@ -5406,11 +5446,20 @@ function buscarHistorialCliente(){
         : `<div class="historial-mes-row"><span class="hm-mes">Estado de cuenta</span><span class="hm-valor saldo-al-dia">Al día ✅</span></div>`}
     `;
 
+    // Dónde se afilió y dónde se retiró
+    const primera = apariciones[0], ultima = apariciones[apariciones.length - 1];
+    const afil = apariciones.find(a => ["AFILIACION", "REINGRESO"].includes(estadoClass(a.estado))) || primera;
+    const ret = apariciones.find(a => estadoClass(a.estado) === "RETIRO");
+    const irBtn = (mes) => `<button type="button" class="btn small primary" data-hist-ir="${escHtml(mes)}" data-hist-ir-ced="${escHtml(cedula)}">Ir a ese mes</button>`;
+    html += `<div class="reciente-group-title">Afiliación y retiro</div>
+      <div class="historial-mes-row hist-hito"><span class="hm-mes">${afil === primera && estadoClass(afil.estado) !== "AFILIACION" ? "Aparece por primera vez" : "Afiliación"}: <b>${escHtml(afil.mes)}</b></span>${irBtn(afil.mes)}</div>
+      ${ret ? `<div class="historial-mes-row hist-hito"><span class="hm-mes">Retiro: <b>${escHtml(ret.mes)}</b>${ret.planilla ? ` · planilla ${escHtml(ret.planilla)}` : ""}</span>${irBtn(ret.mes)}</div>`
+            : `<div class="historial-mes-row hist-hito"><span class="hm-mes">Último mes: <b>${escHtml(ultima.mes)}</b> (${escHtml(ultima.estado || "")})</span>${irBtn(ultima.mes)}</div>`}`;
     html += `<div class="reciente-group-title">Historial mensual</div>`;
     html += `
       <table class="tabla-historial">
         <thead>
-          <tr><th>Mes</th><th>Planilla</th><th>Estado</th><th class="num">Valor</th><th class="num">Saldo</th></tr>
+          <tr><th>Mes</th><th>Planilla</th><th>Estado</th><th class="num">Valor</th><th class="num">Saldo</th><th></th></tr>
         </thead>
         <tbody>
           ${apariciones.map(a => `
@@ -5420,6 +5469,7 @@ function buscarHistorialCliente(){
               <td><span class="estado ${estadoClass(a.estado)}">${a.estado === "PAGO CONDUCTOR" ? "PAGO" : a.estado}</span></td>
               <td class="num">${fmt(a.valor)}</td>
               <td class="num ${a.saldo > 0 ? "saldo-pendiente" : "saldo-al-dia"}">${fmt(a.saldo)}</td>
+              <td><button type="button" class="btn small ghost" data-hist-ir="${escHtml(a.mes)}" data-hist-ir-ced="${escHtml(cedula)}" title="Abrir este mes con el cliente">Ir ›</button></td>
             </tr>
           `).join("")}
         </tbody>
@@ -5451,6 +5501,21 @@ document.getElementById("overlayHistorial").addEventListener("click", (e) => {
   if (e.target.id === "overlayHistorial") document.getElementById("overlayHistorial").classList.remove("show");
 });
 document.getElementById("buscarHistorialBtn").addEventListener("click", buscarHistorialCliente);
+document.getElementById("resultadoHistorial").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-hist-ced]");
+  if (c){ document.getElementById("fHistorialCedula").value = c.dataset.histCed; buscarHistorialCliente(); return; }
+  const ir = e.target.closest("[data-hist-ir]");
+  if (ir){
+    const mes = ir.dataset.histIr, ced = ir.dataset.histIrCed;
+    document.getElementById("overlayHistorial").classList.remove("show");
+    if (store.currentMonth !== mes) switchToMonth(mes);
+    setTimeout(() => {
+      const r = records.find(x => String(x["Cédula"]) === String(ced));
+      if (r){ showBreakdown(r["Cédula"]); try{ document.getElementById("breakdown").scrollIntoView({ behavior:"smooth", block:"start" }); }catch(err){} showToast(`Abierto en ${mes}.`); }
+      else showToast(`No se encontró en ${mes}.`);
+    }, 350);
+  }
+});
 document.getElementById("fHistorialCedula").addEventListener("keydown", (e) => {
   if (e.key === "Enter") buscarHistorialCliente();
 });
@@ -10333,6 +10398,7 @@ function pintarBuscarRapido(){
     const porTexto = menu.filter(o => !exactoNum.includes(o) && (sinTildes(o.nombre).includes(nq) || sinTildes(o.grupo).includes(nq) || (o.num && o.num.startsWith(q))));
     const cliente = { tipo:"cliente", nombre: /^\d{5,}$/.test(q) ? `Buscar la cédula ${q}` : `Buscar cliente: "${q}"`, num:"", ico:"#i-lupa", grupo:"Clientes del mes", q };
     lista = /^\d{5,}$/.test(q) || (!exactoNum.length && !porTexto.length) ? [cliente, ...exactoNum, ...porTexto] : [...exactoNum, ...porTexto, cliente];
+    if (q.length >= 3) lista.push({ tipo:"historial", nombre:`Buscar "${q}" en todos los meses (afiliación y retiro)`, num:"", ico:"#i-historial", grupo:"Historial", q });
   } else {
     lista = menu;
   }
@@ -10358,6 +10424,12 @@ function cerrarBuscarRapido(){ document.getElementById("overlayBuscarRapido").cl
 function ejecutarBuscarRapido(i){
   const o = _brOpciones[i]; if (!o) return;
   cerrarBuscarRapido();
+  if (o.tipo === "historial"){
+    document.getElementById("navHistorialBtn").click();
+    document.getElementById("fHistorialCedula").value = o.q;
+    buscarHistorialCliente();
+    return;
+  }
   if (o.tipo === "cliente"){
     const inp = document.getElementById("searchInput");
     inp.value = o.q;

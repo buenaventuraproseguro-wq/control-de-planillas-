@@ -155,3 +155,8 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 ## Envío masivo de planillas pagadas: EN PAUSA (12 nov 2026)
 - `var ENVIO_PLANILLAS_EN_PAUSA = true` (arriba del todo, en el primer <script>). El botón `#enviarSoportesBtn` se sigue viendo con "· en pausa", gris y punteado; al tocarlo solo muestra un aviso (se intercepta el clic en fase de captura). La tarjeta de Hoy dice "En pausa hasta tener la API de Enlace".
 - El envío uno por uno desde la ficha (`#soporteClienteBtn`) también queda en pausa con la misma variable. Para reactivar ambos: poner la variable en `false`.
+
+## Historial de cliente: buscar por nombre en todos los meses — 12 nov 2026
+- "Historial de cliente" acepta cédula o nombre (`buscarClientePorNombreTodosLosMeses`: busca en `store.months` y, con internet, en la tabla `clients`). Si hay varias personas, muestra la lista para escoger.
+- Nuevo bloque "Afiliación y retiro" (mes de afiliación/primera aparición y mes de retiro con su planilla) y botón "Ir a ese mes" (también "Ir ›" en cada fila) que cambia al mes y abre la ficha.
+- Ctrl+K: opción "Buscar … en todos los meses (afiliación y retiro)" que abre este historial.
