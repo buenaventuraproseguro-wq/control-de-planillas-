@@ -1608,6 +1608,13 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .search-row input{ font-size:14.5px; padding:9px 12px 9px 38px; border-width:1px; border-radius:10px;
     background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center / 17px; }
   .search-row .btn{ padding:8px 12px; }
+  .doc-emp-fila{ display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .doc-emp-fila:last-child{ border-bottom:0; }
+  .doc-emp-fila .doc-emp-txt{ flex:1; min-width:160px; }
+  .doc-emp-fila .doc-emp-txt b{ display:block; font-size:14.5px; }
+  .doc-emp-fila .doc-emp-est{ font-size:12.5px; color:var(--muted); }
+  .doc-emp-fila .doc-emp-est.ok{ color:#12A15C; font-weight:600; }
+  .doc-emp-fila .doc-emp-est.falta{ color:#B54708; font-weight:600; }
   .login-olvido{ display:block; margin:10px auto 0; background:none; border:0; color:var(--gold-deep, #C2410C); font-weight:600; font-size:13.5px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
   .login-ok{ color:#12A15C !important; }
   /* Buscador sencillo: fondo blanco, borde fino y lupa naranja (sin luz) */
@@ -2917,6 +2924,19 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
     <div class="modal-actions">
       <button class="btn ghost" id="cerrarRespBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Documentos de la empresa: RUT y Cámara de Comercio -->
+<div class="overlay" id="overlayDocsEmpresa">
+  <div class="modal" style="max-width:460px;">
+    <h2>Documentos de la empresa</h2>
+    <div class="modal-sub" id="docsEmpresaNombre"></div>
+    <div id="docsEmpresaFilas"></div>
+    <input type="file" id="docsEmpresaFile" class="hidden-file" accept=".pdf,application/pdf,image/*">
+    <div class="modal-actions">
+      <button type="button" class="btn primary" id="docsEmpresaListo">Listo</button>
     </div>
   </div>
 </div>
@@ -5008,6 +5028,7 @@ function mostrarCrearEmpresa(){
       getEmpresasCreadas().push(nombre);
       saveStore();
       showToast(`Empresa "${nombre}" creada.`);
+      setTimeout(() => abrirDocsEmpresa(nombre, true), 50);
     }
     renderListaEmpresas();
     getField("Empresa").value = ya || nombre;
@@ -5070,6 +5091,79 @@ document.getElementById("crearEmpresaBtn").addEventListener("click", () => {
   renderListaEmpresasEditar();
   renderListaEmpresas();
   showToast(`Empresa "${nombre}" creada.`);
+  abrirDocsEmpresa(nombre, true);
+});
+
+/* ---- Documentos de la empresa (RUT y Cámara de Comercio) ----
+   Se guardan en el mismo depósito de documentos, en la carpeta "empresa-<nombre>".
+   Solo el equipo los ve (los clientes del portal no). Subir uno nuevo reemplaza el anterior. */
+const DOCS_EMPRESA = [
+  { tipo: "rut", nombre: "RUT" },
+  { tipo: "camara_comercio", nombre: "Cámara de Comercio" }
+];
+let docsEmpresaActual = null, docsEmpresaTipo = null;
+function carpetaEmpresa(nombre){
+  return "empresa-" + (normalizarEmpresa(nombre).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "sin-nombre");
+}
+async function pintarDocsEmpresa(){
+  const cont = document.getElementById("docsEmpresaFilas");
+  const nombre = docsEmpresaActual;
+  let existentes = {};
+  if (sb && navigator.onLine){
+    try{
+      const { data } = await sb.storage.from("documentos-clientes").list(carpetaEmpresa(nombre));
+      (data || []).forEach(o => { existentes[o.name] = o; });
+    }catch(e){ console.error(e); }
+  }
+  if (nombre !== docsEmpresaActual) return;
+  cont.innerHTML = DOCS_EMPRESA.map(d => {
+    const o = existentes[d.tipo];
+    const fecha = o && (o.updated_at || o.created_at) ? new Date(o.updated_at || o.created_at).toLocaleDateString("es-CO", { day:"numeric", month:"short", year:"numeric" }) : "";
+    return `<div class="doc-emp-fila">
+      <div class="doc-emp-txt"><b>${d.nombre}</b>
+        <span class="doc-emp-est ${o ? "ok" : "falta"}">${o ? `✅ Subido${fecha ? " el " + fecha : ""}` : "Falta subirlo"}</span></div>
+      ${o ? `<button type="button" class="btn small" data-doc-ver="${d.tipo}">Ver</button>` : ""}
+      <button type="button" class="btn small ${o ? "" : "primary"}" data-doc-subir="${d.tipo}">${o ? "Cambiar" : "Subir"}</button>
+    </div>`;
+  }).join("") + (navigator.onLine ? "" : `<div class="empty">Sin internet: conéctese para ver o subir los documentos.</div>`);
+}
+function abrirDocsEmpresa(nombre, recienCreada){
+  if (!nombre) return;
+  docsEmpresaActual = nombre;
+  document.getElementById("docsEmpresaNombre").innerHTML = `<b>${escHtml(nombre)}</b>` +
+    (recienCreada ? "<br>Empresa creada. Suba el RUT y la Cámara de Comercio (PDF o foto). Si no los tiene ahora, toque «Listo» y súbalos después desde Editar responsables → Empresas." : "<br>PDF o foto. Si sube uno nuevo, reemplaza al anterior.");
+  document.getElementById("docsEmpresaFilas").innerHTML = `<div class="empty">Cargando…</div>`;
+  document.getElementById("overlayDocsEmpresa").classList.add("show");
+  pintarDocsEmpresa();
+}
+document.getElementById("docsEmpresaListo").addEventListener("click", () => {
+  document.getElementById("overlayDocsEmpresa").classList.remove("show");
+  docsEmpresaActual = null;
+});
+document.getElementById("docsEmpresaFilas").addEventListener("click", async (e) => {
+  const ver = e.target.closest("[data-doc-ver]"), subir = e.target.closest("[data-doc-subir]");
+  if (ver){
+    const ruta = carpetaEmpresa(docsEmpresaActual) + "/" + ver.dataset.docVer;
+    const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(ruta, 600);
+    if (error || !data){ alertApp("No se pudo abrir el documento: " + (error ? error.message : "")); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  } else if (subir){
+    if (!navigator.onLine){ alertApp("Sin internet: se necesita conexión para subir el documento."); return; }
+    docsEmpresaTipo = subir.dataset.docSubir;
+    const inp = document.getElementById("docsEmpresaFile"); inp.value = ""; inp.click();
+  }
+});
+document.getElementById("docsEmpresaFile").addEventListener("change", async (e) => {
+  const archivo = e.target.files && e.target.files[0];
+  if (!archivo || !docsEmpresaActual || !docsEmpresaTipo) return;
+  if (archivo.size > 15 * 1024 * 1024){ alertApp("El archivo pesa más de 15 MB. Súbalo más liviano (por ejemplo, una foto o un PDF escaneado en calidad normal)."); return; }
+  const doc = DOCS_EMPRESA.find(d => d.tipo === docsEmpresaTipo);
+  const ruta = carpetaEmpresa(docsEmpresaActual) + "/" + docsEmpresaTipo;
+  showToast(`Subiendo ${doc.nombre}…`);
+  const { error } = await sb.storage.from("documentos-clientes").upload(ruta, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+  if (error){ alertApp(`No se pudo subir ${doc.nombre}: ${error.message}`); return; }
+  showToast(`${doc.nombre} de ${docsEmpresaActual} guardado.`);
+  pintarDocsEmpresa();
 });
 
 /* ---- Editar responsables (renombrar y propagar a todos los meses) ---- */
@@ -6135,6 +6229,7 @@ function filaEditable(tipo, clave, nombre, n){
       <span class="resp-txt">${escHtml(nombre)}</span>
       <span class="count">${n} cliente${n === 1 ? "" : "s"}</span>
       ${esResp ? `<button type="button" class="btn small" data-accion="datosFactura">🧾 Datos para factura</button>` : ""}
+      ${tipo === "emp" ? `<button type="button" class="btn small" data-accion="docsEmpresa">📎 RUT y Cámara</button>` : ""}
       <button type="button" class="btn small" data-accion="editar">Editar</button>
       <button type="button" class="btn small danger" data-accion="eliminar">Eliminar</button>
       ${esResp ? (respFacturaAlCliente(clave) ? `<span class="resp-completo" style="flex-basis:100%;">Cada cliente se factura a su nombre</span>` : faltan.length ? `<span class="resp-falta" style="flex-basis:100%;">Falta: ${escHtml(faltan.join(", "))}</span>` : `<span class="resp-completo" style="flex-basis:100%;">✅ Datos completos</span>`) : ""}
@@ -6176,6 +6271,7 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
   const row = b.closest(".resp-row");
   const tipo = row.dataset.tipo, clave = row.dataset.clave, original = row.dataset.original;
   const accion = b.dataset.accion;
+  if (accion === "docsEmpresa"){ abrirDocsEmpresa(original); return; }
   if (accion === "datosFactura"){
     const abierto = row.querySelector(".resp-datos");
     if (abierto) abierto.remove();

@@ -181,3 +181,7 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 ## 13-nov-2026 · ¿Olvidó su clave?
 - Botón en la pantalla de entrada: envía enlace de recuperación (resetPasswordForEmail, redirectTo = la misma página). Al abrir el enlace (evento PASSWORD_RECOVERY o #type=recovery) la app pide la clave nueva y la guarda con updateUser. La clave solo la escribe el usuario.
 - Requisitos en Supabase: Authentication → URL Configuration → Site URL y Redirect URLs con https://buenaventuraproseguro-wq.github.io/control-de-planillas-/ (estaba en localhost:3000). El correo integrado de Supabase solo envía a correos del equipo de la organización (buenaventuraproseguro@gmail.com) salvo que se configure SMTP propio.
+
+## 14-nov-2026 · RUT y Cámara de Comercio por empresa
+- Al crear una empresa (en Editar responsables o desde "Crear empresa nueva" al agregar cliente) se abre "Documentos de la empresa" para subir RUT y Cámara de Comercio. En Editar responsables → Empresas cada empresa tiene "📎 RUT y Cámara" para verlos o cambiarlos.
+- Se guardan en el depósito documentos-clientes, carpeta empresa-<nombre-normalizado>/rut y /camara_comercio (solo el equipo los ve; el portal no). No cambia ninguna tabla.
