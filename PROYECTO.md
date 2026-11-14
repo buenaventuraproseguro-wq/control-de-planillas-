@@ -177,3 +177,7 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Trigger `a_bloquear_copia_vieja` (BEFORE UPDATE en clients): si un usuario manda un cliente con `ultima_edicion` más de 12 horas más vieja que la de la nube, el cambio se ignora (queda igual) y se anota en `escrituras_bloqueadas` (solo admin la lee).
 - Probado: copia vieja que intentaba poner SIN PAGO → bloqueada; edición normal → pasa.
 - El equipo con la copia vieja se corrige solo: al refrescar (cada 30 s) toma lo de la nube.
+
+## 13-nov-2026 · ¿Olvidó su clave?
+- Botón en la pantalla de entrada: envía enlace de recuperación (resetPasswordForEmail, redirectTo = la misma página). Al abrir el enlace (evento PASSWORD_RECOVERY o #type=recovery) la app pide la clave nueva y la guarda con updateUser. La clave solo la escribe el usuario.
+- Requisitos en Supabase: Authentication → URL Configuration → Site URL y Redirect URLs con https://buenaventuraproseguro-wq.github.io/control-de-planillas-/ (estaba en localhost:3000). El correo integrado de Supabase solo envía a correos del equipo de la organización (buenaventuraproseguro@gmail.com) salvo que se configure SMTP propio.

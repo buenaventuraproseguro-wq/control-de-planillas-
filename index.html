@@ -1608,6 +1608,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .search-row input{ font-size:14.5px; padding:9px 12px 9px 38px; border-width:1px; border-radius:10px;
     background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 12px center / 17px; }
   .search-row .btn{ padding:8px 12px; }
+  .login-olvido{ display:block; margin:10px auto 0; background:none; border:0; color:var(--gold-deep, #C2410C); font-weight:600; font-size:13.5px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  .login-ok{ color:#12A15C !important; }
   /* Buscador sencillo: fondo blanco, borde fino y lupa naranja (sin luz) */
   .search-row input{ font-size:15px; font-weight:600; padding:10px 14px 10px 42px; border:1px solid var(--line); border-radius:10px; color:var(--titulo, #13213A);
     background:var(--panel, #fff) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F2803F' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 13px center / 18px; box-shadow:none; }
@@ -1708,6 +1710,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button type="button" class="btn primary" id="loginBtn">Entrar</button>
+    <button type="button" class="login-olvido" id="olvidoBtn">¿Olvidó su clave?</button>
     <div class="pin-lock-error" id="loginErr"></div>
     <div class="pin-lock-foot">Protegemos lo que más importa</div>
   </div>
@@ -11416,6 +11419,52 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   btn.disabled = false; btn.textContent = "Entrar";
   if (error) errEl.textContent = "No se pudo entrar: " + error.message;
 });
+// ¿Olvidó su clave? Se envía un enlace al correo; al abrirlo, la app pide la clave nueva.
+// (La clave la escribe solo el usuario; nadie más la ve.)
+document.getElementById("olvidoBtn").addEventListener("click", async () => {
+  const errEl = document.getElementById("loginErr");
+  errEl.classList.remove("login-ok");
+  const email = document.getElementById("loginEmail").value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ errEl.textContent = "Escriba primero su correo en la casilla de arriba y vuelva a tocar «¿Olvidó su clave?»."; return; }
+  if (!navigator.onLine){ errEl.textContent = "Sin internet: se necesita conexión para enviar el enlace."; return; }
+  const btn = document.getElementById("olvidoBtn");
+  btn.disabled = true; btn.textContent = "Enviando…";
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  btn.disabled = false; btn.textContent = "¿Olvidó su clave?";
+  if (error){
+    errEl.textContent = /rate|seconds|too many/i.test(error.message)
+      ? "Ya se envió un enlace hace poco. Espere unos minutos y revise su correo (también la carpeta de spam)."
+      : "No se pudo enviar el enlace: " + error.message;
+    return;
+  }
+  errEl.classList.add("login-ok");
+  errEl.textContent = "📧 Si ese correo tiene usuario en la app, le llegó un enlace para crear una clave nueva. Ábralo en este mismo equipo (revise también spam).";
+});
+const ABRIO_ENLACE_CLAVE = /type=recovery/.test(location.hash || "");
+let pidiendoClaveNueva = false;
+async function pedirClaveNuevaPorEnlace(){
+  if (pidiendoClaveNueva) return;
+  pidiendoClaveNueva = true;
+  try{
+    for (;;){
+      const d = await pedirDatosApp("Crear su clave nueva", [
+        { id: "nueva", label: "Clave nueva", placeholder: "Mínimo 8 caracteres", tipo: "password" },
+        { id: "repite", label: "Repita la clave nueva", placeholder: "Escríbala otra vez", tipo: "password" }
+      ], "Guardar clave");
+      if (!d) return;
+      if (d.nueva.length < 8){ await alertApp("La clave debe tener mínimo 8 caracteres."); continue; }
+      if (d.nueva !== d.repite){ await alertApp("Las dos claves no son iguales. Intente de nuevo."); continue; }
+      const { error } = await sb.auth.updateUser({ password: d.nueva });
+      if (error){
+        await alertApp(/same|different/i.test(error.message) ? "La clave nueva debe ser distinta de la anterior." : "No se pudo guardar la clave: " + error.message);
+        continue;
+      }
+      try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+      await alertApp("✅ Clave nueva guardada. Desde ahora entre con ella.");
+      return;
+    }
+  } finally { pidiendoClaveNueva = false; }
+}
 document.getElementById("loginPass").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("loginBtn").click();
 });
@@ -11467,6 +11516,7 @@ async function initAuth(){
   }catch(e){ console.error(e); }
   if (session && session.user){
     await mostrarAppPrincipal(session.user);
+    if (ABRIO_ENLACE_CLAVE) pedirClaveNuevaPorEnlace();
   } else {
     // Sin internet no se puede renovar la sesión: si ya se había entrado antes en este
     // equipo, se abre la copia guardada con ese usuario.
@@ -11478,7 +11528,10 @@ async function initAuth(){
     }
   }
   sb.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_IN" && session && session.user && !cloudReady){
+    if (event === "PASSWORD_RECOVERY"){
+      if (session && session.user && !cloudReady) mostrarAppPrincipal(session.user);
+      pedirClaveNuevaPorEnlace();
+    } else if (event === "SIGNED_IN" && session && session.user && !cloudReady){
       mostrarAppPrincipal(session.user);
     } else if (event === "SIGNED_OUT"){
       currentUserId = null; currentUserEmail = null;
