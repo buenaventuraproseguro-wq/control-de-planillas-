@@ -818,6 +818,19 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .pin-lock-error{ color:var(--danger); font-size:12px; margin-top:12px; min-height:16px; }
   .pin-lock-foot{ margin-top:20px; font-size:11px; color:var(--muted); letter-spacing:.01em; }
 
+  /* Afiliaciones en trámite */
+  .at-fila{ display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; padding:11px 2px; border-bottom:1px solid var(--line); }
+  .at-fila .bm-info{ flex:1 1 240px; min-width:0; }
+  .at-fila .bm-info small b{ display:inline; font-size:inherit; }
+  .at-acc{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .at-chip{ display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; margin-left:4px; vertical-align:middle; white-space:nowrap; background:var(--bg); color:var(--muted); border:1px solid var(--line); }
+  .at-chip.ok{ background:var(--accent-bg); color:var(--accent); border-color:transparent; }
+  .at-chip.aviso{ background:var(--gold-bg); color:var(--gold-deep); border-color:transparent; }
+  .at-chip.mal{ background:color-mix(in srgb, var(--danger) 14%, transparent); color:var(--danger); border-color:transparent; }
+  .at-h{ font-size:14px; margin:18px 0 8px; }
+  .at-det{ margin-top:14px; } .at-det summary{ cursor:pointer; font-weight:600; font-size:13.5px; padding:6px 0; }
+  #atTarjetas{ grid-template-columns:repeat(4, 1fr); }
+  @media (max-width:640px){ #atTarjetas{ grid-template-columns:1fr 1fr; } }
   .recibo-imprimir{ display:none; }
   @media print{
     body > *:not(#reciboImprimir){ display:none !important; }
@@ -1792,6 +1805,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
     <div class="sidebar-section-title">Clientes</div>
     <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
+    <button type="button" class="sidebar-link" id="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite <span class="sidebar-badge" id="afilBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">5</span><svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
     <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">6</span><svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
     <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><span class="sidebar-num">7</span><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
@@ -2929,6 +2943,36 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 </div>
 
 <!-- Documentos de la empresa: RUT y Cámara de Comercio -->
+<!-- Afiliaciones en trámite: tiempo de espera por entidad -->
+<div class="overlay" id="overlayAfilTramite">
+  <div class="modal" style="max-width:860px;">
+    <h2>⏳ Afiliaciones en trámite</h2>
+    <div class="modal-sub">Cuánto lleva cada entidad sin confirmar. El tiempo se cuenta en <b>días hábiles</b> desde el día en que se envió la solicitud, y se compara con lo normal de esa entidad (Guía de afiliaciones). Los correos de solicitud y de confirmación entran solos.</div>
+    <div class="ing-tarjetas" id="atTarjetas"></div>
+    <div class="modal-actions" style="justify-content:flex-start;margin:0 0 10px;"><button type="button" class="btn primary" id="atNuevoBtn">➕ Registrar trámite a mano</button></div>
+    <form id="atForm" hidden autocomplete="off">
+      <div class="form-grid">
+        <div class="field"><label for="atCedula">Cédula</label><input id="atCedula" inputmode="numeric" maxlength="12"></div>
+        <div class="field"><label for="atNombre">Nombre</label><input id="atNombre" maxlength="120"></div>
+        <div class="field"><label for="atTipo">Es de</label><select id="atTipo"><option value="EPS">EPS</option><option value="ARL">ARL</option><option value="AFP">Pensión</option><option value="CAJA">Caja de compensación</option><option value="OTRO">Otra entidad</option></select></div>
+        <div class="field"><label for="atEntidad">Entidad *</label><input id="atEntidad" maxlength="80" list="atEntidades" placeholder="Ej: SOS, Emssanar, Comfenalco"><datalist id="atEntidades"></datalist></div>
+        <div class="field"><label for="atGestion">Trámite</label><select id="atGestion"><option>Afiliación</option><option>Traslado</option><option>Inclusión de beneficiarios</option><option>Retiro</option><option>Otra gestión</option></select></div>
+        <div class="field"><label for="atFecha">Fecha en que se envió *</label><input id="atFecha" type="date"></div>
+        <div class="field" id="atEstadoCaja" hidden><label for="atEstado">Estado</label><select id="atEstado"><option value="en_espera">En espera</option><option value="radicada">Radicada (falta activación)</option><option value="devuelta">Devuelta: corregir</option><option value="confirmada">Confirmada</option><option value="cancelada">Cancelada</option></select></div>
+        <div class="field span2" style="grid-column:1/-1;"><label for="atNota">Nota</label><input id="atNota" maxlength="300" placeholder="Ej: número de radicado, con quién se habló"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="atBorrarBtn" hidden>Eliminar</button>
+        <button type="button" class="btn ghost" id="atCancelarBtn">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+    <div id="atLista"></div>
+    <div id="atHistoria"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="atCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlayDocsEmpresa">
   <div class="modal" style="max-width:460px;">
     <h2>Documentos de la empresa</h2>
@@ -3914,6 +3958,7 @@ async function cargarStoreDesdeSupabase(){
 
   const { data: tareasRows } = await sb.from("tareas").select("*");
   await cargarIncapacidades();
+  cargarAfilTramites();
   nuevoStore.tareas = (tareasRows || []).map(row => {
     tareaIdsConocidos.add(row.id);
     const t = { id: row.id, cedula: row.cedula, nombre: row.nombre, descripcion: row.descripcion,
@@ -5167,6 +5212,238 @@ document.getElementById("docsEmpresaFile").addEventListener("change", async (e) 
 });
 
 /* ---- Editar responsables (renombrar y propagar a todos los meses) ---- */
+/* ---- Afiliaciones en trámite: cuánto lleva cada entidad sin confirmar ----
+   Tabla nueva "afiliaciones_tramite". Las filas llegan de tres partes: las registra el equipo aquí,
+   las registra la tarea automática "Correo a la app" al leer los correos, o salen de la ficha
+   (clientes con EPS/ARL/pensión/caja "en proceso"). No cambia nada del cliente. */
+let afilTramites = [];
+let atEditando = null;
+const AT_GESTIONES = ["Afiliación", "Traslado", "Inclusión de beneficiarios", "Retiro", "Otra gestión"];
+const AT_ESTADOS = { en_espera: "En espera", radicada: "Radicada", devuelta: "Devuelta: corregir", confirmada: "Confirmada", cancelada: "Cancelada" };
+const AT_DIAS_NORMAL = 5; // cuando la guía no dice cuánto se demora la entidad
+function isoDia(d){ return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+// Festivos de Colombia de cualquier año (fijos, los que pasan al lunes y los de Semana Santa)
+const _festivosAnio = {};
+function festivosColombia(anio){
+  if (_festivosAnio[anio]) return _festivosAnio[anio];
+  const s = new Set();
+  const fijo = (m, d) => s.add(isoDia(new Date(anio, m - 1, d)));
+  const alLunes = (dt) => { const x = new Date(dt); const dia = x.getDay(); if (dia !== 1) x.setDate(x.getDate() + ((8 - dia) % 7)); s.add(isoDia(x)); };
+  fijo(1, 1); fijo(5, 1); fijo(7, 20); fijo(8, 7); fijo(12, 8); fijo(12, 25);
+  [[1, 6], [3, 19], [6, 29], [8, 15], [10, 12], [11, 1], [11, 11]].forEach(([m, d]) => alLunes(new Date(anio, m - 1, d)));
+  const a = anio % 19, b = Math.floor(anio / 100), c = anio % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const pascua = new Date(anio, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1);
+  const desdePascua = (n) => { const x = new Date(pascua); x.setDate(x.getDate() + n); return x; };
+  s.add(isoDia(desdePascua(-3))); s.add(isoDia(desdePascua(-2)));
+  [43, 64, 71].forEach(n => alLunes(desdePascua(n)));
+  return (_festivosAnio[anio] = s);
+}
+function esDiaHabil(d){ const dia = d.getDay(); return dia !== 0 && dia !== 6 && !festivosColombia(d.getFullYear()).has(isoDia(d)); }
+// Días hábiles que han pasado desde el día de envío (ese día no cuenta) hasta "hasta"
+function diasHabilesEntre(desde, hasta){
+  const a = new Date(desde), b = new Date(hasta || Date.now());
+  if (isNaN(a) || isNaN(b)) return 0;
+  const x = new Date(a.getFullYear(), a.getMonth(), a.getDate()), fin = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  let n = 0;
+  while (x < fin && n < 400){ x.setDate(x.getDate() + 1); if (esDiaHabil(x)) n++; }
+  return n;
+}
+function diasDeTexto(t){
+  const m = String(t || "").toLowerCase().match(/(\d+)\s*(hora|d[ií]a)/);
+  if (!m) return null;
+  return m[2] === "hora" ? Math.max(1, Math.ceil(Number(m[1]) / 24)) : Number(m[1]);
+}
+function atNorm(v){ return String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\beps\b/g, "").trim(); }
+// Tiempo normal de la entidad según la "Guía de afiliaciones" (el de activación; si no hay, el de radicación)
+function atDiasNormales(t){
+  const ent = atNorm(t.entidad);
+  let item = null;
+  try{
+    const lista = (typeof guiaEps !== "undefined" && guiaEps) || [];
+    if (t.tipo === "CAJA") item = lista.find(g => /caja/i.test(g.eps) && atNorm(g.eps).split(" ")[0] === ent.split(" ")[0]) || lista.find(g => /\(caja\)/i.test(g.eps));
+    else if (ent) item = lista.find(g => !/\(caja\)/i.test(g.eps) && atNorm(g.eps) === ent) || lista.find(g => !/\(caja\)/i.test(g.eps) && (atNorm(g.eps).includes(ent) || ent.includes(atNorm(g.eps))));
+  }catch(e){}
+  return (item && (diasDeTexto(item.activacion) || diasDeTexto(item.radicacion))) || AT_DIAS_NORMAL;
+}
+function atAbierto(t){ return ["en_espera", "radicada", "devuelta"].includes(t.estado); }
+function atDias(t){ return diasHabilesEntre(t.fecha_solicitud, t.fecha_respuesta || null); }
+function atPasado(t){ return atAbierto(t) && atDias(t) > atDiasNormales(t); }
+// Clientes que en su ficha tienen algo "en proceso" y que nadie ha registrado aquí
+function atDeFichas(){
+  const mapa = { "EPS": ["EPS", "EPS"], "Pensión": ["AFP", "AFP"], "Caja": ["CAJA", "Caja de Compensación"], "ARL": ["ARL", "ARL (Riesgo/Código)"] };
+  const out = [];
+  (records || []).forEach(r => {
+    pendientesConfirmacion(r).forEach(p => {
+      const [tipo, campo] = mapa[p] || [];
+      if (!tipo) return;
+      const ced = String(r["Cédula"] || "");
+      if (afilTramites.some(t => atAbierto(t) && String(t.cedula || "") === ced && t.tipo === tipo)) return;
+      const desde = r["En Proceso Desde"] || r["Fecha de Ingreso"];
+      if (!desde) return;
+      out.push({ deFicha: true, id: `ficha-${ced}-${tipo}`, cedula: ced, nombre: r["Nombre del Afiliado"], tipo, entidad: String(r[campo] || "").replace(/\s+cd\s.*$/i, "") || p,
+        gestion: "Afiliación", estado: "en_espera", fecha_solicitud: String(desde).slice(0, 10) + "T12:00:00" });
+    });
+  });
+  return out;
+}
+function atTodosAbiertos(){ return [...afilTramites.filter(atAbierto), ...atDeFichas()]; }
+function actualizarBadgeAfil(){
+  try{
+    const n = atTodosAbiertos().filter(t => atPasado(t) || t.estado === "devuelta").length, b = document.getElementById("afilBadge");
+    b.textContent = n; b.style.display = n ? "inline-flex" : "none";
+    b.title = "Trámites pasados de tiempo o devueltos por corregir";
+  }catch(e){}
+}
+async function cargarAfilTramites(){
+  if (!sb) return;
+  try{
+    const { data, error } = await sb.from("afiliaciones_tramite").select("*").order("fecha_solicitud", { ascending: false }).limit(600);
+    if (error) throw error;
+    afilTramites = data || [];
+  }catch(e){ console.error("No se pudieron cargar las afiliaciones en trámite:", e); }
+  actualizarBadgeAfil();
+}
+function atChip(t){
+  if (t.estado === "confirmada") return `<span class="at-chip ok">Confirmada</span>`;
+  if (t.estado === "cancelada") return `<span class="at-chip gris">Cancelada</span>`;
+  if (t.estado === "devuelta") return `<span class="at-chip mal">Devuelta: corregir y reenviar</span>`;
+  if (atPasado(t)) return `<span class="at-chip mal">Pasó el tiempo normal</span>`;
+  if (t.estado === "radicada") return `<span class="at-chip aviso">Radicada · falta activación</span>`;
+  return `<span class="at-chip aviso">En espera</span>`;
+}
+function atFila(t){
+  const dias = atDias(t), normal = atDiasNormales(t);
+  const plural = (n) => `${n} día${n === 1 ? "" : "s"} hábil${n === 1 ? "" : "es"}`;
+  const tiempo = t.estado === "confirmada"
+    ? `Enviado el ${fechaCorta(isoDia(new Date(t.fecha_solicitud)))} · confirmaron el ${fechaCorta(isoDia(new Date(t.fecha_respuesta)))} · se demoró <b>${plural(dias)}</b>`
+    : `Enviado el ${fechaCorta(isoDia(new Date(t.fecha_solicitud)))} · lleva <b>${plural(dias)}</b> · lo normal: ${normal}`;
+  const acciones = t.deFicha
+    ? `<button type="button" class="btn small" data-ay-ced="${escHtml(t.cedula)}" data-ay-ov="overlayAfilTramite">Abrir ficha</button>
+       <button type="button" class="btn small ghost" data-at-seguir="${escHtml(t.id)}">Hacerle seguimiento aquí</button>`
+    : `${atAbierto(t) ? `<button type="button" class="btn small primary" data-at-ok="${escHtml(t.id)}">✅ Ya confirmaron</button>
+       ${t.estado !== "devuelta" ? `<button type="button" class="btn small" data-at-dev="${escHtml(t.id)}">↩️ La devolvieron</button>` : `<button type="button" class="btn small" data-at-reenviada="${escHtml(t.id)}">📤 Ya la reenvié</button>`}` : ""}
+       ${t.enlace_correo ? `<a class="btn small ghost" href="${escHtml(t.enlace_correo)}" target="_blank" rel="noopener">✉️ Ver correo</a>` : ""}
+       <button type="button" class="btn small ghost" data-at-editar="${escHtml(t.id)}">Editar</button>`;
+  return `<div class="at-fila">
+    <span class="bm-info"><b>${escHtml(nombrePropio(t.nombre) || "Sin nombre")} ${atChip(t)}</b>
+      <small>${t.cedula ? escHtml(t.cedula) + " · " : ""}${escHtml(t.tipo === "AFP" ? "Pensión" : t.tipo === "CAJA" ? "Caja" : t.tipo)} ${escHtml(String(t.entidad || "").toUpperCase())} · ${escHtml(t.gestion || "Afiliación")}${t.deFicha ? " · tomado de la ficha (en proceso)" : t.origen === "correo" ? " · tomado del correo" : ""}</small>
+      <small>${tiempo}</small>${t.detalle ? `<small>${escHtml(t.detalle)}</small>` : ""}</span>
+    <span class="at-acc">${acciones}</span></div>`;
+}
+function renderAfilTramites(){
+  const abiertos = atTodosAbiertos().sort((a, b) => (atPasado(b) || b.estado === "devuelta" ? 1 : 0) - (atPasado(a) || a.estado === "devuelta" ? 1 : 0) || atDias(b) - atDias(a));
+  const hace60 = Date.now() - 60 * 864e5;
+  const confirmadas = afilTramites.filter(t => t.estado === "confirmada" && t.fecha_respuesta && new Date(t.fecha_respuesta).getTime() > hace60);
+  const prom = confirmadas.length ? (confirmadas.reduce((a, t) => a + atDias(t), 0) / confirmadas.length) : null;
+  document.getElementById("atTarjetas").innerHTML = `
+    <div class="ing-tarjeta"><small>En espera</small><b>${abiertos.length}</b><span>trámites sin confirmar</span></div>
+    <div class="ing-tarjeta"><small>Pasados de tiempo</small><b>${abiertos.filter(atPasado).length}</b><span>toca llamar o escribir</span></div>
+    <div class="ing-tarjeta"><small>Devueltos por corregir</small><b>${abiertos.filter(t => t.estado === "devuelta").length}</b><span>la entidad pidió cambios</span></div>
+    <div class="ing-tarjeta"><small>Confirmados (60 días)</small><b>${confirmadas.length}</b><span>${prom == null ? "sin datos todavía" : `promedio ${prom.toFixed(1).replace(".", ",")} días hábiles`}</span></div>`;
+  document.getElementById("atLista").innerHTML = abiertos.map(atFila).join("") || `<div class="empty">✓ No hay afiliaciones esperando confirmación.</div>`;
+  // Tiempo real de cada entidad, con lo que ya se confirmó
+  const porEntidad = {};
+  afilTramites.filter(t => t.estado === "confirmada" && t.fecha_respuesta).forEach(t => {
+    const k = `${t.tipo === "CAJA" ? "Caja " : ""}${String(t.entidad || "").toUpperCase()}`;
+    (porEntidad[k] || (porEntidad[k] = { n: 0, suma: 0, normal: atDiasNormales(t) })).n++; porEntidad[k].suma += atDias(t);
+  });
+  const filasEnt = Object.entries(porEntidad).sort((a, b) => b[1].suma / b[1].n - a[1].suma / a[1].n).map(([k, v]) => {
+    const p = v.suma / v.n;
+    return `<tr><td>${escHtml(k)}</td><td class="num">${v.n}</td><td class="num"><b>${p.toFixed(1).replace(".", ",")}</b></td><td class="num">${v.normal}</td><td>${p > v.normal ? `<span class="at-chip mal">Se demora más</span>` : `<span class="at-chip ok">Cumple</span>`}</td></tr>`;
+  }).join("");
+  document.getElementById("atHistoria").innerHTML =
+    (filasEnt ? `<h3 class="at-h">Tiempo real de cada entidad</h3><div class="hoy-tabla-caja"><table class="hoy-tabla"><thead><tr><th>Entidad</th><th class="num">Trámites</th><th class="num">Promedio (días hábiles)</th><th class="num">Lo normal</th><th></th></tr></thead><tbody>${filasEnt}</tbody></table></div>` : "") +
+    (confirmadas.length ? `<details class="at-det"><summary>Confirmados en los últimos 60 días (${confirmadas.length})</summary>${confirmadas.map(atFila).join("")}</details>` : "");
+  actualizarBadgeAfil();
+}
+function atAbrirForm(t){
+  atEditando = t && !t.deFicha ? t : null;
+  const v = t || {};
+  const pon = (id, x) => { document.getElementById(id).value = x ?? ""; };
+  pon("atCedula", v.cedula); pon("atNombre", v.nombre ? nombrePropio(v.nombre) : ""); pon("atTipo", v.tipo || "EPS"); pon("atEntidad", v.entidad);
+  pon("atGestion", AT_GESTIONES.includes(v.gestion) ? v.gestion : (v.gestion ? "Otra gestión" : "Afiliación"));
+  pon("atFecha", v.fecha_solicitud ? isoDia(new Date(v.fecha_solicitud)) : fechaHoyISO());
+  pon("atEstado", v.estado || "en_espera"); pon("atNota", v.detalle);
+  document.getElementById("atEstadoCaja").hidden = !atEditando;
+  document.getElementById("atBorrarBtn").hidden = !(atEditando && esAdmin());
+  try{ document.getElementById("atEntidades").innerHTML = (guiaEps || []).map(g => `<option value="${escHtml(g.eps.replace(/\s*\(CAJA\)/i, ""))}">`).join(""); }catch(e){}
+  document.getElementById("atForm").hidden = false;
+  document.getElementById("atCedula").focus();
+}
+function atCerrarForm(){ atEditando = null; document.getElementById("atForm").hidden = true; }
+async function abrirAfilTramites(){
+  atCerrarForm();
+  document.getElementById("atLista").innerHTML = `<div class="empty">Cargando…</div>`;
+  document.getElementById("overlayAfilTramite").classList.add("show");
+  await cargarAfilTramites();
+  renderAfilTramites();
+}
+async function atCambiar(id, cambios, mensaje){
+  const { error } = await sb.from("afiliaciones_tramite").update({ ...cambios, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error){ await alertApp("No se pudo guardar: " + error.message); return; }
+  await cargarAfilTramites(); renderAfilTramites();
+  showToast(mensaje);
+}
+document.getElementById("navAfilTramiteBtn").addEventListener("click", abrirAfilTramites);
+document.getElementById("atCerrarBtn").addEventListener("click", () => document.getElementById("overlayAfilTramite").classList.remove("show"));
+document.getElementById("atNuevoBtn").addEventListener("click", () => atAbrirForm(null));
+document.getElementById("atCancelarBtn").addEventListener("click", atCerrarForm);
+document.getElementById("atCedula").addEventListener("change", (e) => {
+  const c = e.target.value.replace(/\D/g, ""), nom = document.getElementById("atNombre");
+  e.target.value = c;
+  const r = (records || []).find(x => String(x["Cédula"]) === c);
+  if (!r) return;
+  if (!nom.value.trim()) nom.value = nombrePropio(r["Nombre del Afiliado"] || "");
+  const ent = document.getElementById("atEntidad");
+  if (!ent.value.trim() && document.getElementById("atTipo").value === "EPS") ent.value = r["EPS"] || "";
+});
+document.getElementById("overlayAfilTramite").addEventListener("click", async (e) => {
+  const q = (sel) => e.target.closest(sel);
+  const busca = (id) => afilTramites.find(t => String(t.id) === String(id));
+  let b;
+  if ((b = q("[data-at-ok]"))){
+    const t = busca(b.dataset.atOk); if (!t) return;
+    if (!(await confirmarApp(`¿${String(t.entidad).toUpperCase()} ya confirmó la ${String(t.gestion || "afiliación").toLowerCase()} de ${nombrePropio(t.nombre) || "esta persona"}? Se guarda la fecha de hoy como respuesta.`))) return;
+    await atCambiar(t.id, { estado: "confirmada", fecha_respuesta: new Date().toISOString() }, "✅ Trámite confirmado. Recuerde poner «aceptado» en la ficha del cliente.");
+  } else if ((b = q("[data-at-dev]"))){
+    await atCambiar(b.dataset.atDev, { estado: "devuelta" }, "↩️ Marcada como devuelta: hay que corregir y reenviar.");
+  } else if ((b = q("[data-at-reenviada]"))){
+    await atCambiar(b.dataset.atReenviada, { estado: "en_espera" }, "📤 Reenviada: sigue contando el tiempo desde el primer envío.");
+  } else if ((b = q("[data-at-editar]"))){
+    atAbrirForm(busca(b.dataset.atEditar));
+  } else if ((b = q("[data-at-seguir]"))){
+    atAbrirForm(atDeFichas().find(t => t.id === b.dataset.atSeguir));
+  }
+});
+document.getElementById("atForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const v = id => document.getElementById(id).value.trim();
+  const cedula = v("atCedula").replace(/\D/g, ""), entidad = limpiarEspacios(v("atEntidad"));
+  if (!v("atNombre") && !cedula){ showToast("⚠️ Escriba la cédula o el nombre de la persona."); return; }
+  if (!entidad){ showToast("⚠️ Escriba la entidad (EPS, ARL, fondo o caja)."); return; }
+  if (!v("atFecha")){ showToast("⚠️ Escriba la fecha en que se envió la solicitud."); return; }
+  const fila = { cedula: cedula || null, nombre: limpiarEspacios(v("atNombre")).toLowerCase() || null, tipo: v("atTipo"), entidad, gestion: v("atGestion"),
+    fecha_solicitud: new Date(v("atFecha") + "T12:00:00").toISOString(), detalle: v("atNota") || null, updated_at: new Date().toISOString() };
+  if (atEditando){
+    fila.estado = v("atEstado");
+    if (fila.estado === "confirmada" && !atEditando.fecha_respuesta) fila.fecha_respuesta = new Date().toISOString();
+    if (fila.estado !== "confirmada") fila.fecha_respuesta = null;
+  }
+  const r = atEditando ? await sb.from("afiliaciones_tramite").update(fila).eq("id", atEditando.id) : await sb.from("afiliaciones_tramite").insert(fila);
+  if (r.error){ await alertApp("No se pudo guardar: " + r.error.message); return; }
+  await cargarAfilTramites(); atCerrarForm(); renderAfilTramites();
+  showToast("✅ Trámite guardado.");
+});
+document.getElementById("atBorrarBtn").addEventListener("click", async () => {
+  if (!atEditando || !esAdmin()) return;
+  if (!(await confirmarApp(`¿Eliminar el trámite de ${nombrePropio(atEditando.nombre) || "esta persona"} con ${atEditando.entidad}?`))) return;
+  const { error } = await sb.from("afiliaciones_tramite").delete().eq("id", atEditando.id);
+  if (error){ await alertApp("No se pudo eliminar: " + error.message); return; }
+  await cargarAfilTramites(); atCerrarForm(); renderAfilTramites();
+});
+
 /* ---- Lista de tareas (fecha + tipo de gestión + alerta) ---- */
 function getTareas(){
   if (!store.tareas) store.tareas = [];
@@ -14555,6 +14832,7 @@ function abrirHoy(){
     tarea("i-bandeja", "rojo", "Retiros que deben planilla", d.retiros.length, "Todavía no se ha subido el retiro", "retiros"),
     tarea("i-ancla", "gris", "Retiros de otra empresa sin soporte", d.soportes.length, "Falta la imagen o planilla", "", lista(d.soportes, r => escHtml(r["Empresa"] || ""))),
     tarea("i-contacto", "azul", `Afiliaciones sin confirmar`, d.afiliaciones.length, `${DIAS_ALERTA_CONFIRMACION}+ días esperando`, "", lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`)),
+    tarea("i-reloj", "rojo", "Afiliaciones pasadas de tiempo", atTodosAbiertos().filter(t => atPasado(t) || t.estado === "devuelta").length, "La entidad no ha confirmado o devolvió la solicitud", "afiltramite"),
     tarea("i-sol", "gris", "Recordatorios de clientes", d.recordatorios.length, "Notas que vencieron", "", lista(d.recordatorios, r => escHtml(r["Observación"] || ""))),
     tarea("i-lupa", "gris", "Datos con problemas", d.problemas, "Cédulas repetidas, teléfonos, nombres distintos", "revision"),
   ].join("");
@@ -14579,6 +14857,7 @@ document.getElementById("hoyCuerpo").addEventListener("click", (e) => {
   else if (a === "consig") document.getElementById("navConsigBtn").click();
   else if (a === "revision") abrirRevision();
   else if (a === "vencen") abrirVencimientos();
+  else if (a === "afiltramite") abrirAfilTramites();
   else if (a === "soportes") document.getElementById("enviarSoportesBtn").click();
   else if (a === "pendientes"){ filtroEstado = "__PENDIENTES__"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior:"smooth", block:"start" }); }
   else if (a === "pagadas"){ filtroEstado = "PAGO"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior:"smooth", block:"start" }); }

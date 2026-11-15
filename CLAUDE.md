@@ -37,6 +37,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Menú lateral: `numerarMenu` (numera solo, en orden); pantalla Hoy: `abrirHoy`
 - Avanzar de mes: botón `advanceBtn` + `construirRegistroMesSiguiente`
 - Empresas: `renderListaEmpresasEditar`, `abrirDocsEmpresa` (RUT y Cámara en storage `documentos-clientes/empresa-<nombre>/`)
+- Afiliaciones en trámite: `abrirAfilTramites`, `renderAfilTramites`, `atDeFichas`, `diasHabilesEntre`; tabla `afiliaciones_tramite`; el correo entra con `registrar_afiliacion_correo` (tarea "Correo a la app")
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
 ## Protecciones en la base de datos

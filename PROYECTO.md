@@ -185,3 +185,11 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 ## 14-nov-2026 · RUT y Cámara de Comercio por empresa
 - Al crear una empresa (en Editar responsables o desde "Crear empresa nueva" al agregar cliente) se abre "Documentos de la empresa" para subir RUT y Cámara de Comercio. En Editar responsables → Empresas cada empresa tiene "📎 RUT y Cámara" para verlos o cambiarlos.
 - Se guardan en el depósito documentos-clientes, carpeta empresa-<nombre-normalizado>/rut y /camara_comercio (solo el equipo los ve; el portal no). No cambia ninguna tabla.
+
+## 14-nov-2026 · Afiliaciones en trámite (tiempo de espera por entidad)
+- Menú Clientes → "Afiliaciones en trámite" (`abrirAfilTramites`, ventana `overlayAfilTramite`, contador `afilBadge` = pasadas de tiempo + devueltas). También sale en "Hoy".
+- Tabla nueva `afiliaciones_tramite` (equipo ve/crea/cambia; solo admin borra). Estados: en_espera, radicada, devuelta, confirmada, cancelada. No toca `clients`.
+- El tiempo se cuenta en días hábiles (`diasHabilesEntre`, festivos de Colombia calculados en `festivosColombia`) desde el envío, y se compara con lo normal de la entidad según la Guía de afiliaciones (`atDiasNormales`: activación; si no hay, radicación; si no hay, 5).
+- De dónde salen las filas: a mano en la ventana; del correo (tarea automática "Correo a la app", función `registrar_afiliacion_correo`, una fila por hilo y cédula, nunca baja un trámite ya confirmado); y de la ficha (clientes con EPS/ARL/pensión/caja "en proceso", `atDeFichas`, sin guardar nada).
+- Con lo confirmado se arma "Tiempo real de cada entidad" (promedio contra lo normal).
+
