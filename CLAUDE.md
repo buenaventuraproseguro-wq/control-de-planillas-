@@ -39,11 +39,13 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Empresas: `renderListaEmpresasEditar`, `abrirDocsEmpresa` (RUT y Cámara en storage `documentos-clientes/empresa-<nombre>/`)
 - Afiliaciones en trámite: `abrirAfilTramites`, `renderAfilTramites`, `atDeFichas`, `diasHabilesEntre`; tabla `afiliaciones_tramite`; el correo entra con `registrar_afiliacion_correo` (tarea "Correo a la app")
 - Contrato de mandato: `abrirMandato`, `textoMandato`, `pintarBotonMandato`; firmados en storage `documentos-clientes/contratos-mandato/<documento>`
+- Registro de cambios (solo admin): `abrirRegistroCambios`, `renderRegistroCambios`; tabla `registro_cambios`
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
 ## Protecciones en la base de datos
 - Trigger `a_bloquear_copia_vieja` en `clients`: ignora escrituras con `ultima_edicion` 12 h más vieja que la nube; las anota en `escrituras_bloqueadas`.
 - Trigger `impedir_borrado_masivo_clients`. Trigger `registrar_fecha_pago` (pone/quita `fecha_pago` según el estado).
+- Trigger `z_registro_cambios` en `clients`: anota cada cambio en `registro_cambios` (nunca bloquea el guardado).
 - Respaldo diario 04:00 UTC (pg_cron `respaldo-semanal`, tabla `respaldos`; se guardan 21 días + los lunes).
 
 ## Pendientes (actualizar al cerrar cada tema)

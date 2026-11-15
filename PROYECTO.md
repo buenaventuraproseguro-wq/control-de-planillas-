@@ -199,3 +199,9 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - El firmado se sube a `documentos-clientes/contratos-mandato/<documento>` (solo el equipo; el portal no lo ve). No cambia ninguna tabla. El botón muestra ✅ si el cliente o su responsable ya lo tienen. "Ver quiénes faltan por firmar" lista los activos sin contrato.
 - El texto es un modelo (mandato civil, arts. 2142 y ss. del Código Civil; recursos para terceros; honorarios; día 16 y recargo del 21; Ley 1581). Pendiente: que el contador o un abogado lo revise antes de usarlo con clientes.
 
+## 15-nov-2026 · Registro de cambios (quién cambió qué y cuándo)
+- Tabla nueva `registro_cambios` y disparador `z_registro_cambios` (AFTER insert/update/delete en `clients`, función `registrar_cambio_cliente`). Anota usuario, hora, cliente, mes y cada campo con el valor de antes y el de después. Si falla al anotar, no impide guardar (bloque exception). No anota cuando nada cambió de verdad ni los campos de control (ultima_edicion, updated_at, row_no, ultimo_recordatorio…).
+- Solo el administrador lo lee (RLS `es_admin`); nadie lo edita ni lo borra desde la app.
+- App: Más opciones → "Registro de cambios" (`abrirRegistroCambios`, ventana `overlayCambios`) con buscador por cédula o nombre, periodo y persona; y botón "🕘 Ver cambios" en la ficha. En rojo cuando se quita un pago o un número de planilla.
+- Empezó el 14-nov-2026 en la noche: lo anterior no quedó registrado. Los cambios hechos por SQL o por tareas automáticas salen como "Sistema".
+
