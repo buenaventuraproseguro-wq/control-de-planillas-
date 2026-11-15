@@ -40,6 +40,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Afiliaciones en trámite: `abrirAfilTramites`, `renderAfilTramites`, `atDeFichas`, `diasHabilesEntre`; tabla `afiliaciones_tramite`; el correo entra con `registrar_afiliacion_correo` (tarea "Correo a la app")
 - Contrato de mandato: `abrirMandato`, `textoMandato`, `pintarBotonMandato`; firmados en storage `documentos-clientes/contratos-mandato/<documento>`
 - Registro de cambios (solo admin): `abrirRegistroCambios`, `renderRegistroCambios`; tabla `registro_cambios`
+- Cierre del mes para el contador (solo admin, solo lee): `abrirCierreContador`, `datosCierreContador`, `descargarCierreContador`
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
 ## Protecciones en la base de datos

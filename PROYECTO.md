@@ -205,3 +205,9 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - App: Más opciones → "Registro de cambios" (`abrirRegistroCambios`, ventana `overlayCambios`) con buscador por cédula o nombre, periodo y persona; y botón "🕘 Ver cambios" en la ficha. En rojo cuando se quita un pago o un número de planilla.
 - Empezó el 14-nov-2026 en la noche: lo anterior no quedó registrado. Los cambios hechos por SQL o por tareas automáticas salen como "Sistema".
 
+## 15-nov-2026 · Cierre del mes para el contador
+- 15 Cartera → "📒 Cierre del mes para el contador" (solo administrador; `abrirCierreContador`, `datosCierreContador`, `cierreContadorHtml`). Usa la ventana de informes.
+- Solo lee. Reúne del mes que se está viendo: ingresos de la empresa por línea (`resumenIngresos`), aportes de terceros por subsistema y por planilla (`reporteAportes`), gastos pagados y pendientes del libro contable, lo creado en Alegra (tablas `facturas_alegra`, `recibos_caja`, `pagos_enlace`) y la lista "Para revisar antes de entregar" (pagados sin planilla, sin factura, borradores, sin fecha de pago, por cobrar).
+- Resultado del mes = ingresos de la empresa − gastos pagados. Los ingresos escritos a mano en el libro contable no se suman, para no contar dos veces.
+- Descarga en Excel (`descargarCierreContador`, una hoja con resumen y detalle por cliente) y "Imprimir o guardar como PDF".
+

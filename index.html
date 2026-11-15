@@ -843,6 +843,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .rc-filtros{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
   .rc-filtros form{ display:flex; gap:6px; flex:1 1 240px; } .rc-filtros input{ flex:1; min-width:0; }
   .rc-filtros input, .rc-filtros select{ font:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:inherit; }
+  .ci-avisos{ margin:4px 0 8px 18px; padding:0; font-size:13px; line-height:1.5; } .ci-avisos li{ margin-bottom:5px; }
+  @media print{ #contratoImprimir .ci-imp .ing-tarjetas{ grid-template-columns:repeat(3, 1fr); } #contratoImprimir .ci-imp .ing-tarjeta.fuerte{ grid-column:1 / -1; } #contratoImprimir .ci-imp .informe-row{ break-inside:avoid; } }
   .recibo-imprimir{ display:none; }
   /* Contrato de mandato (solo se ve al imprimir) */
   .contrato-imprimir{ display:none; }
@@ -1798,6 +1800,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       </button>
       <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;">🧾 Crear borradores en Alegra</button>
       <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;">🧾 Recibos y pagos en Alegra</button>
+      <button type="button" class="sidebar-link" id="navCierreContador" data-informe="cierre" style="display:none;">📒 Cierre del mes para el contador</button>
       <button type="button" class="sidebar-total" data-informe="aportes">
         <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
         <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
@@ -5777,6 +5780,136 @@ document.getElementById("rcDias").addEventListener("change", (e) => { rcDias = N
 document.getElementById("rcUsuario").addEventListener("change", renderRegistroCambios);
 document.getElementById("rcBuscarForm").addEventListener("submit", (e) => { e.preventDefault(); cargarRegistroCambios(); });
 
+/* ---- Cierre del mes para el contador (solo administrador) ----
+   Junta en una sola hoja lo que ya calcula la app: ingresos propios, aportes de terceros, planillas,
+   gastos del libro contable, lo creado en Alegra y lo que falta por cuadrar. Solo lee: no guarda ni cambia nada. */
+function ymDeNombreMes(nombre){
+  const MESES_N = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const m = String(nombre || "").toLowerCase().match(/([a-zñ]+)\s+(?:de\s+)?(\d{4})/);
+  const i = m ? MESES_N.indexOf(m[1]) : -1;
+  return i < 0 ? "" : `${m[2]}-${String(i + 1).padStart(2, "0")}`;
+}
+async function datosCierreContador(mes){
+  const fechas = await fechasDePago(mes);
+  const ing = resumenIngresos(mes, fechas), ap = reporteAportes(mes), ym = ymDeNombreMes(mes);
+  let gastosMes = [], gastosOk = true;
+  try{ await cargarGastos(); gastosMes = (gastos || []).filter(g => (g.tipo || "gasto") === "gasto" && mesDeFecha(g.fecha) === ym); }catch(e){ gastosOk = false; }
+  let facturas = [], recibos = [], pagos = [], alegraOk = !!(sb && navigator.onLine);
+  if (alegraOk){
+    try{
+      const nombres = [...new Set([mes, mes.replace(/\s+de\s+/i, " "), mes.replace(/^(\S+)\s+(\d{4})$/, "$1 de $2")])];
+      const [f, r, p] = await Promise.all([
+        sb.from("facturas_alegra").select("cedula, valor, estado, numero, responsable").in("mes", nombres),
+        sb.from("recibos_caja").select("tipo, estado, honorarios, aportes").in("mes", nombres),
+        sb.from("pagos_enlace").select("planilla, valor, estado").in("mes", nombres),
+      ]);
+      if (f.error || r.error || p.error) throw (f.error || r.error || p.error);
+      facturas = f.data || []; recibos = r.data || []; pagos = p.data || [];
+    }catch(e){ console.error("No se pudo leer lo de Alegra:", e); alegraOk = false; }
+  }
+  const factPorCedula = new Map(facturas.map(x => [String(x.cedula), x]));
+  const pagados = gastosMes.filter(g => g.estado === "pagado"), pendientes = gastosMes.filter(g => g.estado !== "pagado");
+  const suma = (arr, f) => arr.reduce((a, x) => a + numOrZero(f(x)), 0);
+  const porCategoria = {}; pagados.forEach(g => { const k = g.categoria || "Sin categoría"; porCategoria[k] = (porCategoria[k] || 0) + numOrZero(g.valor); });
+  const detalle = ap.filas.map(f => {
+    const ced = String(f.r["Cédula"]), fp = fechas[ced] || {}, fa = factPorCedula.get(ced);
+    return { cedula: ced, nombre: String(f.r["Nombre del Afiliado"] || "").toUpperCase(), responsable: nombrePropio(f.r["Responsable / Grupo"] || ""), estado: f.r["Estado Trámite"], fecha: fp.fecha || "", aprox: !!fp.aprox, planilla: f.planilla,
+      salud: f.d.salud, pension: f.d.pension, arl: f.d.arl, caja: f.d.caja, aportes: f.d.aportes, servicio: f.d.servicio, recargo: f.d.recargo, total: f.d.total,
+      factura: fa ? (fa.numero || "borrador") : "", facturaEstado: fa ? fa.estado : "" };
+  });
+  const sinFactura = alegraOk ? detalle.filter(d => d.servicio + d.recargo > 0 && !d.factura) : [];
+  return { mes, ym, ing, ap, detalle, gastosOk, alegraOk, pagados, pendientes, porCategoria,
+    totalGastos: suma(pagados, g => g.valor), totalPendientes: suma(pendientes, g => g.valor),
+    recibido: ing.ingreso + ap.recibido, resultado: ing.ingreso - suma(pagados, g => g.valor),
+    facturas, recibos, pagos, borradores: facturas.filter(x => /borrador|draft/i.test(x.estado || "")).length,
+    totalFacturado: suma(facturas, x => x.valor), sinFactura, sinFecha: detalle.filter(d => !d.fecha), fechaAprox: detalle.filter(d => d.aprox) };
+}
+function cierreContadorHtml(c, paraImprimir){
+  const fila = (k, v, fuerte) => `<div class="informe-row${fuerte ? " total" : ""}"><span class="ir-label">${k}</span><span class="ir-valor">${typeof v === "number" ? fmt(v) : v}</span></div>`;
+  const titulo = (t) => `<div class="informe-seccion-title">${t}</div>`;
+  const lineas = Object.entries(c.ing.lineas).filter(([, l]) => l.ingreso > 0).sort((a, b) => b[1].ingreso - a[1].ingreso);
+  const nombres = (arr, f = d => nombrePropio(d.nombre)) => arr.slice(0, 12).map(f).join(", ") + (arr.length > 12 ? ` y ${arr.length - 12} más` : "");
+  const avisos = [];
+  if (c.ap.sinPlanilla.length) avisos.push(`<b>${c.ap.sinPlanilla.length}</b> pagado${c.ap.sinPlanilla.length === 1 ? "" : "s"} sin número de planilla (${fmt(c.ap.pendiente)} en aportes): ${escHtml(nombres(c.ap.sinPlanilla, f => nombrePropio(f.r["Nombre del Afiliado"])))}.`);
+  if (c.sinFactura.length) avisos.push(`<b>${c.sinFactura.length}</b> pagado${c.sinFactura.length === 1 ? "" : "s"} sin factura creada en Alegra: ${escHtml(nombres(c.sinFactura))}.`);
+  if (c.borradores) avisos.push(`<b>${c.borradores}</b> factura${c.borradores === 1 ? "" : "s"} siguen en borrador según la app. El contador las emite en Alegra.`);
+  if (c.alegraOk && c.facturas.length && !c.recibos.length) avisos.push(`Hay facturas pero ningún recibo de caja creado desde la app.`);
+  if (c.alegraOk && c.ap.planillas.length > c.pagos.length) avisos.push(`<b>${c.ap.planillas.length - c.pagos.length}</b> planilla${c.ap.planillas.length - c.pagos.length === 1 ? "" : "s"} sin pago a Enlace registrado en Alegra.`);
+  if (c.sinFecha.length) avisos.push(`<b>${c.sinFecha.length}</b> pagos sin fecha de pago registrada.`);
+  if (c.fechaAprox.length) avisos.push(`<b>${c.fechaAprox.length}</b> pagos con fecha aproximada (anteriores al 4 de noviembre de 2026).`);
+  if (c.ing.porCobrar > 0) avisos.push(`Falta por cobrar a clientes: <b>${fmt(c.ing.porCobrar)}</b> (de eso, ${fmt(c.ing.ingresoPorCobrar)} son ingresos de la empresa).`);
+  if (!c.alegraOk) avisos.push(`Sin internet no se pudo leer lo de Alegra: esa parte no está en este informe.`);
+  return `${paraImprimir ? `<div class="ct-cab"><b>PROSEGUROSNET</b><span>Cierre del mes · ${escHtml(c.mes)}</span></div>` : ""}
+    <div class="ing-tarjetas">
+      <div class="ing-tarjeta fuerte"><small>Recibido de clientes en ${escHtml(c.mes)}</small><b>${fmt(c.recibido)}</b><span>${c.ing.pagos} pagos · ingresos de la empresa + aportes de terceros</span></div>
+      <div class="ing-tarjeta"><small>Ingresos de la empresa</small><b>${fmt(c.ing.ingreso)}</b><span>honorarios, afiliaciones, gestiones</span></div>
+      <div class="ing-tarjeta"><small>Aportes de terceros</small><b>${fmt(c.ap.recibido)}</b><span>no es ganancia · cuenta 2815</span></div>
+      <div class="ing-tarjeta"><small>Gastos pagados</small><b>${fmt(c.totalGastos)}</b><span>${c.pagados.length} del libro contable</span></div>
+      <div class="ing-tarjeta"><small>Resultado del mes</small><b>${c.resultado < 0 ? "−" + fmt(-c.resultado) : fmt(c.resultado)}</b><span>ingresos de la empresa − gastos pagados</span></div>
+    </div>
+    ${titulo("1. Ingresos de la empresa, por línea")}
+    ${lineas.map(([k, l]) => fila(`${escHtml(k)}${l.pagos ? ` · ${l.pagos} pago${l.pagos === 1 ? "" : "s"}` : ""}`, l.ingreso)).join("") || `<div class="empty">Todavía no hay ingresos este mes.</div>`}
+    ${fila("Total ingresos de la empresa", c.ing.ingreso, true)}
+    ${titulo("2. Aportes recibidos para terceros")}
+    ${fila("Salud (EPS)", c.ap.salud)}${fila("Pensión", c.ap.pension)}${fila("Riesgos laborales (ARL)", c.ap.arl)}${fila("Caja de compensación", c.ap.caja)}
+    ${fila("Total aportes recibidos", c.ap.recibido, true)}${fila("Ya pagados con planilla", c.ap.pagado)}${fila("Recibidos y todavía sin planilla", c.ap.pendiente)}
+    ${titulo(`3. Planillas pagadas (${c.ap.planillas.length})`)}
+    ${c.ap.planillas.map(p => fila(`N.° ${escHtml(p.numero)} · ${p.afiliados} afiliado${p.afiliados === 1 ? "" : "s"}`, p.valor)).join("") || `<div class="empty">Todavía no hay planillas este mes.</div>`}
+    ${titulo("4. Gastos pagados, por categoría")}
+    ${Object.entries(c.porCategoria).sort((a, b) => b[1] - a[1]).map(([k, v]) => fila(escHtml(k), v)).join("") || `<div class="empty">No hay gastos pagados registrados en el libro contable de este mes.</div>`}
+    ${fila("Total gastos pagados", c.totalGastos, true)}${c.pendientes.length ? fila(`Gastos pendientes por pagar (${c.pendientes.length})`, c.totalPendientes) : ""}
+    ${c.alegraOk ? `${titulo("5. Alegra (creado desde la app)")}
+    ${fila("Facturas de honorarios", `${c.facturas.length} · ${fmt(c.totalFacturado)}`)}${fila("De esas, en borrador", String(c.borradores))}
+    ${fila("Recibos de caja", String(c.recibos.length))}${fila("Pagos a Enlace por planilla", String(c.pagos.length))}` : ""}
+    ${titulo("Para revisar antes de entregar")}
+    ${avisos.length ? `<ul class="ci-avisos">${avisos.map(a => `<li>${a}</li>`).join("")}</ul>` : `<div class="empty">✓ Todo cuadra: no hay pendientes.</div>`}
+    <p class="ing-nota">Valores tomados de la app el ${new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}. El valor real de cada planilla está en su comprobante y puede traer intereses. El estado de las facturas es el que tenían al crearse: el definitivo está en Alegra.</p>
+    ${paraImprimir ? "" : `<div class="modal-actions" style="flex-wrap:wrap;"><button type="button" class="btn small primary" id="cierreExcelBtn">⬇️ Descargar Excel para el contador</button><button type="button" class="btn small" id="cierrePdfBtn">🖨️ Imprimir o guardar como PDF</button></div>`}`;
+}
+function descargarCierreContador(c){
+  const aoa = [];
+  const t = (x) => aoa.push([x]), v = () => aoa.push([]);
+  t(`PROSEGUROSNET · Cierre del mes · ${c.mes}`); t(`Generado el ${new Date().toLocaleDateString("es-CO")} con los valores de la app`); v();
+  t("RESUMEN");
+  [["Recibido de clientes", c.recibido], ["Ingresos de la empresa", c.ing.ingreso], ["Aportes recibidos para terceros", c.ap.recibido], ["Gastos pagados", c.totalGastos], ["Resultado (ingresos de la empresa - gastos pagados)", c.resultado], ["Falta por cobrar a clientes", c.ing.porCobrar]].forEach(f => aoa.push(f));
+  v(); t("INGRESOS DE LA EMPRESA POR LÍNEA"); aoa.push(["Línea", "Pagos", "Valor"]);
+  Object.entries(c.ing.lineas).forEach(([k, l]) => aoa.push([k, l.pagos || 0, l.ingreso]));
+  v(); t("APORTES RECIBIDOS PARA TERCEROS"); [["Salud (EPS)", c.ap.salud], ["Pensión", c.ap.pension], ["Riesgos laborales (ARL)", c.ap.arl], ["Caja de compensación", c.ap.caja], ["Total", c.ap.recibido], ["Pagados con planilla", c.ap.pagado], ["Sin planilla todavía", c.ap.pendiente]].forEach(f => aoa.push(f));
+  v(); t("PLANILLAS PAGADAS"); aoa.push(["N.º planilla", "Afiliados", "Aportes"]);
+  c.ap.planillas.forEach(p => aoa.push([String(p.numero), p.afiliados, p.valor]));
+  v(); t("GASTOS DEL MES"); aoa.push(["Fecha", "Categoría", "Descripción", "A quién", "Valor", "Estado", "Medio de pago"]);
+  [...c.pagados, ...c.pendientes].forEach(g => aoa.push([fechaCorta(g.fecha), g.categoria || "", g.descripcion || "", g.proveedor || "", numOrZero(g.valor), g.estado === "pagado" ? "Pagado" : "Pendiente", g.medio_pago || ""]));
+  if (c.alegraOk){ v(); t("ALEGRA (CREADO DESDE LA APP)"); [["Facturas de honorarios", c.facturas.length], ["Valor facturado", c.totalFacturado], ["Facturas en borrador", c.borradores], ["Recibos de caja", c.recibos.length], ["Pagos a Enlace", c.pagos.length]].forEach(f => aoa.push(f)); }
+  v(); t("DETALLE POR CLIENTE PAGADO");
+  aoa.push(["Cédula", "Nombre", "Responsable", "Estado", "Fecha de pago", "Fecha aproximada", "N.º planilla", "Salud", "Pensión", "ARL", "Caja", "Total aportes", "Honorarios", "Recargo", "Total recibido", "Factura"]);
+  c.detalle.forEach(d => aoa.push([d.cedula, d.nombre, d.responsable, d.estado, d.fecha ? fechaCorta(d.fecha) : "", d.aprox ? "Sí" : "", d.planilla, d.salud, d.pension, d.arl, d.caja, d.aportes, d.servicio, d.recargo, d.total, d.factura || "Sin factura"]));
+  const blob = XLSXMin.libro(aoa, "Cierre del mes");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Cierre PROSEGUROSNET - ${c.mes}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function abrirCierreContador(){
+  if (!esAdmin()){ showToast("El cierre del mes es solo para el administrador."); return; }
+  const mes = store.currentMonth, cont = document.getElementById("informeContenido");
+  document.getElementById("informeTitulo").textContent = "📒 Cierre del mes para el contador";
+  document.getElementById("informeSubtitulo").textContent = mes;
+  cont.innerHTML = `<div class="empty">Calculando…</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+  let c;
+  try{ c = await datosCierreContador(mes); }
+  catch(e){ console.error(e); cont.innerHTML = `<div class="empty">No se pudo armar el cierre: ${escHtml(e.message || String(e))}</div>`; return; }
+  if (mes !== store.currentMonth) return;
+  cont.innerHTML = cierreContadorHtml(c, false);
+  document.getElementById("cierreExcelBtn").onclick = () => descargarCierreContador(c);
+  document.getElementById("cierrePdfBtn").onclick = () => {
+    document.getElementById("contratoImprimir").innerHTML = `<div class="ci-imp">${cierreContadorHtml(c, true)}</div>`;
+    document.body.classList.add("imp-contrato");
+    setTimeout(() => window.print(), 100);
+  };
+}
+
 /* ---- Lista de tareas (fecha + tipo de gestión + alerta) ---- */
 function getTareas(){
   if (!store.tareas) store.tareas = [];
@@ -6643,6 +6776,7 @@ function abrirInforme(tipo){
   if (tipo === "aportes"){ abrirInformeAportes(); return; }
   if (tipo === "facturar"){ abrirBorradoresDelMes(); return; }
   if (tipo === "recibos"){ abrirRecibosDeCaja(); return; }
+  if (tipo === "cierre"){ abrirCierreContador(); return; }
   const TITULOS = {
     prosegurosnet: "Informe — PROSEGUROSNET",
     conductores: "Informe — Actualización de Conductores",
@@ -7325,6 +7459,7 @@ function renderMonthTotal(){
   document.getElementById("navCambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("cambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navRecibosCaja").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navCierreContador").style.display = esAdmin() ? "" : "none";
   const aportesMes = reporteAportes(store.currentMonth);
   document.getElementById("sidebarAportesValue").textContent = fmt(aportesMes.recibido);
   document.getElementById("sidebarAportesPagos").textContent = aportesMes.sinPlanilla.length ? `Falta planilla: ${aportesMes.sinPlanilla.length}` : "Todo con planilla";
