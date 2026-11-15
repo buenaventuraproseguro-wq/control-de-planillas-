@@ -845,6 +845,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .rc-filtros input, .rc-filtros select{ font:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:inherit; }
   .ci-avisos{ margin:4px 0 8px 18px; padding:0; font-size:13px; line-height:1.5; } .ci-avisos li{ margin-bottom:5px; }
   @media print{ #contratoImprimir .ci-imp .ing-tarjetas{ grid-template-columns:repeat(3, 1fr); } #contratoImprimir .ci-imp .ing-tarjeta.fuerte{ grid-column:1 / -1; } #contratoImprimir .ci-imp .informe-row{ break-inside:avoid; } }
+  #polTarjetas{ grid-template-columns:repeat(4, 1fr); }
+  @media (max-width:640px){ #polTarjetas{ grid-template-columns:1fr 1fr; } }
+  #overlayPolizas [hidden], #overlayAfilTramite [hidden], #overlayMandato [hidden]{ display:none !important; }
+  .pol-buscar{ width:100%; font:inherit; font-size:14px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:inherit; margin-bottom:6px; }
   .recibo-imprimir{ display:none; }
   /* Contrato de mandato (solo se ve al imprimir) */
   .contrato-imprimir{ display:none; }
@@ -1840,6 +1844,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="sidebar-section-title">Clientes</div>
     <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
     <button type="button" class="sidebar-link" id="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite <span class="sidebar-badge" id="afilBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navPolizasBtn"><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Seguros y pólizas <span class="sidebar-badge" id="polBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">5</span><svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
     <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">6</span><svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
     <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><span class="sidebar-num">7</span><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
@@ -1953,6 +1958,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
             <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
             <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
             <button type="button" class="btn small" id="mandatoBtn">📄 Contrato de mandato</button>
+            <button type="button" class="btn small" id="polizasClienteBtn">🛡️ Seguros y pólizas</button>
             <button type="button" class="btn small ghost" id="cambiosBtn" style="display:none;">🕘 Ver cambios</button>
             <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           </div>
@@ -3011,6 +3017,45 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
 </div>
 
+<!-- Seguros y pólizas vendidos -->
+<div class="overlay" id="overlayPolizas">
+  <div class="modal" style="max-width:880px;">
+    <h2>🛡️ Seguros y pólizas</h2>
+    <div class="modal-sub">Lo que vende aparte de las planillas: SOAT, pólizas de vehículo, hogar, vida, muelles y demás. La app avisa 30 días antes del vencimiento para ofrecer la renovación.</div>
+    <div class="ing-tarjetas" id="polTarjetas"></div>
+    <div class="modal-actions" style="justify-content:flex-start;margin:0 0 10px;"><button type="button" class="btn primary" id="polNuevaBtn">➕ Registrar póliza</button></div>
+    <form id="polForm" hidden autocomplete="off">
+      <p class="ing-nota" id="polFormTitulo" style="font-weight:700;"></p>
+      <div class="form-grid">
+        <div class="field"><label for="polCedula">Cédula (si es cliente trae sus datos)</label><input id="polCedula" inputmode="numeric" maxlength="12"></div>
+        <div class="field"><label for="polNombre">Nombre *</label><input id="polNombre" maxlength="120"></div>
+        <div class="field"><label for="polTelefono">Teléfono (WhatsApp)</label><input id="polTelefono" inputmode="numeric" maxlength="14"></div>
+        <div class="field"><label for="polTipo">Tipo de seguro *</label><select id="polTipo"></select></div>
+        <div class="field"><label for="polAseguradora">Aseguradora</label><input id="polAseguradora" maxlength="80" list="polAseguradoras" placeholder="Ej: Sura, Mundial, Previsora"><datalist id="polAseguradoras"></datalist></div>
+        <div class="field"><label for="polNumero">Número de póliza</label><input id="polNumero" maxlength="40"></div>
+        <div class="field"><label for="polPlaca">Placa (si es de vehículo)</label><input id="polPlaca" maxlength="8"></div>
+        <div class="field"><label for="polInicio">Inicio de vigencia</label><input id="polInicio" type="date"></div>
+        <div class="field"><label for="polVence">Vence el *</label><input id="polVence" type="date"></div>
+        <div class="field"><label for="polPrima">Valor que paga el cliente</label><input id="polPrima" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="polComision">Lo que le deja a PROSEGUROSNET</label><input id="polComision" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="field" id="polEstadoCaja" hidden><label for="polEstado">Estado</label><select id="polEstado"><option value="activa">Activa</option><option value="renovada">Renovada (ya tiene una nueva)</option><option value="cancelada">Cancelada</option></select></div>
+        <div class="field span2" style="grid-column:1/-1;"><label for="polNota">Nota</label><input id="polNota" maxlength="300"></div>
+      </div>
+      <div class="doc-emp-fila" id="polArchivoCaja" hidden><div class="doc-emp-txt"><b>Archivo de la póliza</b><span class="doc-emp-est" id="polArchivoEstado"></span></div>
+        <button type="button" class="btn small" id="polArchivoBtn">📎 Subir póliza</button></div>
+      <input type="file" id="polFile" class="hidden-file" accept=".pdf,application/pdf,image/*">
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="polBorrarBtn" hidden>Eliminar</button>
+        <button type="button" class="btn ghost" id="polCancelarBtn">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+    <input class="pol-buscar" id="polBuscar" placeholder="Buscar por nombre, cédula, placa, tipo o aseguradora" maxlength="60">
+    <div id="polLista"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="polCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- Registro de cambios (solo administrador) -->
 <div class="overlay" id="overlayCambios">
   <div class="modal" style="max-width:820px;">
@@ -4040,6 +4085,7 @@ async function cargarStoreDesdeSupabase(){
   const { data: tareasRows } = await sb.from("tareas").select("*");
   await cargarIncapacidades();
   cargarAfilTramites();
+  await cargarPolizas();
   nuevoStore.tareas = (tareasRows || []).map(row => {
     tareaIdsConocidos.add(row.id);
     const t = { id: row.id, cedula: row.cedula, nombre: row.nombre, descripcion: row.descripcion,
@@ -5910,6 +5956,208 @@ async function abrirCierreContador(){
   };
 }
 
+/* ---- Seguros y pólizas que vende PROSEGUROSNET (SOAT, vehículo, hogar, vida, muelles…) ----
+   Tabla nueva "polizas": qué tiene cada persona, cuándo vence y cuánto deja de comisión.
+   El PDF de la póliza se guarda en documentos-clientes/polizas/<id>. No cambia nada del cliente. */
+let polizas = [];
+let polEditando = null, polRenovando = null, polFiltro = "";
+const POL_TIPOS = ["SOAT", "Todo riesgo vehículo", "Responsabilidad civil", "Póliza de muelles", "Hogar", "Vida", "Accidentes personales", "Cumplimiento", "Otro"];
+const POL_DIAS_AVISO = 30;
+function polDias(p){ return p.fecha_vencimiento ? diasHasta(p.fecha_vencimiento) : null; }
+function polVigente(p){ return p.estado === "activa" && (polDias(p) === null || polDias(p) >= 0); }
+function polPorVencer(p){ const d = polDias(p); return p.estado === "activa" && d !== null && d >= 0 && d <= POL_DIAS_AVISO; }
+function polVencida(p){ const d = polDias(p); return p.estado === "activa" && d !== null && d < 0; }
+function polToca(p){ return (polPorVencer(p) || (polVencida(p) && polDias(p) >= -60)) && !p.avisado_el; }
+function actualizarBadgePolizas(){
+  try{
+    const n = polizas.filter(polToca).length, b = document.getElementById("polBadge");
+    b.textContent = n; b.style.display = n ? "inline-flex" : "none"; b.title = "Pólizas por vencer o vencidas sin avisar al cliente";
+  }catch(e){}
+}
+async function cargarPolizas(){
+  if (!sb) return;
+  try{
+    const { data, error } = await sb.from("polizas").select("*").order("fecha_vencimiento", { ascending: true }).limit(2000);
+    if (error) throw error;
+    polizas = data || [];
+  }catch(e){ console.error("No se pudieron cargar las pólizas:", e); }
+  actualizarBadgePolizas();
+}
+function polChip(p){
+  const d = polDias(p);
+  if (p.estado === "cancelada") return `<span class="at-chip gris">Cancelada</span>`;
+  if (p.estado === "renovada") return `<span class="at-chip gris">Renovada</span>`;
+  if (d === null) return `<span class="at-chip">Sin fecha</span>`;
+  if (d < 0) return `<span class="at-chip mal">Venció hace ${-d} día${d === -1 ? "" : "s"}</span>`;
+  if (d <= POL_DIAS_AVISO) return `<span class="at-chip aviso">${d === 0 ? "Vence hoy" : `Vence en ${d} día${d === 1 ? "" : "s"}`}</span>`;
+  return `<span class="at-chip ok">Vigente</span>`;
+}
+function mensajePoliza(p){
+  const nombre = nombrePropio(String(p.nombre || "").split(" ").slice(0, 2).join(" ")), d = polDias(p);
+  const que = `*${p.tipo === "SOAT" ? "SOAT" : (/^p[oó]liza/i.test(p.tipo) ? p.tipo.toLowerCase() : "póliza de " + String(p.tipo).toLowerCase())}*${p.placa ? ` del vehículo de placa *${String(p.placa).toUpperCase()}*` : ""}`;
+  return `🛡️ *PROSEGUROSNET*\n¡Hola, ${nombre}! 👋\n\nLe recordamos que su ${que}${p.aseguradora ? ` con ${p.aseguradora}` : ""} ${d !== null && d < 0 ? `venció el *${fechaLarga(p.fecha_vencimiento)}*` : `vence el *${fechaLarga(p.fecha_vencimiento)}*`}.\n\n`
+    + `${d !== null && d < 0 ? "Mientras esté vencida no tiene cobertura. " : "Le avisamos con tiempo para que no se quede sin cobertura. "}En *PROSEGUROSNET* le hacemos la renovación de forma rápida y segura.\n\n¿Quiere que le ayudemos? Responda este mensaje y con gusto le atendemos.`;
+}
+function polFila(p){
+  const tel = telefonoDiezDigitos(p.telefono);
+  const abierta = p.estado === "activa";
+  return `<div class="at-fila">
+    <span class="bm-info"><b>${escHtml(nombrePropio(p.nombre))} ${polChip(p)}</b>
+      <small>${p.cedula ? escHtml(p.cedula) + " · " : ""}${escHtml(p.tipo)}${p.aseguradora ? " · " + escHtml(p.aseguradora) : ""}${p.numero_poliza ? " · N.º " + escHtml(p.numero_poliza) : ""}${p.placa ? " · placa " + escHtml(String(p.placa).toUpperCase()) : ""}</small>
+      <small>${p.fecha_inicio ? `Desde ${fechaCorta(p.fecha_inicio)}` : ""}${p.fecha_vencimiento ? `${p.fecha_inicio ? " · " : ""}vence el <b>${fechaCorta(p.fecha_vencimiento)}</b>` : ""} · Valor ${fmt(numOrZero(p.valor_prima))} · Le deja <b>${fmt(numOrZero(p.comision))}</b>${p.avisado_el ? ` · avisado el ${fechaCorta(p.avisado_el)}` : ""}</small>
+      ${p.nota ? `<small>${escHtml(p.nota)}</small>` : ""}</span>
+    <span class="at-acc">
+      ${abierta && tel.length === 10 && p.fecha_vencimiento && polDias(p) <= POL_DIAS_AVISO ? `<button type="button" class="btn small whatsapp" data-pol-avisar="${escHtml(p.id)}">Avisar por WhatsApp</button>` : ""}
+      ${abierta ? `<button type="button" class="btn small primary" data-pol-renovar="${escHtml(p.id)}">🔁 Renovar</button>` : ""}
+      ${p.archivo_path ? `<button type="button" class="btn small" data-pol-ver="${escHtml(p.id)}">📎 Ver póliza</button>` : ""}
+      <button type="button" class="btn small ghost" data-pol-editar="${escHtml(p.id)}">Editar</button>
+    </span></div>`;
+}
+function renderPolizas(){
+  const mes = store.currentMonth;
+  const activas = polizas.filter(p => p.estado === "activa");
+  const delMes = polizas.filter(p => p.estado !== "cancelada" && p.fecha_inicio && mesDeFechaISO(String(p.fecha_inicio).slice(0, 10)) === mes);
+  document.getElementById("polTarjetas").innerHTML = `
+    <div class="ing-tarjeta"><small>Vigentes</small><b>${activas.filter(polVigente).length}</b><span>pólizas activas</span></div>
+    <div class="ing-tarjeta"><small>Por vencer</small><b>${activas.filter(polPorVencer).length}</b><span>en los próximos ${POL_DIAS_AVISO} días</span></div>
+    <div class="ing-tarjeta"><small>Vencidas sin renovar</small><b>${activas.filter(polVencida).length}</b><span>oportunidad de venta</span></div>
+    <div class="ing-tarjeta"><small>Le dejaron en ${escHtml(mes || "el mes")}</small><b>${fmt(delMes.reduce((a, p) => a + numOrZero(p.comision), 0))}</b><span>${delMes.length} vendida${delMes.length === 1 ? "" : "s"} · ${fmt(delMes.reduce((a, p) => a + numOrZero(p.valor_prima), 0))} en primas</span></div>`;
+  const t = polFiltro.trim().toLowerCase(), dig = t.replace(/\D/g, "");
+  const coincide = (p) => !t || String(p.nombre || "").toLowerCase().includes(t) || (dig && String(p.cedula || "").includes(dig)) || String(p.placa || "").toLowerCase().includes(t) || String(p.tipo || "").toLowerCase().includes(t) || String(p.aseguradora || "").toLowerCase().includes(t);
+  const orden = (p) => p.fecha_vencimiento || "9999";
+  const lista = activas.filter(coincide).sort((a, b) => orden(a).localeCompare(orden(b)));
+  const viejas = polizas.filter(p => p.estado !== "activa" && coincide(p));
+  document.getElementById("polLista").innerHTML = (lista.map(polFila).join("") || `<div class="empty">${t ? "Ninguna póliza coincide con la búsqueda." : "Todavía no hay pólizas registradas. Toque «Registrar póliza» para empezar."}</div>`)
+    + (viejas.length ? `<details class="at-det"><summary>Renovadas o canceladas (${viejas.length})</summary>${viejas.map(polFila).join("")}</details>` : "");
+  actualizarBadgePolizas();
+}
+function polAbrirForm(p, renovarDe){
+  polEditando = p && p.id && !renovarDe ? p : null; polRenovando = renovarDe || null;
+  const v = p || {};
+  const pon = (id, x) => { document.getElementById(id).value = x ?? ""; };
+  pon("polCedula", v.cedula); pon("polNombre", v.nombre ? nombrePropio(v.nombre) : ""); pon("polTelefono", v.telefono);
+  const sel = document.getElementById("polTipo");
+  sel.innerHTML = [...new Set([...POL_TIPOS, ...(v.tipo ? [v.tipo] : [])])].map(x => `<option>${escHtml(x)}</option>`).join("");
+  sel.value = v.tipo || "SOAT";
+  pon("polAseguradora", v.aseguradora); pon("polNumero", renovarDe ? "" : v.numero_poliza); pon("polPlaca", v.placa);
+  pon("polInicio", v.fecha_inicio || (p ? "" : fechaHoyISO())); pon("polVence", v.fecha_vencimiento);
+  pon("polPrima", numOrZero(v.valor_prima) || ""); pon("polComision", numOrZero(v.comision) || ""); pon("polEstado", v.estado || "activa"); pon("polNota", renovarDe ? "" : v.nota);
+  document.getElementById("polEstadoCaja").hidden = !polEditando;
+  document.getElementById("polBorrarBtn").hidden = !(polEditando && esAdmin());
+  document.getElementById("polArchivoCaja").hidden = !polEditando;
+  document.getElementById("polArchivoEstado").textContent = polEditando && polEditando.archivo_path ? "✅ Ya tiene la póliza guardada. Si sube otra, reemplaza la anterior." : "PDF o foto de la póliza.";
+  document.getElementById("polFormTitulo").textContent = renovarDe ? `Renovación de ${nombrePropio(renovarDe.nombre)}: revise fechas y valores` : polEditando ? "Editar póliza" : "Póliza nueva";
+  try{ document.getElementById("polAseguradoras").innerHTML = [...new Set(polizas.map(x => x.aseguradora).filter(Boolean))].sort().map(a => `<option value="${escHtml(a)}">`).join(""); }catch(e){}
+  document.getElementById("polForm").hidden = false;
+  document.getElementById(p ? "polVence" : "polCedula").focus();
+}
+function polCerrarForm(){ polEditando = null; polRenovando = null; document.getElementById("polForm").hidden = true; }
+async function abrirPolizas(filtro){
+  polCerrarForm();
+  polFiltro = filtro || "";
+  document.getElementById("polBuscar").value = polFiltro;
+  document.getElementById("polLista").innerHTML = `<div class="empty">Cargando…</div>`;
+  document.getElementById("overlayPolizas").classList.add("show");
+  await cargarPolizas();
+  renderPolizas();
+}
+function masUnAnio(iso){
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return "";
+  const d = new Date(+m[1] + 1, +m[2] - 1, +m[3]);
+  return isoDia(d);
+}
+document.getElementById("navPolizasBtn").addEventListener("click", () => abrirPolizas(""));
+document.getElementById("polizasClienteBtn").addEventListener("click", () => { if (activeCedula) abrirPolizas(String(activeCedula)); });
+document.getElementById("polCerrarBtn").addEventListener("click", () => document.getElementById("overlayPolizas").classList.remove("show"));
+document.getElementById("polCancelarBtn").addEventListener("click", polCerrarForm);
+document.getElementById("polBuscar").addEventListener("input", (e) => { polFiltro = e.target.value; renderPolizas(); });
+document.getElementById("polNuevaBtn").addEventListener("click", () => {
+  const ced = polFiltro.replace(/\D/g, ""), r = ced.length >= 5 ? (records || []).find(x => String(x["Cédula"]) === ced) : null;
+  polAbrirForm(r ? { cedula: ced, nombre: r["Nombre del Afiliado"], telefono: r["Teléfono"], placa: r["Placa"], fecha_inicio: fechaHoyISO() } : null);
+});
+document.getElementById("polCedula").addEventListener("change", (e) => {
+  const c = e.target.value.replace(/\D/g, ""); e.target.value = c;
+  const r = (records || []).find(x => String(x["Cédula"]) === c); if (!r) return;
+  const llena = (id, x) => { const el = document.getElementById(id); if (!el.value.trim() && x) el.value = x; };
+  llena("polNombre", nombrePropio(r["Nombre del Afiliado"] || "")); llena("polTelefono", r["Teléfono"]); llena("polPlaca", r["Placa"]);
+});
+document.getElementById("polInicio").addEventListener("change", (e) => { const v = document.getElementById("polVence"); if (!v.value && e.target.value) v.value = masUnAnio(e.target.value); });
+document.getElementById("overlayPolizas").addEventListener("click", async (e) => {
+  const q = (s) => e.target.closest(s), busca = (id) => polizas.find(p => String(p.id) === String(id));
+  let b;
+  if ((b = q("[data-pol-avisar]"))){
+    const p = busca(b.dataset.polAvisar); if (!p) return;
+    abrirWhatsappConMensaje(p.telefono, mensajePoliza(p));
+    const { error } = await sb.from("polizas").update({ avisado_el: fechaHoyISO(), updated_at: new Date().toISOString() }).eq("id", p.id);
+    if (!error){ p.avisado_el = fechaHoyISO(); renderPolizas(); }
+  } else if ((b = q("[data-pol-renovar]"))){
+    const p = busca(b.dataset.polRenovar); if (!p) return;
+    const inicio = p.fecha_vencimiento && polDias(p) >= 0 ? p.fecha_vencimiento : fechaHoyISO();
+    polAbrirForm({ ...p, fecha_inicio: inicio, fecha_vencimiento: masUnAnio(inicio) }, p);
+  } else if ((b = q("[data-pol-editar]"))){
+    polAbrirForm(busca(b.dataset.polEditar));
+  } else if ((b = q("[data-pol-ver]"))){
+    const p = busca(b.dataset.polVer); if (!p || !p.archivo_path) return;
+    const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(p.archivo_path, 600);
+    if (error || !data){ alertApp("No se pudo abrir la póliza: " + (error ? error.message : "")); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  }
+});
+document.getElementById("polForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const v = id => document.getElementById(id).value.trim();
+  const nombre = limpiarEspacios(v("polNombre"));
+  if (!nombre){ showToast("⚠️ Escriba el nombre de la persona."); return; }
+  if (!v("polVence")){ showToast("⚠️ Escriba la fecha de vencimiento: con ella la app avisa a tiempo."); return; }
+  if (v("polInicio") && v("polVence") < v("polInicio")){ showToast("⚠️ La fecha de vencimiento no puede ser antes del inicio."); return; }
+  const tel = telefonoDiezDigitos(v("polTelefono"));
+  if (v("polTelefono") && tel.length !== 10){ showToast("⚠️ El teléfono debe tener 10 dígitos."); return; }
+  const fila = { cedula: v("polCedula").replace(/\D/g, "") || null, nombre: nombre.toLowerCase(), telefono: tel || null, tipo: v("polTipo"), aseguradora: limpiarEspacios(v("polAseguradora")) || null,
+    numero_poliza: v("polNumero") || null, placa: v("polPlaca").toUpperCase().replace(/\s+/g, "") || null, fecha_inicio: v("polInicio") || null, fecha_vencimiento: v("polVence"),
+    valor_prima: Math.round(numOrZero(v("polPrima"))), comision: Math.round(numOrZero(v("polComision"))), nota: v("polNota") || null, updated_at: new Date().toISOString() };
+  if (fila.comision > fila.valor_prima && fila.valor_prima > 0 && !(await confirmarApp("Lo que le deja es mayor que el valor de la póliza. ¿Guardar así?"))) return;
+  let r;
+  if (polEditando){
+    fila.estado = v("polEstado");
+    if (polEditando.fecha_vencimiento !== fila.fecha_vencimiento) fila.avisado_el = null;
+    r = await sb.from("polizas").update(fila).eq("id", polEditando.id);
+  } else {
+    r = await sb.from("polizas").insert(fila);
+    if (!r.error && polRenovando) await sb.from("polizas").update({ estado: "renovada", updated_at: new Date().toISOString() }).eq("id", polRenovando.id);
+  }
+  if (r.error){ await alertApp("No se pudo guardar: " + r.error.message); return; }
+  const eraRenovacion = !!polRenovando;
+  await cargarPolizas(); polCerrarForm(); renderPolizas(); try{ renderMonthTotal(); }catch(e2){}
+  showToast(eraRenovacion ? "✅ Renovación guardada. La anterior quedó como renovada." : "✅ Póliza guardada.");
+});
+document.getElementById("polArchivoBtn").addEventListener("click", () => {
+  if (!polEditando) return;
+  if (!navigator.onLine){ alertApp("Sin internet: se necesita conexión para subir la póliza."); return; }
+  const inp = document.getElementById("polFile"); inp.value = ""; inp.click();
+});
+document.getElementById("polFile").addEventListener("change", async (e) => {
+  const archivo = e.target.files && e.target.files[0];
+  if (!archivo || !polEditando) return;
+  if (archivo.size > 15 * 1024 * 1024){ alertApp("El archivo pesa más de 15 MB. Súbalo más liviano."); return; }
+  const ruta = `polizas/${polEditando.id}`;
+  showToast("Subiendo la póliza…");
+  const { error } = await sb.storage.from("documentos-clientes").upload(ruta, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+  if (error){ alertApp("No se pudo subir la póliza: " + error.message); return; }
+  const r = await sb.from("polizas").update({ archivo_path: ruta, updated_at: new Date().toISOString() }).eq("id", polEditando.id);
+  if (r.error){ alertApp("El archivo subió pero no se pudo anotar: " + r.error.message); return; }
+  polEditando.archivo_path = ruta;
+  document.getElementById("polArchivoEstado").textContent = "✅ Póliza guardada.";
+  await cargarPolizas(); renderPolizas();
+  showToast("✅ Póliza guardada.");
+});
+document.getElementById("polBorrarBtn").addEventListener("click", async () => {
+  if (!polEditando || !esAdmin()) return;
+  if (!(await confirmarApp(`¿Eliminar la póliza ${polEditando.tipo} de ${nombrePropio(polEditando.nombre)}? Esta acción no se puede deshacer.`))) return;
+  const { error } = await sb.from("polizas").delete().eq("id", polEditando.id);
+  if (error){ await alertApp("No se pudo eliminar: " + error.message); return; }
+  await cargarPolizas(); polCerrarForm(); renderPolizas();
+});
+
 /* ---- Lista de tareas (fecha + tipo de gestión + alerta) ---- */
 function getTareas(){
   if (!store.tareas) store.tareas = [];
@@ -6639,6 +6887,13 @@ function resumenIngresos(mes, fechas){
     res.ingreso += t.valor; res.total += t.valor;
     linea("Gestiones").ingreso += t.valor;
     res.movimientos.push({ fecha: String(t.fecha).slice(0, 10), aprox: false, nombre: `Gestión: ${t.descripcion || "sin detalle"}`, ingreso: t.valor, total: t.valor, pago: false });
+  });
+  // Seguros y pólizas: solo la comisión es de la empresa, en el mes en que empieza la vigencia
+  (polizas || []).filter(p => p.estado !== "cancelada" && numOrZero(p.comision) > 0 && p.fecha_inicio && mesDeFechaISO(String(p.fecha_inicio).slice(0, 10)) === mes).forEach(p => {
+    const c = numOrZero(p.comision);
+    res.ingreso += c; res.total += c;
+    const l = linea("Seguros y pólizas"); l.pagos++; l.ingreso += c;
+    res.movimientos.push({ fecha: String(p.fecha_inicio).slice(0, 10), aprox: false, nombre: `${p.tipo}: ${nombrePropio(p.nombre)}`, ingreso: c, total: c, pago: false });
   });
   // De una incapacidad solo la comisión es de la empresa
   incapacidades.filter(i => i.fecha_pago && mesDeFechaISO(i.fecha_pago) === mes && comisionIncap(i) > 0).forEach(i => {
@@ -15304,6 +15559,7 @@ function abrirHoy(){
     tarea("i-ancla", "gris", "Retiros de otra empresa sin soporte", d.soportes.length, "Falta la imagen o planilla", "", lista(d.soportes, r => escHtml(r["Empresa"] || ""))),
     tarea("i-contacto", "azul", `Afiliaciones sin confirmar`, d.afiliaciones.length, `${DIAS_ALERTA_CONFIRMACION}+ días esperando`, "", lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`)),
     tarea("i-reloj", "rojo", "Afiliaciones pasadas de tiempo", atTodosAbiertos().filter(t => atPasado(t) || t.estado === "devuelta").length, "La entidad no ha confirmado o devolvió la solicitud", "afiltramite"),
+    tarea("i-escudo", "naranja", "Pólizas por vencer sin avisar", polizas.filter(polToca).length, "Ofrecer la renovación por WhatsApp", "polizas"),
     tarea("i-sol", "gris", "Recordatorios de clientes", d.recordatorios.length, "Notas que vencieron", "", lista(d.recordatorios, r => escHtml(r["Observación"] || ""))),
     tarea("i-lupa", "gris", "Datos con problemas", d.problemas, "Cédulas repetidas, teléfonos, nombres distintos", "revision"),
   ].join("");
@@ -15329,6 +15585,7 @@ document.getElementById("hoyCuerpo").addEventListener("click", (e) => {
   else if (a === "revision") abrirRevision();
   else if (a === "vencen") abrirVencimientos();
   else if (a === "afiltramite") abrirAfilTramites();
+  else if (a === "polizas") abrirPolizas("");
   else if (a === "soportes") document.getElementById("enviarSoportesBtn").click();
   else if (a === "pendientes"){ filtroEstado = "__PENDIENTES__"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior:"smooth", block:"start" }); }
   else if (a === "pagadas"){ filtroEstado = "PAGO"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior:"smooth", block:"start" }); }

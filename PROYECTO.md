@@ -211,3 +211,11 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Resultado del mes = ingresos de la empresa − gastos pagados. Los ingresos escritos a mano en el libro contable no se suman, para no contar dos veces.
 - Descarga en Excel (`descargarCierreContador`, una hoja con resumen y detalle por cliente) y "Imprimir o guardar como PDF".
 
+## 15-nov-2026 · Seguros y pólizas
+- Menú Clientes → "Seguros y pólizas" (`abrirPolizas`, ventana `overlayPolizas`, contador `polBadge` = por vencer o vencidas sin avisar) y botón "🛡️ Seguros y pólizas" en la ficha (abre filtrado por la cédula). También sale en "Hoy".
+- Tabla nueva `polizas` (equipo ve/crea/cambia; solo admin borra): persona (cliente o no), tipo (lista `POL_TIPOS`), aseguradora, número, placa, vigencia, valor que paga el cliente, comisión, estado (activa, renovada, cancelada), avisado_el y archivo (`documentos-clientes/polizas/<id>`). No toca `clients`.
+- Aviso desde 30 días antes (`POL_DIAS_AVISO`) con mensaje de WhatsApp (`mensajePoliza`); "Renovar" crea la nueva a un año y deja la anterior como renovada.
+- La comisión de las pólizas cuya vigencia empieza en el mes entra en "Ingresos del mes" y en el cierre del contador como línea "Seguros y pólizas" (`resumenIngresos`). La prima no es ingreso.
+- Los vencimientos de SOAT/póliza que ya estaban en la ficha del cliente (menú Vencimientos) siguen igual y aparte: son documentos del cliente, no ventas.
+- De paso: en las ventanas nuevas los botones "Eliminar" ocultos se veían (faltaba la regla `[hidden]`); corregido.
+
