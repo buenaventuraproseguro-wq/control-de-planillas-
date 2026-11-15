@@ -38,6 +38,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Avanzar de mes: botón `advanceBtn` + `construirRegistroMesSiguiente`
 - Empresas: `renderListaEmpresasEditar`, `abrirDocsEmpresa` (RUT y Cámara en storage `documentos-clientes/empresa-<nombre>/`)
 - Afiliaciones en trámite: `abrirAfilTramites`, `renderAfilTramites`, `atDeFichas`, `diasHabilesEntre`; tabla `afiliaciones_tramite`; el correo entra con `registrar_afiliacion_correo` (tarea "Correo a la app")
+- Contrato de mandato: `abrirMandato`, `textoMandato`, `pintarBotonMandato`; firmados en storage `documentos-clientes/contratos-mandato/<documento>`
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
 ## Protecciones en la base de datos
@@ -50,3 +51,4 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Revisar a José Adier Velandia, Luis Delio Herrera Gil, Johan Grajales y Sebastián Muriel (cambios del 9 al 12 de nov. que pudieron perderse).
 - Comfenalco Valle: inexactitud por aportes de caja de $100 (planilla 89893112341; plazo de 30 días desde el 9 de nov.), 3 reportados sin afiliación y 8 afiliados sin reportar. Avisos diarios a nestor.fabian.garzon.29@gmail.com.
 - Reactivar envío de planillas cuando Enlace dé la API.
+- Contrato de mandato: falta que el contador o un abogado revise el texto modelo.

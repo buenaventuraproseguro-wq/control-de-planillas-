@@ -832,6 +832,25 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   #atTarjetas{ grid-template-columns:repeat(4, 1fr); }
   @media (max-width:640px){ #atTarjetas{ grid-template-columns:1fr 1fr; } }
   .recibo-imprimir{ display:none; }
+  /* Contrato de mandato (solo se ve al imprimir) */
+  .contrato-imprimir{ display:none; }
+  @media print{
+    body.imp-contrato > *:not(#contratoImprimir){ display:none !important; }
+    body.imp-contrato > #reciboImprimir{ display:none !important; }
+    body.imp-contrato > #contratoImprimir{ display:block !important; max-width:720px; margin:0 auto; font-family:"Inter", Arial, sans-serif; color:#111; font-size:11px; line-height:1.45; }
+    #contratoImprimir .ct-cab{ display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid #173A5E; padding-bottom:6px; margin-bottom:12px; }
+    #contratoImprimir .ct-cab b{ font-size:16px; letter-spacing:.02em; } #contratoImprimir .ct-cab span{ font-size:10.5px; color:#C0272D; font-weight:600; }
+    #contratoImprimir h2{ font-size:13px; text-align:center; margin:0 0 12px; }
+    #contratoImprimir h3{ font-size:12px; margin:22px 0 8px; break-before:page; }
+    #contratoImprimir p{ margin:0 0 7px; text-align:justify; }
+    #contratoImprimir .ct-cierre{ break-inside:avoid; }
+    #contratoImprimir .ct-firmas{ display:flex; gap:40px; margin-top:46px; }
+    #contratoImprimir .ct-firmas > div{ flex:1; font-size:11px; }
+    #contratoImprimir .ct-linea{ display:block; border-top:1px solid #111; margin-bottom:5px; }
+    #contratoImprimir .ct-tabla{ width:100%; border-collapse:collapse; } #contratoImprimir .ct-tabla th, #contratoImprimir .ct-tabla td{ border:1px solid #999; padding:4px 6px; text-align:left; font-size:11px; }
+    #contratoImprimir .ct-nota{ font-size:10.5px; color:#444; margin-top:8px; }
+    @page{ margin:16mm 15mm; }
+  }
   @media print{
     body > *:not(#reciboImprimir){ display:none !important; }
     #reciboImprimir{ display:block !important; max-width:480px; margin:0 auto; font-family:"Inter", sans-serif; color:#1a1a1a; }
@@ -1917,6 +1936,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
             <button class="btn small primary" id="editBtn">Editar</button>
             <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
             <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
+            <button type="button" class="btn small" id="mandatoBtn">📄 Contrato de mandato</button>
             <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           </div>
           <div class="acc-grupo"><span class="acc-t">Enviar al cliente</span>
@@ -2522,6 +2542,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     </div>
   </div>
 </div>
+<div id="contratoImprimir" class="contrato-imprimir"></div>
 <div id="reciboImprimir" class="recibo-imprimir">
   <div class="recibo-header">
     <img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z' fill='%23C0272D'/%3E%3Cpath d='M32 8 L52 16 V30 C52 43 43 52 32 56 C21 52 12 43 12 30 V16 Z' fill='%23ffffff' opacity='0.12'/%3E%3Crect x='18' y='30' width='28' height='12' rx='2' fill='%23ffffff'/%3E%3Crect x='20' y='24' width='10' height='8' rx='1' fill='%23ffffff'/%3E%3Ccircle cx='24' cy='44' r='3' fill='%23173A5E'/%3E%3Ccircle cx='40' cy='44' r='3' fill='%23173A5E'/%3E%3C/svg%3E" alt="PROSEGUROSNET" class="recibo-logo">
@@ -2970,6 +2991,33 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div id="atLista"></div>
     <div id="atHistoria"></div>
     <div class="modal-actions"><button type="button" class="btn ghost" id="atCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Contrato de mandato del cliente o de su responsable -->
+<div class="overlay" id="overlayMandato">
+  <div class="modal" style="max-width:640px;">
+    <h2>📄 Contrato de mandato</h2>
+    <div class="modal-sub">Revise los datos, imprima el contrato (o guárdelo como PDF) para firmarlo y luego suba aquí el contrato firmado. Lo que cambie aquí es solo para el contrato: no cambia la ficha del cliente.</div>
+    <div class="field" id="mdQuienCaja" hidden><label for="mdQuien">¿Quién firma como mandante?</label><select id="mdQuien"></select></div>
+    <div class="form-grid">
+      <div class="field span2" style="grid-column:1/-1;"><label for="mdNombre">Nombre o razón social *</label><input id="mdNombre" maxlength="140"></div>
+      <div class="field"><label for="mdTipoDoc">Tipo de documento</label><select id="mdTipoDoc"><option value="CC">Cédula de ciudadanía</option><option value="NIT">NIT</option><option value="CE">Cédula de extranjería</option></select></div>
+      <div class="field"><label for="mdDoc">Número de documento *</label><input id="mdDoc" inputmode="numeric" maxlength="15"></div>
+      <div class="field span2" style="grid-column:1/-1;"><label for="mdDireccion">Dirección</label><input id="mdDireccion" maxlength="160"></div>
+      <div class="field"><label for="mdTelefono">Teléfono</label><input id="mdTelefono" maxlength="20"></div>
+      <div class="field"><label for="mdCorreo">Correo</label><input id="mdCorreo" maxlength="120"></div>
+      <div class="field"><label for="mdValor">Honorarios al mes</label><input id="mdValor" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="mdAfiliacion">Afiliación (una sola vez)</label><input id="mdAfiliacion" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="mdCiudad">Ciudad de la firma</label><input id="mdCiudad" maxlength="60"></div>
+      <div class="field"><label for="mdFecha">Fecha del contrato</label><input id="mdFecha" type="date"></div>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-start;"><button type="button" class="btn primary" id="mdImprimirBtn">🖨️ Imprimir o guardar como PDF</button></div>
+    <div id="mdFirmado"></div>
+    <input type="file" id="mdFile" class="hidden-file" accept=".pdf,application/pdf,image/*">
+    <div class="modal-actions" style="justify-content:flex-start;"><button type="button" class="btn small ghost" id="mdFaltanBtn">Ver quiénes faltan por firmar</button></div>
+    <div id="mdFaltan"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="mdCerrarBtn">Cerrar</button></div>
   </div>
 </div>
 
@@ -5444,6 +5492,165 @@ document.getElementById("atBorrarBtn").addEventListener("click", async () => {
   await cargarAfilTramites(); atCerrarForm(); renderAfilTramites();
 });
 
+/* ---- Contrato de mandato ----
+   Se arma con los datos de la ficha (o del responsable) y se imprime o se guarda como PDF.
+   El contrato firmado se guarda en documentos-clientes/contratos-mandato/<documento> (solo el equipo lo ve).
+   No cambia ninguna tabla ni ningún dato del cliente. */
+const MANDATARIO = { nombre: "NESTOR FABIAN GARZON TORRES", doc: "1.112.904.783", marca: "PROSEGUROSNET", direccion: "Km 15 vía Cali, EDS Primax, Buenaventura (Valle del Cauca)", telefono: "311 613 3523", correo: "buenaventuraproseguro@gmail.com" };
+const MANDATO_CARPETA = "contratos-mandato";
+let mandatoCliente = null;      // registro de la ficha desde la que se abrió
+let mandatosFirmados = null;    // Map documento -> archivo (se carga una vez y se refresca al subir)
+function soloDigitos(v){ return String(v || "").replace(/\D/g, ""); }
+function conPuntos(v){ const d = soloDigitos(v); return d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : ""; }
+async function cargarMandatosFirmados(forzar){
+  if (mandatosFirmados && !forzar) return mandatosFirmados;
+  const m = new Map();
+  if (sb && navigator.onLine){
+    try{
+      const { data, error } = await sb.storage.from("documentos-clientes").list(MANDATO_CARPETA, { limit: 1000 });
+      if (error) throw error;
+      (data || []).forEach(o => { if (o && o.name && o.id) m.set(o.name, o); });
+      mandatosFirmados = m;
+    }catch(e){ console.error("No se pudo revisar los contratos firmados:", e); return mandatosFirmados || m; }
+  }
+  return mandatosFirmados || m;
+}
+function respMandato(r){
+  const clave = normResp(r["Responsable / Grupo"] || "");
+  if (!clave || esGrupoGeneral(clave)) return null;
+  const d = responsablesDatos.get(clave) || {};
+  return { clave, nombre: d.nombre_factura || nombrePropio(r["Responsable / Grupo"]), tipoDoc: d.tipo_doc || "CC", doc: soloDigitos(d.documento), correo: d.correo || "", telefono: d.telefono || "" };
+}
+function mandatoFirmadoDe(r, firmados){
+  const resp = respMandato(r);
+  return firmados.get(soloDigitos(r["Cédula"])) || (resp && resp.doc ? firmados.get(resp.doc) : null) || null;
+}
+async function pintarBotonMandato(r){
+  const btn = document.getElementById("mandatoBtn");
+  btn.onclick = () => abrirMandato(r);
+  btn.textContent = "📄 Contrato de mandato";
+  const firmados = await cargarMandatosFirmados();
+  if (String(activeCedula) !== String(r["Cédula"])) return;
+  btn.textContent = mandatoFirmadoDe(r, firmados) ? "📄 Contrato de mandato ✅" : "📄 Contrato de mandato";
+}
+function mandatoLlenar(){
+  const r = mandatoCliente; if (!r) return;
+  const resp = respMandato(r), aResp = document.getElementById("mdQuien").value === "resp" && resp;
+  const pon = (id, x) => { document.getElementById(id).value = x ?? ""; };
+  pon("mdNombre", aResp ? String(resp.nombre).toUpperCase() : String(r["Nombre del Afiliado"] || "").toUpperCase());
+  pon("mdTipoDoc", aResp ? (["CC", "NIT", "CE"].includes(String(resp.tipoDoc).toUpperCase()) ? String(resp.tipoDoc).toUpperCase() : "CC") : "CC");
+  pon("mdDoc", aResp ? resp.doc : soloDigitos(r["Cédula"]));
+  pon("mdDireccion", aResp ? "" : (r["Dirección Completa"] || ""));
+  pon("mdTelefono", aResp ? resp.telefono : (r["Teléfono"] || ""));
+  pon("mdCorreo", aResp ? resp.correo : (r["Correo"] || ""));
+  pon("mdValor", Math.round(numOrZero(r["Costo Servicio"])) || "");
+  mandatoEstado();
+}
+function mandatoPersonas(){
+  const r = mandatoCliente;
+  const resp = respMandato(r);
+  if (document.getElementById("mdQuien").value !== "resp" || !resp) return [r];
+  return (records || []).filter(x => normResp(x["Responsable / Grupo"] || "") === resp.clave && estadoClass(x["Estado Trámite"]) !== "RETIRO");
+}
+async function mandatoEstado(){
+  const doc = soloDigitos(document.getElementById("mdDoc").value), caja = document.getElementById("mdFirmado");
+  const firmados = await cargarMandatosFirmados();
+  const o = doc ? firmados.get(doc) : null;
+  const fecha = o && (o.updated_at || o.created_at) ? new Date(o.updated_at || o.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" }) : "";
+  caja.innerHTML = `<div class="doc-emp-fila"><div class="doc-emp-txt"><b>Contrato firmado</b>
+      <span class="doc-emp-est ${o ? "ok" : "falta"}">${o ? `✅ Guardado${fecha ? " el " + fecha : ""}` : "Falta subirlo (foto o PDF del contrato con las firmas)"}</span></div>
+    ${o ? `<button type="button" class="btn small" id="mdVerBtn">Ver</button>` : ""}
+    <button type="button" class="btn small ${o ? "" : "primary"}" id="mdSubirBtn">${o ? "Cambiar" : "Subir firmado"}</button></div>`;
+}
+function abrirMandato(r){
+  mandatoCliente = r;
+  const resp = respMandato(r), sel = document.getElementById("mdQuien");
+  sel.innerHTML = `<option value="cliente">El cliente: ${escHtml(nombrePropio(r["Nombre del Afiliado"]))}</option>` +
+    (resp ? `<option value="resp">El responsable: ${escHtml(nombrePropio(resp.nombre))} (un solo contrato por todas sus personas)</option>` : "");
+  sel.value = "cliente";
+  document.getElementById("mdQuienCaja").hidden = !resp;
+  document.getElementById("mdAfiliacion").value = 149000;
+  document.getElementById("mdCiudad").value = "Buenaventura";
+  document.getElementById("mdFecha").value = fechaHoyISO();
+  document.getElementById("mdFaltan").innerHTML = "";
+  mandatoLlenar();
+  document.getElementById("overlayMandato").classList.add("show");
+}
+function textoMandato(){
+  const v = id => escHtml(document.getElementById(id).value.trim());
+  const raya = (t, n = 28) => t || "_".repeat(n);
+  const nombre = raya(v("mdNombre"), 40), tipoDoc = { CC: "cédula de ciudadanía", NIT: "NIT", CE: "cédula de extranjería" }[document.getElementById("mdTipoDoc").value] || "cédula de ciudadanía";
+  const doc = raya(conPuntos(v("mdDoc")) || v("mdDoc")), dir = raya(v("mdDireccion"), 36), tel = raya(v("mdTelefono"), 14), correo = raya(v("mdCorreo"), 28);
+  const valor = numOrZero(document.getElementById("mdValor").value), afil = numOrZero(document.getElementById("mdAfiliacion").value);
+  const ciudad = raya(v("mdCiudad"), 16), esNit = document.getElementById("mdTipoDoc").value === "NIT";
+  const f = document.getElementById("mdFecha").value ? new Date(document.getElementById("mdFecha").value + "T12:00:00") : new Date();
+  const fecha = f.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+  const personas = mandatoPersonas(), varios = document.getElementById("mdQuien").value === "resp";
+  const anexo = varios ? `<h3>Anexo 1 · Personas por las que el mandante encarga la gestión</h3>
+    <table class="ct-tabla"><thead><tr><th>N.º</th><th>Nombre</th><th>Cédula</th></tr></thead><tbody>
+    ${personas.map((p, i) => `<tr><td>${i + 1}</td><td>${escHtml(String(p["Nombre del Afiliado"] || "").toUpperCase())}</td><td>${escHtml(conPuntos(p["Cédula"]))}</td></tr>`).join("")}
+    </tbody></table><p class="ct-nota">El mandante puede agregar o retirar personas de este anexo avisando por escrito (correo o WhatsApp) al mandatario.</p>` : "";
+  const quienes = varios ? "del MANDANTE y de las personas relacionadas en el Anexo 1" : "del MANDANTE";
+  return `<div class="ct-cab"><b>${MANDATARIO.marca}</b><span>Protegemos lo que más importa</span></div>
+  <h2>CONTRATO DE MANDATO PARA LA GESTIÓN Y PAGO DE APORTES A LA SEGURIDAD SOCIAL</h2>
+  <p>Entre los suscritos: <b>${nombre}</b>, ${esNit ? "representada por quien firma este documento" : "mayor de edad"}, con ${tipoDoc} n.º <b>${doc}</b>, con domicilio en ${dir}, teléfono ${tel} y correo ${correo}, quien en adelante se llamará <b>EL MANDANTE</b>; y <b>${MANDATARIO.nombre}</b>, mayor de edad, con cédula de ciudadanía n.º ${MANDATARIO.doc}, propietario del establecimiento <b>${MANDATARIO.marca}</b>, con domicilio en ${MANDATARIO.direccion}, quien en adelante se llamará <b>EL MANDATARIO</b>, hemos acordado celebrar el presente contrato de mandato, que se rige por los artículos 2142 y siguientes del Código Civil y por las siguientes cláusulas:</p>
+  <p><b>PRIMERA. Objeto.</b> EL MANDANTE encarga a EL MANDATARIO, y este acepta, la gestión por cuenta y a nombre ${quienes} de los trámites ante las entidades del Sistema de Seguridad Social Integral (EPS, administradora de pensiones, ARL y caja de compensación) y ante los operadores de la Planilla Integrada de Liquidación de Aportes (PILA), que comprende: afiliaciones y novedades, liquidación mensual de los aportes y pago de la planilla con los recursos que EL MANDANTE entregue para ese fin.</p>
+  <p><b>SEGUNDA. Recursos recibidos para terceros.</b> El dinero que EL MANDANTE entregue para el pago de los aportes no es ingreso de EL MANDATARIO: lo recibe para terceros y lo destina únicamente al pago de la planilla. EL MANDATARIO entregará un recibo por el dinero recibido y, una vez hecho el pago, la planilla pagada y el comprobante de pago.</p>
+  <p><b>TERCERA. Honorarios.</b> Por su gestión, EL MANDATARIO recibirá unos honorarios de <b>${valor ? fmt(valor) : "$ __________"}</b> mensuales${varios ? " por cada persona del Anexo 1" : ""}${afil ? `, más <b>${fmt(afil)}</b> por una sola vez por el trámite de afiliación inicial` : ""}. EL MANDATARIO facturará únicamente sus honorarios. Los honorarios podrán ajustarse cada año, con aviso previo a EL MANDANTE.</p>
+  <p><b>CUARTA. Obligaciones de EL MANDANTE.</b> a) Entregar información y documentos verdaderos y completos. b) Entregar el valor de los aportes y de los honorarios a más tardar el día <b>16</b> de cada mes; después del día 21 se cobrará un recargo de $5.000 por gestión fuera de fecha. c) Asumir los intereses de mora que cobren las entidades cuando el pago se haga tarde por causa suya. d) Avisar por escrito y a tiempo cualquier novedad: retiro, cambio de entidad, de ingreso, de actividad o de lugar de trabajo, e inclusión o retiro de beneficiarios.</p>
+  <p><b>QUINTA. Obligaciones de EL MANDATARIO.</b> a) Hacer con diligencia los trámites encargados. b) Pagar los aportes dentro de los plazos legales, siempre que haya recibido a tiempo los recursos. c) Entregar los soportes de cada pago. d) Rendir cuentas de su gestión cuando EL MANDANTE lo pida. e) Guardar reserva sobre la información recibida.</p>
+  <p><b>SEXTA. Responsabilidad.</b> EL MANDATARIO no responde por la falta de cobertura, la mora ni las sanciones que se originen en la entrega tardía de los recursos, en información incompleta o inexacta entregada por EL MANDANTE, o en decisiones o demoras de las entidades del sistema.</p>
+  <p><b>SÉPTIMA. Duración y terminación.</b> Este contrato empieza en la fecha de su firma, tiene duración indefinida y se ejecuta mes a mes. Cualquiera de las partes puede terminarlo en cualquier momento avisando por escrito a la otra. EL MANDANTE debe avisar el retiro antes del último día hábil del mes para que la novedad quede en la planilla correspondiente; mientras no se reporte el retiro, se siguen causando los aportes.</p>
+  <p><b>OCTAVA. Datos personales.</b> EL MANDANTE autoriza a EL MANDATARIO, de acuerdo con la Ley 1581 de 2012, para recolectar, guardar y usar sus datos personales${varios ? " y los de las personas del Anexo 1, de quienes declara tener autorización," : ""} con el único fin de cumplir este contrato y de compartirlos con las entidades del sistema de seguridad social y los operadores de pago.</p>
+  <p><b>NOVENA. Comunicaciones.</b> Las partes aceptan como medios válidos de comunicación los correos y teléfonos escritos en este contrato, incluido WhatsApp (${MANDATARIO.telefono}, ${MANDATARIO.correo}).</p>
+  <div class="ct-cierre"><p>En constancia se firma en ${ciudad}, el ${fecha}, en dos ejemplares del mismo valor.</p>
+  <div class="ct-firmas">
+    <div><span class="ct-linea"></span><b>EL MANDANTE</b><br>${nombre}<br>${document.getElementById("mdTipoDoc").value} ${doc}</div>
+    <div><span class="ct-linea"></span><b>EL MANDATARIO</b><br>${MANDATARIO.nombre}<br>CC ${MANDATARIO.doc}<br>${MANDATARIO.marca}</div>
+  </div></div>${anexo}`;
+}
+document.getElementById("mdQuien").addEventListener("change", mandatoLlenar);
+document.getElementById("mdDoc").addEventListener("change", mandatoEstado);
+document.getElementById("mdCerrarBtn").addEventListener("click", () => document.getElementById("overlayMandato").classList.remove("show"));
+document.getElementById("mdImprimirBtn").addEventListener("click", () => {
+  if (!document.getElementById("mdNombre").value.trim() || !soloDigitos(document.getElementById("mdDoc").value)){ showToast("⚠️ Faltan el nombre y el número de documento de quien firma."); return; }
+  document.getElementById("contratoImprimir").innerHTML = textoMandato();
+  document.body.classList.add("imp-contrato");
+  setTimeout(() => window.print(), 100);
+});
+window.addEventListener("afterprint", () => document.body.classList.remove("imp-contrato"));
+document.getElementById("mdFirmado").addEventListener("click", async (e) => {
+  const doc = soloDigitos(document.getElementById("mdDoc").value);
+  if (e.target.closest("#mdVerBtn")){
+    const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(`${MANDATO_CARPETA}/${doc}`, 600);
+    if (error || !data){ alertApp("No se pudo abrir el contrato: " + (error ? error.message : "")); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  } else if (e.target.closest("#mdSubirBtn")){
+    if (!doc){ showToast("⚠️ Escriba primero el número de documento de quien firma."); return; }
+    if (!navigator.onLine){ alertApp("Sin internet: se necesita conexión para subir el contrato."); return; }
+    const inp = document.getElementById("mdFile"); inp.value = ""; inp.click();
+  }
+});
+document.getElementById("mdFile").addEventListener("change", async (e) => {
+  const archivo = e.target.files && e.target.files[0], doc = soloDigitos(document.getElementById("mdDoc").value);
+  if (!archivo || !doc) return;
+  if (archivo.size > 15 * 1024 * 1024){ alertApp("El archivo pesa más de 15 MB. Súbalo más liviano (una foto o un PDF escaneado en calidad normal)."); return; }
+  showToast("Subiendo el contrato firmado…");
+  const { error } = await sb.storage.from("documentos-clientes").upload(`${MANDATO_CARPETA}/${doc}`, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+  if (error){ alertApp("No se pudo subir el contrato: " + error.message); return; }
+  await cargarMandatosFirmados(true);
+  mandatoEstado();
+  if (mandatoCliente) pintarBotonMandato(mandatoCliente);
+  showToast("✅ Contrato firmado guardado.");
+});
+document.getElementById("mdFaltanBtn").addEventListener("click", async () => {
+  const firmados = await cargarMandatosFirmados(true);
+  const activos = (records || []).filter(r => !esConductorExcluido(r) && estadoClass(r["Estado Trámite"]) !== "RETIRO");
+  const faltan = activos.filter(r => !mandatoFirmadoDe(r, firmados));
+  document.getElementById("mdFaltan").innerHTML = `<p class="ing-nota"><b>${activos.length - faltan.length}</b> de ${activos.length} clientes activos ya tienen contrato firmado. Faltan ${faltan.length}:</p>` +
+    faltan.map(r => ayFila(escHtml(nombrePropio(r["Nombre del Afiliado"])), escHtml(nombrePropio(r["Responsable / Grupo"] || "") || r["Empresa"] || ""), r["Cédula"], "overlayMandato")).join("");
+});
+
 /* ---- Lista de tareas (fecha + tipo de gestión + alerta) ---- */
 function getTareas(){
   if (!store.tareas) store.tareas = [];
@@ -7770,6 +7977,7 @@ function showBreakdown(cedula){
     sopBtn.onclick = () => showToast("⏸️ El envío de planilla y comprobante está en pausa mientras Enlace entrega la API.");
   }
   pintarBotonPresuncion(r);
+  pintarBotonMandato(r);
 
   // Botón de WhatsApp: solo si el cliente tiene teléfono guardado
   const waBtn = document.getElementById("whatsappBtn");

@@ -193,3 +193,9 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - De dónde salen las filas: a mano en la ventana; del correo (tarea automática "Correo a la app", función `registrar_afiliacion_correo`, una fila por hilo y cédula, nunca baja un trámite ya confirmado); y de la ficha (clientes con EPS/ARL/pensión/caja "en proceso", `atDeFichas`, sin guardar nada).
 - Con lo confirmado se arma "Tiempo real de cada entidad" (promedio contra lo normal).
 
+## 14-nov-2026 · Contrato de mandato
+- Ficha del cliente → botón "📄 Contrato de mandato" (`abrirMandato`, ventana `overlayMandato`). Trae los datos de la ficha o, si tiene responsable real, permite un solo contrato a nombre del responsable con el Anexo 1 de sus personas. Los datos se pueden corregir ahí sin cambiar la ficha.
+- "Imprimir o guardar como PDF" arma el texto (`textoMandato`) en `#contratoImprimir` y usa la impresión del navegador (clase `imp-contrato` en el body). Mandatario: Nestor Fabián Garzón Torres · PROSEGUROSNET (constante `MANDATARIO`).
+- El firmado se sube a `documentos-clientes/contratos-mandato/<documento>` (solo el equipo; el portal no lo ve). No cambia ninguna tabla. El botón muestra ✅ si el cliente o su responsable ya lo tienen. "Ver quiénes faltan por firmar" lista los activos sin contrato.
+- El texto es un modelo (mandato civil, arts. 2142 y ss. del Código Civil; recursos para terceros; honorarios; día 16 y recargo del 21; Ley 1581). Pendiente: que el contador o un abogado lo revise antes de usarlo con clientes.
+
