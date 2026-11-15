@@ -219,3 +219,7 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Los vencimientos de SOAT/póliza que ya estaban en la ficha del cliente (menú Vencimientos) siguen igual y aparte: son documentos del cliente, no ventas.
 - De paso: en las ventanas nuevas los botones "Eliminar" ocultos se veían (faltaba la regla `[hidden]`); corregido.
 
+## 15-nov-2026 · Menú por áreas
+- Solo se reordenó el menú lateral (mismos botones e ids, nada de base de datos): Lo más usado · Cobros (Cartera, Consignaciones) · Planillas y afiliaciones (Subir planilla, Excel SUAPORTE, Afiliaciones en trámite, Documentos recibidos) · Clientes y ventas (CRM, Seguros y pólizas, Responsables, Presunción) · Muelles y vehículos (Muelles PSN, Muelles independientes, Vencimientos) · Contabilidad (Libro contable, Borradores Alegra, Recibos Alegra, Cierre del mes) · Más opciones.
+- Los tres botones de Alegra y cierre salieron del submenú de Cartera y quedaron en Contabilidad (siguen siendo solo del administrador). Los números del menú cambian porque `numerarMenu` numera en orden.
+

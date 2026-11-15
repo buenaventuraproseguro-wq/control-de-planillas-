@@ -1794,7 +1794,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     </div>
     <button type="button" class="sidebar-link" id="navTareasBtn"><span class="sidebar-num">4</span><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Lista de tareas <span class="sidebar-badge" id="tareasBadge" style="display:none;">0</span></button>
 
-    <div class="sidebar-section-title">Mes actual</div>
+    <div class="sidebar-section-title">Cobros</div>
     <button type="button" class="sidebar-link" id="navCarteraBtn"><span class="sidebar-num">15</span><svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
     <div class="sidebar-sub" id="carteraSub">
       <button type="button" class="sidebar-total" data-informe="ingresos">
@@ -1802,9 +1802,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <span class="sidebar-total-value" id="sidebarIngresosValue">—</span>
         <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
       </button>
-      <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;">🧾 Crear borradores en Alegra</button>
-      <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;">🧾 Recibos y pagos en Alegra</button>
-      <button type="button" class="sidebar-link" id="navCierreContador" data-informe="cierre" style="display:none;">📒 Cierre del mes para el contador</button>
       <button type="button" class="sidebar-total" data-informe="aportes">
         <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
         <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
@@ -1836,23 +1833,30 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <button type="button" class="sidebar-link sub" id="navMensajeBtn"><span class="sidebar-num">15.3</span><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Mensaje de recordatorio</button>
     </div>
     <button type="button" class="sidebar-link" id="navConsigBtn" style="display:none;"><span class="sidebar-num">3</span><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg>Consignaciones <span class="sidebar-badge" id="consigBadge" style="display:none;">0</span></button>
+
+    <div class="sidebar-section-title">Planillas y afiliaciones</div>
     <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">14</span><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Subir planilla pagada (planilla + comprobante)</button>
     <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,image/*,.csv,text/csv" multiple>
     <button type="button" class="sidebar-link" id="navPilaBtn"><span class="sidebar-num">14.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel para SUAPORTE</button>
+    <button type="button" class="sidebar-link" id="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite <span class="sidebar-badge" id="afilBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navSolConBtn"><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Documentos recibidos (web) <span class="sidebar-badge" id="solConBadge" style="display:none;">0</span></button>
 
-    <div class="sidebar-section-title">Clientes</div>
+    <div class="sidebar-section-title">Clientes y ventas</div>
     <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
-    <button type="button" class="sidebar-link" id="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite <span class="sidebar-badge" id="afilBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navPolizasBtn"><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Seguros y pólizas <span class="sidebar-badge" id="polBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">5</span><svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
+    <button type="button" class="sidebar-link" id="navPresuncionBtn"><span class="sidebar-num">10.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Presunción de costos (independientes)</button>
+
+    <div class="sidebar-section-title">Muelles y vehículos</div>
     <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">6</span><svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
     <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><span class="sidebar-num">7</span><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
-    <button type="button" class="sidebar-link" id="navPresuncionBtn"><span class="sidebar-num">10.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Presunción de costos (independientes)</button>
     <button type="button" class="sidebar-link" id="navVencimientosBtn"><span class="sidebar-num">24</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Vencimientos (licencia, SOAT, póliza) <span class="sidebar-badge" id="vencBadge" style="display:none;">0</span></button>
 
-    <div class="sidebar-section-title">Equipo y empresa</div>
+    <div class="sidebar-section-title">Contabilidad</div>
     <button type="button" class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Libro contable (ingresos y gastos) <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+    <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Crear borradores en Alegra</button>
+    <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Recibos y pagos en Alegra</button>
+    <button type="button" class="sidebar-link" id="navCierreContador" data-informe="cierre" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Cierre del mes para el contador</button>
 
     <button type="button" class="sidebar-link" id="navMenuBtn" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>Más opciones <span class="sidebar-mas-flecha" aria-hidden="true">▸</span></button>
 
