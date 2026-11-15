@@ -1,6 +1,6 @@
 # PROSEGUROSNET · Control de planillas
 
-Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
+Ficha para retomar el proyecto en cualquier conversación nueva con Claude. **Para empezar rápido, leer primero `CLAUDE.md`.**
 **Aquí no van contraseñas ni claves.**
 
 ## Dónde está todo
@@ -34,7 +34,7 @@ Ficha para retomar el proyecto en cualquier conversación nueva con Claude.
 - Ayudas inteligentes (menú 19–23): Hoy (se abre sola 1 vez al día), Estado de cuenta por responsable/empresa (imagen con QR), Revisión de datos (cédulas repetidas, teléfonos, EPS/empresas/AFP escritas distinto, PAGO sin planilla), Quién se atrasa más, Respaldos automáticos
 - Foto de cédula: la app lee número y nombre (tesseract.js en el navegador; si falta algo, repite con la foto mejorada). Muestra lo leído en recuadros corregibles y no lo pega hasta que la cédula sea válida y estén apellidos y nombres. Un cliente nuevo o una cédula corregida no se guarda si empieza en 0. Al corregir la cédula de un cliente, sus documentos pasan al número nuevo.
 - Consignaciones: también sugiere el pago de un grupo (responsable/empresa) cuando el valor es la suma exacta de sus afiliados
-- Respaldo semanal: tabla `respaldos` (solo admin la ve), función `crear_respaldo`, pg_cron lunes 04:00 UTC; guarda las 8 últimas. No incluye fotos/PDF.
+- Respaldo diario (desde 12-nov-2026): tabla `respaldos` (solo admin la ve), función `crear_respaldo`, pg_cron 04:00 UTC; guarda 21 días + los lunes. No incluye fotos/PDF.
 - Vehículo y licencia (Editar cliente, sección opcional): placa, vencimientos de licencia, SOAT, tecnomecánica y póliza + fotos/PDF (licencia, SOAT y tecno juntos, póliza; el PDF se guarda como imagen). Menú 24 "Vencimientos": desde 30 días antes y hasta 60 después, con mensaje de WhatsApp de la empresa; queda marcado "avisado". También sale en "Hoy".
 - Muelles independientes (Actualización de Muelles): fecha de vencimiento por cada muelle (venc_por_muelle: Sociedad, TC Buen, Agua Dulce), planilla y comprobante de su empresa (PDF→imagen) y sección de vehículo/licencia; avisos en "Vencimientos" y "Hoy".
 - Certificados EPS/ARL/AFP/Caja en Agregar/Editar cliente: la app lee cédula, EPS, fecha de afiliación (→ fecha de ingreso), ARL (nivel y actividad), AFP y caja; pregunta "Llenar estos datos" y avisa si la cédula no coincide.
