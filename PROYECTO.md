@@ -249,3 +249,6 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Pedido del usuario: si el cliente tiene responsable (persona), todo cobro va únicamente al teléfono guardado del responsable (Editar responsables → 🪪), aunque el cliente tenga su propio teléfono. Sin teléfono guardado no se envía: la app avisa.
 - `telefonoDestinoCliente(r)` (envío individual), `telefonoDeItem` (lista de recordatorios y envío de planillas), estado de cuenta. Empresas siguen con el teléfono de sus afiliados. Excepción: si el responsable es también cliente y va en el mismo mensaje (`_mismaPersona`), se usa su teléfono.
 - Los datos de responsables se cargan al entrar (`cargarResponsablesCreados` en `mostrarAppPrincipal`).
+
+## 16-nov-2026 · Recordatorio también al número del cliente
+- Además del mensaje agrupado al responsable, cada cliente con teléfono propio (distinto al del responsable) recibe su propio recordatorio con solo su valor (`agregarEnviosDirectos`, `mensajeDirectoCliente`). Casilla en el panel de recordatorios, activada por defecto y recordada en el equipo (`rec_tambien_cliente`). Desde la ficha, después de abrir el del responsable la app pregunta si mandarlo también al cliente.

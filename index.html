@@ -1377,6 +1377,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .resp-num b{ font-size:16px; }
   .resp-det{ grid-column:1 / -1; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .tag-recordado{ display:inline-block; font-size:11px; font-weight:600; color:#137A3B; background:#DDF2E6; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+  .record-check{ display:flex; gap:8px; align-items:flex-start; font-size:13px; margin:10px 0 4px; cursor:pointer; }
+  .record-check input{ margin-top:2px; flex:0 0 auto; }
   .record-aviso-tel{ font-size:12.5px; background:#FEF0C7; color:#7A2E0E; border-radius:8px; padding:8px 10px; margin:-6px 0 12px; line-height:1.4; }
   @media (prefers-color-scheme: dark){ .record-aviso-tel{ background:#3A2A10; color:#FCD9A8; } }
   .record-ya{ font-size:12.5px; background:#DDF2E6; color:#0F5C2E; border-radius:8px; padding:8px 10px; margin:4px 0 10px; }
@@ -9289,6 +9291,15 @@ function enviarWhatsapp(r, totalPagar){
   const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
   // Con el QR activado queda copiada la imagen del QR (con el valor): se espera a que quede copiada,
   // se abre el chat con el mensaje y después se pega la imagen (como el botón "Enviar QR al cliente")
+  // Con responsable: después del mensaje al responsable se ofrece mandarle también al cliente
+  // su propio recordatorio a su número (a veces paga el cliente)
+  const ofrecerDirecto = () => {
+    if (!itemGrupo || !tambienAlCliente()) return;
+    const propios = clientesConTelefonoPropio(itemGrupo).filter(c => c === r);
+    if (!propios.length) return;
+    setTimeout(() => confirmarApp(`Cuando envíe el mensaje a ${nombrePropio(itemGrupo.responsable)}, vuelva aquí.\n¿Mandar también a ${nombrePropio(r["Nombre del Afiliado"])} su recordatorio a su número ${r["Teléfono"]}?`)
+      .then(ok => { if (ok) abrirWhatsappConMensaje(r["Teléfono"], mensajeDirectoCliente(r)); }), 900);
+  };
   const abrir = () => {
     const texto = encodeURIComponent(mensaje);
     if (esCelular) location.href = `whatsapp://send?phone=${conIndicativo}&text=${texto}`;
@@ -9301,6 +9312,7 @@ function enviarWhatsapp(r, totalPagar){
     copiada.then(ok => {
       if (!ok) copiarAlPortapapeles(mensaje);
       abrir();
+      ofrecerDirecto();
       showToast(ok
         ? (esCelular ? "📋 Envíe el mensaje y luego mantenga presionado el cuadro de texto → Pegar el QR (ya está copiado)." : "📋 Envíe el mensaje y luego pegue el QR con Ctrl+V (ya está copiado).")
         : "No se pudo copiar el QR en este navegador. Use «Ver/Descargar QR» y adjúntelo en el chat.");
@@ -9309,6 +9321,7 @@ function enviarWhatsapp(r, totalPagar){
   }
   copiarAlPortapapeles(mensaje);
   abrir();
+  ofrecerDirecto();
   if (configMensaje.qr) showToast("No se pudo copiar el QR en este navegador. Use «Ver/Descargar QR» y adjúntelo en el chat.");
   else if (!esCelular) showToast("Abriendo WhatsApp Web. El mensaje también quedó copiado: si ves símbolos raros, bórralo y pega con Ctrl+V.");
 }
@@ -10074,6 +10087,31 @@ function construirMensajeAgrupado(g){
   if (i > -1) lineas[i] = bloque; else lineas.unshift(bloque);
   return lineas.join("\n").replace(new RegExp(MARCA, "g"), fmt(total));
 }
+// «También al número del cliente»: además del mensaje al responsable, a cada cliente le llega
+// su propio recordatorio (solo su valor) al primer teléfono guardado en su ficha, porque a veces
+// paga el cliente directamente. Se recuerda en este equipo; viene activado.
+function tambienAlCliente(){ try{ return localStorage.getItem("rec_tambien_cliente") !== "0"; }catch(e){ return true; } }
+function ponerTambienAlCliente(v){ try{ localStorage.setItem("rec_tambien_cliente", v ? "1" : "0"); }catch(e){} }
+function mensajeDirectoCliente(c){
+  return construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
+    { nombre: c["Nombre del Afiliado"], valor: fmt(calcularTotalPagar(c, store.currentMonth)), mes: store.currentMonth });
+}
+// Clientes del grupo que tienen su propio teléfono (distinto al del responsable)
+function clientesConTelefonoPropio(g){
+  const norm = (t) => String(t || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+  const delResp = norm(telefonoDeItem(g));
+  return g.clientes.filter(c => { const t = norm(c["Teléfono"]); return t && t !== delResp; });
+}
+function agregarEnviosDirectos(items){
+  if (!tambienAlCliente()) return items;
+  const salida = [];
+  items.forEach(x => {
+    salida.push(x);
+    if (x.grupo && String(x.clave || "").startsWith("resp:"))
+      clientesConTelefonoPropio(x).forEach(c => salida.push({ directo: true, cliente: c, responsable: x.responsable }));
+  });
+  return salida;
+}
 function abrirWhatsappConMensaje(telefono, mensaje){
   if (!navigator.onLine){ showToast("Sin internet: no se puede abrir WhatsApp ahora. Inténtalo cuando vuelva la conexión."); return false; }
   const numero = String(telefono || "").replace(/\D/g, "");
@@ -10121,7 +10159,7 @@ async function iniciarOContinuarRecordatorios(){
   mostrarPanelRecordatorios({ pendientes, atrasados, yaHoy });
 }
 function empezarColaRecordatorios(lista){
-  colaRecordatorios = juntarPorTelefono(agruparPorResponsable(lista));
+  colaRecordatorios = agregarEnviosDirectos(juntarPorTelefono(agruparPorResponsable(lista)));
   totalColaRecordatorios = colaRecordatorios.length; enviadosRecordatorios = 0; procesadosRecordatorios = 0;
   actualizarBarraRecordatorios();
   mostrarPanelRecordatorios();
@@ -10143,6 +10181,7 @@ function mostrarPanelRecordatorios(eleccion){
         ${atrasados.length ? `<button type="button" class="btn primary" data-record="atrasados">Solo atrasados (${atrasados.length})</button>` : ""}
         <button type="button" class="btn ${atrasados.length ? "ghost" : "primary"}" data-record="todos">Todos por cobrar (${pendientes.length})</button>
       </div>
+      <label class="record-check"><input type="checkbox" data-record-tambien ${tambienAlCliente() ? "checked" : ""}> Si tiene responsable, enviar también a cada cliente a su propio número (a veces paga el cliente)</label>
       <p class="record-nota">WhatsApp abre un chat a la vez. Envíe el mensaje, vuelva a esta página y toque el siguiente. Los clientes de un mismo responsable (persona) o de una misma empresa van juntos en un solo mensaje; los de muelles e independientes, uno por uno.</p>`;
     mostrarPanelRecordatorios._eleccion = eleccion;
   } else {
@@ -10150,6 +10189,18 @@ function mostrarPanelRecordatorios(eleccion){
     if (!r){
       cuerpo.innerHTML = `<p class="record-txt"><b>Listo.</b> Se abrieron ${enviadosRecordatorios} de ${totalColaRecordatorios} recordatorios.</p>
         <div class="record-opciones"><button type="button" class="btn primary" data-record="cerrar">Cerrar</button></div>`;
+    } else if (r.directo){
+      const c = r.cliente, n = procesadosRecordatorios + 1;
+      cuerpo.innerHTML = `
+        <div class="record-progreso"><span style="width:${Math.round(100 * procesadosRecordatorios / Math.max(1, totalColaRecordatorios))}%"></span></div>
+        <p class="record-cuenta">${n} de ${totalColaRecordatorios} · al cliente directo</p>
+        <p class="record-nombre">${escHtml(nombrePropio(c["Nombre del Afiliado"]))}</p>
+        <p class="record-dato">${escHtml(String(c["Teléfono"] || ""))} · ${fmt(calcularTotalPagar(c, store.currentMonth))} · su responsable (${escHtml(nombrePropio(r.responsable))}) ya va en otro mensaje</p>
+        <div class="record-opciones">
+          <button type="button" class="btn primary whatsapp-lleno" data-record="abrir">Abrir WhatsApp</button>
+          <button type="button" class="btn ghost" data-record="saltar">Saltar</button>
+          <button type="button" class="btn ghost" data-record="terminar">Terminar</button>
+        </div>`;
     } else {
       const n = procesadosRecordatorios + 1;
       const total = totalDeItem(r);
@@ -10176,11 +10227,12 @@ document.getElementById("overlayRecordatorios").addEventListener("click", (e) =>
   const b = e.target.closest("[data-record]");
   if (!b) return;
   const acc = b.dataset.record;
+  { const chk = ov.querySelector("[data-record-tambien]"); if (chk) ponerTambienAlCliente(chk.checked); }
   if (acc === "atrasados") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.atrasados);
   else if (acc === "todos") empezarColaRecordatorios(mostrarPanelRecordatorios._eleccion.pendientes);
   else if (acc === "abrir" || acc === "saltar"){
     const primero = colaRecordatorios[0];
-    if (acc === "abrir" && primero){
+    if (acc === "abrir" && primero && !primero.directo){
       const lista = primero.grupo ? primero.clientes : [primero];
       const repetidos = lista.filter(recordadoHoy);
       if (repetidos.length === lista.length && !primero._forzar){
@@ -10195,7 +10247,8 @@ document.getElementById("overlayRecordatorios").addEventListener("click", (e) =>
     }
     const r = colaRecordatorios.shift();
     if (r){ procesadosRecordatorios++; if (acc === "abrir"){
-      if (r.grupo){ if (abrirWhatsappConMensaje(telefonoDeItem(r), construirMensajeAgrupado(r))){ enviadosRecordatorios++; marcarRecordado(r.clientes); } }
+      if (r.directo){ if (abrirWhatsappConMensaje(r.cliente["Teléfono"], mensajeDirectoCliente(r.cliente))) enviadosRecordatorios++; }
+      else if (r.grupo){ if (abrirWhatsappConMensaje(telefonoDeItem(r), construirMensajeAgrupado(r))){ enviadosRecordatorios++; marcarRecordado(r.clientes); } }
       else if (navigator.onLine){ enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; marcarRecordado([r]); }
     } }
     actualizarBarraRecordatorios();
