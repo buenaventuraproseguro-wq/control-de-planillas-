@@ -4790,7 +4790,7 @@ function formularioDatosResp(clave){
       <select data-c="tipo_doc">${[["CC","Cédula"],["NIT","NIT"],["CE","Cédula de extranjería"],["PP","Pasaporte"],["PEP","PEP"]].map(([v,t]) => `<option value="${v}" ${v === tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
     <label>Cédula o NIT (con el dígito: 900123456-7)${auto ? "" : " · obligatoria"}
       <input type="text" data-c="documento" maxlength="20" value="${escHtml(d.documento || "")}"></label>
-    ${auto ? "" : `<div class="ancho"><button type="button" class="btn small" data-accion="leerCedulaResp">📷 Leer de la foto de la cédula</button> <span class="resp-ocr-aviso"></span></div>`}
+    ${auto ? "" : `<div class="ancho"><button type="button" class="btn small" data-accion="leerCedulaResp">📷 Leer de la foto o PDF de la cédula</button> <span class="resp-ocr-aviso"></span></div>`}
     <label>Correo
       <input type="email" data-c="correo" maxlength="120" value="${escHtml(d.correo || "")}"></label>
     <label>Teléfono
@@ -5085,6 +5085,15 @@ function clientePorCedula(ced){
   }
   return null;
 }
+// Foto o PDF de la cédula → algo que el lector (OCR) pueda leer. El PDF se pasa a imagen primero.
+async function fuenteCedulaParaLeer(file){
+  if (esPdfArchivo(file)){
+    const img = await convertirPdfAImagen(file);
+    if (!img) throw new Error("No se pudo abrir el PDF");
+    return img.dataUrl;
+  }
+  return file;
+}
 // Pide la cédula o NIT del responsable, con botón para leerla de una foto
 function pedirCedulaResponsable(nombre){
   return new Promise((resolve) => {
@@ -5097,8 +5106,8 @@ function pedirCedulaResponsable(nombre){
         <select id="pedirRespTipo"><option value="CC">Cédula</option><option value="NIT">NIT (empresa)</option><option value="CE">Cédula de extranjería</option><option value="PEP">PEP</option><option value="PP">Pasaporte</option></select></div>
       <div class="field"><label for="pedirRespDoc">Número</label>
         <input id="pedirRespDoc" type="text" inputmode="numeric" maxlength="20" placeholder="Sin puntos" autocomplete="off"></div>
-      <button type="button" class="btn small" id="pedirRespFotoBtn">📷 Leer de la foto de la cédula</button>
-      <input type="file" id="pedirRespFoto" class="hidden-file" accept="image/*">
+      <button type="button" class="btn small" id="pedirRespFotoBtn">📷 Leer de la foto o PDF de la cédula</button>
+      <input type="file" id="pedirRespFoto" class="hidden-file" accept="image/*,.pdf,application/pdf">
       <div id="pedirRespAviso" class="modal-sub" style="margin:0;"></div>`;
     ov.classList.add("show");
     const doc = document.getElementById("pedirRespDoc"), tipo = document.getElementById("pedirRespTipo"), aviso = document.getElementById("pedirRespAviso");
@@ -5109,8 +5118,8 @@ function pedirCedulaResponsable(nombre){
       const f = e.target.files && e.target.files[0]; if (!f) return;
       aviso.textContent = "🔎 Leyendo la cédula…";
       try{
-        const d = await leerCedulaConOcr(f);
-        if (d.tipo && d.tipo !== "cedula"){ aviso.textContent = "⚠️ Esa foto no parece una cédula. Escriba el número a mano."; return; }
+        const d = await leerCedulaConOcr(await fuenteCedulaParaLeer(f));
+        if (d.tipo && d.tipo !== "cedula"){ aviso.textContent = "⚠️ Ese archivo no parece una cédula. Escriba el número a mano."; return; }
         const num = d.cedula || d.sugerida || "";
         if (num){ doc.value = num; tipo.value = "CC"; }
         nombreLeido = d.completo && d.partes ? d.partes.filter(Boolean).join(" ") : "";
@@ -7379,13 +7388,13 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
   if (accion === "cerrarDatos"){ row.querySelector(".resp-datos").remove(); return; }
   if (accion === "leerCedulaResp"){
     const form = row.querySelector(".resp-datos"), avisoOcr = form.querySelector(".resp-ocr-aviso");
-    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*,.pdf,application/pdf";
     inp.onchange = async () => {
       const f = inp.files && inp.files[0]; if (!f) return;
       avisoOcr.textContent = "🔎 Leyendo la cédula…";
       try{
-        const d = await leerCedulaConOcr(f);
-        if (d.tipo && d.tipo !== "cedula"){ avisoOcr.textContent = "⚠️ Esa foto no parece una cédula."; return; }
+        const d = await leerCedulaConOcr(await fuenteCedulaParaLeer(f));
+        if (d.tipo && d.tipo !== "cedula"){ avisoOcr.textContent = "⚠️ Ese archivo no parece una cédula."; return; }
         const num = d.cedula || d.sugerida || "";
         if (num){ form.querySelector('[data-c="documento"]').value = num; form.querySelector('[data-c="tipo_doc"]').value = "CC"; }
         if (d.completo && d.partes) form.querySelector('[data-c="nombre_factura"]').value = d.partes.filter(Boolean).join(" ").toUpperCase();
