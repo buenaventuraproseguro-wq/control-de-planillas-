@@ -8627,7 +8627,7 @@ function showBreakdown(cedula){
 
   // Botón de WhatsApp: solo si el cliente tiene teléfono guardado
   const waBtn = document.getElementById("whatsappBtn");
-  if (r["Teléfono"]){
+  if (r["Teléfono"] || (claveAgrupacion(r) || {}).k){
     waBtn.style.display = "inline-flex";
     waBtn.onclick = () => enviarWhatsapp(r, totalPagar);
   } else {
@@ -9256,8 +9256,24 @@ function enviarWhatsapp(r, totalPagar){
 
   // Si tiene responsable (persona) o es de otra empresa, el mensaje va a nombre de ese responsable
   const grupo = claveAgrupacion(r);
+  // Si tiene responsable o empresa, el mensaje lleva TODOS los clientes de ese responsable que están
+  // por pagar este mes (no solo el de la ficha), igual que la lista de recordatorios.
+  let itemGrupo = null;
+  if (grupo){
+    const porPagar = (store.months[store.currentMonth] || []).filter(x => {
+      const ec = estadoClass(x["Estado Trámite"]);
+      return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES";
+    });
+    const companeros = porPagar.filter(x => x !== r && (claveAgrupacion(x) || {}).k === grupo.k);
+    itemGrupo = { grupo: true, responsable: grupo.nombre, clave: grupo.k, clientes: [r, ...companeros] };
+    // El propio responsable, si también es cliente y debe (misma cédula o teléfono), va en el mismo mensaje
+    const sueltos = porPagar.filter(x => !claveAgrupacion(x) && x !== r);
+    juntarPorTelefono([itemGrupo, ...sueltos]);
+    totalPagar = totalDeItem(itemGrupo);
+    if (itemGrupo.clientes.length > 1) showToast(`El mensaje va a nombre de ${nombrePropio(grupo.nombre)} con sus ${itemGrupo.clientes.length} clientes por pagar.`);
+  }
   let mensaje = grupo
-    ? construirMensajeAgrupado({ grupo: true, responsable: grupo.nombre, clientes: [r] })
+    ? construirMensajeAgrupado(itemGrupo)
     : construirMensajeRecordatorio(configMensaje.plantilla, configMensaje.dia,
         { nombre: r["Nombre del Afiliado"], valor: fmt(totalPagar), mes: store.currentMonth });
   // Si tiene recargo por mora, el mensaje lo dice (o se usa {mora} en la plantilla)
