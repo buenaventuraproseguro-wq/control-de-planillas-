@@ -244,3 +244,8 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - En Datos para factura la cédula/NIT es obligatoria, hay botón "📷 Leer de la foto de la cédula" y no deja repetir la cédula de otro responsable.
 - Recordatorios: un cliente cuya cédula es la del responsable va en el mismo mensaje (además de por teléfono).
 - `crearResponsable` ahora devuelve el nombre con que quedó (o false). Al renombrar se llama con `{ sinCedula: true }`.
+
+## 16-nov-2026 · Mensajes de un cliente con responsable: SOLO al teléfono del responsable
+- Pedido del usuario: si el cliente tiene responsable (persona), todo cobro va únicamente al teléfono guardado del responsable (Editar responsables → 🪪), aunque el cliente tenga su propio teléfono. Sin teléfono guardado no se envía: la app avisa.
+- `telefonoDestinoCliente(r)` (envío individual), `telefonoDeItem` (lista de recordatorios y envío de planillas), estado de cuenta. Empresas siguen con el teléfono de sus afiliados. Excepción: si el responsable es también cliente y va en el mismo mensaje (`_mismaPersona`), se usa su teléfono.
+- Los datos de responsables se cargan al entrar (`cargarResponsablesCreados` en `mostrarAppPrincipal`).

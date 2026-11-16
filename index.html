@@ -9238,8 +9238,18 @@ document.getElementById("guardarMensajeBtn").addEventListener("click", async () 
 
 function enviarWhatsapp(r, totalPagar){
   if (!navigator.onLine){ showToast("Sin internet: no se puede abrir WhatsApp ahora. Inténtalo cuando vuelva la conexión."); return; }
-  const numero = String(r["Teléfono"] || "").replace(/\D/g, "");
-  if (!numero) return;
+  const numero = String(telefonoDestinoCliente(r) || "").replace(/\D/g, "");
+  if (!numero){
+    const c = claveAgrupacion(r);
+    if (c && c.k.startsWith("resp:") && !responsablesDatos.size && !enviarWhatsapp._reintento){
+      // Todavía no se habían cargado los datos de los responsables: se cargan y se intenta otra vez
+      enviarWhatsapp._reintento = true;
+      cargarResponsablesCreados().finally(() => { enviarWhatsapp(r, totalPagar); enviarWhatsapp._reintento = false; });
+      return;
+    }
+    if (c && c.k.startsWith("resp:")) alertApp(`El responsable "${nombrePropio(c.nombre)}" no tiene teléfono guardado. El cobro solo se le manda al responsable: guárdelo en Editar responsables → 🪪 Cédula, teléfono y correo.`);
+    return;
+  }
   const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
 
   // Si tiene responsable (persona) o es de otra empresa, el mensaje va a nombre de ese responsable
@@ -9981,34 +9991,50 @@ function telefonoResponsableGuardado(x){
   return telefonoValidoCo(d.telefono);
 }
 function telefonoDeItem(x){
-  if (!x.grupo) return String(x["Teléfono"] || "");
-  const propio = telefonoResponsableGuardado(x);
-  if (propio) return propio;
+  if (!x.grupo) return telefonoDestinoCliente(x);
+  // Responsable (persona): SOLO su propio teléfono, aunque los afiliados tengan otro.
+  // Si el mensaje junta al propio responsable como cliente (misma persona), vale su teléfono.
+  if (String(x.clave || "").startsWith("resp:")){
+    const propio = telefonoResponsableGuardado(x);
+    if (propio) return propio;
+    if (x._mismaPersona && x._telMismaPersona) return x._telMismaPersona;
+    return "";
+  }
+  // Empresas: el primer teléfono de sus afiliados (como antes)
   return String((x.clientes.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
 }
-// Aviso cuando el mensaje de un responsable NO va a su propio teléfono
+// Teléfono al que va un mensaje de UN cliente: si tiene responsable (persona), el del responsable;
+// si no, el del cliente.
+function telefonoDestinoCliente(r){
+  const c = claveAgrupacion(r);
+  if (c && c.k.startsWith("resp:")) return telefonoResponsableGuardado({ grupo: true, clave: c.k, responsable: c.nombre });
+  return String(r["Teléfono"] || "");
+}
+// Aviso cuando un responsable no tiene teléfono guardado: no se envía a ningún afiliado
 function avisoTelefonoItem(x){
-  if (!x || !x.grupo || x._mismaPersona || !String(x.clave || "").startsWith("resp:") || telefonoResponsableGuardado(x)) return "";
-  const tel = telefonoDeItem(x);
-  const dueno = x.clientes.find(c => String(c["Teléfono"] || "").trim() === tel.trim());
-  const distintos = new Set(x.clientes.map(c => String(c["Teléfono"] || "").replace(/\D/g, "")).filter(Boolean));
-  return `⚠️ ${escHtml(nombrePropio(x.responsable))} no tiene teléfono guardado. Se enviará al número de ${escHtml(nombrePropio(dueno ? dueno["Nombre del Afiliado"] : "un afiliado"))}${distintos.size > 1 ? ` (sus afiliados tienen ${distintos.size} números distintos)` : ""}. Si no es el del responsable, toque «Saltar» y guárdelo en Editar responsables → 🪪 Cédula, teléfono y correo.`;
+  if (!x || !x.grupo || !String(x.clave || "").startsWith("resp:") || telefonoDeItem(x)) return "";
+  return `⚠️ ${escHtml(nombrePropio(x.responsable))} no tiene teléfono guardado y el mensaje solo se manda al responsable. Toque «Saltar» y guárdelo en Editar responsables → 🪪 Cédula, teléfono y correo.`;
 }
 // Un cliente que paga él mismo y que tiene el MISMO teléfono que un responsable (es la misma persona,
 // como Angie: cliente y responsable) va en un solo mensaje junto con los afiliados de ese responsable.
 function juntarPorTelefono(items){
   const tel = (x) => String(telefonoDeItem(x) || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
   const porTel = new Map();
-  items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){ const t = tel(x); if (t && !porTel.has(t)) porTel.set(t, x); } });
+  const norm = (t) => String(t || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+  items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){
+    // Para reconocer a la misma persona sirven el teléfono del responsable y los de sus afiliados
+    [tel(x), ...x.clientes.map(c => norm(c["Teléfono"]))].forEach(t => { if (t && !porTel.has(t)) porTel.set(t, x); });
+  } });
   const porDoc = new Map();
   items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){
     const d = soloDigitos((responsablesDatos.get(normResp(x.responsable)) || {}).documento); if (d && !porDoc.has(d)) porDoc.set(d, x); } });
   return items.filter(x => {
     if (x.grupo) return true;
-    const g = porDoc.get(soloDigitos(x["Cédula"])) || porTel.get(tel(x));
+    const g = porDoc.get(soloDigitos(x["Cédula"])) || porTel.get(norm(x["Teléfono"]));
     if (!g) return true;
     g.clientes.unshift(x); // el cliente que paga va primero en el mensaje
-    g._mismaPersona = true; // el teléfono es el del propio responsable
+    g._mismaPersona = true; // el cliente que paga ES el responsable: su teléfono es el del responsable
+    g._telMismaPersona = String(x["Teléfono"] || "");
     return false;
   });
 }
@@ -10118,7 +10144,7 @@ function mostrarPanelRecordatorios(eleccion){
         <p class="record-dato">${escHtml(telefonoDeItem(r))} · ${r.grupo ? "Total " : ""}${fmt(total)}${mora ? ` · incluye mora ${fmt(mora)}` : ""}</p>
         ${avisoTelefonoItem(r) ? `<p class="record-aviso-tel">${avisoTelefonoItem(r)}</p>` : ""}
         <div class="record-opciones">
-          <button type="button" class="btn primary whatsapp-lleno" data-record="abrir">Abrir WhatsApp</button>
+          <button type="button" class="btn primary whatsapp-lleno" data-record="abrir" ${telefonoDeItem(r) ? "" : "disabled"}>Abrir WhatsApp</button>
           <button type="button" class="btn ghost" data-record="saltar">Saltar</button>
           <button type="button" class="btn ghost" data-record="terminar">Terminar</button>
         </div>`;
@@ -12542,6 +12568,7 @@ async function mostrarAppPrincipal(user){
   document.body.classList.toggle("rol-operador", !esAdmin());
   renderEnlacesRapidos();
   await iniciarAppConSupabase();
+  cargarResponsablesCreados(); // teléfonos y cédulas de los responsables (los mensajes van a ellos)
   cargarGastos();
   cargarCRM();
   if (esAdmin()) borrarArchivosPlanillaIndividual();
@@ -15802,8 +15829,9 @@ function gruposEstadoCuenta(){
     g.pagados = g.todos.filter(pagadoEsteMes).length;
     g.total = g.deben.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
     g.mora = g.deben.reduce((a, r) => a + numOrZero(r["Recargo Mora"]), 0);
-    g.telefono = telefonoResponsableGuardado({ grupo: true, clave: g.k, responsable: g.nombre }) ||
-      String((g.deben.find(c => String(c["Teléfono"] || "").trim()) || g.todos.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
+    g.telefono = g.esEmpresa
+      ? String((g.deben.find(c => String(c["Teléfono"] || "").trim()) || g.todos.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "")
+      : telefonoResponsableGuardado({ grupo: true, clave: g.k, responsable: g.nombre }); // responsable: solo su teléfono
     return g;
   }).filter(g => g.deben.length).sort((a, b) => b.total - a.total);
 }
@@ -15817,7 +15845,7 @@ function abrirEstadoCuenta(soloClave){
   document.getElementById("ecLista").innerHTML = gs.length ? gs.map((g, i) => `
     <div class="ay-card">
       <div class="ay-card-h"><b>${g.esEmpresa ? "🏢" : "👤"} ${escHtml(nombrePropio(g.nombre))}</b><span class="ay-total">${fmt(g.total)}</span></div>
-      <div class="ay-fila-s">${g.deben.length} por pagar${g.pagados ? ` · ${g.pagados} ya pagaron` : ""}${g.mora ? ` · incluye ${fmt(g.mora)} de mora` : ""}${g.telefono ? ` · 📱 ${escHtml(g.telefono)}` : " · sin teléfono"}</div>
+      <div class="ay-fila-s">${g.deben.length} por pagar${g.pagados ? ` · ${g.pagados} ya pagaron` : ""}${g.mora ? ` · incluye ${fmt(g.mora)} de mora` : ""}${g.telefono ? ` · 📱 ${escHtml(g.telefono)}` : (g.esEmpresa ? " · sin teléfono" : " · ⚠️ responsable sin teléfono guardado")}</div>
       <div class="ay-acciones">
         <button type="button" class="btn small" data-ec-ver="${i}">👁️ Ver</button>
         <button type="button" class="btn small" data-ec-bajar="${i}">⬇️ Descargar</button>
