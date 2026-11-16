@@ -10053,8 +10053,8 @@ function juntarPorTelefono(items){
   const porTel = new Map();
   const norm = (t) => String(t || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
   items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){
-    // Para reconocer a la misma persona sirven el teléfono del responsable y los de sus afiliados
-    [tel(x), ...x.clientes.map(c => norm(c["Teléfono"]))].forEach(t => { if (t && !porTel.has(t)) porTel.set(t, x); });
+    // Solo el teléfono guardado del responsable identifica a la misma persona (no el de sus afiliados)
+    const t = tel(x); if (t && !porTel.has(t)) porTel.set(t, x);
   } });
   const porDoc = new Map();
   items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){
@@ -10104,13 +10104,29 @@ function clientesConTelefonoPropio(g){
 }
 function agregarEnviosDirectos(items){
   if (!tambienAlCliente()) return items;
+  const norm = (t) => String(t || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+  // Números que YA reciben un mensaje en esta lista (responsables y clientes sueltos): a esos no se
+  // les manda otro, para que nadie reciba el cobro dos veces.
+  const yaReciben = new Set(items.map(x => norm(x.grupo ? telefonoDeItem(x) : x["Teléfono"])).filter(Boolean));
   const salida = [];
   items.forEach(x => {
     salida.push(x);
-    if (x.grupo && String(x.clave || "").startsWith("resp:"))
-      clientesConTelefonoPropio(x).forEach(c => salida.push({ directo: true, cliente: c, responsable: x.responsable }));
+    if (!(x.grupo && String(x.clave || "").startsWith("resp:"))) return;
+    // Un solo mensaje por número: si dos clientes comparten teléfono, van juntos
+    const porNumero = new Map();
+    clientesConTelefonoPropio(x).forEach(c => {
+      const t = norm(c["Teléfono"]);
+      if (!t || yaReciben.has(t)) return;
+      if (!porNumero.has(t)) porNumero.set(t, []);
+      porNumero.get(t).push(c);
+    });
+    porNumero.forEach((clientes, t) => { yaReciben.add(t); salida.push({ directo: true, cliente: clientes[0], clientes, responsable: x.responsable }); });
   });
   return salida;
+}
+function mensajeDirectoItem(r){
+  if (!r.clientes || r.clientes.length < 2) return mensajeDirectoCliente(r.cliente);
+  return construirMensajeAgrupado({ grupo: true, responsable: r.cliente["Nombre del Afiliado"], clientes: r.clientes });
 }
 function abrirWhatsappConMensaje(telefono, mensaje){
   if (!navigator.onLine){ showToast("Sin internet: no se puede abrir WhatsApp ahora. Inténtalo cuando vuelva la conexión."); return false; }
@@ -10194,8 +10210,8 @@ function mostrarPanelRecordatorios(eleccion){
       cuerpo.innerHTML = `
         <div class="record-progreso"><span style="width:${Math.round(100 * procesadosRecordatorios / Math.max(1, totalColaRecordatorios))}%"></span></div>
         <p class="record-cuenta">${n} de ${totalColaRecordatorios} · al cliente directo</p>
-        <p class="record-nombre">${escHtml(nombrePropio(c["Nombre del Afiliado"]))}</p>
-        <p class="record-dato">${escHtml(String(c["Teléfono"] || ""))} · ${fmt(calcularTotalPagar(c, store.currentMonth))} · su responsable (${escHtml(nombrePropio(r.responsable))}) ya va en otro mensaje</p>
+        <p class="record-nombre">${escHtml((r.clientes || [c]).map(x => nombrePropio(x["Nombre del Afiliado"])).join(" y "))}</p>
+        <p class="record-dato">${escHtml(String(c["Teléfono"] || ""))} · ${fmt((r.clientes || [c]).reduce((a, x) => a + calcularTotalPagar(x, store.currentMonth), 0))} · su responsable (${escHtml(nombrePropio(r.responsable))}) ya va en otro mensaje</p>
         <div class="record-opciones">
           <button type="button" class="btn primary whatsapp-lleno" data-record="abrir">Abrir WhatsApp</button>
           <button type="button" class="btn ghost" data-record="saltar">Saltar</button>
@@ -10247,7 +10263,7 @@ document.getElementById("overlayRecordatorios").addEventListener("click", (e) =>
     }
     const r = colaRecordatorios.shift();
     if (r){ procesadosRecordatorios++; if (acc === "abrir"){
-      if (r.directo){ if (abrirWhatsappConMensaje(r.cliente["Teléfono"], mensajeDirectoCliente(r.cliente))) enviadosRecordatorios++; }
+      if (r.directo){ if (abrirWhatsappConMensaje(r.cliente["Teléfono"], mensajeDirectoItem(r))) enviadosRecordatorios++; }
       else if (r.grupo){ if (abrirWhatsappConMensaje(telefonoDeItem(r), construirMensajeAgrupado(r))){ enviadosRecordatorios++; marcarRecordado(r.clientes); } }
       else if (navigator.onLine){ enviarWhatsapp(r, calcularTotalPagar(r, store.currentMonth)); enviadosRecordatorios++; marcarRecordado([r]); }
     } }
