@@ -233,3 +233,8 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Las consignaciones siguen entrando por el correo (tarea "Correo a la app" → `registrar_consignacion_correo`) y a mano desde la app (`registrar_consignacion_equipo`).
 - Para reabrir: `grant execute on function public.registrar_consignacion(text, text) to anon;`
 
+
+## 16-nov-2026 · Recordatorios de cobro: teléfono del responsable y mensaje único
+- Problema: el recordatorio de un responsable iba al teléfono del primer afiliado (no al del responsable), y una clienta que también es responsable (Angie Carolina Leal, escrita "anguie" como responsable) recibió dos cobros separados.
+- Ahora: `telefonoDeItem` usa el teléfono del responsable guardado en Datos para factura (`responsablesDatos`, se carga antes de armar la lista); si no lo tiene, usa el del primer afiliado y el panel muestra un aviso (`avisoTelefonoItem`). `juntarPorTelefono` mete en el mensaje del responsable al cliente que paga él mismo con el mismo teléfono.
+- La regla de DÍAS PROPORCIONALES quedó igual (confirmada por el usuario: el mes siguiente a la afiliación se cobran los días desde el ingreso).

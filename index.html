@@ -1377,6 +1377,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .resp-num b{ font-size:16px; }
   .resp-det{ grid-column:1 / -1; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .tag-recordado{ display:inline-block; font-size:11px; font-weight:600; color:#137A3B; background:#DDF2E6; border-radius:999px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+  .record-aviso-tel{ font-size:12.5px; background:#FEF0C7; color:#7A2E0E; border-radius:8px; padding:8px 10px; margin:-6px 0 12px; line-height:1.4; }
+  @media (prefers-color-scheme: dark){ .record-aviso-tel{ background:#3A2A10; color:#FCD9A8; } }
   .record-ya{ font-size:12.5px; background:#DDF2E6; color:#0F5C2E; border-radius:8px; padding:8px 10px; margin:4px 0 10px; }
   @media (prefers-color-scheme: dark){ .tag-recordado{ background:#123425; color:#6EE7A0; } .record-ya{ background:#123425; color:#A7F3C5; } }
 
@@ -9841,13 +9843,52 @@ function agruparPorResponsable(lista){
   lista.forEach(r => {
     const c = claveAgrupacion(r);
     if (!c){ salida.push(r); return; }
-    if (!grupos.has(c.k)){ const g = { grupo:true, responsable:c.nombre, clientes:[] }; grupos.set(c.k, g); salida.push(g); }
+    if (!grupos.has(c.k)){ const g = { grupo:true, responsable:c.nombre, clave:c.k, clientes:[] }; grupos.set(c.k, g); salida.push(g); }
     grupos.get(c.k).clientes.push(r);
   });
   // Aunque el responsable tenga un solo cliente, el mensaje va a nombre del responsable
   return salida;
 }
-function telefonoDeItem(x){ return x.grupo ? String((x.clientes.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "") : String(x["Teléfono"] || ""); }
+// Teléfono al que va el mensaje. Si es de un responsable (persona), se usa SU teléfono guardado
+// en Editar responsables → Datos para factura; si no lo tiene, el del primer afiliado (con aviso).
+function telefonoValidoCo(t){
+  const d = String(t || "").replace(/\D/g, "");
+  return /^3\d{9}$/.test(d) || /^573\d{9}$/.test(d) ? d : "";
+}
+function telefonoResponsableGuardado(x){
+  if (!x || !x.grupo || !String(x.clave || "").startsWith("resp:")) return "";
+  const d = responsablesDatos.get(normResp(x.responsable)) || responsablesDatos.get(String(x.clave).slice(5)) || {};
+  return telefonoValidoCo(d.telefono);
+}
+function telefonoDeItem(x){
+  if (!x.grupo) return String(x["Teléfono"] || "");
+  const propio = telefonoResponsableGuardado(x);
+  if (propio) return propio;
+  return String((x.clientes.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
+}
+// Aviso cuando el mensaje de un responsable NO va a su propio teléfono
+function avisoTelefonoItem(x){
+  if (!x || !x.grupo || x._mismaPersona || !String(x.clave || "").startsWith("resp:") || telefonoResponsableGuardado(x)) return "";
+  const tel = telefonoDeItem(x);
+  const dueno = x.clientes.find(c => String(c["Teléfono"] || "").trim() === tel.trim());
+  const distintos = new Set(x.clientes.map(c => String(c["Teléfono"] || "").replace(/\D/g, "")).filter(Boolean));
+  return `⚠️ ${escHtml(nombrePropio(x.responsable))} no tiene teléfono guardado. Se enviará al número de ${escHtml(nombrePropio(dueno ? dueno["Nombre del Afiliado"] : "un afiliado"))}${distintos.size > 1 ? ` (sus afiliados tienen ${distintos.size} números distintos)` : ""}. Si no es el del responsable, toque «Saltar» y guárdelo en Editar responsables → Datos para factura.`;
+}
+// Un cliente que paga él mismo y que tiene el MISMO teléfono que un responsable (es la misma persona,
+// como Angie: cliente y responsable) va en un solo mensaje junto con los afiliados de ese responsable.
+function juntarPorTelefono(items){
+  const tel = (x) => String(telefonoDeItem(x) || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+  const porTel = new Map();
+  items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){ const t = tel(x); if (t && !porTel.has(t)) porTel.set(t, x); } });
+  return items.filter(x => {
+    if (x.grupo) return true;
+    const g = porTel.get(tel(x));
+    if (!g) return true;
+    g.clientes.unshift(x); // el cliente que paga va primero en el mensaje
+    g._mismaPersona = true; // el teléfono es el del propio responsable
+    return false;
+  });
+}
 function totalDeItem(x){ return x.grupo ? x.clientes.reduce((a, c) => a + calcularTotalPagar(c, store.currentMonth), 0) : calcularTotalPagar(x, store.currentMonth); }
 function moraDeItem(x){ return x.grupo ? x.clientes.reduce((a, c) => a + numOrZero(c["Recargo Mora"]), 0) : numOrZero(x["Recargo Mora"]); }
 function nombrePropio(t){ return String(t || "").toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()); }
@@ -9902,6 +9943,8 @@ async function iniciarOContinuarRecordatorios(){
   // recordatorios hoy, aquí se ven y no se repiten.
   if (cloudDb && cloudReady && navigator.onLine){
     try{ await Promise.race([refrescarMesDesdeNube(), new Promise(res => setTimeout(res, 2500))]); }catch(e){}
+    // Teléfonos de los responsables (Datos para factura), para mandarles el mensaje a ellos
+    try{ await Promise.race([cargarResponsablesCreados(), new Promise(res => setTimeout(res, 2500))]); }catch(e){}
   }
   const todos = clientesPendientesDelMes();
   if (!todos.length) return;
@@ -9911,7 +9954,7 @@ async function iniciarOContinuarRecordatorios(){
   mostrarPanelRecordatorios({ pendientes, atrasados, yaHoy });
 }
 function empezarColaRecordatorios(lista){
-  colaRecordatorios = agruparPorResponsable(lista);
+  colaRecordatorios = juntarPorTelefono(agruparPorResponsable(lista));
   totalColaRecordatorios = colaRecordatorios.length; enviadosRecordatorios = 0; procesadosRecordatorios = 0;
   actualizarBarraRecordatorios();
   mostrarPanelRecordatorios();
@@ -9950,6 +9993,7 @@ function mostrarPanelRecordatorios(eleccion){
         <p class="record-nombre">${escHtml(r.grupo ? r.responsable : (r["Nombre del Afiliado"] || ""))}</p>
         ${r.grupo ? `<ul class="record-lista">${r.clientes.map(c => `<li>${escHtml(nombrePropio(c["Nombre del Afiliado"]))} <span>${fmt(calcularTotalPagar(c, store.currentMonth))}</span></li>`).join("")}</ul>` : ""}
         <p class="record-dato">${escHtml(telefonoDeItem(r))} · ${r.grupo ? "Total " : ""}${fmt(total)}${mora ? ` · incluye mora ${fmt(mora)}` : ""}</p>
+        ${avisoTelefonoItem(r) ? `<p class="record-aviso-tel">${avisoTelefonoItem(r)}</p>` : ""}
         <div class="record-opciones">
           <button type="button" class="btn primary whatsapp-lleno" data-record="abrir">Abrir WhatsApp</button>
           <button type="button" class="btn ghost" data-record="saltar">Saltar</button>
