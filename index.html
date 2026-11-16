@@ -4816,9 +4816,11 @@ async function guardarDatosResp(form){
   const existe = responsablesDatos.get(clave);
   const nombre = existe ? existe.nombre : (responsablesCreados && responsablesCreados.get(clave)) || form.closest(".resp-row").dataset.original;
   try{
+    // upsert por clave: si el responsable ya existe en la nube (aunque este equipo no lo tuviera cargado)
+    // se actualiza; si no, se crea. Antes fallaba con "duplicate key" (409) y no dejaba guardar.
     const { data, error } = existe
       ? await sb.from("responsables").update(datos).eq("clave", clave).select().single()
-      : await sb.from("responsables").insert({ ...datos, nombre, clave }).select().single();
+      : await sb.from("responsables").upsert({ ...datos, nombre, clave }, { onConflict: "clave" }).select().single();
     if (error) throw error;
     responsablesDatos.set(clave, data);
     showToast("✅ Datos guardados.");
