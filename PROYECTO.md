@@ -228,3 +228,8 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Repo `prosegurosnet-web`: CNAME y enlaces cambiados a prosnet.co. Falta que el usuario ponga en Hostinger los registros DNS de GitHub Pages (4 A de 185.199.108-111.153 en @ y CNAME www → buenaventuraproseguro-wq.github.io) y luego marque "Enforce HTTPS" en GitHub.
 - Pendiente después: cambiar los enlaces de los mensajes de WhatsApp de la app a prosnet.co y agregar la política de privacidad (Ley 1581).
 
+## 15-nov-2026 · Se retiró la macro de MacroDroid
+- La macro "Consignaciones PROSEGUROSNET" del celular nunca funcionó bien y el usuario la eliminó. Se cerró su entrada en la base: `revoke execute` de `registrar_consignacion(text, text)` y `cambiar_clave_consignaciones()` para anon y authenticated. No se borró nada (función, clave ni consignaciones).
+- Las consignaciones siguen entrando por el correo (tarea "Correo a la app" → `registrar_consignacion_correo`) y a mano desde la app (`registrar_consignacion_equipo`).
+- Para reabrir: `grant execute on function public.registrar_consignacion(text, text) to anon;`
+
