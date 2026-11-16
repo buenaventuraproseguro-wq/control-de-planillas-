@@ -1391,7 +1391,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .resp-datos input, .resp-datos select{ width:100%; min-width:0; padding:7px 8px; font:inherit; font-weight:400; }
   .resp-datos .ancho{ grid-column:1 / -1; }
   .resp-datos .chequeo{ flex-direction:row; align-items:center; gap:8px; font-weight:400; }
-  .resp-datos .chequeo input{ width:auto; }
+  .resp-datos .chequeo input{ width:auto; flex:0 0 auto; }
+  .resp-datos .chequeo{ justify-content:flex-start; text-align:left; }
   .resp-datos .acciones{ display:flex; gap:8px; }
   @media (max-width:560px){ .resp-datos{ grid-template-columns:1fr; } }
   .resp-falta{ font-size:12px; color:var(--retiro); font-weight:600; }
@@ -7323,9 +7324,9 @@ function filaEditable(tipo, clave, nombre, n){
   return `<div class="resp-row" data-tipo="${tipo}" data-clave="${escHtml(clave)}" data-original="${escHtml(nombre)}">
       <span class="resp-txt">${escHtml(nombre)}</span>
       <span class="count">${n} cliente${n === 1 ? "" : "s"}</span>
-      ${esResp ? `<button type="button" class="btn small" data-accion="datosFactura">🧾 Datos para factura</button>` : ""}
+      ${esResp ? `<button type="button" class="btn small ${faltan.includes("cédula o NIT") ? "primary" : ""}" data-accion="datosFactura">🪪 Cédula, teléfono y correo</button>` : ""}
       ${tipo === "emp" ? `<button type="button" class="btn small" data-accion="docsEmpresa">📎 RUT y Cámara</button>` : ""}
-      <button type="button" class="btn small" data-accion="editar">Editar</button>
+      <button type="button" class="btn small" data-accion="editar">${esResp ? "✏️ Cambiar nombre" : "Editar"}</button>
       <button type="button" class="btn small danger" data-accion="eliminar">Eliminar</button>
       ${esResp ? (respFacturaAlCliente(clave) ? `<span class="resp-completo" style="flex-basis:100%;">Cada cliente se factura a su nombre</span>` : faltan.length ? `<span class="resp-falta" style="flex-basis:100%;">Falta: ${escHtml(faltan.join(", "))}</span>` : `<span class="resp-completo" style="flex-basis:100%;">✅ Datos completos</span>`) : ""}
     </div>`;
@@ -9810,7 +9811,7 @@ async function crearBorradorAlegra(r){
       <p><b>${escHtml(res.destinatario || res.responsable)}</b>${res.documento ? ` · ${escHtml(res.tipo)} ${escHtml(res.documento)}` : ""}</p>
       <ul class="factura-clientes">${res.clientes.map(c => `<li><span>${escHtml(c.nombre)} · ${escHtml(c.cedula)}</span><span>${fmt(c.valor)}</span></li>`).join("")}</ul>
       <div class="factura-total">Total ${fmt(res.total)}</div>
-      ${incompleto ? `<p class="ocr-alerta">Falta: ${escHtml(res.faltan.join(", "))}. Complételo en Editar responsables → 🧾 Datos para factura.</p>` : ""}
+      ${incompleto ? `<p class="ocr-alerta">Falta: ${escHtml(res.faltan.join(", "))}. Complételo en Editar responsables → 🪪 Cédula, teléfono y correo.</p>` : ""}
       ${(res.avisos || []).map(a => `<p class="ocr-alerta">${escHtml(a)}</p>`).join("")}`;
     document.getElementById("facturaMedio").value = "";
     document.getElementById("facturaMedioCampo").hidden = !!incompleto;
@@ -9980,7 +9981,7 @@ function avisoTelefonoItem(x){
   const tel = telefonoDeItem(x);
   const dueno = x.clientes.find(c => String(c["Teléfono"] || "").trim() === tel.trim());
   const distintos = new Set(x.clientes.map(c => String(c["Teléfono"] || "").replace(/\D/g, "")).filter(Boolean));
-  return `⚠️ ${escHtml(nombrePropio(x.responsable))} no tiene teléfono guardado. Se enviará al número de ${escHtml(nombrePropio(dueno ? dueno["Nombre del Afiliado"] : "un afiliado"))}${distintos.size > 1 ? ` (sus afiliados tienen ${distintos.size} números distintos)` : ""}. Si no es el del responsable, toque «Saltar» y guárdelo en Editar responsables → Datos para factura.`;
+  return `⚠️ ${escHtml(nombrePropio(x.responsable))} no tiene teléfono guardado. Se enviará al número de ${escHtml(nombrePropio(dueno ? dueno["Nombre del Afiliado"] : "un afiliado"))}${distintos.size > 1 ? ` (sus afiliados tienen ${distintos.size} números distintos)` : ""}. Si no es el del responsable, toque «Saltar» y guárdelo en Editar responsables → 🪪 Cédula, teléfono y correo.`;
 }
 // Un cliente que paga él mismo y que tiene el MISMO teléfono que un responsable (es la misma persona,
 // como Angie: cliente y responsable) va en un solo mensaje junto con los afiliados de ese responsable.
