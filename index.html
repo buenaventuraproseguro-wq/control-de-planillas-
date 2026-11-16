@@ -7327,6 +7327,7 @@ function filaEditable(tipo, clave, nombre, n){
       ${esResp ? `<button type="button" class="btn small ${faltan.includes("cédula o NIT") ? "primary" : ""}" data-accion="datosFactura">🪪 Cédula, teléfono y correo</button>` : ""}
       ${tipo === "emp" ? `<button type="button" class="btn small" data-accion="docsEmpresa">📎 RUT y Cámara</button>` : ""}
       <button type="button" class="btn small" data-accion="editar">${esResp ? "✏️ Cambiar nombre" : "Editar"}</button>
+      ${esResp ? `<button type="button" class="btn small" data-accion="estadoCuentaResp">📄 Estado de cuenta</button>` : ""}
       <button type="button" class="btn small danger" data-accion="eliminar">Eliminar</button>
       ${esResp ? (respFacturaAlCliente(clave) ? `<span class="resp-completo" style="flex-basis:100%;">Cada cliente se factura a su nombre</span>` : faltan.length ? `<span class="resp-falta" style="flex-basis:100%;">Falta: ${escHtml(faltan.join(", "))}</span>` : `<span class="resp-completo" style="flex-basis:100%;">✅ Datos completos</span>`) : ""}
     </div>`;
@@ -7368,6 +7369,7 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
   const tipo = row.dataset.tipo, clave = row.dataset.clave, original = row.dataset.original;
   const accion = b.dataset.accion;
   if (accion === "docsEmpresa"){ abrirDocsEmpresa(original); return; }
+  if (accion === "estadoCuentaResp"){ document.getElementById("overlayResp").classList.remove("show"); abrirEstadoCuenta(clave); return; }
   if (accion === "datosFactura"){
     const abierto = row.querySelector(".resp-datos");
     if (abierto) abierto.remove();
@@ -15791,13 +15793,18 @@ function gruposEstadoCuenta(){
     g.pagados = g.todos.filter(pagadoEsteMes).length;
     g.total = g.deben.reduce((a, r) => a + calcularTotalPagar(r, store.currentMonth), 0);
     g.mora = g.deben.reduce((a, r) => a + numOrZero(r["Recargo Mora"]), 0);
-    g.telefono = String((g.deben.find(c => String(c["Teléfono"] || "").trim()) || g.todos.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
+    g.telefono = telefonoResponsableGuardado({ grupo: true, clave: g.k, responsable: g.nombre }) ||
+      String((g.deben.find(c => String(c["Teléfono"] || "").trim()) || g.todos.find(c => String(c["Teléfono"] || "").trim()) || {})["Teléfono"] || "");
     return g;
   }).filter(g => g.deben.length).sort((a, b) => b.total - a.total);
 }
-function abrirEstadoCuenta(){
-  const gs = gruposEstadoCuenta();
-  document.getElementById("ecSub").textContent = `${store.currentMonth} · ${gs.length} responsable(s) o empresa(s) con valores pendientes.`;
+// soloClave (opcional): clave del responsable para ver solo el suyo (desde Editar responsables)
+function abrirEstadoCuenta(soloClave){
+  const filtro = typeof soloClave === "string" ? soloClave : "";
+  const gs = gruposEstadoCuenta().filter(g => !filtro || (!g.esEmpresa && normResp(g.nombre) === filtro));
+  document.getElementById("ecSub").textContent = filtro
+    ? `${store.currentMonth} · ${gs.length ? "valores pendientes de este responsable." : ""}`
+    : `${store.currentMonth} · ${gs.length} responsable(s) o empresa(s) con valores pendientes.`;
   document.getElementById("ecLista").innerHTML = gs.length ? gs.map((g, i) => `
     <div class="ay-card">
       <div class="ay-card-h"><b>${g.esEmpresa ? "🏢" : "👤"} ${escHtml(nombrePropio(g.nombre))}</b><span class="ay-total">${fmt(g.total)}</span></div>
@@ -15807,7 +15814,7 @@ function abrirEstadoCuenta(){
         <button type="button" class="btn small" data-ec-bajar="${i}">⬇️ Descargar</button>
         <button type="button" class="btn small whatsapp" data-ec-enviar="${i}" ${g.telefono ? "" : "disabled"}>📲 Enviar por WhatsApp</button>
       </div>
-    </div>`).join("") : `<p class="ay-txt">No hay responsables ni empresas con valores pendientes este mes. 🎉</p>`;
+    </div>`).join("") : `<p class="ay-txt">${filtro ? "Este responsable no tiene valores pendientes este mes. 🎉" : "No hay responsables ni empresas con valores pendientes este mes. 🎉"}</p>`;
   abrirEstadoCuenta._gs = gs;
   document.getElementById("ecVista").innerHTML = "";
   ayAbrir("overlayEstadoCuenta");
