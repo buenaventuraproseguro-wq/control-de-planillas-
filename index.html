@@ -4787,8 +4787,9 @@ function formularioDatosResp(clave){
       <input type="text" data-c="nombre_factura" maxlength="120" value="${escHtml(d.nombre_factura || "")}"></label>
     <label>Tipo de documento
       <select data-c="tipo_doc">${[["CC","Cédula"],["NIT","NIT"],["CE","Cédula de extranjería"],["PP","Pasaporte"],["PEP","PEP"]].map(([v,t]) => `<option value="${v}" ${v === tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
-    <label>Cédula o NIT (con el dígito: 900123456-7)
+    <label>Cédula o NIT (con el dígito: 900123456-7)${auto ? "" : " · obligatoria"}
       <input type="text" data-c="documento" maxlength="20" value="${escHtml(d.documento || "")}"></label>
+    ${auto ? "" : `<div class="ancho"><button type="button" class="btn small" data-accion="leerCedulaResp">📷 Leer de la foto de la cédula</button> <span class="resp-ocr-aviso"></span></div>`}
     <label>Correo
       <input type="email" data-c="correo" maxlength="120" value="${escHtml(d.correo || "")}"></label>
     <label>Teléfono
@@ -4804,6 +4805,11 @@ async function guardarDatosResp(form){
   const documento = val("documento").value.replace(/[^\dA-Za-z-]/g, "").toUpperCase();
   if (correo && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)){ showToast("Revise el correo."); val("correo").focus(); return false; }
   if (telefono && telefono.length !== 10){ showToast("El teléfono debe tener 10 números."); val("telefono").focus(); return false; }
+  if (!documento && !esGrupoGeneral(clave)){ showToast("⚠️ La cédula o NIT del responsable es obligatoria. Escríbala o léala de la foto."); val("documento").focus(); return false; }
+  if (!esGrupoGeneral(clave) && documento){
+    const otro = [...responsablesDatos.values()].find(x => x.clave !== clave && soloDigitos(x.documento) && soloDigitos(x.documento) === soloDigitos(documento));
+    if (otro){ await alertApp(`Esa cédula ya es del responsable "${otro.nombre}". Si es la misma persona, use un solo nombre: toque «Editar» en uno de los dos y escriba el mismo nombre del otro.`); return false; }
+  }
   if (val("tipo_doc").value === "CC" && documento && typeof problemaCedula === "function" && problemaCedula(documento)){ showToast("⚠️ " + problemaCedula(documento)); val("documento").focus(); return false; }
   const datos = { nombre_factura: limpiarEspacios(val("nombre_factura").value).toUpperCase() || null, tipo_doc: val("tipo_doc").value, documento: documento || null, correo: correo || null, telefono: telefono || null, factura_individual: val("factura_individual").checked && !esGrupoGeneral(clave) };
   const existe = responsablesDatos.get(clave);
@@ -5025,20 +5031,103 @@ function responsableExiste(texto){
   if (!responsablesCreados) return responsablesConocidos().has(k); // sin la tabla: los que ya están en clientes
   return responsablesCreados.has(k);
 }
-async function crearResponsable(nombre){
-  const limpio = limpiarEspacios(nombre).toLowerCase();
-  const k = normResp(limpio);
+// Crear responsable. Una persona responsable SIEMPRE lleva su cédula (o NIT si es empresa), que se puede
+// leer de la foto. Con la cédula la app sabe si ya es cliente o ya es responsable con otro nombre, y usa
+// el nombre correcto (así no vuelve a pasar "Anguie" y "Angie" como si fueran dos personas).
+// Devuelve el nombre con el que quedó (texto) o false si no se creó.
+async function crearResponsable(nombre, opciones){
+  let limpio = limpiarEspacios(nombre).toLowerCase();
+  let k = normResp(limpio);
   if (!k || k.length < 2){ showToast("Escriba el nombre del responsable."); return false; }
-  if (responsablesCreados && responsablesCreados.has(k)){ showToast("Ese responsable ya existe."); return true; }
+  if (responsablesCreados && responsablesCreados.has(k)){ showToast("Ese responsable ya existe."); return limpio; }
+  const extra = {};
+  if (!(opciones && opciones.sinCedula) && !esGrupoGeneral(k) && cloudDb){
+    const d = await pedirCedulaResponsable(limpio);
+    if (!d) return false;
+    // ¿Ya es responsable con otro nombre?
+    const yaResp = [...responsablesDatos.values()].find(x => soloDigitos(x.documento) && soloDigitos(x.documento) === soloDigitos(d.documento));
+    if (yaResp){
+      await alertApp(`Esa cédula ya está registrada como el responsable "${yaResp.nombre}". Se usa ese y no se crea otro.`);
+      return yaResp.nombre;
+    }
+    // ¿Es cliente? Entonces el nombre correcto es el de la app
+    const cliente = d.tipo_doc === "CC" ? clientePorCedula(d.documento) : null;
+    const nombreBueno = cliente ? String(cliente["Nombre del Afiliado"] || "").toLowerCase().trim()
+      : (d.nombreLeido ? d.nombreLeido.toLowerCase() : "");
+    if (nombreBueno && normResp(nombreBueno) !== k){
+      const usar = await confirmarApp(`${cliente ? "Esa cédula es de un cliente de la app:" : "En la foto de la cédula dice:"} "${nombreBueno.toUpperCase()}".\n¿Crear el responsable con ese nombre (recomendado) en vez de "${limpio}"?`);
+      if (usar){ limpio = nombreBueno; k = normResp(limpio); }
+      if (responsablesCreados && responsablesCreados.has(k)){ showToast("Ese responsable ya existe."); return limpio; }
+    }
+    extra.documento = d.documento; extra.tipo_doc = d.tipo_doc;
+    if (cliente || d.nombreLeido) extra.nombre_factura = (nombreBueno || limpio).toUpperCase();
+    if (cliente && telefonoValidoCo(cliente["Teléfono"])) extra.telefono = telefonoValidoCo(cliente["Teléfono"]).slice(-10);
+  }
   try{
-    const { error } = await sb.from("responsables").insert({ nombre: limpio, clave: k });
+    const { data, error } = await sb.from("responsables").insert({ nombre: limpio, clave: k, ...extra }).select().maybeSingle();
     if (error && !/duplicate|unique/i.test(error.message || "")) throw error;
     if (!responsablesCreados) responsablesCreados = new Map();
     responsablesCreados.set(k, limpio);
+    if (data) responsablesDatos.set(k, data);
     renderListaResponsables();
     showToast(`Responsable "${limpio}" creado.`);
-    return true;
+    return limpio;
   }catch(e){ await alertApp("No se pudo crear el responsable: " + (e.message || e)); return false; }
+}
+function clientePorCedula(ced){
+  const c = soloDigitos(ced);
+  if (!c) return null;
+  const meses = Object.keys(store.months || {});
+  for (let i = meses.length - 1; i >= 0; i--){
+    const r = (store.months[meses[i]] || []).find(x => soloDigitos(x["Cédula"]) === c);
+    if (r) return r;
+  }
+  return null;
+}
+// Pide la cédula o NIT del responsable, con botón para leerla de una foto
+function pedirCedulaResponsable(nombre){
+  return new Promise((resolve) => {
+    const ov = document.getElementById("overlayPedir");
+    document.getElementById("pedirTitulo").textContent = "Cédula del responsable";
+    document.getElementById("pedirOkBtn").textContent = "Crear responsable";
+    document.getElementById("pedirCampos").innerHTML = `
+      <p class="modal-sub" style="margin:0;">Para <b>${escHtml(nombre.toUpperCase())}</b>. Es obligatoria: con ella la app reconoce a la persona aunque su nombre se escriba distinto.</p>
+      <div class="field"><label for="pedirRespTipo">Tipo</label>
+        <select id="pedirRespTipo"><option value="CC">Cédula</option><option value="NIT">NIT (empresa)</option><option value="CE">Cédula de extranjería</option><option value="PEP">PEP</option><option value="PP">Pasaporte</option></select></div>
+      <div class="field"><label for="pedirRespDoc">Número</label>
+        <input id="pedirRespDoc" type="text" inputmode="numeric" maxlength="20" placeholder="Sin puntos" autocomplete="off"></div>
+      <button type="button" class="btn small" id="pedirRespFotoBtn">📷 Leer de la foto de la cédula</button>
+      <input type="file" id="pedirRespFoto" class="hidden-file" accept="image/*">
+      <div id="pedirRespAviso" class="modal-sub" style="margin:0;"></div>`;
+    ov.classList.add("show");
+    const doc = document.getElementById("pedirRespDoc"), tipo = document.getElementById("pedirRespTipo"), aviso = document.getElementById("pedirRespAviso");
+    let nombreLeido = "";
+    setTimeout(() => doc.focus(), 50);
+    document.getElementById("pedirRespFotoBtn").onclick = () => document.getElementById("pedirRespFoto").click();
+    document.getElementById("pedirRespFoto").onchange = async (e) => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      aviso.textContent = "🔎 Leyendo la cédula…";
+      try{
+        const d = await leerCedulaConOcr(f);
+        if (d.tipo && d.tipo !== "cedula"){ aviso.textContent = "⚠️ Esa foto no parece una cédula. Escriba el número a mano."; return; }
+        const num = d.cedula || d.sugerida || "";
+        if (num){ doc.value = num; tipo.value = "CC"; }
+        nombreLeido = d.completo && d.partes ? d.partes.filter(Boolean).join(" ") : "";
+        aviso.innerHTML = num ? `✅ Leí <b>${escHtml(num)}</b>${nombreLeido ? ` · ${escHtml(nombreLeido.toUpperCase())}` : ""}. Compárelo con la foto antes de seguir.` : "⚠️ No pude leer el número. Escríbalo a mano.";
+      }catch(err){ aviso.textContent = "⚠️ No se pudo leer la foto. Escriba el número a mano."; }
+    };
+    const ok = document.getElementById("pedirOkBtn"), cancel = document.getElementById("pedirCancelBtn");
+    function fin(v){ ov.classList.remove("show"); ok.onclick = cancel.onclick = null; ov.onkeydown = null; resolve(v); }
+    ok.onclick = () => {
+      const t = tipo.value;
+      const v = t === "NIT" ? doc.value.replace(/[^\d-]/g, "") : doc.value.replace(/[^\dA-Za-z]/g, "").toUpperCase();
+      if (!v){ showToast("⚠️ Escriba la cédula o NIT del responsable (o léala de la foto)."); doc.focus(); return; }
+      if (t === "CC" && problemaCedula(v)){ showToast("⚠️ " + problemaCedula(v)); doc.focus(); return; }
+      fin({ documento: v, tipo_doc: t, nombreLeido });
+    };
+    cancel.onclick = () => fin(null);
+    ov.onkeydown = (e) => { if (e.key === "Enter" && e.target.tagName !== "SELECT") ok.click(); if (e.key === "Escape") fin(null); };
+  });
 }
 async function borrarResponsableCreado(clave){
   try{ await sb.from("responsables").delete().eq("clave", clave); }catch(e){}
@@ -5092,7 +5181,8 @@ function revisarResponsableEscrito(alSalir){
       e.preventDefault();
       const nombre = limpiarEspacios(campo.value);
       if (!(await confirmarApp(`¿Crear el responsable "${nombre}"? Quedará disponible para todo el equipo.`))) return;
-      if (await crearResponsable(nombre)){ campo.value = nombre.toLowerCase(); aviso.hidden = true; aviso.classList.remove("aviso-no-existe"); }
+      const quedo = await crearResponsable(nombre);
+      if (quedo){ campo.value = quedo; aviso.hidden = true; aviso.classList.remove("aviso-no-existe"); }
     });
   }
   if (alSalir) campo.value = limpiarEspacios(campo.value);
@@ -7284,6 +7374,24 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
     return;
   }
   if (accion === "cerrarDatos"){ row.querySelector(".resp-datos").remove(); return; }
+  if (accion === "leerCedulaResp"){
+    const form = row.querySelector(".resp-datos"), avisoOcr = form.querySelector(".resp-ocr-aviso");
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      avisoOcr.textContent = "🔎 Leyendo la cédula…";
+      try{
+        const d = await leerCedulaConOcr(f);
+        if (d.tipo && d.tipo !== "cedula"){ avisoOcr.textContent = "⚠️ Esa foto no parece una cédula."; return; }
+        const num = d.cedula || d.sugerida || "";
+        if (num){ form.querySelector('[data-c="documento"]').value = num; form.querySelector('[data-c="tipo_doc"]').value = "CC"; }
+        if (d.completo && d.partes) form.querySelector('[data-c="nombre_factura"]').value = d.partes.filter(Boolean).join(" ").toUpperCase();
+        avisoOcr.textContent = num ? "✅ Listo. Compárelo con la foto y toque «Guardar datos»." : "⚠️ No pude leer el número. Escríbalo a mano.";
+      }catch(err){ avisoOcr.textContent = "⚠️ No se pudo leer la foto."; }
+    };
+    inp.click();
+    return;
+  }
   if (accion === "guardarDatos"){ if (await guardarDatosResp(row.querySelector(".resp-datos"))) abrirEditorResponsables(); return; }
   const esResp = tipo === "resp";
   const coincide = esResp ? (r => normResp(r["Responsable / Grupo"]) === clave) : (r => normalizarEmpresa(r["Empresa"]) === clave);
@@ -7306,7 +7414,7 @@ document.getElementById("overlayResp").addEventListener("click", async (e) => {
     if (!(await confirmarApp(`¿Cambiar el ${etiqueta} "${original}" por "${nuevo}"?\nSe actualiza en ${afectados.length} cliente(s) de ${store.currentMonth} y los meses siguientes.`))) return;
     afectados.forEach(r => { r[campo] = esResp ? nuevo.toLowerCase() : nuevo; });
     if (esResp){
-      await crearResponsable(nuevo);
+      await crearResponsable(nuevo, { sinCedula: true });
       const claveNueva = normResp(nuevo), datosViejos = responsablesDatos.get(clave);
       if (datosViejos && claveNueva !== clave && !(responsablesDatos.get(claveNueva) || {}).documento){
         const copia = {}; CAMPOS_FACTURA_RESP.forEach(c => { copia[c] = datosViejos[c]; });
@@ -9880,9 +9988,12 @@ function juntarPorTelefono(items){
   const tel = (x) => String(telefonoDeItem(x) || "").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
   const porTel = new Map();
   items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){ const t = tel(x); if (t && !porTel.has(t)) porTel.set(t, x); } });
+  const porDoc = new Map();
+  items.forEach(x => { if (x.grupo && String(x.clave || "").startsWith("resp:")){
+    const d = soloDigitos((responsablesDatos.get(normResp(x.responsable)) || {}).documento); if (d && !porDoc.has(d)) porDoc.set(d, x); } });
   return items.filter(x => {
     if (x.grupo) return true;
-    const g = porTel.get(tel(x));
+    const g = porDoc.get(soloDigitos(x["Cédula"])) || porTel.get(tel(x));
     if (!g) return true;
     g.clientes.unshift(x); // el cliente que paga va primero en el mensaje
     g._mismaPersona = true; // el teléfono es el del propio responsable
@@ -11323,7 +11434,8 @@ getField("Resp").addEventListener("blur", () => revisarResponsableEscrito(true))
       const nombre = limpiarEspacios(inp.value);
       cerrar();
       if (!(await confirmarApp(`¿Crear el responsable "${nombre}"? Quedará disponible para todo el equipo.`))) return;
-      if (await crearResponsable(nombre)){ inp.value = nombre.toLowerCase(); const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
+      const quedo = await crearResponsable(nombre);
+      if (quedo){ inp.value = quedo; const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
       return;
     }
     escoger(Number(op.dataset.i));

@@ -238,3 +238,9 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Problema: el recordatorio de un responsable iba al teléfono del primer afiliado (no al del responsable), y una clienta que también es responsable (Angie Carolina Leal, escrita "anguie" como responsable) recibió dos cobros separados.
 - Ahora: `telefonoDeItem` usa el teléfono del responsable guardado en Datos para factura (`responsablesDatos`, se carga antes de armar la lista); si no lo tiene, usa el del primer afiliado y el panel muestra un aviso (`avisoTelefonoItem`). `juntarPorTelefono` mete en el mensaje del responsable al cliente que paga él mismo con el mismo teléfono.
 - La regla de DÍAS PROPORCIONALES quedó igual (confirmada por el usuario: el mes siguiente a la afiliación se cobran los días desde el ingreso).
+
+## 16-nov-2026 · Responsables con cédula obligatoria (leída de la foto)
+- Al crear un responsable (desde Agregar/Editar cliente o Editar responsables) la app pide la cédula o NIT (`pedirCedulaResponsable`), con botón para leerla de la foto (`leerCedulaConOcr`). Si esa cédula ya es de un cliente, propone usar el nombre del cliente (caso Angie/"Anguie"); si ya es de otro responsable, usa ese y no crea otro.
+- En Datos para factura la cédula/NIT es obligatoria, hay botón "📷 Leer de la foto de la cédula" y no deja repetir la cédula de otro responsable.
+- Recordatorios: un cliente cuya cédula es la del responsable va en el mismo mensaje (además de por teléfono).
+- `crearResponsable` ahora devuelve el nombre con que quedó (o false). Al renombrar se llama con `{ sinCedula: true }`.
