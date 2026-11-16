@@ -5,7 +5,8 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 
 ## Dónde está todo
 - App del equipo: https://buenaventuraproseguro-wq.github.io/control-de-planillas-/ (GitHub Pages, rama `main`, se publica al hacer push)
-- Portal de clientes: `portal.html` · Service worker: `sw.js` (red primero)
+- Portal de clientes: `portal.html` (https://buenaventuraproseguro-wq.github.io/control-de-planillas-/portal.html, corto: https://prosnet.co/portal) · Service worker: `sw.js` (red primero)
+- Página web pública (repo aparte `buenaventuraproseguro-wq/prosegurosnet-web`, dominio prosnet.co): inicio https://prosnet.co · conductores https://prosnet.co/conductores · muelles https://prosnet.co/muelles · cotizar https://prosnet.co/cotizar · enviar documentos https://prosnet.co/documentos · política de datos https://prosnet.co/privacidad
 - Todo el código de la app está en un solo archivo: `index.html` (HTML + CSS + JS)
 - Supabase proyecto `jjygarfwdmhzspqonvql`. Admin de la app: buenaventuraproseguro@gmail.com
 - Mes actual en la tabla `months` (Noviembre 2026 = id 22). Clientes en `clients` (una fila por cliente y mes)
