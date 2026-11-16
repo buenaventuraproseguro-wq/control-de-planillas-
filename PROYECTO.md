@@ -223,3 +223,8 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Solo se reordenó el menú lateral (mismos botones e ids, nada de base de datos): Lo más usado · Cobros (Cartera, Consignaciones) · Planillas y afiliaciones (Subir planilla, Excel SUAPORTE, Afiliaciones en trámite, Documentos recibidos) · Clientes y ventas (CRM, Seguros y pólizas, Responsables, Presunción) · Muelles y vehículos (Muelles PSN, Muelles independientes, Vencimientos) · Contabilidad (Libro contable, Borradores Alegra, Recibos Alegra, Cierre del mes) · Más opciones.
 - Los tres botones de Alegra y cierre salieron del submenú de Cartera y quedaron en Contabilidad (siguen siendo solo del administrador). Los números del menú cambian porque `numerarMenu` numera en orden.
 
+## 15-nov-2026 · Dominio de la página pública: prosnet.co
+- Hostinger rechazó prosegurosnet.com (por la palabra "seguro") y devolvió el dinero. El usuario compró **prosnet.co** (Hostinger, activo, vence 16-nov-2027). PROSNET es solo para el dominio: la empresa sigue llamándose PROSEGUROSNET en la app, mensajes, recibos y contrato.
+- Repo `prosegurosnet-web`: CNAME y enlaces cambiados a prosnet.co. Falta que el usuario ponga en Hostinger los registros DNS de GitHub Pages (4 A de 185.199.108-111.153 en @ y CNAME www → buenaventuraproseguro-wq.github.io) y luego marque "Enforce HTTPS" en GitHub.
+- Pendiente después: cambiar los enlaces de los mensajes de WhatsApp de la app a prosnet.co y agregar la política de privacidad (Ley 1581).
+
