@@ -15838,8 +15838,10 @@ function gruposEstadoCuenta(){
   }).filter(g => g.deben.length).sort((a, b) => b.total - a.total);
 }
 // soloClave (opcional): clave del responsable para ver solo el suyo (desde Editar responsables)
-function abrirEstadoCuenta(soloClave){
+async function abrirEstadoCuenta(soloClave){
   const filtro = typeof soloClave === "string" ? soloClave : "";
+  // Teléfonos de los responsables al día (los estados de cuenta van a su teléfono)
+  if (cloudDb && navigator.onLine){ try{ await Promise.race([cargarResponsablesCreados(), new Promise(res => setTimeout(res, 2500))]); }catch(e){} }
   const gs = gruposEstadoCuenta().filter(g => !filtro || (!g.esEmpresa && normResp(g.nombre) === filtro));
   document.getElementById("ecSub").textContent = filtro
     ? `${store.currentMonth} · ${gs.length ? "valores pendientes de este responsable." : ""}`
@@ -15851,7 +15853,7 @@ function abrirEstadoCuenta(soloClave){
       <div class="ay-acciones">
         <button type="button" class="btn small" data-ec-ver="${i}">👁️ Ver</button>
         <button type="button" class="btn small" data-ec-bajar="${i}">⬇️ Descargar</button>
-        <button type="button" class="btn small whatsapp" data-ec-enviar="${i}" ${g.telefono ? "" : "disabled"}>📲 Enviar por WhatsApp</button>
+        <button type="button" class="btn small whatsapp" data-ec-enviar="${i}">📲 Enviar por WhatsApp</button>
       </div>
     </div>`).join("") : `<p class="ay-txt">${filtro ? "Este responsable no tiene valores pendientes este mes. 🎉" : "No hay responsables ni empresas con valores pendientes este mes. 🎉"}</p>`;
   abrirEstadoCuenta._gs = gs;
@@ -15927,8 +15929,13 @@ document.getElementById("ecLista").addEventListener("click", async (e) => {
   }
   if (env){
     const g = gs[+env.dataset.ecEnviar];
-    const numero = g.telefono.replace(/\D/g, "");
-    if (!numero){ showToast("Ese grupo no tiene teléfono guardado."); return; }
+    const numero = String(g.telefono || "").replace(/\D/g, "");
+    if (!numero){
+      await alertApp(g.esEmpresa
+        ? `Ningún afiliado de "${nombrePropio(g.nombre)}" tiene teléfono guardado.`
+        : `El responsable "${nombrePropio(g.nombre)}" no tiene teléfono guardado, y el estado de cuenta solo se le manda a él. Guárdelo en Editar responsables → 🪪 Cédula, teléfono y correo, y vuelva a intentar.`);
+      return;
+    }
     const conIndicativo = numero.length <= 10 ? `57${numero}` : numero;
     const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
     let copiada = Promise.resolve(false);
@@ -15938,7 +15945,9 @@ document.getElementById("ecLista").addEventListener("click", async (e) => {
       }
     }catch(err){}
     const texto = `🛡️ *PROSEGUROSNET*\nHola ${nombrePropio(g.nombre)}, le compartimos el estado de cuenta de ${store.currentMonth}: ${g.deben.length} afiliado(s), total *${fmt(g.total)}*.`;
-    copiada.then(ok => {
+    // Se espera la copia de la imagen como máximo 1,5 s: si tarda más, el navegador bloquea la
+    // ventana de WhatsApp (por eso a veces "no daba"). Si no alcanzó, se usa «Descargar».
+    Promise.race([copiada, new Promise(res => setTimeout(() => res(false), 1500))]).then(ok => {
       abrirChatEnApp(conIndicativo, esCelular, texto);
       showToast(ok ? "📋 Envíe el mensaje y luego pegue la imagen del estado de cuenta (ya está copiada)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela en el chat.");
     });
