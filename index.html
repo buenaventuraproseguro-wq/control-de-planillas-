@@ -4403,6 +4403,7 @@ const EPS_DEFAULT = 70100; // valor EPS estándar de empleado (dependiente)
 const EPS_INDEPENDIENTE_DEFAULT = 218863; // valor EPS para independiente (paga ambos aportes, 2026)
 const COSTO_AFILIACION = 149000; // costo de una afiliación nueva (modificable)
 const COSTO_MENSUAL = 75000;     // comisión por pago de planilla los meses siguientes (modificable)
+const COSTO_ESPECIAL_DESDE = 150000; // un servicio mayor a esto en un mes normal es un cobro especial de una sola vez
 
 const fmt = (n) => {
   const num = Number(n);
@@ -7645,6 +7646,14 @@ advanceBtn.addEventListener("click", async () => {
     x["Imagen PlanillaPagada"] = null; x["Imagen ComprobantePago"] = null; }); // la planilla y el comprobante quedan en su mes // el recargo por mora es de cada mes; sin caja va el mínimo de $100
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
+  // Cobros especiales de un solo mes (ej.: creación de empresa): se pregunta si el mes nuevo vuelve al servicio normal
+  const especiales = continuing.filter(x => !esServicioMuelles(x) && !esConductorExcluido(x) && !["AFILIACION", "REINGRESO", "RETIRO"].includes(estadoClass(x["Estado Trámite"])) && numOrZero(x["Costo Servicio"]) > COSTO_ESPECIAL_DESDE);
+  if (especiales.length){
+    // El servicio del mes siguiente depende del salario de cada persona: se pregunta el valor de cada uno
+    const resp = await pedirDatosApp(`Cobros especiales de ${current} (ej.: creación de empresa). Escriba el servicio que se le cobra a cada uno en ${next} (si gana más del mínimo, según su salario). «Cancelar» = siguen con el mismo valor.`,
+      especiales.map((x, i) => ({ id: "c" + i, label: `${nombrePropio(x["Nombre del Afiliado"] || "")} · en ${current}: ${fmt(numOrZero(x["Costo Servicio"]))}`, tipo: "number", valor: COSTO_MENSUAL })), "Guardar valores");
+    if (resp) especiales.forEach((x, i) => { if (resp["c" + i] > 0) x["Costo Servicio"] = resp["c" + i]; });
+  }
   const retiradosCount = records.filter(isRetiro).length - retirosPendientes.length;
 
   if (store.months[next]){
@@ -8412,6 +8421,27 @@ function factorDiasProporcionales(r){
   return 1;
 }
 
+// Sigue en AFILIACIÓN pero su fecha de ingreso es de un mes anterior al que se está viendo:
+// en ese caso este mes ya debería cobrarse con DÍAS PROPORCIONALES (aportes), no solo el servicio.
+function afiliacionDeMesAnterior(r, mesActual){
+  if (!r || estadoClass(r["Estado Trámite"]) !== "AFILIACION") return null;
+  const f = String(r["Fecha de Ingreso"] || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const m = String(mesActual || "").match(/^(\S+)\s+de\s+(\d{4})$/);
+  if (!f || !m || MESES.indexOf(m[1]) < 0) return null;
+  const ingreso = (+f[3]) * 12 + (+f[2] - 1), actual = (+m[2]) * 12 + MESES.indexOf(m[1]);
+  return ingreso < actual ? `${MESES[+f[2] - 1]} de ${f[3]}` : null;
+}
+async function pasarADiasProporcionales(r){
+  const dia = parseInt(String(r["Fecha de Ingreso"] || "").split("/")[0], 10);
+  const dias = !isNaN(dia) && dia >= 1 && dia <= 30 ? 30 - dia + 1 : 30;
+  if (!(await confirmarApp(`¿Pasar a ${nombrePropio(r["Nombre del Afiliado"] || "")} a DÍAS PROPORCIONALES? Este mes se le cobrarán ${dias} de 30 días de aportes más el servicio${numOrZero(r["Costo Servicio"]) === COSTO_AFILIACION ? ` (pasa de ${fmt(COSTO_AFILIACION)} de afiliación a ${fmt(COSTO_MENSUAL)} mensual)` : ` de ${fmt(numOrZero(r["Costo Servicio"]))}`}.`))) return;
+  r["Estado Trámite"] = "DIAS PROPORCIONALES";
+  if (numOrZero(r["Costo Servicio"]) === COSTO_AFILIACION) r["Costo Servicio"] = COSTO_MENSUAL;
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  showToast(`✅ ${nombrePropio(r["Nombre del Afiliado"] || "")}: ahora en DÍAS PROPORCIONALES (${dias} días).`);
+}
+
 // Calcula el total a pagar de un registro para el mes que se está viendo, aplicando
 // prorrateo, la excepción de afiliación y la exclusión de pensión cuando corresponde.
 function calcularTotalPagar(r, mesActual){
@@ -8499,6 +8529,8 @@ function showBreakdown(cedula){
       : "") +
     ((() => {
       let texto = "";
+      const afilVieja = afiliacionDeMesAnterior(r, store.currentMonth);
+      if (afilVieja) return ` · <b class="meta-resaltado">⚠️ Sigue en AFILIACIÓN pero ingresó en ${escHtml(afilVieja)}: solo se le está cobrando el servicio.</b> <button type="button" class="btn small primary" data-pasar-diasprop="1">Pasar a DÍAS PROPORCIONALES</button>`;
       if (esAfiliacion) texto = "Solo se cobra la afiliación este mes";
       else if (prorr.aplica) texto = `Cobro prorrateado: ${prorr.dias} de 30 días`;
       else if (tieneTransicion) texto = `Primer mes de aportes prorrateado: ${diasAportes} de 30 días`;
@@ -10621,7 +10653,7 @@ function pedirDatosApp(titulo, campos, textoOk){
     document.getElementById("pedirTitulo").textContent = titulo;
     document.getElementById("pedirOkBtn").textContent = textoOk || "Guardar";
     document.getElementById("pedirCampos").innerHTML = campos.map(c => `<div class="field"><label for="pedir_${c.id}">${escHtml(c.label)}</label>
-      <input id="pedir_${c.id}" type="${c.tipo === "password" ? "password" : "text"}" ${c.tipo === "number" ? 'inputmode="numeric"' : ""} placeholder="${escHtml(c.placeholder || "")}" autocomplete="${c.tipo === "password" ? "new-password" : "off"}"></div>`).join("");
+      <input id="pedir_${c.id}" type="${c.tipo === "password" ? "password" : "text"}" ${c.tipo === "number" ? 'inputmode="numeric"' : ""} placeholder="${escHtml(c.placeholder || "")}" ${c.valor != null ? `value="${escHtml(c.valor)}"` : ""} autocomplete="${c.tipo === "password" ? "new-password" : "off"}"></div>`).join("");
     ov.classList.add("show");
     const primero = document.getElementById("pedir_" + campos[0].id); setTimeout(() => primero.focus(), 50);
     const ok = document.getElementById("pedirOkBtn"), cancel = document.getElementById("pedirCancelBtn");
@@ -10662,6 +10694,11 @@ async function copiarTexto(texto){
   }catch(e){ return false; }
 }
 document.getElementById("bMeta").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-pasar-diasprop]")){
+    const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+    if (r) await pasarADiasProporcionales(r);
+    return;
+  }
   const b = e.target.closest("[data-copiar-cedula]");
   if (!b) return;
   const ced = b.dataset.copiarCedula;
@@ -15849,6 +15886,7 @@ function abrirHoy(){
     tarea("i-ancla", "gris", "Retiros de otra empresa sin soporte", d.soportes.length, "Falta la imagen o planilla", "", lista(d.soportes, r => escHtml(r["Empresa"] || ""))),
     tarea("i-contacto", "azul", `Afiliaciones sin confirmar`, d.afiliaciones.length, `${DIAS_ALERTA_CONFIRMACION}+ días esperando`, "", lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`)),
     tarea("i-reloj", "rojo", "Afiliaciones pasadas de tiempo", atTodosAbiertos().filter(t => atPasado(t) || t.estado === "devuelta").length, "La entidad no ha confirmado o devolvió la solicitud", "afiltramite"),
+    tarea("i-contacto", "rojo", "En AFILIACIÓN con ingreso de un mes anterior", records.filter(r => afiliacionDeMesAnterior(r, store.currentMonth)).length, "Solo se les cobra el servicio: revisar si pasan a días proporcionales", "", lista(records.filter(r => afiliacionDeMesAnterior(r, store.currentMonth)), r => `Ingresó en ${escHtml(afiliacionDeMesAnterior(r, store.currentMonth))}`)),
     tarea("i-escudo", "naranja", "Pólizas por vencer sin avisar", polizas.filter(polToca).length, "Ofrecer la renovación por WhatsApp", "polizas"),
     tarea("i-sol", "gris", "Recordatorios de clientes", d.recordatorios.length, "Notas que vencieron", "", lista(d.recordatorios, r => escHtml(r["Observación"] || ""))),
     tarea("i-lupa", "gris", "Datos con problemas", d.problemas, "Cédulas repetidas, teléfonos, nombres distintos", "revision"),
