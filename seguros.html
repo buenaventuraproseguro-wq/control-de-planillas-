@@ -70,7 +70,7 @@
   .tabla{ overflow-x:auto; }
   .t-fila{ display:grid; gap:10px; padding:10px; align-items:center; border-bottom:1px solid var(--linea); font-size:14px; min-width:620px; }
   .t-cab{ font-size:12px; font-weight:700; color:var(--suave); text-transform:uppercase; letter-spacing:.04em; padding-top:6px; padding-bottom:8px; }
-  .t-agenda{ grid-template-columns:2.2fr 1.4fr 1.1fr 1fr 1fr; }
+  .t-agenda{ grid-template-columns:2fr 1.3fr 1.1fr 1.1fr 128px; }
   .nombre{ font-weight:700; }
   .nombre-btn{ background:none; border:0; padding:0; text-align:left; cursor:pointer; color:var(--texto); display:flex; flex-direction:column; gap:2px; }
   .nombre-btn small, .detalle{ color:var(--muted); font-size:12px; font-weight:500; }
@@ -78,7 +78,7 @@
   .e-rojo{ background:var(--rojo-f); color:var(--rojo); } .e-nar{ background:var(--nar-f); color:var(--nar-t); }
   .e-verde{ background:var(--verde-f); color:var(--verde); } .e-azul{ background:var(--azul-f); color:var(--azul); } .e-gris{ background:var(--gris-f); color:var(--suave); }
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .e-azul{ color:#C9D6EE; } }
-  .btn-wa{ height:36px; padding:0 12px; border-radius:9px; border:1px solid #1F9D55; background:var(--panel); color:var(--verde); font-weight:700; font-size:13px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+  .btn-wa{ height:36px; padding:0 12px; border-radius:9px; border:1px solid #1F9D55; background:var(--panel); color:var(--verde); font-weight:700; font-size:13px; cursor:pointer; text-decoration:none; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; }
   .btn-wa[aria-disabled="true"]{ opacity:.45; pointer-events:none; }
   .btn-prim{ height:36px; padding:0 12px; border-radius:9px; border:0; background:var(--azul); color:#fff; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
   .opor{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; background:var(--nar-f); border-radius:10px; }
@@ -110,6 +110,14 @@
   .m-acciones .btn-prim{ height:40px; font-size:14px; background:var(--naranja); }
   .btn-prim:disabled{ opacity:.6; cursor:wait; }
   .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--texto); color:var(--panel); padding:12px 18px; border-radius:12px; font-size:14px; font-weight:600; z-index:60; max-width:90vw; box-shadow:0 8px 24px rgba(0,0,0,.2); }
+  .m-input{ height:42px; border:1px solid var(--linea); border-radius:9px; padding:0 10px; font-size:14px; background:var(--panel); color:var(--texto); width:100%; }
+  .f-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .f{ display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:700; color:var(--suave); }
+  .modal{ width:min(620px, 100%); }
+  .pol-fila{ display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px 4px; border-bottom:1px solid var(--linea); flex-wrap:wrap; }
+  .pol-acc{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .pol-acc .btn-sec, .pol-acc .btn-prim{ height:36px; font-size:13px; }
+  @media (max-width: 560px){ .f-grid{ grid-template-columns:1fr; } }
   .tarjeta .editar{ align-self:flex-start; font-size:12px; font-weight:700; color:var(--naranja-osc); }
   @media (max-width: 860px){
     .app{ flex-direction:column; }
@@ -139,7 +147,7 @@
     <button type="button" class="nav" data-vista="inicio">Hoy <span class="badge" id="bInicio" hidden></span></button>
     <button type="button" class="nav" data-vista="muelles">Muelles <span class="badge" id="bMuelles" hidden></span></button>
     <button type="button" class="nav" data-vista="soat">SOAT y vehículos <span class="badge" id="bSoat" hidden></span></button>
-    <button type="button" class="nav" data-vista="polizas">Pólizas</button>
+    <button type="button" class="nav" data-vista="polizas">Pólizas <span class="badge" id="bPolizas" hidden></span></button>
     <button type="button" class="nav" data-vista="cliente">Ficha del cliente</button>
     <div class="side-pie">
       <a href="./">← Ir a la app de Planillas</a>
@@ -154,11 +162,12 @@
         <input id="buscar" type="search" placeholder="Cédula, nombre o placa" aria-label="Buscar cliente">
       </label>
     </div>
-    <div class="aviso-lectura">Nuevo: los <b>muelles</b> ya se pueden cambiar aquí (toque un cliente en Muelles). Pagos, datos del cliente, SOAT y pólizas se siguen cambiando en la app de Planillas.</div>
+    <div class="aviso-lectura">Nuevo: los <b>muelles</b> ya se pueden cambiar aquí (toque un cliente en Muelles). También se registran aquí las <b>ventas de SOAT y pólizas</b> (con su comisión) y se avisa por WhatsApp a los 20, 7 y 1 día. Pagos y datos del cliente se siguen cambiando en la app de Planillas.</div>
     <div id="contenido"></div>
   </main>
 </div>
 <div id="modalMuelles" class="modal-fondo" hidden></div>
+<div id="modal2" class="modal-fondo" hidden></div>
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -172,7 +181,7 @@ const EMPRESA_MUELLES = "actualización de muelles";
 const DIAS_VENTANA = 30;
 
 const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null };
-let vista = "inicio", filtroAgenda = "semana", filtroMuelle = "", clienteSel = null;
+let vista = "inicio", filtroAgenda = "toca", filtroMuelle = "", clienteSel = null;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
@@ -193,7 +202,7 @@ async function cargar(){
   if (e1) throw e1;
   D.mes = (meses || [])[0] || null;
   if (!D.mes){ D.clientes = []; return; }
-  const cols = "id,ultima_edicion,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
+  const cols = "id,ultima_edicion,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,avisos_vencimiento,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
   const [cl, po, re] = await Promise.all([
     sb.from("clients").select(cols).eq("month_id", D.mes.id).order("row_no"),
     sb.from("polizas").select("*").order("fecha_vencimiento", { ascending: true }),
@@ -216,92 +225,131 @@ function telDestino(c){
 const esServicioMuelle = (c) => norm(c.empresa) === norm(EMPRESA_MUELLES);
 const tieneMuelle = (c) => !!String(c.muelle || "").trim() || esServicioMuelle(c);
 
-/* Todo lo que vence (muelles, SOAT, licencia, tecnomecánica, pólizas) */
+/* Todo lo que vence (muelles, SOAT, licencia, tecnomecánica, pólizas).
+   avisado = fecha del último aviso por WhatsApp para ESA fecha de vencimiento. */
+const POL_TIPOS = ["SOAT", "Todo riesgo vehículo", "Responsabilidad civil", "Póliza de muelles", "Hogar", "Vida", "Accidentes personales", "Cumplimiento", "Otro"];
+const ETAPAS = [20, 7, 1]; // días antes del vencimiento en que se avisa
+const polActiva = (p) => (p.estado || "activa") === "activa";
 function vencimientos(){
   const out = [];
+  const soatPoliza = new Set(D.polizas.filter(p => polActiva(p) && p.tipo === "SOAT" && p.cedula).map(p => String(p.cedula)));
   D.clientes.forEach(c => {
-    const add = (que, tipo, fecha) => { const d = diasHasta(fecha); if (d !== null) out.push({ c, que, tipo, fecha, dias: d }); };
-    Object.entries(c.venc_por_muelle || {}).forEach(([m, f]) => add(`Actualización ${m}`, "muelle", f));
-    add("SOAT", "soat", c.venc_soat);
-    add("Licencia de conducción", "licencia", c.venc_licencia);
-    add("Tecnomecánica", "tecno", c.venc_tecno);
-    add("Póliza", "poliza", c.venc_poliza);
+    const av = c.avisos_vencimiento || {};
+    const add = (que, tipo, k, fecha) => {
+      const d = diasHasta(fecha); if (d === null) return;
+      const a = av[k]; out.push({ c, que, tipo, k, fecha: String(fecha).slice(0, 10), dias: d, avisado: a && a.venc === String(fecha).slice(0, 10) ? a.enviado : "" });
+    };
+    Object.entries(c.venc_por_muelle || {}).forEach(([m, f]) => add(`Actualización ${m}`, "muelle", "muelle:" + m, f));
+    if (!soatPoliza.has(String(c.cedula))) add("SOAT", "soat", "soat", c.venc_soat);
+    add("Licencia de conducción", "licencia", "licencia", c.venc_licencia);
+    add("Tecnomecánica", "tecno", "tecno", c.venc_tecno);
+    add("Póliza del vehículo", "poliza", "poliza", c.venc_poliza);
   });
-  D.polizas.forEach(p => {
+  D.polizas.filter(polActiva).forEach(p => {
     const d = diasHasta(p.fecha_vencimiento);
     if (d === null) return;
-    const c = D.clientes.find(x => x.cedula === p.cedula) || { nombre: p.nombre, cedula: p.cedula, telefono: p.telefono, placa: p.placa };
-    out.push({ c, que: `Póliza ${p.tipo || ""}`.trim(), tipo: "poliza", fecha: p.fecha_vencimiento, dias: d, poliza: p });
+    const c = D.clientes.find(x => String(x.cedula) === String(p.cedula)) || { nombre: p.nombre, cedula: p.cedula, telefono: p.telefono, placa: p.placa };
+    out.push({ c, que: p.tipo === "SOAT" ? "SOAT" : `Póliza ${p.tipo || ""}`.trim(), tipo: p.tipo === "SOAT" ? "soat" : "poliza", fecha: String(p.fecha_vencimiento).slice(0, 10), dias: d, poliza: p, avisado: p.avisado_el || "" });
   });
   return out.sort((a, b) => a.dias - b.dias);
 }
+// En qué aviso va: 20, 7 o 1 día antes; -1 = ya vencido (hasta 60 días después)
+function etapa(x){ const d = x.dias; if (d < -60 || d > ETAPAS[0]) return null; if (d < 0) return -1; return d <= 1 ? 1 : d <= 7 ? 7 : 20; }
+// Le toca aviso si está en una etapa y no se le ha avisado en esa etapa
+function tocaAviso(x){
+  const s = etapa(x); if (s === null) return false;
+  if (!x.avisado) return true;
+  const diasAlAvisar = Math.round((new Date(x.fecha + "T00:00:00") - new Date(String(x.avisado).slice(0, 10) + "T00:00:00")) / 86400000);
+  return diasAlAvisar > s;
+}
+function telDeItem(x){ return x.poliza && telValido(x.poliza.telefono) && !D.clientes.some(c => String(c.cedula) === String(x.poliza.cedula)) ? x.poliza.telefono : telDestino(x.c); }
 function mensajeVence(v){
   const nombre = propio(v.c.nombre).split(" ")[0] || "";
-  const placa = v.c.placa ? ` de su vehículo ${String(v.c.placa).toUpperCase()}` : "";
-  const cuando = v.dias < 0 ? `venció el ${fechaCorta(v.fecha)}` : `vence el ${fechaCorta(v.fecha)}`;
-  return `¡Hola, ${nombre}! 👋\n\nLe recordamos que ${v.tipo === "muelle" ? "la " + v.que.toLowerCase() : "su " + v.que}${v.tipo === "soat" || v.tipo === "tecno" ? placa : ""} ${cuando}.\n\nEn PROSEGUROSNET se lo gestionamos sin filas. Escríbanos por aquí y le ayudamos.\n\n— Equipo PROSEGUROSNET 🛡️\nprosnet.co`;
+  const placaTxt = (v.poliza && v.poliza.placa) || v.c.placa;
+  const placa = placaTxt ? ` del vehículo de placa *${String(placaTxt).toUpperCase()}*` : "";
+  const cuando = v.dias < 0 ? `venció el *${fechaCorta(v.fecha)}*` : `vence el *${fechaCorta(v.fecha)}*${v.dias <= 7 ? (v.dias === 0 ? " (hoy)" : ` (en ${v.dias} día${v.dias === 1 ? "" : "s"})`) : ""}`;
+  const aseg = v.poliza && v.poliza.aseguradora ? ` con ${v.poliza.aseguradora}` : "";
+  const que = v.tipo === "muelle" ? "la " + v.que.toLowerCase() : "su *" + v.que + "*" + (v.tipo === "soat" || v.tipo === "tecno" || v.tipo === "poliza" ? placa : "") + aseg;
+  const cierre = v.tipo === "muelle"
+    ? (v.dias < 0 ? "Sin la actualización al día no le permiten el ingreso al muelle. " : "Le avisamos con tiempo para que no le quiten el ingreso al muelle. ")
+    : (v.dias < 0 ? (v.tipo === "soat" || v.tipo === "tecno" ? "Circular con documentos vencidos puede traerle multas e inmovilización. " : "Mientras esté vencida no tiene cobertura. ") : "Le avisamos con tiempo para que no le coja la fecha. ");
+  return `🛡️ *PROSEGUROSNET*\n¡Hola, ${nombre}! 👋\n\nLe recordamos que ${que} ${cuando}.\n\n${cierre}En PROSEGUROSNET se lo ${v.tipo === "muelle" ? "actualizamos" : "renovamos"} rápido y sin filas.\n\n¿Le ayudamos? Responda este mensaje. ✅\nprosnet.co`;
 }
 
 /* ---------- Pantallas ---------- */
 const TITULOS = {
-  inicio: ["Hoy", "Lo que vence y lo que se puede vender"],
+  inicio: ["Hoy", "A quién avisar hoy y lo que se puede vender"],
   muelles: ["Muelles", "Actualización, enrolamiento y cursos"],
   soat: ["SOAT y vehículos", "SOAT, licencia y tecnomecánica de los clientes"],
-  polizas: ["Pólizas", "Pólizas registradas y sus vencimientos"],
+  polizas: ["Pólizas", "Ventas de SOAT y pólizas, renovaciones y comisiones"],
   cliente: ["Ficha del cliente", "Planilla, muelles, vehículo y pólizas en una sola vista"]
 };
+let LISTA_AGENDA = [];
 function render(){
   document.querySelectorAll(".nav").forEach(b => b.classList.toggle("on", b.dataset.vista === vista));
   $("titulo").textContent = TITULOS[vista][0];
   $("subtitulo").textContent = TITULOS[vista][1];
   $("pieMes").textContent = D.mes ? `Mes: ${D.mes.name}` : "";
   const v = vencimientos();
-  const urgentes = v.filter(x => x.dias <= 7).length;
-  const bI = $("bInicio"); bI.hidden = !urgentes; bI.textContent = urgentes;
+  LISTA_AGENDA = v;
+  const toca = v.filter(tocaAviso).length;
+  const bI = $("bInicio"); bI.hidden = !toca; bI.textContent = toca;
   const pendMuelle = D.clientes.filter(c => tieneMuelle(c) && MUELLES.some(m => !(c.aceptado_por_muelle || {})[m])).length;
   const bM = $("bMuelles"); bM.hidden = !pendMuelle; bM.textContent = pendMuelle;
-  const soatPronto = v.filter(x => x.tipo === "soat" && x.dias <= DIAS_VENTANA).length;
-  const bS = $("bSoat"); bS.hidden = !soatPronto; bS.textContent = soatPronto;
+  const soatToca = v.filter(x => (x.tipo === "soat" || x.tipo === "licencia" || x.tipo === "tecno") && tocaAviso(x)).length;
+  const bS = $("bSoat"); bS.hidden = !soatToca; bS.textContent = soatToca;
+  const polToca = v.filter(x => x.poliza && x.tipo === "poliza" && tocaAviso(x)).length;
+  const bP = $("bPolizas"); bP.hidden = !polToca; bP.textContent = polToca;
   const c = $("contenido");
   if (vista === "inicio") c.innerHTML = vistaInicio(v);
   else if (vista === "muelles") c.innerHTML = vistaMuelles();
   else if (vista === "soat") c.innerHTML = vistaSoat(v);
-  else if (vista === "polizas") c.innerHTML = vistaPolizas();
+  else if (vista === "polizas") c.innerHTML = vistaPolizas(v);
   else c.innerHTML = vistaCliente();
 }
 
+function botonAviso(x){
+  const i = LISTA_AGENDA.indexOf(x), tel = telValido(telDeItem(x));
+  if (!tel) return `<span class="detalle" title="Sin teléfono">Sin teléfono</span>`;
+  if (tocaAviso(x)) return `<button type="button" class="btn-wa" style="background:#1F9D55;color:#fff;border-color:#1F9D55" data-avisar="${i}" title="${etapa(x) > 0 ? `Aviso de ${etapa(x)} día${etapa(x) === 1 ? "" : "s"} antes` : "Ya venció"}">Avisar${etapa(x) > 0 ? ` · ${etapa(x)} d` : ""}</button>`;
+  return `<button type="button" class="btn-wa" data-avisar="${i}" title="${x.avisado ? "Avisado el " + esc(fechaCorta(x.avisado)) + ". Toque para volver a avisar." : "Abrir WhatsApp"}">${x.avisado ? "✓ " + esc(new Date(String(x.avisado).slice(0, 10) + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })) : "WhatsApp"}</button>`;
+}
 function filaAgenda(x){
-  const wa = linkWa(telDestino(x.c), mensajeVence(x));
   return `<div class="t-fila t-agenda">
-    <button type="button" class="nombre-btn" data-ficha="${esc(x.c.cedula)}"><span class="nombre">${esc(propio(x.c.nombre))}</span><small>${esc([x.c.placa ? String(x.c.placa).toUpperCase() : "", x.c.responsable_grupo ? "Resp.: " + propio(x.c.responsable_grupo) : ""].filter(Boolean).join(" · ") || "CC " + (x.c.cedula || ""))}</small></button>
+    <button type="button" class="nombre-btn" data-ficha="${esc(x.c.cedula)}"><span class="nombre">${esc(propio(x.c.nombre))}</span><small>${esc([((x.poliza && x.poliza.placa) || x.c.placa) ? String((x.poliza && x.poliza.placa) || x.c.placa).toUpperCase() : "", x.c.responsable_grupo ? "Resp.: " + propio(x.c.responsable_grupo) : ""].filter(Boolean).join(" · ") || "CC " + (x.c.cedula || ""))}</small></button>
     <span>${esc(x.que)}</span>
     <span style="font-weight:600">${esc(fechaCorta(x.fecha))}</span>
     <span class="estado ${claseDias(x.dias)}">${esc(textoDias(x.dias))}</span>
-    <a class="btn-wa" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>WhatsApp</a>
+    ${botonAviso(x)}
   </div>`;
 }
+const mesISO = () => new Date().toISOString().slice(0, 7);
+const comisionesMes = () => D.polizas.filter(p => p.estado !== "cancelada" && String(p.fecha_inicio || "").slice(0, 7) === mesISO());
 function vistaInicio(v){
-  const semana = v.filter(x => x.dias >= 0 && x.dias <= 7).length, vencidos = v.filter(x => x.dias < 0).length;
+  const toca = v.filter(tocaAviso), vencidos = v.filter(x => x.dias < 0 && x.dias >= -60).length;
   const conMuelle = D.clientes.filter(tieneMuelle);
   const pendientes = conMuelle.filter(c => MUELLES.some(m => !(c.aceptado_por_muelle || {})[m])).length;
-  const sinSoat = D.clientes.filter(c => tieneMuelle(c) && !c.venc_soat);
-  const filtrado = v.filter(x => filtroAgenda === "todos" ? x.dias <= 60 : filtroAgenda === "vencidos" ? x.dias < 0 : filtroAgenda === "semana" ? x.dias <= 7 : x.dias <= DIAS_VENTANA);
-  const pills = [["vencidos","Vencidos"],["semana","Esta semana"],["mes","Este mes"],["todos","Próximos 60 días"]]
+  const soatCed = new Set(D.polizas.filter(p => polActiva(p) && p.tipo === "SOAT").map(p => String(p.cedula)));
+  const sinSoat = D.clientes.filter(c => tieneMuelle(c) && !c.venc_soat && !soatCed.has(String(c.cedula)));
+  const cm = comisionesMes();
+  const filtrado = v.filter(x => filtroAgenda === "toca" ? tocaAviso(x) : filtroAgenda === "todos" ? x.dias <= 60 && x.dias >= -60 : filtroAgenda === "vencidos" ? x.dias < 0 && x.dias >= -60 : filtroAgenda === "semana" ? x.dias >= 0 && x.dias <= 7 : x.dias >= 0 && x.dias <= DIAS_VENTANA);
+  const pills = [["toca",`Toca avisar (${toca.length})`],["vencidos","Vencidos"],["semana","Esta semana"],["mes","Este mes"],["todos","Próximos 60 días"]]
     .map(([k, t]) => `<button type="button" class="pill-btn ${filtroAgenda === k ? "on" : ""}" data-filtro="${k}">${t}</button>`).join("");
   return `
   <div class="kpis">
-    <div class="kpi"><span>Vencen esta semana</span><b style="color:var(--naranja-osc)">${semana}</b><small>Muelles, SOAT, licencias y pólizas</small></div>
-    <div class="kpi"><span>Ya vencidos</span><b style="color:var(--rojo)">${vencidos}</b><small>Para avisar hoy</small></div>
+    <div class="kpi"><span>Toca avisar hoy</span><b style="color:var(--naranja-osc)">${toca.length}</b><small>Avisos de 20, 7 y 1 día, y vencidos</small></div>
+    <div class="kpi"><span>Ya vencidos</span><b style="color:var(--rojo)">${vencidos}</b><small>Oportunidad de renovar</small></div>
     <div class="kpi"><span>Clientes con muelle</span><b>${conMuelle.length}</b><small>${pendientes} con algún muelle pendiente</small></div>
-    <div class="kpi"><span>Pólizas registradas</span><b>${D.polizas.length}</b><small>Con nosotros</small></div>
+    <div class="kpi"><span>Comisiones de ${new Date().toLocaleDateString("es-CO", { month: "long" })}</span><b style="color:var(--verde)">${fmt(cm.reduce((a, p) => a + Number(p.comision || 0), 0))}</b><small>${cm.length} venta${cm.length === 1 ? "" : "s"} de SOAT y pólizas</small></div>
   </div>
   <div class="fila2">
     <section class="card" style="flex:3 1 520px">
       <div class="card-h"><h2>Agenda de vencimientos</h2><div class="pills">${pills}</div></div>
       <div class="tabla">
         <div class="t-fila t-agenda t-cab"><span>Cliente</span><span>Qué vence</span><span>Fecha</span><span>Estado</span><span>Aviso</span></div>
-        ${filtrado.length ? filtrado.map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">No hay vencimientos en este filtro. Las fechas se ponen en la app de Planillas → Editar cliente → 🚗 Vehículo y licencia, y en los muelles de cada cliente.</div>`}
+        ${filtrado.length ? filtrado.map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">${filtroAgenda === "toca" ? "Hoy no le toca aviso a nadie. 👌" : "No hay vencimientos en este filtro."}</div>`}
       </div>
+      <p class="sub">Al tocar <b>Avisar</b> se abre WhatsApp con el mensaje listo y queda anotado. El cliente vuelve a salir cuando le toque el siguiente aviso (20, 7 y 1 día antes).</p>
     </section>
     <section class="card" style="flex:2 1 300px">
       <h2>Oportunidades de venta</h2>
@@ -309,7 +357,7 @@ function vistaInicio(v){
       ${sinSoat.slice(0, 6).map(c => {
         const wa = linkWa(telDestino(c), `¡Hola, ${propio(c.nombre).split(" ")[0]}! 👋\n\nEn PROSEGUROSNET también le renovamos el SOAT de su vehículo, sin filas y digital al WhatsApp. ¿Cuándo se le vence? Así le avisamos a tiempo.\n\n— Equipo PROSEGUROSNET 🛡️`);
         return `<div class="opor"><div style="min-width:0"><div class="nombre" style="font-size:14px">${esc(propio(c.nombre))}</div><div class="detalle">Sin SOAT registrado</div></div>
-          <a class="btn-prim" style="display:inline-flex;align-items:center;text-decoration:none" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>Ofrecer</a></div>`;
+          <span style="display:flex;gap:6px"><a class="btn-wa" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>Ofrecer</a><button type="button" class="btn-prim" data-vender="${esc(c.cedula)}" data-vender-tipo="SOAT">Vendí</button></span></div>`;
       }).join("") || `<div class="vacio">No hay oportunidades por ahora.</div>`}
       ${sinSoat.length > 6 ? `<p class="sub">…y ${sinSoat.length - 6} más.</p>` : ""}
     </section>
@@ -342,32 +390,64 @@ function vistaMuelles(){
 }
 function vistaSoat(v){
   const veh = v.filter(x => x.tipo === "soat" || x.tipo === "licencia" || x.tipo === "tecno");
-  const conPlaca = D.clientes.filter(c => c.placa);
+  const q = norm(filtroVeh);
+  const conPlaca = D.clientes.filter(c => c.placa || c.venc_licencia || c.venc_tecno || c.venc_soat).filter(c => !q || norm(c.nombre).includes(q) || String(c.cedula).includes(q) || norm(c.placa).includes(q));
   return `<div class="fila2">
     <section class="card" style="flex:3 1 520px">
-      <h2>Vencimientos de SOAT, licencia y tecnomecánica</h2>
+      <div class="card-h"><h2>Vencimientos de SOAT, licencia y tecnomecánica</h2><button type="button" class="btn-prim" data-vender="" data-vender-tipo="SOAT">＋ Registrar SOAT vendido</button></div>
       <div class="tabla">
         <div class="t-fila t-agenda t-cab"><span>Cliente</span><span>Qué vence</span><span>Fecha</span><span>Estado</span><span>Aviso</span></div>
-        ${veh.length ? veh.map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">Todavía no hay fechas de SOAT, licencia ni tecnomecánica guardadas (${conPlaca.length} clientes con placa). Se ponen en la app de Planillas → Editar cliente → 🚗 Vehículo y licencia. Cuando estén, aquí sale la lista de renovaciones con el aviso listo.</div>`}
+        ${veh.length ? veh.filter(x => x.dias >= -60).map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">Todavía no hay fechas guardadas. Registre un SOAT vendido, o toque ✏️ en un cliente de la lista de abajo para poner la placa y las fechas de licencia y tecnomecánica.</div>`}
       </div>
     </section>
-    <section class="card" style="flex:2 1 300px;background:var(--azul);color:#fff;border-color:var(--azul)">
-      <h2>Cómo funcionará el aviso</h2>
-      <p class="sub" style="color:#DCE5F5">Cuando falten 20, 7 y 1 día para que venza, el cliente aparece aquí con el mensaje listo para WhatsApp. Si tiene responsable, el aviso va al responsable.</p>
-      <p class="sub" style="color:#DCE5F5">Próximo paso: renovar el SOAT desde aquí y registrar la comisión, que pasa sola a Contabilidad.</p>
+    <section class="card" style="flex:2 1 320px">
+      <h2>Vehículos de los clientes</h2>
+      <input class="m-input" id="filtroVeh" placeholder="Buscar por nombre, cédula o placa" value="${esc(filtroVeh)}" aria-label="Buscar vehículo">
+      ${conPlaca.slice(0, 40).map(c => `<div class="opor" style="background:var(--gris-f)"><div style="min-width:0"><div class="nombre" style="font-size:14px">${esc(propio(c.nombre))}</div>
+        <div class="detalle">${c.placa ? "Placa " + esc(String(c.placa).toUpperCase()) : "Sin placa"}${c.venc_licencia ? " · licencia " + esc(fechaCorta(c.venc_licencia)) : ""}${c.venc_tecno ? " · tecno " + esc(fechaCorta(c.venc_tecno)) : ""}</div></div>
+        <button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">✏️</button></div>`).join("") || `<div class="vacio">${q ? "No encontré a nadie." : "Ningún cliente tiene placa o fechas todavía. Búsquelo en Ficha del cliente y toque «✏️ Vehículo»."}</div>`}
     </section>
   </div>`;
 }
+function filaPoliza(p){
+  const d = diasHasta(p.fecha_vencimiento);
+  const x = LISTA_AGENDA.find(y => y.poliza === p);
+  const chip = p.estado === "cancelada" ? `<span class="estado e-gris">Cancelada</span>` : p.estado === "renovada" ? `<span class="estado e-gris">Renovada</span>` : d === null ? `<span class="estado e-gris">sin fecha</span>` : `<span class="estado ${d > DIAS_VENTANA ? "e-verde" : claseDias(d)}">${d > DIAS_VENTANA ? "Vigente" : esc(textoDias(d))}</span>`;
+  return `<div class="pol-fila">
+    <div style="min-width:0;display:flex;flex-direction:column;gap:3px">
+      <button type="button" class="nombre-btn" data-ficha="${esc(p.cedula || "")}"><span class="nombre">${esc(propio(p.nombre))} ${chip}</span></button>
+      <span class="detalle">${esc([p.tipo, p.aseguradora, p.numero_poliza ? "N.º " + p.numero_poliza : "", p.placa ? "placa " + String(p.placa).toUpperCase() : ""].filter(Boolean).join(" · "))}</span>
+      <span class="detalle">${p.fecha_inicio ? "Desde " + esc(fechaCorta(p.fecha_inicio)) + " · " : ""}vence <b>${esc(fechaCorta(p.fecha_vencimiento))}</b> · Valor ${fmt(p.valor_prima)} · Le deja <b style="color:var(--verde)">${fmt(p.comision)}</b>${p.avisado_el ? " · avisado " + esc(fechaCorta(p.avisado_el)) : ""}</span>
+    </div>
+    <div class="pol-acc">
+      ${x && polActiva(p) ? botonAviso(x) : ""}
+      ${polActiva(p) ? `<button type="button" class="btn-prim" data-pol-renovar="${esc(p.id)}">🔁 Renovar</button>` : ""}
+      ${p.archivo_path ? `<button type="button" class="btn-sec" data-pol-ver="${esc(p.id)}">📎</button>` : ""}
+      <button type="button" class="btn-sec" data-pol-editar="${esc(p.id)}">Editar</button>
+    </div>
+  </div>`;
+}
 function vistaPolizas(){
-  if (!D.polizas.length) return `<div class="card"><h2>Pólizas</h2><div class="vacio">Todavía no hay pólizas registradas. Por ahora se registran en la app de Planillas → Seguros y pólizas; aquí aparecen solas con su vencimiento y comisión.</div></div>`;
-  return `<div class="card"><h2>Pólizas registradas (${D.polizas.length})</h2><div class="tabla">
-    <div class="t-fila t-cab" style="grid-template-columns:1.8fr 1.2fr 1.2fr 1fr 1fr 1fr"><span>Cliente</span><span>Tipo</span><span>Aseguradora</span><span>Vence</span><span>Prima</span><span>Comisión</span></div>
-    ${D.polizas.map(p => { const d = diasHasta(p.fecha_vencimiento); return `<div class="t-fila" style="grid-template-columns:1.8fr 1.2fr 1.2fr 1fr 1fr 1fr">
-      <button type="button" class="nombre-btn" data-ficha="${esc(p.cedula)}"><span class="nombre">${esc(propio(p.nombre))}</span><small>${esc(p.numero_poliza || "")}</small></button>
-      <span>${esc(p.tipo || "")}</span><span>${esc(p.aseguradora || "")}</span>
-      <span class="estado ${d === null ? "e-gris" : claseDias(d)}">${d === null ? "sin fecha" : esc(textoDias(d))}</span>
-      <span>${p.valor_prima != null ? fmt(p.valor_prima) : ""}</span><span style="font-weight:700;color:var(--verde)">${p.comision != null ? fmt(p.comision) : ""}</span></div>`; }).join("")}
-  </div></div>`;
+  const q = norm(filtroPol), dig = q.replace(/\D/g, "");
+  const coincide = (p) => !q || norm(p.nombre).includes(q) || (dig && String(p.cedula || "").includes(dig)) || norm(p.placa).includes(q) || norm(p.tipo).includes(q) || norm(p.aseguradora).includes(q);
+  const activas = D.polizas.filter(polActiva);
+  const lista = activas.filter(coincide).sort((a, b) => String(a.fecha_vencimiento || "9999").localeCompare(String(b.fecha_vencimiento || "9999")));
+  const viejas = D.polizas.filter(p => !polActiva(p) && coincide(p));
+  const cm = comisionesMes();
+  const porVencer = activas.filter(p => { const d = diasHasta(p.fecha_vencimiento); return d !== null && d >= 0 && d <= DIAS_VENTANA; }).length;
+  const vencidas = activas.filter(p => { const d = diasHasta(p.fecha_vencimiento); return d !== null && d < 0; }).length;
+  return `<div class="kpis">
+    <div class="kpi"><span>Vigentes</span><b>${activas.length - vencidas}</b><small>SOAT y pólizas activas</small></div>
+    <div class="kpi"><span>Por vencer</span><b style="color:var(--naranja-osc)">${porVencer}</b><small>en los próximos ${DIAS_VENTANA} días</small></div>
+    <div class="kpi"><span>Vencidas sin renovar</span><b style="color:var(--rojo)">${vencidas}</b><small>oportunidad de venta</small></div>
+    <div class="kpi"><span>Le dejaron este mes</span><b style="color:var(--verde)">${fmt(cm.reduce((a, p) => a + Number(p.comision || 0), 0))}</b><small>${cm.length} venta${cm.length === 1 ? "" : "s"} · pasa sola a Contabilidad</small></div>
+  </div>
+  <section class="card">
+    <div class="card-h"><h2>SOAT y pólizas (${activas.length})</h2><button type="button" class="btn-prim" data-vender="" data-vender-tipo="">＋ Registrar venta</button></div>
+    <input class="m-input" id="filtroPol" placeholder="Buscar por nombre, cédula, placa, tipo o aseguradora" value="${esc(filtroPol)}" aria-label="Buscar póliza">
+    ${lista.map(filaPoliza).join("") || `<div class="vacio">${q ? "Ninguna coincide con la búsqueda." : "Todavía no hay ventas registradas. Toque «＋ Registrar venta» para empezar."}</div>`}
+    ${viejas.length ? `<details><summary style="cursor:pointer;font-weight:700;color:var(--suave);padding:6px 0">Renovadas o canceladas (${viejas.length})</summary>${viejas.map(filaPoliza).join("")}</details>` : ""}
+  </section>`;
 }
 function vistaCliente(){
   const q = norm($("buscar").value);
@@ -390,7 +470,11 @@ function vistaCliente(){
       <p class="sub">CC ${esc(c.cedula)}${c.placa ? " · Placa " + esc(String(c.placa).toUpperCase()) : ""}${c.responsable_grupo ? " · Responsable: " + esc(propio(c.responsable_grupo)) : ""}</p>
       <p class="sub">📱 ${esc(c.telefono || "sin teléfono")}</p>
       <a href="./" style="font-weight:700;font-size:14px;color:var(--azul)">Ver en la app de Planillas →</a>
-      ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-prim" data-muelle-edit="${esc(c.id)}" style="align-self:flex-start">✏️ Cambiar muelles</button>` : ""}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-prim" data-muelle-edit="${esc(c.id)}">✏️ Cambiar muelles</button>` : ""}
+        ${c.id ? `<button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">🚗 Vehículo</button>` : ""}
+        <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="SOAT">＋ Vender SOAT o póliza</button>
+      </div>
       <button type="button" class="pill-btn" data-volver="1" style="align-self:flex-start">← Buscar otro</button>
     </section>
     <section class="card" style="flex:2 1 460px">
@@ -487,6 +571,191 @@ function escucharCambios(){
     }).subscribe();
 }
 
+/* ---------- Avisos, ventas de SOAT/pólizas y vehículo (paso 3) ----------
+   Pólizas: tabla "polizas" (la misma de la app de Planillas; la comisión entra sola a sus ingresos del mes).
+   Vehículo: en "clients" solo se envían las columnas que cambiaron (placa, venc_*), con ultima_edicion = ahora.
+   Avisos de vehículo y muelles: en clients.avisos_vencimiento (mismo formato que la app de Planillas). */
+let filtroVeh = "", filtroPol = "";
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+function masUnAnio(iso){ const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return ""; const d = new Date(+m[1] + 1, +m[2] - 1, +m[3]); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+async function avisar(i){
+  const x = LISTA_AGENDA[i]; if (!x) return;
+  const wa = linkWa(telDeItem(x), mensajeVence(x)); if (!wa) { toast("Este cliente no tiene teléfono."); return; }
+  window.open(wa, "_blank", "noopener");
+  const hoy = hoyISO();
+  try{
+    if (x.poliza){
+      const { error } = await sb.from("polizas").update({ avisado_el: hoy, updated_at: new Date().toISOString() }).eq("id", x.poliza.id);
+      if (error) throw error;
+      x.poliza.avisado_el = hoy;
+    } else if (x.c.id){
+      const { data: fila, error: e1 } = await sb.from("clients").select("avisos_vencimiento").eq("id", x.c.id).single();
+      if (e1) throw e1;
+      const av = { ...((fila && fila.avisos_vencimiento) || {}), [x.k]: { venc: x.fecha, enviado: hoy } };
+      const ahora = new Date().toISOString();
+      const upd = { avisos_vencimiento: av, updated_at: ahora, ultima_edicion: ahora }; if (D.usuario) upd.updated_by = D.usuario;
+      const { error } = await sb.from("clients").update(upd).eq("id", x.c.id);
+      if (error) throw error;
+      x.c.avisos_vencimiento = av;
+    }
+    render();
+  }catch(err){ console.error(err); toast("Se abrió WhatsApp, pero no se pudo anotar el aviso (revise el internet)."); }
+}
+
+/* Formulario de venta / edición / renovación de SOAT o póliza */
+let polEdit = null, polRenov = null;
+function abrirFormPoliza(p, renovarDe){
+  polEdit = p && p.id && !renovarDe ? p : null; polRenov = renovarDe || null;
+  const v = p || {};
+  const tipos = [...new Set([...POL_TIPOS, ...(v.tipo ? [v.tipo] : [])])];
+  const asegs = [...new Set(D.polizas.map(x => x.aseguradora).filter(Boolean))].sort();
+  $("modal2").innerHTML = `<form class="modal" id="formPol" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="pTit">
+    <h2 id="pTit">${renovarDe ? "Renovación de " + esc(propio(renovarDe.nombre)) : polEdit ? "Editar " + esc(v.tipo || "póliza") : "Registrar venta"}</h2>
+    ${renovarDe ? `<p class="sub" style="margin:0">Revise las fechas y los valores. La anterior queda como «renovada».</p>` : ""}
+    <div class="f-grid">
+      <label class="f">Cédula (si es cliente trae sus datos)<input class="m-input" id="pCedula" inputmode="numeric" maxlength="12" value="${esc(v.cedula || "")}"></label>
+      <label class="f">Nombre *<input class="m-input" id="pNombre" maxlength="120" value="${esc(v.nombre ? propio(v.nombre) : "")}"></label>
+      <label class="f">Teléfono (WhatsApp)<input class="m-input" id="pTel" inputmode="numeric" maxlength="14" value="${esc(v.telefono || "")}"></label>
+      <label class="f">Tipo *<select class="m-input" id="pTipo">${tipos.map(t => `<option ${t === (v.tipo || "SOAT") ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
+      <label class="f">Aseguradora<input class="m-input" id="pAseg" maxlength="80" list="listaAseg" placeholder="Ej: Sura, Mundial, Previsora" value="${esc(v.aseguradora || "")}"><datalist id="listaAseg">${asegs.map(a => `<option value="${esc(a)}">`).join("")}</datalist></label>
+      <label class="f">Número de póliza<input class="m-input" id="pNum" maxlength="40" value="${esc(renovarDe ? "" : (v.numero_poliza || ""))}"></label>
+      <label class="f">Placa (si es de vehículo)<input class="m-input" id="pPlaca" maxlength="8" value="${esc(v.placa || "")}" style="text-transform:uppercase"></label>
+      <label class="f">Inicio de vigencia<input class="m-input" id="pIni" type="date" value="${esc(String(v.fecha_inicio || (polEdit ? "" : hoyISO())).slice(0, 10))}"></label>
+      <label class="f">Vence el *<input class="m-input" id="pVence" type="date" value="${esc(String(v.fecha_vencimiento || (polEdit ? "" : masUnAnio(v.fecha_inicio || hoyISO()))).slice(0, 10))}"></label>
+      <label class="f">Valor que paga el cliente<input class="m-input" id="pPrima" type="number" min="0" step="1" inputmode="numeric" value="${Number(v.valor_prima) || ""}"></label>
+      <label class="f">Lo que le deja a PROSEGUROSNET<input class="m-input" id="pCom" type="number" min="0" step="1" inputmode="numeric" value="${Number(v.comision) || ""}"></label>
+      ${polEdit ? `<label class="f">Estado<select class="m-input" id="pEstado">${[["activa","Activa"],["renovada","Renovada (ya tiene una nueva)"],["cancelada","Cancelada"]].map(([k, t]) => `<option value="${k}" ${k === (v.estado || "activa") ? "selected" : ""}>${t}</option>`).join("")}</select></label>` : ""}
+      <label class="f" style="grid-column:1/-1">Nota<input class="m-input" id="pNota" maxlength="300" value="${esc(renovarDe ? "" : (v.nota || ""))}"></label>
+    </div>
+    ${polEdit ? `<div class="opor" style="background:var(--gris-f)"><div><div class="nombre" style="font-size:14px">Archivo de la póliza</div><div class="detalle" id="pArchEst">${v.archivo_path ? "✅ Ya tiene la póliza guardada. Si sube otra, reemplaza la anterior." : "PDF o foto de la póliza."}</div></div>
+      <label class="btn-sec" style="display:inline-flex;align-items:center">📎 Subir<input type="file" id="pArchivo" accept=".pdf,application/pdf,image/*" hidden></label></div>` : ""}
+    <div class="err" id="pErr"></div>
+    <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button><button type="submit" class="btn-prim" id="pGuardar">Guardar</button></div>
+  </form>`;
+  $("modal2").hidden = false;
+  $(p && p.nombre ? "pVence" : "pCedula").focus();
+}
+function cerrarModal2(){ polEdit = null; polRenov = null; vehEdit = null; $("modal2").hidden = true; $("modal2").innerHTML = ""; }
+function abrirVenta(cedula, tipo){
+  const c = cedula ? D.clientes.find(x => String(x.cedula) === String(cedula)) : null;
+  abrirFormPoliza(c ? { cedula: c.cedula, nombre: c.nombre, telefono: telValido(c.telefono) || "", placa: c.placa || "", tipo: tipo || "SOAT" } : (tipo ? { tipo } : null));
+}
+async function guardarPoliza(){
+  const v = (id) => ($(id) ? $(id).value.trim() : "");
+  const err = (m) => { $("pErr").textContent = m; };
+  const nombre = v("pNombre").replace(/\s+/g, " ");
+  if (!nombre) return err("Escriba el nombre de la persona.");
+  if (!v("pVence")) return err("Escriba la fecha de vencimiento: con ella la app avisa a tiempo.");
+  if (v("pIni") && v("pVence") < v("pIni")) return err("La fecha de vencimiento no puede ser antes del inicio.");
+  const tel = v("pTel").replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+  if (tel && tel.length !== 10) return err("El teléfono debe tener 10 dígitos.");
+  const prima = Math.round(Number(v("pPrima")) || 0), com = Math.round(Number(v("pCom")) || 0);
+  if (com > prima && prima > 0 && !confirm("Lo que le deja es mayor que el valor de la póliza. ¿Guardar así?")) return;
+  const fila = { cedula: v("pCedula").replace(/\D/g, "") || null, nombre: nombre.toLowerCase(), telefono: tel || null, tipo: v("pTipo"), aseguradora: v("pAseg").replace(/\s+/g, " ") || null,
+    numero_poliza: v("pNum") || null, placa: v("pPlaca").toUpperCase().replace(/\s+/g, "") || null, fecha_inicio: v("pIni") || null, fecha_vencimiento: v("pVence"),
+    valor_prima: prima, comision: com, nota: v("pNota") || null, updated_at: new Date().toISOString() };
+  const b = $("pGuardar"); b.disabled = true; b.textContent = "Guardando…";
+  let r;
+  if (polEdit){
+    fila.estado = v("pEstado") || "activa";
+    if (String(polEdit.fecha_vencimiento || "").slice(0, 10) !== fila.fecha_vencimiento) fila.avisado_el = null;
+    r = await sb.from("polizas").update(fila).eq("id", polEdit.id);
+  } else {
+    r = await sb.from("polizas").insert(fila);
+    if (!r.error && polRenov) await sb.from("polizas").update({ estado: "renovada", updated_at: new Date().toISOString() }).eq("id", polRenov.id);
+  }
+  if (r.error){ b.disabled = false; b.textContent = "Guardar"; return err("No se pudo guardar: " + r.error.message); }
+  const eraRenov = !!polRenov, eraNueva = !polEdit;
+  // SOAT de un cliente: también se le pone la fecha y la placa en su ficha (solo si cambian), para que la app de Planillas lo vea
+  if (fila.tipo === "SOAT" && fila.cedula && (eraNueva || fila.estado === "activa")){
+    const c = D.clientes.find(x => String(x.cedula) === fila.cedula);
+    if (c && c.id){
+      const cambios = {};
+      if (String(c.venc_soat || "").slice(0, 10) !== fila.fecha_vencimiento) cambios.venc_soat = fila.fecha_vencimiento;
+      if (fila.placa && !c.placa) cambios.placa = fila.placa;
+      if (Object.keys(cambios).length) await guardarCliente(c, cambios).catch(e => console.error(e));
+    }
+  }
+  await recargarPolizas(); cerrarModal2(); render();
+  toast(eraRenov ? "✅ Renovación guardada. La anterior quedó como renovada." : eraNueva ? `✅ Venta registrada. Le deja ${fmt(fila.comision)} (pasa a Contabilidad).` : "✅ Guardado.");
+}
+async function recargarPolizas(){
+  const { data, error } = await sb.from("polizas").select("*").order("fecha_vencimiento", { ascending: true });
+  if (!error) D.polizas = data || [];
+}
+async function subirArchivoPoliza(archivo){
+  if (!archivo || !polEdit) return;
+  if (archivo.size > 15 * 1024 * 1024){ toast("El archivo pesa más de 15 MB."); return; }
+  const ruta = `polizas/${polEdit.id}`;
+  $("pArchEst").textContent = "Subiendo…";
+  const { error } = await sb.storage.from("documentos-clientes").upload(ruta, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+  if (error){ $("pArchEst").textContent = "No se pudo subir: " + error.message; return; }
+  const r = await sb.from("polizas").update({ archivo_path: ruta, updated_at: new Date().toISOString() }).eq("id", polEdit.id);
+  if (r.error){ $("pArchEst").textContent = "Subió, pero no se pudo anotar: " + r.error.message; return; }
+  polEdit.archivo_path = ruta; $("pArchEst").textContent = "✅ Póliza guardada.";
+}
+async function verArchivoPoliza(p){
+  const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(p.archivo_path, 600);
+  if (error || !data){ toast("No se pudo abrir la póliza."); return; }
+  window.open(data.signedUrl, "_blank", "noopener");
+}
+
+/* Guardar en un cliente SOLO las columnas que cambiaron (como la app de Planillas) */
+async function guardarCliente(c, cambios){
+  const ahora = new Date().toISOString();
+  const upd = { ...cambios, updated_at: ahora, ultima_edicion: ahora }; if (D.usuario) upd.updated_by = D.usuario;
+  const { data, error } = await sb.from("clients").update(upd).eq("id", c.id).select(Object.keys(cambios).concat(["id", "ultima_edicion"]).join(",")).single();
+  if (error) throw error;
+  Object.assign(c, data);
+}
+let vehEdit = null;
+function abrirVehiculo(id){
+  const c = D.clientes.find(x => String(x.id) === String(id)); if (!c) return;
+  vehEdit = c;
+  $("modal2").innerHTML = `<form class="modal" id="formVeh" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="vTit">
+    <div><h2 id="vTit">Vehículo de ${esc(propio(c.nombre))}</h2><p class="sub" style="margin:4px 0 0">CC ${esc(c.cedula)}. Se guarda en la ficha del cliente (la misma de la app de Planillas).</p></div>
+    <div class="f-grid">
+      <label class="f">Placa<input class="m-input" id="vPlaca" maxlength="8" value="${esc(c.placa || "")}" style="text-transform:uppercase"></label>
+      <label class="f">Licencia vence<input class="m-input" id="vLic" type="date" value="${esc(String(c.venc_licencia || "").slice(0, 10))}"></label>
+      <label class="f">SOAT vence<input class="m-input" id="vSoat" type="date" value="${esc(String(c.venc_soat || "").slice(0, 10))}"></label>
+      <label class="f">Tecnomecánica vence<input class="m-input" id="vTec" type="date" value="${esc(String(c.venc_tecno || "").slice(0, 10))}"></label>
+    </div>
+    <p class="sub" style="margin:0">Si usted le vendió el SOAT, mejor regístrelo con «＋ Registrar SOAT vendido»: así queda la comisión.</p>
+    <div class="err" id="vErr"></div>
+    <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button><button type="submit" class="btn-prim" id="vGuardar">Guardar</button></div>
+  </form>`;
+  $("modal2").hidden = false; $("vPlaca").focus();
+}
+async function guardarVehiculo(){
+  const c = vehEdit; if (!c) return;
+  const nuevo = { placa: $("vPlaca").value.toUpperCase().replace(/\s+/g, "") || null, venc_licencia: $("vLic").value || null, venc_soat: $("vSoat").value || null, venc_tecno: $("vTec").value || null };
+  const cambios = {};
+  Object.entries(nuevo).forEach(([k, val]) => { if (String(c[k] || "").slice(0, 10) !== String(val || "").slice(0, 10) || (k === "placa" && String(c[k] || "") !== String(val || ""))) cambios[k] = val; });
+  if (!Object.keys(cambios).length){ cerrarModal2(); toast("No hubo cambios."); return; }
+  const b = $("vGuardar"); b.disabled = true; b.textContent = "Guardando…";
+  try{ await guardarCliente(c, cambios); cerrarModal2(); render(); toast("✅ Vehículo guardado."); }
+  catch(err){ console.error(err); b.disabled = false; b.textContent = "Guardar"; $("vErr").textContent = "No se pudo guardar (revise el internet). No se cambió nada."; }
+}
+$("modal2").addEventListener("click", (e) => { if (e.target.id === "modal2" || e.target.closest("[data-cerrar2]")) cerrarModal2(); });
+$("modal2").addEventListener("submit", (e) => { e.preventDefault(); if (e.target.id === "formPol") guardarPoliza(); else if (e.target.id === "formVeh") guardarVehiculo(); });
+$("modal2").addEventListener("change", (e) => {
+  if (e.target.id === "pArchivo") subirArchivoPoliza(e.target.files && e.target.files[0]);
+  else if (e.target.id === "pIni" && !$("pVence").value && e.target.value) $("pVence").value = masUnAnio(e.target.value);
+  else if (e.target.id === "pCedula"){
+    const ced = e.target.value.replace(/\D/g, ""); e.target.value = ced;
+    const c = D.clientes.find(x => String(x.cedula) === ced); if (!c) return;
+    const llena = (id, val) => { if (!$(id).value.trim() && val) $(id).value = val; };
+    llena("pNombre", propio(c.nombre)); llena("pTel", telValido(c.telefono)); llena("pPlaca", c.placa);
+  }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("modal2").hidden) cerrarModal2(); });
+document.addEventListener("input", (e) => {
+  if (e.target.id === "filtroVeh" || e.target.id === "filtroPol"){
+    if (e.target.id === "filtroVeh") filtroVeh = e.target.value; else filtroPol = e.target.value;
+    const pos = e.target.selectionStart; render(); const n = $(e.target.id); if (n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} }
+  }
+});
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", (e) => {
   const n = e.target.closest("[data-vista]");
@@ -494,7 +763,13 @@ document.addEventListener("click", (e) => {
   const f = e.target.closest("[data-filtro]"); if (f){ filtroAgenda = f.dataset.filtro; render(); return; }
   const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
   const me = e.target.closest("[data-muelle-edit]"); if (me){ abrirEditorMuelles(me.dataset.muelleEdit); return; }
-  const fi = e.target.closest("[data-ficha]"); if (fi){ clienteSel = fi.dataset.ficha; vista = "cliente"; render(); window.scrollTo(0, 0); return; }
+  const av = e.target.closest("[data-avisar]"); if (av){ avisar(+av.dataset.avisar); return; }
+  const ve = e.target.closest("[data-vender]"); if (ve){ abrirVenta(ve.dataset.vender, ve.dataset.venderTipo); return; }
+  const vh = e.target.closest("[data-vehiculo]"); if (vh){ abrirVehiculo(vh.dataset.vehiculo); return; }
+  const pr = e.target.closest("[data-pol-renovar]"); if (pr){ const p = D.polizas.find(x => String(x.id) === pr.dataset.polRenovar); if (p){ const ini = p.fecha_vencimiento && diasHasta(p.fecha_vencimiento) >= 0 ? String(p.fecha_vencimiento).slice(0, 10) : hoyISO(); abrirFormPoliza({ ...p, fecha_inicio: ini, fecha_vencimiento: masUnAnio(ini) }, p); } return; }
+  const pe = e.target.closest("[data-pol-editar]"); if (pe){ const p = D.polizas.find(x => String(x.id) === pe.dataset.polEditar); if (p) abrirFormPoliza(p); return; }
+  const pv = e.target.closest("[data-pol-ver]"); if (pv){ const p = D.polizas.find(x => String(x.id) === pv.dataset.polVer); if (p) verArchivoPoliza(p); return; }
+  const fi = e.target.closest("[data-ficha]"); if (fi && !fi.dataset.ficha) return; if (fi){ clienteSel = fi.dataset.ficha; vista = "cliente"; render(); window.scrollTo(0, 0); return; }
   if (e.target.closest("[data-volver]")){ clienteSel = null; render(); }
 });
 $("buscar").addEventListener("input", () => { vista = "cliente"; clienteSel = null; render(); });
