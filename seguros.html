@@ -8,10 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!--
-  App "Muelles y Seguros" (paso 1 · 17-nov-2026)
+  App "Muelles y Seguros" (paso 2 · 17-nov-2026)
   Trabaja con la MISMA base de datos y el MISMO usuario que la app de Planillas (index.html).
-  En este paso SOLO LEE: no guarda ni cambia nada en la nube. Los avisos por WhatsApp solo
-  abren el chat con el mensaje listo.
+  Paso 2: ya se pueden cambiar los MUELLES (aceptado/pendiente y fecha de vencimiento de cada muelle).
+  Cómo guarda (igual que la app principal): solo envía las columnas aceptado_por_muelle y
+  venc_por_muelle, y dentro de ellas solo el muelle que se cambió, sobre lo que hay en la nube en
+  ese momento (así no pisa lo que otro compañero cambió). Nunca borra clientes ni toca pagos.
+  Lo demás sigue siendo solo lectura. Los avisos por WhatsApp solo abren el chat con el mensaje listo.
 -->
 <style>
   :root{
@@ -36,7 +39,7 @@
   .brand .escudo{ width:34px; height:38px; background:#C8102E; border-radius:8px 8px 17px 17px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:19px; }
   .brand b{ display:block; font-size:15px; letter-spacing:.02em; }
   .brand small{ color:#C9D6EE; font-size:12px; }
-  .nav{ display:flex; justify-content:space-between; align-items:center; width:100%; min-height:44px; padding:0 12px; border:0; border-radius:10px; background:transparent; color:#DCE5F5; font-size:15px; font-weight:600; text-align:left; cursor:pointer; }
+  .nav{ display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; min-height:44px; padding:0 12px; border:0; border-radius:10px; background:transparent; color:#DCE5F5; font-size:15px; font-weight:600; text-align:left; cursor:pointer; }
   .nav:hover{ background:rgba(255,255,255,.08); color:#fff; }
   .nav.on{ background:rgba(255,255,255,.14); color:#fff; box-shadow:inset 3px 0 0 #F2803F; }
   .nav .badge{ background:var(--naranja); color:#fff; border-radius:999px; font-size:12px; font-weight:700; padding:2px 8px; }
@@ -93,6 +96,21 @@
   .login button{ height:44px; border:0; border-radius:10px; background:var(--naranja); color:#fff; font-weight:700; font-size:15px; cursor:pointer; }
   .err{ color:var(--rojo); font-size:13px; min-height:18px; }
   .menu-movil{ display:none; }
+  .modal-fondo{ position:fixed; inset:0; background:rgba(10,20,40,.45); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .modal{ background:var(--panel); border-radius:16px; width:min(520px, 100%); max-height:92vh; overflow:auto; padding:22px; display:flex; flex-direction:column; gap:14px; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+  .modal h2{ margin:0; font-size:19px; font-weight:800; }
+  .m-fila{ display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center; padding:12px; border:1px solid var(--linea); border-radius:12px; }
+  .m-fila b{ font-size:15px; }
+  .m-fila label{ grid-column:1 / -1; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--suave); font-weight:600; }
+  .m-fila input[type=date]{ height:40px; border:1px solid var(--linea); border-radius:9px; padding:0 10px; font-size:14px; background:var(--panel); color:var(--texto); flex:1; }
+  .toggle{ height:38px; min-width:120px; padding:0 14px; border-radius:999px; border:1px solid var(--linea); background:var(--gris-f); color:var(--suave); font-weight:700; font-size:13px; cursor:pointer; }
+  .toggle.si{ background:var(--verde-f); color:var(--verde); border-color:#1F9D55; }
+  .m-acciones{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+  .btn-sec{ height:40px; padding:0 14px; border-radius:9px; border:1px solid var(--linea); background:var(--panel); color:var(--texto); font-weight:700; font-size:14px; cursor:pointer; }
+  .m-acciones .btn-prim{ height:40px; font-size:14px; background:var(--naranja); }
+  .btn-prim:disabled{ opacity:.6; cursor:wait; }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--texto); color:var(--panel); padding:12px 18px; border-radius:12px; font-size:14px; font-weight:600; z-index:60; max-width:90vw; box-shadow:0 8px 24px rgba(0,0,0,.2); }
+  .tarjeta .editar{ align-self:flex-start; font-size:12px; font-weight:700; color:var(--naranja-osc); }
   @media (max-width: 860px){
     .app{ flex-direction:column; }
     .side{ width:auto; flex:none; height:auto; position:static; flex-direction:row; flex-wrap:wrap; padding:10px; }
@@ -136,10 +154,12 @@
         <input id="buscar" type="search" placeholder="Cédula, nombre o placa" aria-label="Buscar cliente">
       </label>
     </div>
-    <div class="aviso-lectura">Primera versión: aquí se consulta todo, pero los cambios se siguen haciendo en la app de Planillas. Nada de lo que haga aquí cambia sus datos.</div>
+    <div class="aviso-lectura">Nuevo: los <b>muelles</b> ya se pueden cambiar aquí (toque un cliente en Muelles). Pagos, datos del cliente, SOAT y pólizas se siguen cambiando en la app de Planillas.</div>
     <div id="contenido"></div>
   </main>
 </div>
+<div id="modalMuelles" class="modal-fondo" hidden></div>
+<div id="toast" class="toast" role="status" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
@@ -151,7 +171,7 @@ const MUELLES = ["Sociedad", "TC Buen", "Agua Dulce"];
 const EMPRESA_MUELLES = "actualización de muelles";
 const DIAS_VENTANA = 30;
 
-const D = { mes: null, clientes: [], polizas: [], responsables: new Map() };
+const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null };
 let vista = "inicio", filtroAgenda = "semana", filtroMuelle = "", clienteSel = null;
 
 const $ = (id) => document.getElementById(id);
@@ -173,7 +193,7 @@ async function cargar(){
   if (e1) throw e1;
   D.mes = (meses || [])[0] || null;
   if (!D.mes){ D.clientes = []; return; }
-  const cols = "id,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
+  const cols = "id,ultima_edicion,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
   const [cl, po, re] = await Promise.all([
     sb.from("clients").select(cols).eq("month_id", D.mes.id).order("row_no"),
     sb.from("polizas").select("*").order("fecha_vencimiento", { ascending: true }),
@@ -307,16 +327,17 @@ function vistaMuelles(){
     .map(([k, t]) => `<button type="button" class="pill-btn ${filtroMuelle === k ? "on" : ""}" data-fmuelle="${k}">${t}</button>`).join("");
   const tarjeta = (c) => {
     const ac = c.aceptado_por_muelle || {}, vpm = c.venc_por_muelle || {};
-    return `<button type="button" class="tarjeta" data-ficha="${esc(c.cedula)}">
+    return `<button type="button" class="tarjeta" data-muelle-edit="${esc(c.id)}">
       <span class="nombre" style="font-size:14px">${esc(propio(c.nombre))}</span>
       <span class="detalle">${esServicioMuelle(c) ? "Independiente · " + esc(propio(c.responsable_grupo || "")) : "Cliente PROSEGUROSNET"}</span>
       <div class="puntos">${MUELLES.map(m => { const d = diasHasta(vpm[m]); return `<span class="punto ${ac[m] ? "e-verde" : "e-gris"}" title="${esc(m)}">${esc(m)}${d !== null ? " · " + (d < 0 ? "venció" : d + " d") : ""}</span>`; }).join("")}</div>
+      <span class="editar">✏️ Cambiar muelles</span>
     </button>`;
   };
   return `<div class="card">
     <div class="card-h"><h2>Trámites de muelles · ${esc(D.mes ? D.mes.name : "")}</h2><div class="pills">${pills}</div></div>
     <div class="kanban">${cols.map(([t, k]) => { const it = lista.filter(c => estadoDe(c) === k); return `<div class="col"><div class="col-h">${t}<span>${it.length}</span></div>${it.map(tarjeta).join("") || `<div class="vacio">Nadie aquí.</div>`}</div>`; }).join("")}</div>
-    <p class="sub">Verde = aceptado en ese muelle. Para marcar un muelle como aceptado, por ahora se hace en la app de Planillas → Muelles.</p>
+    <p class="sub">Verde = aceptado en ese muelle. Toque un cliente para marcar cada muelle como aceptado o pendiente y poner su fecha de vencimiento. Se guarda en la misma base de la app de Planillas.</p>
   </div>`;
 }
 function vistaSoat(v){
@@ -369,6 +390,7 @@ function vistaCliente(){
       <p class="sub">CC ${esc(c.cedula)}${c.placa ? " · Placa " + esc(String(c.placa).toUpperCase()) : ""}${c.responsable_grupo ? " · Responsable: " + esc(propio(c.responsable_grupo)) : ""}</p>
       <p class="sub">📱 ${esc(c.telefono || "sin teléfono")}</p>
       <a href="./" style="font-weight:700;font-size:14px;color:var(--azul)">Ver en la app de Planillas →</a>
+      ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-prim" data-muelle-edit="${esc(c.id)}" style="align-self:flex-start">✏️ Cambiar muelles</button>` : ""}
       <button type="button" class="pill-btn" data-volver="1" style="align-self:flex-start">← Buscar otro</button>
     </section>
     <section class="card" style="flex:2 1 460px">
@@ -381,12 +403,97 @@ function vistaCliente(){
   </div>`;
 }
 
+/* ---------- Editar muelles (paso 2) ---------- */
+let edicion = null; // { id, ac, vpm } lo que se está editando
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 3200); }
+function abrirEditorMuelles(id){
+  const c = D.clientes.find(x => String(x.id) === String(id)); if (!c) return;
+  edicion = { id: c.id, ac: { ...(c.aceptado_por_muelle || {}) }, vpm: { ...(c.venc_por_muelle || {}) } };
+  pintarEditor();
+  $("modalMuelles").hidden = false;
+}
+function cerrarEditor(){ edicion = null; $("modalMuelles").hidden = true; $("modalMuelles").innerHTML = ""; }
+function pintarEditor(){
+  const c = D.clientes.find(x => x.id === edicion.id);
+  const listos = MUELLES.filter(m => edicion.ac[m]);
+  const msg = `¡Hola, ${propio(c.nombre).split(" ")[0]}! 👋\n\nLe contamos cómo va su actualización en los muelles:\n${MUELLES.map(m => `• ${m}: ${edicion.ac[m] ? "listo ✓" : "pendiente"}${edicion.vpm[m] ? " · vence " + fechaCorta(edicion.vpm[m]) : ""}`).join("\n")}\n\n— Equipo PROSEGUROSNET 🛡️`;
+  const wa = linkWa(telDestino(c), msg);
+  $("modalMuelles").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTit">
+    <div><h2 id="mTit">Muelles de ${esc(propio(c.nombre))}</h2><p class="sub" style="margin:4px 0 0;color:var(--suave);font-size:13px">CC ${esc(c.cedula)} · ${listos.length} de ${MUELLES.length} aceptados</p></div>
+    ${MUELLES.map(m => `<div class="m-fila">
+      <b>${esc(m)}</b>
+      <button type="button" class="toggle ${edicion.ac[m] ? "si" : ""}" data-tg="${esc(m)}" aria-pressed="${edicion.ac[m] ? "true" : "false"}">${edicion.ac[m] ? "✓ Aceptado" : "Pendiente"}</button>
+      <label>Vence <input type="date" data-vence="${esc(m)}" value="${esc(String(edicion.vpm[m] || "").slice(0, 10))}"></label>
+    </div>`).join("")}
+    <div class="m-acciones">
+      <a class="btn-wa" style="height:40px;margin-right:auto" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>Avisar por WhatsApp</a>
+      <button type="button" class="btn-sec" data-m-cancelar="1">Cancelar</button>
+      <button type="button" class="btn-prim" data-m-guardar="1">Guardar</button>
+    </div>
+  </div>`;
+}
+// Guarda SOLO lo que cambió, sobre lo que hay en la nube en este momento
+async function guardarMuelles(){
+  const c = D.clientes.find(x => x.id === edicion.id); if (!c) return;
+  const antesAc = c.aceptado_por_muelle || {}, antesV = c.venc_por_muelle || {};
+  const cambiosAc = {}, cambiosV = {};
+  MUELLES.forEach(m => {
+    if (!!edicion.ac[m] !== !!antesAc[m]) cambiosAc[m] = !!edicion.ac[m];
+    const nv = String(edicion.vpm[m] || ""), av = String(antesV[m] || "");
+    if (nv !== av) cambiosV[m] = nv;
+  });
+  if (!Object.keys(cambiosAc).length && !Object.keys(cambiosV).length){ cerrarEditor(); toast("No hubo cambios."); return; }
+  const btn = document.querySelector("[data-m-guardar]"); if (btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
+  try{
+    const { data: fila, error: e1 } = await sb.from("clients").select("id,aceptado_por_muelle,venc_por_muelle").eq("id", c.id).single();
+    if (e1) throw e1;
+    const ac = { ...(fila.aceptado_por_muelle || {}), ...cambiosAc };
+    const vpm = { ...(fila.venc_por_muelle || {}) };
+    Object.entries(cambiosV).forEach(([m, f]) => { if (f) vpm[m] = f; else delete vpm[m]; });
+    const ahora = new Date().toISOString();
+    const upd = { aceptado_por_muelle: ac, venc_por_muelle: vpm, updated_at: ahora, ultima_edicion: ahora };
+    if (D.usuario) upd.updated_by = D.usuario;
+    const { data: nueva, error: e2 } = await sb.from("clients").update(upd).eq("id", c.id).select("id,aceptado_por_muelle,venc_por_muelle,ultima_edicion").single();
+    if (e2) throw e2;
+    Object.assign(c, nueva);
+    cerrarEditor(); render();
+    toast(`✅ Muelles de ${propio(c.nombre).split(" ")[0]} guardados.`);
+  }catch(err){
+    if (btn){ btn.disabled = false; btn.textContent = "Guardar"; }
+    toast("No se pudo guardar (revise el internet). No se cambió nada.");
+    console.error(err);
+  }
+}
+$("modalMuelles").addEventListener("click", (e) => {
+  if (e.target.id === "modalMuelles" || e.target.closest("[data-m-cancelar]")){ cerrarEditor(); return; }
+  const tg = e.target.closest("[data-tg]");
+  if (tg){ const m = tg.dataset.tg; edicion.ac[m] = !edicion.ac[m]; pintarEditor(); return; }
+  if (e.target.closest("[data-m-guardar]")) guardarMuelles();
+});
+$("modalMuelles").addEventListener("change", (e) => {
+  const i = e.target.closest("[data-vence]"); if (!i || !edicion) return;
+  edicion.vpm[i.dataset.vence] = i.value; pintarEditor();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && edicion) cerrarEditor(); });
+// En vivo: si alguien cambia un cliente en la app de Planillas, aquí se ve solo
+let canalVivo = null;
+function escucharCambios(){
+  if (!D.mes || canalVivo) return;
+  canalVivo = sb.channel("seguros-clientes-" + D.mes.id)
+    .on("postgres_changes", { event: "*", schema: "public", table: "clients", filter: `month_id=eq.${D.mes.id}` }, (p) => {
+      if (p.eventType === "DELETE"){ D.clientes = D.clientes.filter(c => c.id !== (p.old || {}).id); }
+      else if (p.new){ const i = D.clientes.findIndex(c => c.id === p.new.id); if (i > -1) Object.assign(D.clientes[i], p.new); else D.clientes.push(p.new); }
+      if (!edicion) render();
+    }).subscribe();
+}
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", (e) => {
   const n = e.target.closest("[data-vista]");
   if (n){ vista = n.dataset.vista; if (vista === "cliente") clienteSel = null; render(); return; }
   const f = e.target.closest("[data-filtro]"); if (f){ filtroAgenda = f.dataset.filtro; render(); return; }
   const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
+  const me = e.target.closest("[data-muelle-edit]"); if (me){ abrirEditorMuelles(me.dataset.muelleEdit); return; }
   const fi = e.target.closest("[data-ficha]"); if (fi){ clienteSel = fi.dataset.ficha; vista = "cliente"; render(); window.scrollTo(0, 0); return; }
   if (e.target.closest("[data-volver]")){ clienteSel = null; render(); }
 });
@@ -395,6 +502,8 @@ $("buscar").addEventListener("input", () => { vista = "cliente"; clienteSel = nu
 async function entrar(){
   try{
     await cargar();
+    try{ const { data: u } = await sb.auth.getUser(); D.usuario = (u && u.user && u.user.id) || null; }catch(e){}
+    escucharCambios();
     $("pantallaLogin").hidden = true; $("app").hidden = false;
     // Abrir directo a un cliente: seguros.html?cedula=123
     const ced = new URLSearchParams(location.search).get("cedula");
