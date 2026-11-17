@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>/* App de Contabilidad: la misma app abierta con ?modo=contabilidad (o contabilidad.html) muestra solo lo contable */
+if (/(^|[?&])modo=contabilidad(&|$)/.test(location.search)) document.documentElement.classList.add("modo-conta");</script>
 <meta charset="UTF-8">
 <script>
 /* Envío masivo de planillas pagadas: EN PAUSA (no se quitó) mientras Enlace Operativo da la API.
@@ -492,6 +494,25 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .srv-fila input[type=text]{ flex:1 1 150px; min-width:0; }
   .srv-fila input[data-srv-tipo][hidden]{ display:none; }
   .srv-total{ text-align:right; font-weight:800; font-variant-numeric:tabular-nums; }
+  /* App de Contabilidad (modo-conta) y app de Planillas sin lo contable */
+  html:not(.modo-conta) [data-conta], html:not(.modo-conta) #contaPanel{ display:none !important; }
+  .modo-conta #sidebar, .modo-conta #veloPrincipal, .modo-conta #advanceBtn, .modo-conta #recordatoriosBar, .modo-conta #buscarRapidoBtn, .modo-conta #bellBtn, .modo-conta #bellPanel{ display:none !important; }
+  .modo-conta .main-area .wrap > :not(header.top):not(.month-bar):not(#contaPanel){ display:none !important; }
+  .modo-conta .main-area{ border-top-left-radius:0; min-height:100vh; }
+  .conta-panel{ display:flex; flex-direction:column; gap:16px; margin-top:8px; }
+  .conta-titulo{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:8px; }
+  .conta-titulo h2{ margin:0; font-size:24px; }
+  .conta-titulo p{ margin:2px 0 0; color:var(--muted, #667085); font-size:14px; }
+  .conta-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+  .conta-kpi{ background:var(--card, #fff); border:1px solid var(--line, #E4E7EC); border-radius:14px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+  .conta-kpi small{ color:var(--muted, #667085); font-weight:600; font-size:13px; }
+  .conta-kpi b{ font-size:24px; }
+  .conta-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
+  .conta-card{ text-align:left; background:var(--card, #fff); border:1px solid var(--line, #E4E7EC); border-radius:14px; padding:16px; cursor:pointer; display:flex; flex-direction:column; gap:6px; color:inherit; font:inherit; min-height:96px; }
+  .conta-card:hover{ border-color:var(--navy, #1F3D70); box-shadow:0 2px 8px rgba(16,24,40,.08); }
+  .conta-card b{ font-size:16px; }
+  .conta-card span{ color:var(--muted, #667085); font-size:13px; }
+  .conta-card .sidebar-badge{ position:static; align-self:flex-start; }
   .seg-resumen{ margin-top:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; max-width:560px; }
   .seg-resumen-txt{ display:flex; flex-direction:column; gap:2px; font-size:13px; min-width:0; }
   .seg-resumen-aviso{ color:#B42318; font-weight:700; }
@@ -1808,12 +1829,12 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="sidebar-section-title">Cobros</div>
     <button type="button" class="sidebar-link" id="navCarteraBtn"><span class="sidebar-num">15</span><svg class="ico" aria-hidden="true"><use href="#i-carpeta"/></svg>Cartera (cobros del mes) ▾</button>
     <div class="sidebar-sub" id="carteraSub">
-      <button type="button" class="sidebar-total" data-informe="ingresos">
+      <button type="button" class="sidebar-total" data-informe="ingresos" data-conta>
         <span class="sidebar-total-label">📈 Ingresos del mes</span>
         <span class="sidebar-total-value" id="sidebarIngresosValue">—</span>
         <span class="sidebar-total-pagos" id="sidebarIngresosPagos">—</span>
       </button>
-      <button type="button" class="sidebar-total" data-informe="aportes">
+      <button type="button" class="sidebar-total" data-informe="aportes" data-conta>
         <span class="sidebar-total-label">🧾 Aportes recibidos y pagados</span>
         <span class="sidebar-total-value" id="sidebarAportesValue">—</span>
         <span class="sidebar-total-pagos" id="sidebarAportesPagos">—</span>
@@ -1866,12 +1887,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <button type="button" class="sidebar-link" id="navMuellesServicioBtn" style="display:none;"><span class="sidebar-num">7</span><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
     <button type="button" class="sidebar-link" id="navVencimientosBtn" style="display:none;"><span class="sidebar-num">24</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Vencimientos (licencia, SOAT, póliza) <span class="sidebar-badge" id="vencBadge" style="display:none;">0</span></button>
 
-    <div class="sidebar-section-title">Contabilidad</div>
-    <button type="button" class="sidebar-link" id="navResumenNegocio" data-informe="ingresos" style="display:none;" title="Ingresos de todo el negocio: planillas, muelles, SOAT y pólizas, gestiones e incapacidades"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Resumen del mes (Planillas + Muelles y Seguros)</button>
-    <button type="button" class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Libro contable (ingresos y gastos) <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
-    <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Crear borradores en Alegra</button>
-    <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Recibos y pagos en Alegra</button>
-    <button type="button" class="sidebar-link" id="navCierreContador" data-informe="cierre" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Cierre del mes para el contador</button>
+    <div class="sidebar-section-title" id="tituloContaApp" style="display:none;">Contabilidad</div>
+    <a class="sidebar-link" id="navAppContaBtn" href="./?modo=contabilidad" target="_blank" rel="noopener" style="display:none;" title="App aparte con los ingresos, gastos, Alegra y el cierre para el contador (solo administrador)"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Contabilidad · app ↗</a>
+    <div class="sidebar-section-title" data-conta>Contabilidad</div>
+    <button type="button" data-conta class="sidebar-link" id="navResumenNegocio" data-informe="ingresos" style="display:none;" title="Ingresos de todo el negocio: planillas, muelles, SOAT y pólizas, gestiones e incapacidades"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Resumen del mes (Planillas + Muelles y Seguros)</button>
+    <button type="button" data-conta class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Libro contable (ingresos y gastos) <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+    <button type="button" data-conta class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Crear borradores en Alegra</button>
+    <button type="button" data-conta class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Recibos y pagos en Alegra</button>
+    <button type="button" data-conta class="sidebar-link" id="navCierreContador" data-informe="cierre" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Cierre del mes para el contador</button>
 
     <button type="button" class="sidebar-link" id="navMenuBtn" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>Más opciones <span class="sidebar-mas-flecha" aria-hidden="true">▸</span></button>
 
@@ -1935,6 +1958,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     </div>
   </div>
 
+  <section id="contaPanel" class="conta-panel" aria-label="Contabilidad"></section>
   <div class="stats-strip" id="statsStrip"></div>
 
 
@@ -7861,6 +7885,8 @@ function renderMonthTotal(){
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
   document.getElementById("navFacturarMes").style.display = esAdmin() ? "" : "none";
   document.getElementById("navResumenNegocio").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navAppContaBtn").style.display = esAdmin() && !esModoConta() ? "" : "none";
+  document.getElementById("tituloContaApp").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("navCambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("cambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navRecibosCaja").style.display = esAdmin() ? "" : "none";
@@ -7873,6 +7899,7 @@ function renderMonthTotal(){
   document.getElementById("sidebarIngresosPagos").textContent = `${ingresos.pagos} pagos · ${fmt(ingresos.total)} con aportes`;
 
   renderCobrosExtra();
+  renderContaPanel();
 }
 
 // ---- Afiliaciones por confirmar (EPS, pensión, caja o ARL "en proceso") ----
@@ -11829,7 +11856,7 @@ function numerarMenu(){
   sb.querySelectorAll(".sidebar-link").forEach(el => {
     if (el.id === "navMenuBtn" || el.id === "navAyudasBtn") return;
     if (["navHoyBtn", "navAddBtn"].includes(el.id)){ const x = el.querySelector(":scope > .sidebar-num"); if (x) x.remove(); return; }
-    const oculto = el.style.display === "none";
+    const oculto = el.style.display === "none" || getComputedStyle(el).display === "none";
     const esSub = !!el.closest("#carteraSub, #enlacesLista");
     if (esSub && !el.closest("#carteraSub")) return; // enlaces del usuario: sin número
     let num = el.querySelector(":scope > .sidebar-num");
@@ -15827,6 +15854,49 @@ function datosHoy(){
     vencen: clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)),
   };
 }
+/* ---------- App de Contabilidad (index.html?modo=contabilidad · contabilidad.html) ----------
+   Es la misma app con los mismos cálculos; en ese modo solo se ve lo contable (solo administrador).
+   En la app de Planillas lo contable queda oculto y hay un enlace «Contabilidad · app ↗» para el administrador. */
+function esModoConta(){ return document.documentElement.classList.contains("modo-conta"); }
+if (esModoConta()){
+  document.title = "PROSEGUROSNET · Contabilidad";
+  try{ document.querySelector(".sidebar-brand-text small").textContent = "Contabilidad"; }catch(e){}
+}
+function renderContaPanel(){
+  const cont = document.getElementById("contaPanel");
+  if (!cont || !esModoConta()) return;
+  if (!esAdmin()){
+    cont.innerHTML = `<div class="conta-titulo"><div><h2>Contabilidad</h2><p>Esta parte es solo para el administrador.</p></div></div>
+      <a class="btn primary" href="./" style="align-self:flex-start">← Ir a la app de Planillas</a>`;
+    return;
+  }
+  const v = (id) => { const el = document.getElementById(id); return el ? el.textContent : "—"; };
+  const gb = document.getElementById("gastosBadge"), nGastos = gb && gb.style.display !== "none" ? gb.textContent : "";
+  const tarjeta = (accion, titulo, sub, extra) => `<button type="button" class="conta-card" data-conta-accion="${accion}"><b>${titulo}</b><span>${sub}</span>${extra || ""}</button>`;
+  cont.innerHTML = `
+    <div class="conta-titulo"><div><h2>Contabilidad · ${escHtml(store.currentMonth || "")}</h2><p>Todo el negocio: Planillas + Muelles y Seguros. Cambie el mes arriba.</p></div>
+      <a class="btn small ghost" href="./">← App de Planillas</a></div>
+    <div class="conta-kpis">
+      <div class="conta-kpi"><small>Ingresos propios del mes</small><b>${escHtml(v("sidebarIngresosValue"))}</b><span class="muted">${escHtml(v("sidebarIngresosPagos"))}</span></div>
+      <div class="conta-kpi"><small>Aportes recibidos (dinero de terceros)</small><b>${escHtml(v("sidebarAportesValue"))}</b><span class="muted">${escHtml(v("sidebarAportesPagos"))}</span></div>
+      <div class="conta-kpi"><small>Total a cobrar del mes</small><b>${escHtml(v("sidebarTotalGeneral"))}</b><span class="muted">Todas las empresas</span></div>
+    </div>
+    <div class="conta-grid">
+      ${tarjeta("ingresos", "📈 Resumen del mes", "Ingresos por línea: planillas, afiliaciones, muelles, SOAT y pólizas, gestiones e incapacidades")}
+      ${tarjeta("aportes", "🧾 Aportes recibidos y pagados", "Lo que pagaron los clientes para salud, pensión, ARL y caja")}
+      ${tarjeta("gastos", "📒 Libro contable", "Ingresos y gastos, facturas de proveedores", nGastos ? `<span class="sidebar-badge" title="Facturas vencidas o por vencer">${escHtml(nGastos)}</span>` : "")}
+      ${tarjeta("facturar", "🧾 Borradores en Alegra", "Facturas en borrador; el contador las emite")}
+      ${tarjeta("recibos", "💵 Recibos y pagos en Alegra", "Recibos de caja de lo pagado")}
+      ${tarjeta("cierre", "📚 Cierre del mes para el contador", "Archivo para enviarle al contador")}
+    </div>`;
+}
+document.getElementById("contaPanel").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-conta-accion]"); if (!b) return;
+  const a = b.dataset.contaAccion;
+  if (a === "gastos") document.getElementById("navGastosBtn").click();
+  else abrirInforme(a);
+});
+
 /* ---------- Salario de clientes de otras empresas e independientes ----------
    Los de PROSEGUROSNET van siempre por el salario mínimo. Los demás cotizan sobre su salario:
    se guarda por cédula en configuracion «pila_base_independientes» (la misma base que usa la planilla)
@@ -16058,7 +16128,7 @@ document.getElementById("hoyNuevoBtn").addEventListener("click", () => { ayCerra
 // Se abre sola la primera vez del día en cada equipo (si hay algo pendiente)
 let _hoyRevisado = false;
 function mostrarHoySiToca(){
-  if (_hoyRevisado || !records.length) return;
+  if (_hoyRevisado || !records.length || esModoConta()) return;
   _hoyRevisado = true;
   setTimeout(() => {
     const clave = "prosegurosnet_hoy_visto";
