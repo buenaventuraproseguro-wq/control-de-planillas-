@@ -237,7 +237,7 @@ const MUELLES = ["Sociedad", "TC Buen", "Agua Dulce"];
 const EMPRESA_MUELLES = "actualización de muelles";
 const DIAS_VENTANA = 30;
 
-const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null };
+const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null, docs: [] };
 let vista = "inicio", filtroAgenda = "toca", filtroMuelle = "", clienteSel = null;
 
 const $ = (id) => document.getElementById(id);
@@ -269,6 +269,7 @@ async function cargar(){
   D.clientes = cl.data || [];
   D.polizas = po.error ? [] : (po.data || []);
   D.responsables = new Map((re.data || []).map(r => [norm(r.clave || r.nombre), r]));
+  await cargarDocsMuelles();
 }
 // A quién se le escribe: si tiene responsable (persona) con teléfono, a él; si no, al cliente
 function telDestino(c){
@@ -440,11 +441,12 @@ function vistaMuelles(){
       <span class="nombre" style="font-size:14px">${esc(propio(c.nombre))}</span>
       <span class="detalle">${esServicioMuelle(c) ? "Independiente · " + esc(propio(c.responsable_grupo || "")) : "Cliente PROSEGUROSNET"}</span>
       <div class="puntos">${MUELLES.map(m => { const d = diasHasta(vpm[m]); return `<span class="punto ${ac[m] ? "e-verde" : "e-gris"}" title="${esc(m)}">${esc(m)}${d !== null ? " · " + (d < 0 ? "venció" : d + " d") : ""}</span>`; }).join("")}</div>
-      <span class="editar">✏️ Cambiar muelles</span>
+      ${(() => { const e = estadoDocs(c); return `<span class="detalle" style="font-weight:700;color:${e.ok === e.total ? "var(--verde)" : "var(--nar-t)"}">📎 ${e.ok} de ${e.total} documentos${e.ok === e.total ? " ✓" : ""}</span>`; })()}
+      <span class="editar">✏️ Cambiar muelles y documentos</span>
     </button>`;
   };
   return `<div class="card">
-    <div class="card-h"><h2>Trámites de muelles · ${esc(D.mes ? D.mes.name : "")}</h2><div class="pills">${pills}<button type="button" class="btn-prim" data-agregar-muelle="1" style="background:var(--naranja)">＋ Agregar persona</button></div></div>
+    <div class="card-h"><h2>Trámites de muelles · ${esc(D.mes ? D.mes.name : "")}</h2><div class="pills">${pills}</div></div>
     <div class="kanban">${cols.map(([t, k]) => { const it = lista.filter(c => estadoDe(c) === k); return `<div class="col"><div class="col-h">${t}<span>${it.length}</span></div>${it.map(tarjeta).join("") || `<div class="vacio">Nadie aquí.</div>`}</div>`; }).join("")}</div>
     <p class="sub">Verde = aceptado en ese muelle. Toque un cliente para marcar cada muelle como aceptado o pendiente y poner su fecha de vencimiento. Se guarda en la misma base de la app de Planillas.</p>
   </div>`;
@@ -533,6 +535,7 @@ function vistaCliente(){
       <a href="./" style="font-weight:700;font-size:14px;color:var(--azul)">Ver en la app de Planillas →</a>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-prim" data-muelle-edit="${esc(c.id)}">✏️ Cambiar muelles</button>` : ""}
+        ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>` : ""}
         ${c.id ? `<button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">🚗 Vehículo</button>` : ""}
         <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="${VENTA_SOAT_EN_PAUSA ? "" : "SOAT"}">＋ ${VENTA_SOAT_EN_PAUSA ? "Registrar póliza" : "Vender SOAT o póliza"}</button>
       </div>
@@ -571,7 +574,8 @@ function pintarEditor(){
       <label>Vence <input type="date" data-vence="${esc(m)}" value="${esc(String(edicion.vpm[m] || "").slice(0, 10))}"></label>
     </div>`).join("")}
     <div class="m-acciones">
-      <a class="btn-wa" style="height:40px;margin-right:auto" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>Avisar por WhatsApp</a>
+      <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>
+      <a class="btn-wa" style="height:40px" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>Avisar por WhatsApp</a>
       <button type="button" class="btn-sec" data-m-cancelar="1">Cancelar</button>
       <button type="button" class="btn-prim" data-m-guardar="1">Guardar</button>
     </div>
@@ -696,7 +700,7 @@ function abrirFormPoliza(p, renovarDe){
   $("modal2").hidden = false;
   $(p && p.nombre ? "pVence" : "pCedula").focus();
 }
-function cerrarModal2(){ polEdit = null; polRenov = null; vehEdit = null; $("modal2").hidden = true; $("modal2").innerHTML = ""; }
+function cerrarModal2(){ docsCliente = null; polEdit = null; polRenov = null; vehEdit = null; $("modal2").hidden = true; $("modal2").innerHTML = ""; }
 function abrirVenta(cedula, tipo){
   const c = cedula ? D.clientes.find(x => String(x.cedula) === String(cedula)) : null;
   abrirFormPoliza(c ? { cedula: c.cedula, nombre: c.nombre, telefono: telValido(c.telefono) || "", placa: c.placa || "", tipo: tipo || (VENTA_SOAT_EN_PAUSA ? "" : "SOAT") } : (tipo ? { tipo } : null));
@@ -945,6 +949,89 @@ $("modal2").addEventListener("click", (e) => {
   const ab = e.target.closest("[data-a-abrir]"); if (ab){ cerrarModal2(); abrirEditorMuelles(ab.dataset.aAbrir); }
 });
 
+/* ---------- Documentos de las personas de muelles ----------
+   Mismo lugar que la app de Planillas: storage «documentos-clientes/<cédula>/<tipo>» (o <tipo>_<AAAA-MM> los del mes)
+   y una fila en la tabla «documentos» (cédula, tipo, mes). Así los ven las dos apps. Solo agrega o reemplaza el archivo de esa casilla. */
+const DOCS_PERSONA = [["cedula", "Cédula"], ["licencia", "Licencia de conducción"]];
+const DOCS_MES = [["planilla_pagada", "Planilla pagada del mes"], ["comprobante_pago", "Comprobante de pago del mes"]];
+const DOCS_VEHICULO = [["tarjeta_propiedad", "Tarjeta de propiedad"], ["soat", "SOAT"], ["tecnomecanica", "Tecnomecánica"], ["tarjeta_trailer", "Tarjeta del tráiler o remolque"]];
+const MESES_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+function mesISOActual(){ const m = String(D.mes ? D.mes.name : "").toLowerCase().match(/^(\S+)\s+de\s+(\d{4})$/); const i = m ? MESES_ES.indexOf(m[1]) : -1; return i < 0 ? "" : `${m[2]}-${String(i + 1).padStart(2, "0")}`; }
+async function cargarDocsMuelles(){
+  try{
+    const ceds = [...new Set(D.clientes.filter(tieneMuelle).map(c => String(c.cedula)))];
+    if (!ceds.length){ D.docs = []; return; }
+    const { data, error } = await sb.from("documentos").select("cedula,tipo,mes,storage_path").in("cedula", ceds);
+    D.docs = error ? [] : (data || []);
+  }catch(e){ D.docs = []; }
+}
+function docDe(ced, tipo, mes){ return D.docs.find(d => String(d.cedula) === String(ced) && d.tipo === tipo && String(d.mes || "") === String(mes || "")); }
+// Lo que se pide: cédula, licencia, planilla y comprobante del mes (actualización y enrolamiento). El vehículo es aparte.
+function estadoDocs(c){
+  const mes = mesISOActual();
+  const pedidos = [...DOCS_PERSONA.map(([k]) => [k, ""]), ...DOCS_MES.map(([k]) => [k, mes])];
+  const ok = pedidos.filter(([k, m]) => docDe(c.cedula, k, m)).length;
+  return { ok, total: pedidos.length };
+}
+let docsCliente = null;
+function abrirDocs(id){
+  const c = D.clientes.find(x => String(x.id) === String(id)); if (!c) return;
+  docsCliente = c; cerrarEditor(); pintarDocs();
+}
+function pintarDocs(){
+  const c = docsCliente; if (!c) return;
+  const mes = mesISOActual(), sv = c.servicios_muelle || {};
+  const servicios = Object.keys(sv).filter(k => !k.startsWith("_")).map(k => k === "enrolamiento" ? "Enrolamiento" : k === "curso" ? "Curso " + (sv._cursoTipo || "") : k.startsWith("act:") ? "Actualización " + k.slice(4) : "Actualización").join(" · ");
+  const fila = (k, n, m) => {
+    const d = docDe(c.cedula, k, m);
+    return `<div class="m-fila" style="grid-template-columns:1fr auto;padding:10px 12px">
+      <span><b style="font-size:14px">${esc(n)}</b><br><small style="color:${d ? "var(--verde)" : "var(--nar-t)"};font-weight:700">${d ? "✅ Guardado" : "Falta"}</small></span>
+      <span style="display:flex;gap:6px">${d ? `<button type="button" class="btn-sec" data-doc-ver="${esc(d.storage_path)}">Ver</button>` : ""}
+        <label class="btn-prim" style="display:inline-flex;align-items:center;cursor:pointer;color:#fff;grid-column:auto;font-size:13px;font-weight:700">${d ? "Cambiar" : "Subir"}<input type="file" accept="image/*,application/pdf" data-doc-subir="${esc(k)}" data-doc-mes="${esc(m)}" hidden></label></span>
+    </div>`;
+  };
+  const e = estadoDocs(c);
+  $("modal2").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="dTit">
+    <div><h2 id="dTit">Documentos de ${esc(propio(c.nombre))}</h2>
+      <p class="sub" style="margin:4px 0 0">CC ${esc(c.cedula)}${c.telefono ? " · 📱 " + esc(c.telefono) : ""}${c.responsable_grupo ? " · Paga: " + esc(propio(c.responsable_grupo)) : ""}${c.placa ? " · Placa " + esc(String(c.placa).toUpperCase()) : ""}</p>
+      ${servicios ? `<p class="sub" style="margin:2px 0 0">⚓ ${esc(servicios)}</p>` : ""}
+      <p class="sub" style="margin:6px 0 0;font-weight:700;color:${e.ok === e.total ? "var(--verde)" : "var(--nar-t)"}">${e.ok} de ${e.total} documentos para actualizar o enrolar</p></div>
+    <b style="font-size:14px">👤 De la persona</b>
+    ${DOCS_PERSONA.map(([k, n]) => fila(k, n, "")).join("")}
+    <b style="font-size:14px">📅 De ${esc(D.mes ? D.mes.name : "este mes")}</b>
+    ${DOCS_MES.map(([k, n]) => fila(k, n, mes)).join("")}
+    <b style="font-size:14px">🚛 Del vehículo (si tiene)</b>
+    ${DOCS_VEHICULO.map(([k, n]) => fila(k, n, "")).join("")}
+    <div class="err" id="dErr"></div>
+    <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cerrar</button></div>
+  </div>`;
+  $("modal2").hidden = false;
+}
+async function subirDoc(input){
+  const c = docsCliente, archivo = input.files && input.files[0]; if (!c || !archivo) return;
+  if (archivo.size > 15 * 1024 * 1024){ $("dErr").textContent = "El archivo pesa más de 15 MB. Súbalo más liviano."; return; }
+  const tipo = input.dataset.docSubir, mes = input.dataset.docMes || "";
+  const ruta = mes ? `${c.cedula}/${tipo}_${mes}` : `${c.cedula}/${tipo}`;
+  $("dErr").textContent = "Subiendo…";
+  try{
+    const up = await sb.storage.from("documentos-clientes").upload(ruta, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+    if (up.error) throw up.error;
+    const ahora = new Date().toISOString();
+    let r = await sb.from("documentos").upsert({ cedula: String(c.cedula), tipo, mes, storage_path: ruta, uploaded_by: D.usuario, uploaded_at: ahora }, { onConflict: "cedula,tipo,mes" });
+    if (r.error) throw r.error;
+    D.docs = D.docs.filter(d => !(String(d.cedula) === String(c.cedula) && d.tipo === tipo && String(d.mes || "") === mes)).concat([{ cedula: String(c.cedula), tipo, mes, storage_path: ruta }]);
+    pintarDocs(); toast("✅ Documento guardado."); if (vista === "muelles" || vista === "cliente") setTimeout(render, 0);
+  }catch(err){ console.error(err); $("dErr").textContent = "No se pudo subir (revise el internet). No se cambió nada."; }
+}
+async function verDoc(ruta){
+  const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(ruta, 600);
+  if (error || !data){ toast("No se pudo abrir el documento."); return; }
+  window.open(data.signedUrl, "_blank", "noopener");
+}
+$("modal2").addEventListener("change", (e) => { const i = e.target.closest("[data-doc-subir]"); if (i) subirDoc(i); });
+$("modal2").addEventListener("click", (e) => { const v = e.target.closest("[data-doc-ver]"); if (v) verDoc(v.dataset.docVer); });
+$("modalMuelles").addEventListener("click", (e) => { const d = e.target.closest("[data-docs-abrir]"); if (d) abrirDocs(d.dataset.docsAbrir); });
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", (e) => {
   const n = e.target.closest("[data-vista]");
@@ -952,6 +1039,7 @@ document.addEventListener("click", (e) => {
   const f = e.target.closest("[data-filtro]"); if (f){ filtroAgenda = f.dataset.filtro; render(); return; }
   const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
   if (e.target.closest("[data-agregar-muelle]")){ abrirAgregarMuelle(); return; }
+  const dd = e.target.closest("[data-docs-abrir]"); if (dd && !e.target.closest("#modalMuelles")){ abrirDocs(dd.dataset.docsAbrir); return; }
   const me = e.target.closest("[data-muelle-edit]"); if (me){ abrirEditorMuelles(me.dataset.muelleEdit); return; }
   const av = e.target.closest("[data-avisar]"); if (av){ avisar(+av.dataset.avisar); return; }
   const ve = e.target.closest("[data-vender]"); if (ve){ abrirVenta(ve.dataset.vender, ve.dataset.venderTipo); return; }
