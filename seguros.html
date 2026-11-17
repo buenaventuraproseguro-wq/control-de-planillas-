@@ -438,7 +438,7 @@ function vistaMuelles(){
     </button>`;
   };
   return `<div class="card">
-    <div class="card-h"><h2>Trámites de muelles · ${esc(D.mes ? D.mes.name : "")}</h2><div class="pills">${pills}</div></div>
+    <div class="card-h"><h2>Trámites de muelles · ${esc(D.mes ? D.mes.name : "")}</h2><div class="pills">${pills}<button type="button" class="btn-prim" data-agregar-muelle="1" style="background:var(--naranja)">＋ Agregar persona</button></div></div>
     <div class="kanban">${cols.map(([t, k]) => { const it = lista.filter(c => estadoDe(c) === k); return `<div class="col"><div class="col-h">${t}<span>${it.length}</span></div>${it.map(tarjeta).join("") || `<div class="vacio">Nadie aquí.</div>`}</div>`; }).join("")}</div>
     <p class="sub">Verde = aceptado en ese muelle. Toque un cliente para marcar cada muelle como aceptado o pendiente y poner su fecha de vencimiento. Se guarda en la misma base de la app de Planillas.</p>
   </div>`;
@@ -792,7 +792,7 @@ async function guardarVehiculo(){
   catch(err){ console.error(err); b.disabled = false; b.textContent = "Guardar"; $("vErr").textContent = "No se pudo guardar (revise el internet). No se cambió nada."; }
 }
 $("modal2").addEventListener("click", (e) => { if (e.target.id === "modal2" || e.target.closest("[data-cerrar2]")) cerrarModal2(); });
-$("modal2").addEventListener("submit", (e) => { e.preventDefault(); if (e.target.id === "formPol") guardarPoliza(); else if (e.target.id === "formVeh") guardarVehiculo(); });
+$("modal2").addEventListener("submit", (e) => { e.preventDefault(); if (e.target.id === "formPol") guardarPoliza(); else if (e.target.id === "formVeh") guardarVehiculo(); else if (e.target.id === "formAgregar") guardarAgregar(); });
 $("modal2").addEventListener("change", (e) => {
   if (e.target.id === "pArchivo") subirArchivoPoliza(e.target.files && e.target.files[0]);
   else if (e.target.id === "pIni" && !$("pVence").value && e.target.value) $("pVence").value = masUnAnio(e.target.value);
@@ -811,12 +811,141 @@ document.addEventListener("input", (e) => {
   }
 });
 
+/* ---------- Agregar persona de muelles (sin repetir clientes) ----------
+   Antes de guardar se busca la cédula en el mes en la nube:
+   - si ya está como cliente de muelles: no se crea otra, se abren sus muelles;
+   - si es cliente de PROSEGUROSNET u otra empresa: no se crea otra, se ofrece marcar que trabaja en muelles (solo la columna muelle);
+   - si no existe: se crea con empresa «Actualización de Muelles», estado DEBE y sus servicios (igual que la app de Planillas).
+   La base además no deja dos filas con la misma cédula en el mismo mes. */
+const SRV_MUELLE = [["act:Sociedad", "Actualización muelle Sociedad (cada mes)"], ["act:TC Buen", "Actualización muelle TC Buen (cada mes)"], ["act:Agua Dulce", "Actualización muelle Agua Dulce (cada mes)"], ["enrolamiento", "Enrolamiento (una sola vez)"], ["curso", "Curso (solo este mes)"]];
+let agregarExistente = null; // fila encontrada en la nube con esa cédula
+function abrirAgregarMuelle(){
+  agregarExistente = null;
+  $("modal2").innerHTML = `<form class="modal" id="formAgregar" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="aTit">
+    <div><h2 id="aTit">Agregar persona de muelles</h2><p class="sub" style="margin:4px 0 0">Para personas de otras empresas que vienen por el servicio de muelles. Si la cédula ya está en la app de Planillas, no se repite.</p></div>
+    <div class="f-grid">
+      <label class="f">Cédula *<input class="m-input" id="aCedula" inputmode="numeric" maxlength="12"></label>
+      <label class="f">Nombre completo *<input class="m-input" id="aNombre" maxlength="120"></label>
+      <label class="f">Teléfono (WhatsApp) *<input class="m-input" id="aTel" inputmode="numeric" maxlength="14"></label>
+      <label class="f">Quién paga (empresa o persona)<input class="m-input" id="aPaga" maxlength="120"></label>
+    </div>
+    <div id="aAviso"></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <b style="font-size:14px">⚓ Servicios</b>
+      ${SRV_MUELLE.map(([k, n]) => `<div class="m-fila" style="grid-template-columns:auto 1fr 140px;padding:8px 12px">
+        <input type="checkbox" data-asrv="${esc(k)}" id="as_${esc(k.replace(/[^a-z]/gi, ""))}" style="width:20px;height:20px">
+        <label for="as_${esc(k.replace(/[^a-z]/gi, ""))}" style="grid-column:auto;font-size:14px;color:var(--texto);font-weight:600">${esc(n)}</label>
+        <input class="m-input" type="number" min="0" step="1" inputmode="numeric" data-avalor="${esc(k)}" placeholder="Valor" aria-label="Valor de ${esc(n)}">
+      </div>`).join("")}
+      <input class="m-input" id="aCursoTipo" maxlength="80" placeholder="¿Qué curso? (solo si marcó curso)">
+      <div style="font-weight:800;text-align:right" id="aTotal">Total: $0</div>
+    </div>
+    <label class="f">Foto o PDF de la cédula (recomendado)<input class="m-input" type="file" id="aCedulaArchivo" accept="image/*,application/pdf" style="padding-top:8px"></label>
+    <div class="err" id="aErr"></div>
+    <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button><button type="submit" class="btn-prim" id="aGuardar">Guardar</button></div>
+  </form>`;
+  $("modal2").hidden = false; $("aCedula").focus();
+}
+function totalServiciosForm(){
+  let tot = 0; const sv = {};
+  document.querySelectorAll("#formAgregar [data-asrv]").forEach(ch => {
+    const val = Math.round(Number(document.querySelector(`#formAgregar [data-avalor="${ch.dataset.asrv}"]`).value) || 0);
+    if (ch.checked){ sv[ch.dataset.asrv] = val; tot += val; }
+  });
+  return { sv, tot };
+}
+async function buscarCedulaEnMes(ced){
+  const { data, error } = await sb.from("clients").select("id,cedula,nombre,empresa,muelle,responsable_grupo,aceptado_por_muelle,venc_por_muelle").eq("month_id", D.mes.id).eq("cedula", ced).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+async function revisarCedulaAgregar(){
+  const ced = $("aCedula").value.replace(/\D/g, ""); $("aCedula").value = ced;
+  agregarExistente = null; $("aAviso").innerHTML = "";
+  if (ced.length < 6) return;
+  try{
+    const f = await buscarCedulaEnMes(ced); if (!f) return;
+    agregarExistente = f;
+    const esMuelle = norm(f.empresa) === norm(EMPRESA_MUELLES);
+    const yaMuelle = esMuelle || !!String(f.muelle || "").trim();
+    $("aAviso").innerHTML = `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)"><b>Esa cédula ya existe en ${esc(D.mes.name)}:</b> ${esc(propio(f.nombre))} (${esc(esMuelle ? "muelles" : (f.empresa || "PROSEGUROSNET"))}). No se va a crear otra.
+      ${yaMuelle ? `<br>Ya trabaja en muelles. <button type="button" class="btn-prim" data-a-abrir="${esc(f.id)}" style="margin-top:8px">Ver sus muelles</button>`
+        : `<br>Es cliente de la app de Planillas. <button type="button" class="btn-prim" data-a-marcar="1" style="margin-top:8px">Marcar que trabaja en muelles</button>`}</div>`;
+    if (!$("aNombre").value) $("aNombre").value = propio(f.nombre);
+  }catch(err){ console.error(err); }
+}
+async function marcarMuelleExistente(){
+  const f = agregarExistente; if (!f) return;
+  try{
+    const ahora = new Date().toISOString();
+    const upd = { muelle: "Muelle", updated_at: ahora, ultima_edicion: ahora }; if (D.usuario) upd.updated_by = D.usuario;
+    const { error } = await sb.from("clients").update(upd).eq("id", f.id);
+    if (error) throw error;
+    await cargar(); cerrarModal2(); vista = "muelles"; render();
+    toast(`✅ ${propio(f.nombre).split(" ")[0]} ya aparece en Muelles (sin repetirlo).`);
+  }catch(err){ console.error(err); toast("No se pudo marcar (revise el internet). No se cambió nada."); }
+}
+async function guardarAgregar(){
+  const err = (m) => { $("aErr").textContent = m; };
+  const ced = $("aCedula").value.replace(/\D/g, "");
+  const nombre = $("aNombre").value.trim().replace(/\s+/g, " ").toLowerCase();
+  const tel = $("aTel").value.replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+  if (ced.length < 6 || ced.length > 12) return err("La cédula debe tener entre 6 y 12 números.");
+  if (!nombre) return err("Escriba el nombre.");
+  if (tel.length !== 10) return err(`El teléfono debe tener 10 dígitos (tiene ${tel.length}).`);
+  const { sv, tot } = totalServiciosForm();
+  if (!Object.keys(sv).length) return err("Marque al menos un servicio.");
+  if (Object.values(sv).some(v => !v)) return err("Escriba el valor de cada servicio marcado.");
+  if ("curso" in sv){ const tipo = $("aCursoTipo").value.trim(); if (!tipo) return err("Escriba qué curso es."); sv._cursoTipo = tipo; }
+  const b = $("aGuardar"); b.disabled = true; b.textContent = "Revisando…";
+  try{
+    // 1) nunca repetir: se vuelve a buscar en la nube justo antes de guardar
+    const f = await buscarCedulaEnMes(ced);
+    if (f){ agregarExistente = f; b.disabled = false; b.textContent = "Guardar"; await revisarCedulaAgregar(); return err("Esa cédula ya existe este mes: no se creó otra. Use el botón de arriba."); }
+    // 2) número siguiente de la lista del mes
+    const { data: ult } = await sb.from("clients").select("row_no").eq("month_id", D.mes.id).order("row_no", { ascending: false, nullsFirst: false }).limit(1);
+    const rowNo = ((ult && ult[0] && Number(ult[0].row_no)) || 0) + 1;
+    const ahora = new Date().toISOString();
+    const fila = { month_id: D.mes.id, row_no: rowNo, cedula: ced, nombre, empresa: "Actualización de Muelles", responsable_grupo: $("aPaga").value.trim().toLowerCase(),
+      telefono: tel, muelle: "Muelle", servicios_muelle: sv, costo_servicio: tot, estado_tramite: "DEBE", aceptado_por_muelle: {}, venc_por_muelle: {}, beneficiarios: [],
+      updated_at: ahora, ultima_edicion: ahora };
+    if (D.usuario) fila.updated_by = D.usuario;
+    b.textContent = "Guardando…";
+    const { error } = await sb.from("clients").insert(fila);
+    if (error){
+      if (error.code === "23505"){ b.disabled = false; b.textContent = "Guardar"; await revisarCedulaAgregar(); return err("Esa cédula ya existe este mes: no se creó otra."); }
+      throw error;
+    }
+    // 3) cédula (opcional) en el mismo lugar que la app de Planillas
+    const arch = $("aCedulaArchivo").files && $("aCedulaArchivo").files[0];
+    if (arch){
+      try{
+        const ruta = `${ced}/cedula`;
+        const up = await sb.storage.from("documentos-clientes").upload(ruta, arch, { upsert: true, contentType: arch.type || "application/octet-stream" });
+        if (!up.error){
+          let r = await sb.from("documentos").upsert({ cedula: ced, tipo: "cedula", mes: "", storage_path: ruta, uploaded_by: D.usuario, uploaded_at: ahora }, { onConflict: "cedula,tipo,mes" });
+          if (r.error) await sb.from("documentos").upsert({ cedula: ced, tipo: "cedula", storage_path: ruta, uploaded_by: D.usuario, uploaded_at: ahora }, { onConflict: "cedula,tipo" });
+        }
+      }catch(e2){ console.error(e2); toast("La persona quedó guardada, pero la cédula no se pudo subir."); }
+    }
+    await cargar(); cerrarModal2(); vista = "muelles"; render();
+    toast(`✅ ${propio(nombre).split(" ")[0]} agregado(a) a Muelles · ${fmt(tot)}. Ya aparece en la app de Planillas.`);
+  }catch(e){ console.error(e); b.disabled = false; b.textContent = "Guardar"; err("No se pudo guardar (revise el internet). No se creó nada."); }
+}
+$("modal2").addEventListener("input", (e) => { if (e.target.closest("#formAgregar")) $("aTotal").textContent = "Total: " + fmt(totalServiciosForm().tot); });
+$("modal2").addEventListener("focusout", (e) => { if (e.target.id === "aCedula") revisarCedulaAgregar(); });
+$("modal2").addEventListener("click", (e) => {
+  if (e.target.closest("[data-a-marcar]")){ marcarMuelleExistente(); return; }
+  const ab = e.target.closest("[data-a-abrir]"); if (ab){ cerrarModal2(); abrirEditorMuelles(ab.dataset.aAbrir); }
+});
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", (e) => {
   const n = e.target.closest("[data-vista]");
   if (n){ vista = n.dataset.vista; if (vista === "cliente") clienteSel = null; render(); return; }
   const f = e.target.closest("[data-filtro]"); if (f){ filtroAgenda = f.dataset.filtro; render(); return; }
   const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
+  if (e.target.closest("[data-agregar-muelle]")){ abrirAgregarMuelle(); return; }
   const me = e.target.closest("[data-muelle-edit]"); if (me){ abrirEditorMuelles(me.dataset.muelleEdit); return; }
   const av = e.target.closest("[data-avisar]"); if (av){ avisar(+av.dataset.avisar); return; }
   const ve = e.target.closest("[data-vender]"); if (ve){ abrirVenta(ve.dataset.vender, ve.dataset.venderTipo); return; }
