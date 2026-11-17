@@ -12883,6 +12883,7 @@ async function mostrarAppPrincipal(user){
   renderEnlacesRapidos();
   await iniciarAppConSupabase();
   cargarResponsablesCreados(); // teléfonos y cédulas de los responsables (los mensajes van a ellos)
+  setTimeout(revisarPasoACliente, 600); // viene de Muelles y Seguros: «Pasar a cliente de planillas»
   cargarCodigosPila(); // trae también los salarios (bases) de otras empresas e independientes
   cargarGastos();
   cargarCRM();
@@ -16248,6 +16249,30 @@ document.getElementById("contaPanel").addEventListener("click", (e) => {
   if (a === "gastos") document.getElementById("navGastosBtn").click();
   else abrirInforme(a);
 });
+
+/* ---------- «Pasar a cliente de planillas» (llega desde Muelles y Seguros con ?pasar=<cédula>) ----------
+   Abre el MISMO registro en Editar con la empresa PROSEGUROSNET y estado AFILIACIÓN ya puestos.
+   No guarda nada: la persona revisa, llena la seguridad social y toca Guardar. No se crea otro cliente. */
+function revisarPasoACliente(){
+  let ced = "";
+  try{ ced = String(new URLSearchParams(location.search).get("pasar") || "").replace(/\D/g, ""); }catch(e){}
+  if (!ced) return;
+  try{ const u = new URL(location.href); u.searchParams.delete("pasar"); history.replaceState(null, "", u.pathname + (u.search || "") + u.hash); }catch(e){}
+  const r = records.find(x => String(x["Cédula"]) === ced);
+  if (!r){ alertApp(`No encontré la cédula ${ced} en ${store.currentMonth}. Búsquela en la lista.`); return; }
+  openModal(r);
+  setTimeout(() => {
+    const emp = getField("Empresa");
+    if (![...emp.options].some(o => o.value === "PROSEGUROSNET")) emp.insertAdjacentHTML("afterbegin", '<option value="PROSEGUROSNET">PROSEGUROSNET</option>');
+    emp.value = "PROSEGUROSNET";
+    aplicarVisibilidadNomina();
+    getField("Muelle").value = "Muelle"; // sigue saliendo en Muelles y Seguros
+    getField("Estado").value = "AFILIACION";
+    if (!getField("Costo").readOnly) getField("Costo").value = COSTO_AFILIACION;
+    if (!getField("FechaIngreso").value) getField("FechaIngreso").value = fechaHoyISO();
+    alertApp(`Pasando a ${nombrePropio(r["Nombre del Afiliado"] || "")} a cliente de planillas.\n\nYa quedaron puestos: empresa PROSEGUROSNET, estado AFILIACIÓN, servicio ${fmt(COSTO_AFILIACION)} y la fecha de hoy. Sus datos y documentos siguen.\n\nLlene EPS, pensión, ARL y caja, revise el valor (si este mes también paga la actualización del muelle, súmela) y toque Guardar. Si cierra sin guardar, no cambia nada.`);
+  }, 250);
+}
 
 /* ---------- Salario de clientes de otras empresas e independientes ----------
    Los de PROSEGUROSNET van siempre por el salario mínimo. Los demás cotizan sobre su salario:

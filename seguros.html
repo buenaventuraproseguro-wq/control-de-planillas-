@@ -536,6 +536,7 @@ function vistaCliente(){
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-prim" data-muelle-edit="${esc(c.id)}">✏️ Cambiar muelles</button>` : ""}
         ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>` : ""}
+        ${c.id && esServicioMuelle(c) ? `<a class="btn-sec" style="display:inline-flex;align-items:center;text-decoration:none" href="./?pasar=${encodeURIComponent(c.cedula)}" target="_blank" rel="noopener">👤 Pasar a cliente de planillas ↗</a>` : ""}
         ${c.id ? `<button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">🚗 Vehículo</button>` : ""}
         <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="${VENTA_SOAT_EN_PAUSA ? "" : "SOAT"}">＋ ${VENTA_SOAT_EN_PAUSA ? "Registrar póliza" : "Vender SOAT o póliza"}</button>
       </div>
@@ -1003,7 +1004,7 @@ function pintarDocs(){
     <b style="font-size:14px">🚛 Del vehículo (si tiene)</b>
     ${DOCS_VEHICULO.map(([k, n]) => fila(k, n, "")).join("")}
     <div class="err" id="dErr"></div>
-    <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cerrar</button></div>
+    <div class="m-acciones">${esServicioMuelle(c) ? `<a class="btn-sec" style="margin-right:auto;display:inline-flex;align-items:center;text-decoration:none" href="./?pasar=${encodeURIComponent(c.cedula)}" target="_blank" rel="noopener" title="Abre la app de Planillas con esta persona lista para afiliar">👤 Pasar a cliente de planillas ↗</a>` : ""}<button type="button" class="btn-sec" data-cerrar2="1">Cerrar</button></div>
   </div>`;
   $("modal2").hidden = false;
 }
