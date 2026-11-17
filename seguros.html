@@ -851,7 +851,7 @@ function abrirAgregarMuelle(){
       <input class="m-input" id="aCursoTipo" maxlength="80" placeholder="¿Qué curso? (solo si marcó curso)">
       <div style="font-weight:800;text-align:right" id="aTotal">Total: $0</div>
     </div>
-    <label class="f">Foto o PDF de la cédula (recomendado)<input class="m-input" type="file" id="aCedulaArchivo" accept="image/*,application/pdf" style="padding-top:8px"></label>
+    <label class="f">Foto o PDF de la cédula (recomendado; se guarda como imagen liviana)<input class="m-input" type="file" id="aCedulaArchivo" accept="image/*,application/pdf" style="padding-top:8px"></label>
     <div class="err" id="aErr"></div>
     <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button><button type="submit" class="btn-prim" id="aGuardar">Guardar</button></div>
   </form>`;
@@ -932,7 +932,8 @@ async function guardarAgregar(){
     if (arch){
       try{
         const ruta = `${ced}/cedula`;
-        const up = await sb.storage.from("documentos-clientes").upload(ruta, arch, { upsert: true, contentType: arch.type || "application/octet-stream" });
+        const img = await aImagenLiviana(arch);
+        const up = await sb.storage.from("documentos-clientes").upload(ruta, img, { upsert: true, contentType: "image/jpeg" });
         if (!up.error){
           let r = await sb.from("documentos").upsert({ cedula: ced, tipo: "cedula", mes: "", storage_path: ruta, uploaded_by: D.usuario, uploaded_at: ahora }, { onConflict: "cedula,tipo,mes" });
           if (r.error) await sb.from("documentos").upsert({ cedula: ced, tipo: "cedula", storage_path: ruta, uploaded_by: D.usuario, uploaded_at: ahora }, { onConflict: "cedula,tipo" });
@@ -987,7 +988,7 @@ function pintarDocs(){
     const d = docDe(c.cedula, k, m);
     return `<div class="m-fila" style="grid-template-columns:1fr auto;padding:10px 12px">
       <span><b style="font-size:14px">${esc(n)}</b><br><small style="color:${d ? "var(--verde)" : "var(--nar-t)"};font-weight:700">${d ? "✅ Guardado" : "Falta"}</small></span>
-      <span style="display:flex;gap:6px">${d ? `<button type="button" class="btn-sec" data-doc-ver="${esc(d.storage_path)}">Ver</button>` : ""}
+      <span style="display:flex;gap:6px">${d ? `<button type="button" class="btn-sec" data-doc-ver="${esc(d.storage_path)}">Ver</button><button type="button" class="btn-sec" data-doc-pdf="${esc(d.storage_path)}" data-doc-nombre="${esc(n)}">⬇️ PDF</button>` : ""}
         <label class="btn-prim" style="display:inline-flex;align-items:center;cursor:pointer;color:#fff;grid-column:auto;font-size:13px;font-weight:700">${d ? "Cambiar" : "Subir"}<input type="file" accept="image/*,application/pdf" data-doc-subir="${esc(k)}" data-doc-mes="${esc(m)}" hidden></label></span>
     </div>`;
   };
@@ -997,6 +998,7 @@ function pintarDocs(){
       <p class="sub" style="margin:4px 0 0">CC ${esc(c.cedula)}${c.telefono ? " · 📱 " + esc(c.telefono) : ""}${c.responsable_grupo ? " · Paga: " + esc(propio(c.responsable_grupo)) : ""}${c.placa ? " · Placa " + esc(String(c.placa).toUpperCase()) : ""}</p>
       ${servicios ? `<p class="sub" style="margin:2px 0 0">⚓ ${esc(servicios)}</p>` : ""}
       <p class="sub" style="margin:6px 0 0;font-weight:700;color:${e.ok === e.total ? "var(--verde)" : "var(--nar-t)"}">${e.ok} de ${e.total} documentos para actualizar o enrolar</p></div>
+    ${D.docs.some(d => String(d.cedula) === String(c.cedula)) ? `<button type="button" class="btn-prim" data-doc-todos="1" style="align-self:flex-start">⬇️ Descargar todos en un PDF</button>` : ""}
     <b style="font-size:14px">👤 De la persona</b>
     ${DOCS_PERSONA.map(([k, n]) => fila(k, n, "")).join("")}
     <b style="font-size:14px">📅 De ${esc(D.mes ? D.mes.name : "este mes")}</b>
@@ -1013,9 +1015,11 @@ async function subirDoc(input){
   if (archivo.size > 15 * 1024 * 1024){ $("dErr").textContent = "El archivo pesa más de 15 MB. Súbalo más liviano."; return; }
   const tipo = input.dataset.docSubir, mes = input.dataset.docMes || "";
   const ruta = mes ? `${c.cedula}/${tipo}_${mes}` : `${c.cedula}/${tipo}`;
-  $("dErr").textContent = "Subiendo…";
+  $("dErr").textContent = "Preparando la imagen…";
   try{
-    const up = await sb.storage.from("documentos-clientes").upload(ruta, archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+    const img = await aImagenLiviana(archivo);
+    $("dErr").textContent = `Subiendo (${Math.max(1, Math.round(img.size / 1024))} KB)…`;
+    const up = await sb.storage.from("documentos-clientes").upload(ruta, img, { upsert: true, contentType: "image/jpeg" });
     if (up.error) throw up.error;
     const ahora = new Date().toISOString();
     let r = await sb.from("documentos").upsert({ cedula: String(c.cedula), tipo, mes, storage_path: ruta, uploaded_by: D.usuario, uploaded_at: ahora }, { onConflict: "cedula,tipo,mes" });
@@ -1024,13 +1028,100 @@ async function subirDoc(input){
     pintarDocs(); toast("✅ Documento guardado."); if (vista === "muelles" || vista === "cliente") setTimeout(render, 0);
   }catch(err){ console.error(err); $("dErr").textContent = "No se pudo subir (revise el internet). No se cambió nada."; }
 }
+/* Imagen liviana: fotos a máx. 1600 px en JPEG; un PDF se pasa a imagen (hasta 6 páginas, una debajo de otra). */
+const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.min.mjs";
+const PDFJS_WORKER_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build/pdf.worker.min.mjs";
+const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+let _pdfjs = null, _jspdf = null;
+async function lectorPDF(){ if (_pdfjs) return _pdfjs; const m = await import(PDFJS_URL); m.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL; _pdfjs = m; return m; }
+function cargarJsPDF(){
+  if (_jspdf) return Promise.resolve(_jspdf);
+  return new Promise((ok, mal) => { const s = document.createElement("script"); s.src = JSPDF_URL; s.onload = () => { _jspdf = window.jspdf.jsPDF; ok(_jspdf); }; s.onerror = () => mal(new Error("Sin internet para crear el PDF")); document.head.appendChild(s); });
+}
+const lienzoABlob = (cv, q) => new Promise(ok => cv.toBlob(ok, "image/jpeg", q || 0.75));
+async function paginasPDFaLienzo(datos){
+  const pdfjs = await lectorPDF();
+  const pdf = await pdfjs.getDocument({ data: datos }).promise;
+  const lienzos = [];
+  for (let i = 1; i <= Math.min(pdf.numPages, 6); i++){
+    const pg = await pdf.getPage(i), base = pg.getViewport({ scale: 1 });
+    const vista = pg.getViewport({ scale: Math.min(3, 1400 / base.width) });
+    const cv = document.createElement("canvas"); cv.width = Math.round(vista.width); cv.height = Math.round(vista.height);
+    const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: cx, viewport: vista }).promise; lienzos.push(cv);
+  }
+  const total = document.createElement("canvas");
+  total.width = Math.max(...lienzos.map(x => x.width)); total.height = lienzos.reduce((a, x) => a + x.height, 0) + 16 * (lienzos.length - 1);
+  const tc = total.getContext("2d"); tc.fillStyle = "#fff"; tc.fillRect(0, 0, total.width, total.height);
+  let y = 0; lienzos.forEach(x => { tc.drawImage(x, 0, y); y += x.height + 16; });
+  return total;
+}
+async function aImagenLiviana(archivo){
+  if (/pdf/i.test(archivo.type) || /\.pdf$/i.test(archivo.name || "")){
+    return lienzoABlob(await paginasPDFaLienzo(new Uint8Array(await archivo.arrayBuffer())), 0.72);
+  }
+  const bmp = await createImageBitmap(archivo);
+  const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+  return lienzoABlob(cv, 0.75);
+}
+// Trae un documento guardado como imagen (si se guardó como PDF desde la app de Planillas, se pasa a imagen)
+async function imagenDeRuta(ruta){
+  const { data, error } = await sb.storage.from("documentos-clientes").download(ruta);
+  if (error || !data) throw error || new Error("no se pudo traer");
+  const buf = new Uint8Array(await data.arrayBuffer());
+  const esPdf = buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
+  const cv = esPdf ? await paginasPDFaLienzo(buf) : await (async () => { const bmp = await createImageBitmap(new Blob([buf])); const x = document.createElement("canvas"); x.width = bmp.width; x.height = bmp.height; const g = x.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, x.width, x.height); g.drawImage(bmp, 0, 0); return x; })();
+  return cv;
+}
+// Agrega una imagen al PDF en hojas carta, ajustada al ancho (si es muy alta sigue en la hoja siguiente)
+function agregarAlPDF(pdf, cv, titulo, primera){
+  const W = 612, H = 792, M = 36, anchoUtil = W - 2 * M;
+  const escala = anchoUtil / cv.width, altoPorHoja = (H - 2 * M - 24) / escala;
+  for (let y = 0; y < cv.height; y += altoPorHoja){
+    if (!(primera && y === 0)) pdf.addPage("letter", "portrait");
+    const h = Math.min(altoPorHoja, cv.height - y);
+    const trozo = document.createElement("canvas"); trozo.width = cv.width; trozo.height = Math.ceil(h);
+    trozo.getContext("2d").drawImage(cv, 0, y, cv.width, h, 0, 0, cv.width, h);
+    pdf.setFontSize(11); pdf.text(titulo + (y > 0 ? " (continúa)" : ""), M, M + 8);
+    pdf.addImage(trozo.toDataURL("image/jpeg", 0.8), "JPEG", M, M + 20, anchoUtil, h * escala);
+  }
+}
+async function descargarPDF(rutas, nombreArchivo){
+  $("dErr").textContent = "Armando el PDF…";
+  try{
+    const JsPDF = await cargarJsPDF();
+    const pdf = new JsPDF({ unit: "pt", format: "letter" });
+    let primera = true;
+    for (const [ruta, titulo] of rutas){
+      const cv = await imagenDeRuta(ruta);
+      agregarAlPDF(pdf, cv, titulo, primera); primera = false;
+    }
+    pdf.save(nombreArchivo);
+    $("dErr").textContent = "";
+  }catch(err){ console.error(err); $("dErr").textContent = "No se pudo crear el PDF (revise el internet)."; }
+}
 async function verDoc(ruta){
   const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(ruta, 600);
   if (error || !data){ toast("No se pudo abrir el documento."); return; }
   window.open(data.signedUrl, "_blank", "noopener");
 }
 $("modal2").addEventListener("change", (e) => { const i = e.target.closest("[data-doc-subir]"); if (i) subirDoc(i); });
-$("modal2").addEventListener("click", (e) => { const v = e.target.closest("[data-doc-ver]"); if (v) verDoc(v.dataset.docVer); });
+$("modal2").addEventListener("click", (e) => {
+  const v = e.target.closest("[data-doc-ver]"); if (v){ verDoc(v.dataset.docVer); return; }
+  const c = docsCliente; if (!c) return;
+  const limpio = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const p1 = e.target.closest("[data-doc-pdf]");
+  if (p1){ descargarPDF([[p1.dataset.docPdf, `${p1.dataset.docNombre} · ${propio(c.nombre)} · CC ${c.cedula}`]], `${limpio(p1.dataset.docNombre)}_${c.cedula}.pdf`); return; }
+  if (e.target.closest("[data-doc-todos]")){
+    const mes = mesISOActual();
+    const lista = [...DOCS_PERSONA.map(([k, n]) => [k, n, ""]), ...DOCS_MES.map(([k, n]) => [k, n, mes]), ...DOCS_VEHICULO.map(([k, n]) => [k, n, ""])]
+      .map(([k, n, m]) => { const d = docDe(c.cedula, k, m); return d ? [d.storage_path, `${n} · ${propio(c.nombre)} · CC ${c.cedula}`] : null; }).filter(Boolean);
+    if (!lista.length){ $("dErr").textContent = "No hay documentos guardados."; return; }
+    descargarPDF(lista, `Documentos_${limpio(propio(c.nombre))}_${c.cedula}.pdf`);
+  }
+});
 $("modalMuelles").addEventListener("click", (e) => { const d = e.target.closest("[data-docs-abrir]"); if (d) abrirDocs(d.dataset.docsAbrir); });
 
 /* ---------- Eventos ---------- */
