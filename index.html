@@ -1780,6 +1780,65 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   .hist-hito{ align-items:center; gap:10px; }
   .hist-hito .btn{ margin-left:auto; }
+
+  /* ===== Menú y Centro de gestión estilo SUAPORTE (17-nov-2026) =====
+     El menú lateral se abre con ☰ y flota encima; la pantalla principal usa todo el ancho. */
+  /* La barra vieja queda escondida: sus botones siguen funcionando y el menú nuevo los usa */
+  #sidebar.sidebar{ display:none !important; }
+  #buscarRapidoBtn{ display:none !important; } /* repetido: el buscador grande y «Buscar en el menú» lo reemplazan (Ctrl K sigue) */
+  .menu-velo{ position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:940; }
+  .menu-cajon{ position:fixed; top:0; left:0; bottom:0; width:340px; max-width:90vw; z-index:950; background:#FFFFFF; color:#13213A;
+    box-shadow:8px 0 28px rgba(15,23,42,.25); display:flex; flex-direction:column; transform:translateX(-105%); transition:transform .2s ease; visibility:hidden; }
+  body.menu-abierto .menu-cajon{ transform:none; visibility:visible; }
+  .mc-cab{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:3px solid #C0272D; }
+  .mc-cab b{ font-size:16px; font-weight:800; letter-spacing:.02em; color:#1F3D70; }
+  .mc-cab small{ display:block; font-size:11.5px; color:#52607A; }
+  .mc-cerrar{ margin-left:auto; width:44px; height:44px; border:0; border-radius:10px; background:#EEF1F6; color:#13213A; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mc-buscar-caja{ padding:10px 14px; border-bottom:1px solid #E3E8F1; }
+  .mc-buscar{ width:100%; box-sizing:border-box; height:42px; border:1px solid #D6DCE6; border-radius:10px; padding:0 12px; font:inherit; font-size:14px; color:#13213A; background:#FFFFFF; }
+  .mc-cuerpo{ flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+  .mc-fila{ display:flex; align-items:center; gap:12px; width:100%; min-height:50px; padding:8px 16px; border:0; border-bottom:1px solid #EEF1F6; background:#FFFFFF; text-align:left; cursor:pointer; font:inherit; font-size:15px; color:#13213A; text-decoration:none; box-sizing:border-box; }
+  .mc-fila:hover, .mc-fila:focus-visible{ background:#F2F5FA; outline:none; }
+  .mc-fila svg{ flex-shrink:0; }
+  .mc-fila .mc-txt{ flex:1; display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .mc-fila small{ font-size:12px; color:#6B7891; }
+  .mc-fila .mc-valor{ font-weight:800; color:#1F3D70; font-size:13.5px; white-space:nowrap; }
+  .mc-fila .mc-badge{ background:#C0272D; color:#fff; border-radius:999px; font-size:12px; font-weight:700; padding:1px 8px; }
+  .mc-hoy{ background:#FFF4EC; font-weight:700; }
+  .mc-volver{ background:#F7F9FC; font-weight:700; color:#1F3D70; font-size:14px; min-height:46px; }
+  .mc-item{ padding-left:44px; }
+  .mc-vacio{ padding:16px; color:#52607A; font-size:14px; }
+  .main-area{ border-top-left-radius:0 !important; }
+  .app-shell{ background:var(--bg) !important; }
+  .wrap{ max-width:1320px !important; }
+  header.top{ background:var(--panel); border-bottom:3px solid #C0272D; margin:0 0 10px; padding:10px 14px; border-radius:0 0 14px 14px; box-shadow:0 1px 3px rgba(16,24,40,.06); }
+  .menu-abrir{ width:44px; height:44px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--titulo, #13213A); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .menu-abrir svg{ width:22px; height:22px; }
+  .cabecera-marca{ display:flex; align-items:center; gap:10px; }
+  .cabecera-marca b{ display:block; font-size:18px; font-weight:800; letter-spacing:.02em; color:var(--titulo, #13213A); line-height:1.1; }
+  .cabecera-marca small{ display:block; font-size:12px; color:var(--muted); }
+  .cabecera-usuario{ display:flex; flex-direction:column; padding-left:12px; border-left:1px solid var(--line); font-size:12.5px; color:var(--muted); line-height:1.35; }
+  .cabecera-usuario b{ color:var(--titulo, #13213A); }
+  .modo-conta .menu-abrir{ display:none !important; }
+  .centro-gestion{ display:flex; flex-wrap:wrap; gap:16px; margin:6px 0 12px; }
+  .cg-izq{ flex:999 1 520px; min-width:0; display:flex; flex-direction:column; gap:10px; }
+  .cg-izq h2{ margin:0; font-size:22px; font-weight:800; color:var(--titulo, #13213A); }
+  .cg-izq p{ margin:0; font-size:13.5px; color:var(--muted); }
+  .cg-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; }
+  .cg-tarjeta{ display:flex; align-items:center; gap:10px; min-height:58px; padding:10px 14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:700; color:var(--titulo, #13213A); }
+  .cg-tarjeta:hover{ border-color:#1F3D70; box-shadow:0 4px 14px rgba(16,24,40,.08); }
+  .cg-tarjeta .ico{ width:22px; height:22px; flex-shrink:0; color:#C0272D; }
+  .cg-der{ flex:1 1 300px; background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; align-self:flex-start; }
+  .cg-der-h{ display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); font-size:16px; font-weight:800; color:var(--titulo, #13213A); }
+  .cg-aviso{ display:flex; align-items:center; gap:10px; width:100%; padding:10px 16px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; font:inherit; color:inherit; }
+  .cg-aviso:hover{ background:rgba(31,61,112,.05); }
+  .cg-aviso span{ flex:1; display:flex; flex-direction:column; gap:1px; font-size:14px; font-weight:700; }
+  .cg-aviso small{ font-weight:500; color:var(--muted); font-size:12.5px; }
+  .cg-aviso b{ min-width:28px; text-align:center; border-radius:999px; padding:2px 8px; background:#FDECEC; color:#9B1C1C; font-size:13px; }
+  .cg-vacio{ padding:14px 16px; font-size:13.5px; color:var(--muted); }
+  .cg-ver{ display:block; width:100%; padding:10px 16px; border:0; background:transparent; font:inherit; font-size:13px; font-weight:700; color:#1F3D70; cursor:pointer; text-align:right; }
+  @media (prefers-color-scheme: dark){ .cg-aviso b{ background:#3A1917; color:#FFB4A8; } .cg-ver{ color:#9DB6E8; } .cg-tarjeta:hover{ border-color:#9DB6E8; } }
+  @media (max-width:760px){ .cabecera-usuario{ display:none; } header.top{ padding:8px 10px; } .cg-tarjetas{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; } .cg-tarjeta{ min-height:52px; padding:8px 10px; font-size:13px; } .cg-izq h2{ font-size:19px; } }
 </style>
 </head>
 <body>
@@ -1806,7 +1865,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 </div>
 <div class="app-shell" id="appRoot" style="display:none;">
 
-  <nav class="sidebar" id="sidebar">
+  <div class="menu-velo" id="menuVelo" hidden></div>
+  <nav class="menu-cajon" id="menuCajon" aria-label="Menú">
+    <div class="mc-cab"><svg width="28" height="31" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z" fill="#C0272D"/><path d="M20 30 l8 8 l16 -16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>PROSEGUROSNET</b><small>Menú</small></div>
+      <button type="button" class="mc-cerrar" id="menuCerrarBtn" aria-label="Cerrar el menú"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button></div>
+    <div class="mc-buscar-caja"><input type="search" class="mc-buscar" id="menuBuscar" placeholder="Buscar en el menú…" aria-label="Buscar en el menú" autocomplete="off"></div>
+    <div class="mc-cuerpo" id="menuCuerpo"></div>
+  </nav>
+  <nav class="sidebar" id="sidebar" aria-hidden="true">
     <div class="sidebar-brand">
       <img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z' fill='%23C0272D'/%3E%3Cpath d='M32 8 L52 16 V30 C52 43 43 52 32 56 C21 52 12 43 12 30 V16 Z' fill='%23ffffff' opacity='0.12'/%3E%3Crect x='18' y='30' width='28' height='12' rx='2' fill='%23ffffff'/%3E%3Crect x='20' y='24' width='10' height='8' rx='1' fill='%23ffffff'/%3E%3Ccircle cx='24' cy='44' r='3' fill='%23173A5E'/%3E%3Ccircle cx='40' cy='44' r='3' fill='%23173A5E'/%3E%3C/svg%3E" alt="PROSEGUROSNET" class="sidebar-logo">
       <div class="sidebar-brand-text">
@@ -1927,6 +1993,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   <header class="top">
     <div class="header-left">
+      <button type="button" class="menu-abrir" id="menuAbrirBtn" aria-label="Abrir el menú" aria-controls="sidebar" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <div class="cabecera-marca"><svg width="30" height="34" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z" fill="#C0272D"/><path d="M20 30 l8 8 l16 -16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>PROSEGUROSNET</b><small id="cabeceraApp">Control de planillas</small></div></div>
+      <div class="cabecera-usuario"><span>Usuario <b id="cabeceraUsuario">—</b></span><span id="cabeceraIngreso"></span></div>
       <span class="mes-chip" id="mesChip" title="Mes en el que está trabajando"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg><span id="mesChipTexto">—</span></span>
       <button type="button" class="buscar-rapido-btn" id="buscarRapidoBtn" aria-haspopup="dialog"><svg class="ico" aria-hidden="true"><use href="#i-lupa"/></svg><span>Buscar cédula o sección…</span><kbd>Ctrl K</kbd></button>
     </div>
@@ -1959,6 +2028,25 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
 
   <section id="contaPanel" class="conta-panel" aria-label="Contabilidad"></section>
+  <section class="centro-gestion" id="centroGestion" aria-label="Centro de gestión">
+    <div class="cg-izq">
+      <h2>Centro de gestión</h2>
+      <p>Lo que más se usa. Para todo lo demás, abra el menú ☰ y búsquelo por su nombre.</p>
+      <div class="cg-tarjetas">
+        <button type="button" class="cg-tarjeta" data-cg="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
+        <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes (recordatorios)</button>
+        <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
+        <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Excel para SUAPORTE</button>
+        <button type="button" class="cg-tarjeta" data-cg="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite</button>
+        <button type="button" class="cg-tarjeta" data-cg="navEstadoCuentaBtn"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
+      </div>
+    </div>
+    <aside class="cg-der" aria-label="Para hoy">
+      <div class="cg-der-h"><svg class="ico" aria-hidden="true" style="width:22px;height:22px"><use href="#i-casa"/></svg>Para hoy</div>
+      <div id="cgAvisos"><div class="cg-vacio">Cargando…</div></div>
+      <button type="button" class="cg-ver" data-cg="navHoyBtn">Ver todo en «Hoy» →</button>
+    </aside>
+  </section>
   <div class="stats-strip" id="statsStrip"></div>
 
 
@@ -7900,6 +7988,7 @@ function renderMonthTotal(){
 
   renderCobrosExtra();
   renderContaPanel();
+  renderCentroGestion();
 }
 
 // ---- Afiliaciones por confirmar (EPS, pensión, caja o ARL "en proceso") ----
@@ -12729,6 +12818,7 @@ async function mostrarAppPrincipal(user){
   }catch(e){}
   const quien = document.getElementById("whoAmI");
   if (quien) quien.textContent = user.email + (esAdmin() ? " · Admin" : " · Operador");
+  pintarCabeceraUsuario(user);
   document.body.classList.toggle("rol-admin", esAdmin());
   document.body.classList.toggle("rol-operador", !esAdmin());
   renderEnlacesRapidos();
@@ -15854,6 +15944,168 @@ function datosHoy(){
     vencen: clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)),
   };
 }
+/* ---------- Menú que se abre de lado (☰), estilo SUAPORTE ----------
+   Se arma con los MISMOS botones de la barra vieja (escondida): tocar una opción hace clic en su botón,
+   así ninguna función se pierde. Lo que no esté en una categoría sale en «Otras opciones». */
+const MENU_CATS = [
+  { nombre: "Clientes", items: [{ id: "navAddBtn" }, { id: "navRecientesBtn" }, { id: "navHistorialBtn" }, { id: "navEditResponsablesBtn" }, { id: "navEstadoCuentaBtn" }, { id: "navSalariosBtn" }, { id: "navRevisionBtn" }] },
+  { nombre: "Cobros", items: [
+    { accion: "cobrar", texto: "Enviar recordatorios por WhatsApp", sub: "A los que deben este mes" },
+    { sel: '#sidebar [data-informe="prosegurosnet"]', texto: "Total a cobrar (PROSEGUROSNET)", valor: "sidebarTotalValue" },
+    { sel: '#sidebar [data-informe="conductores"]', texto: "Total Actualización de Conductores", valor: "sidebarTotalConductores" },
+    { sel: '#sidebar [data-informe="muelles"]', texto: "Total Muelles otras empresas", valor: "sidebarTotalMuelles" },
+    { sel: '#sidebar [data-informe="general"]', texto: "Suma final (todas las empresas)", valor: "sidebarTotalGeneral" },
+    { id: "navGananciasBtn", valor: "sidebarTotalGestiones" }, { id: "navCobroExtraBtn" }, { id: "navMensajeBtn" },
+    { id: "navConsigBtn", badge: "consigBadge" }, { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
+  { nombre: "Planillas", items: [{ id: "navImportPilaBtn" }, { id: "navPilaBtn" }] },
+  { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
+  { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }, { id: "navAppSegurosBtn", texto: "Muelles y Seguros · app aparte ↗" }] },
+  { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
+  { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navTemaBtn" }] },
+  { nombre: "Contabilidad · app aparte ↗", directo: "navAppContaBtn" },
+];
+const MENU_NO_SON_OPCIONES = ["navHoyBtn", "navCarteraBtn", "navAyudasBtn", "navEnlacesBtn", "navMenuBtn", "enlacesEditarBtn"];
+let menuCat = null;
+function menuFuente(it){ return it.id ? document.getElementById(it.id) : it.sel ? document.querySelector(it.sel) : null; }
+function menuVisible(el){ return !!el && el.style.display !== "none" && !(el.hasAttribute("data-conta") && !esModoConta()); }
+function menuTexto(el){ const c = el.cloneNode(true); c.querySelectorAll(".sidebar-num, .sidebar-badge, .sidebar-total-value, .sidebar-total-pagos, .sidebar-mas-flecha, svg").forEach(x => x.remove()); return c.textContent.replace(/\s+/g, " ").replace(/[▸▾]/g, "").trim(); }
+// Todas las opciones de una categoría, listas para pintar
+function menuOpciones(cat){
+  const out = [];
+  (cat.items || []).forEach(it => {
+    if (it.accion) { out.push({ texto: it.texto, sub: it.sub || "", accion: it.accion }); return; }
+    if (it.enlaces){
+      (enlacesRapidos || []).forEach(e => out.push({ texto: e.nombre, sub: "Enlace rápido ↗", url: e.url }));
+      if (esAdmin()) out.push({ texto: "Agregar o quitar enlaces", sub: "Enlaces rápidos", editarEnlaces: true });
+      return;
+    }
+    const el = menuFuente(it); if (!menuVisible(el)) return;
+    const v = it.valor ? (document.getElementById(it.valor) || {}).textContent : "";
+    const b = it.badge ? document.getElementById(it.badge) : null;
+    out.push({ texto: it.texto || menuTexto(el), valor: v && v !== "—" ? v : "", badge: b && b.style.display !== "none" && b.textContent !== "0" ? b.textContent : "", el });
+  });
+  return out;
+}
+// Opciones de la barra vieja que no están en ninguna categoría (para que nada se pierda)
+function menuOtras(){
+  const usadas = new Set();
+  MENU_CATS.forEach(c => { if (c.directo) usadas.add(document.getElementById(c.directo)); (c.items || []).forEach(it => { const el = menuFuente(it); if (el) usadas.add(el); }); });
+  const out = [];
+  document.querySelectorAll("#sidebar .sidebar-link, #sidebar .sidebar-total").forEach(el => {
+    if (usadas.has(el) || MENU_NO_SON_OPCIONES.includes(el.id) || el.closest("#enlacesLista") || !menuVisible(el)) return;
+    if (el.dataset.informe === "gestiones") return; // repetido: su valor sale junto a «Ganancias de gestiones»
+    out.push({ texto: menuTexto(el), el });
+  });
+  return out;
+}
+const FLECHA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+let MENU_PINTADAS = [];
+function filaOpcion(o, i, conCat){
+  return `<button type="button" class="mc-fila mc-item" data-mc-op="${i}"><span class="mc-txt">${escHtml(o.texto)}${conCat || o.sub ? `<small>${escHtml(conCat || o.sub)}</small>` : ""}</span>${o.valor ? `<span class="mc-valor">${escHtml(o.valor)}</span>` : ""}${o.badge ? `<span class="mc-badge">${escHtml(o.badge)}</span>` : ""}</button>`;
+}
+function pintarMenu(){
+  const cuerpo = document.getElementById("menuCuerpo"); if (!cuerpo) return;
+  const q = normalizarTexto(document.getElementById("menuBuscar").value || "").trim();
+  MENU_PINTADAS = [];
+  if (q){
+    const res = [];
+    MENU_CATS.forEach(c => {
+      if (c.directo){ const el = document.getElementById(c.directo); if (menuVisible(el) && normalizarTexto(c.nombre).includes(q)) res.push({ o: { texto: c.nombre, el }, cat: "" }); return; }
+      menuOpciones(c).forEach(o => { if (normalizarTexto(o.texto + " " + (o.sub || "")).includes(q)) res.push({ o, cat: "En " + c.nombre }); });
+    });
+    menuOtras().forEach(o => { if (normalizarTexto(o.texto).includes(q)) res.push({ o, cat: "En Otras opciones" }); });
+    const hoy = document.getElementById("navHoyBtn");
+    if (normalizarTexto("hoy lo que toca hacer").includes(q)) res.unshift({ o: { texto: "Hoy: lo que toca hacer", el: hoy }, cat: "" });
+    cuerpo.innerHTML = res.length ? res.map((r, i) => { MENU_PINTADAS.push(r.o); return filaOpcion(r.o, i, r.cat); }).join("") : `<div class="mc-vacio">Nada con «${escHtml(document.getElementById("menuBuscar").value)}». Pruebe con otra palabra.</div>`;
+    return;
+  }
+  if (menuCat === null){
+    const otras = menuOtras();
+    const cats = MENU_CATS.map((c, i) => {
+      if (c.directo){ return menuVisible(document.getElementById(c.directo)) ? `<button type="button" class="mc-fila" data-mc-directo="${escHtml(c.directo)}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span></button>` : ""; }
+      const ops = menuOpciones(c); if (!ops.length) return "";
+      const avisos = ops.reduce((a, o) => a + (Number(o.badge) || 0), 0);
+      return `<button type="button" class="mc-fila" data-mc-cat="${i}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span>${avisos ? `<span class="mc-badge">${avisos}</span>` : `<small>${ops.length} opciones</small>`}</button>`;
+    }).join("");
+    cuerpo.innerHTML = `<button type="button" class="mc-fila mc-hoy" data-mc-directo="navHoyBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0272D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg><span class="mc-txt">Hoy: lo que toca hacer</span></button>`
+      + cats + (otras.length ? `<button type="button" class="mc-fila" data-mc-cat="otras">${FLECHA}<span class="mc-txt">Otras opciones</span><small>${otras.length}</small></button>` : "");
+    return;
+  }
+  const esOtras = menuCat === "otras";
+  const ops = esOtras ? menuOtras() : menuOpciones(MENU_CATS[menuCat]);
+  MENU_PINTADAS = ops;
+  cuerpo.innerHTML = `<button type="button" class="mc-fila mc-volver" data-mc-volver="1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>${escHtml(esOtras ? "Otras opciones" : MENU_CATS[menuCat].nombre)}</button>`
+    + ops.map((o, i) => filaOpcion(o, i, "")).join("");
+}
+function abrirMenuLateral(on){
+  document.body.classList.toggle("menu-abierto", !!on);
+  document.getElementById("menuVelo").hidden = !on;
+  document.getElementById("menuAbrirBtn").setAttribute("aria-expanded", on ? "true" : "false");
+  if (on){ menuCat = null; document.getElementById("menuBuscar").value = ""; pintarMenu(); setTimeout(() => { try{ document.getElementById("menuBuscar").focus(); }catch(e){} }, 220); }
+}
+function usarOpcion(o){
+  if (!o) return;
+  abrirMenuLateral(false);
+  if (o.accion === "cobrar") { iniciarOContinuarRecordatorios(); return; }
+  if (o.url){ window.open(o.url, "_blank", "noopener"); return; }
+  if (o.editarEnlaces){ const b = document.getElementById("enlacesEditarBtn"); if (b) b.click(); return; }
+  if (o.el) o.el.click();
+}
+document.getElementById("menuAbrirBtn").addEventListener("click", () => abrirMenuLateral(!document.body.classList.contains("menu-abierto")));
+document.getElementById("menuCerrarBtn").addEventListener("click", () => abrirMenuLateral(false));
+document.getElementById("menuVelo").addEventListener("click", () => abrirMenuLateral(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("menu-abierto")) abrirMenuLateral(false); });
+document.getElementById("menuBuscar").addEventListener("input", () => { menuCat = null; pintarMenu(); });
+document.getElementById("menuBuscar").addEventListener("keydown", (e) => { if (e.key === "Enter" && MENU_PINTADAS.length && document.getElementById("menuBuscar").value.trim()){ e.preventDefault(); usarOpcion(MENU_PINTADAS[0]); } });
+document.getElementById("menuCuerpo").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-mc-cat]"); if (c){ menuCat = c.dataset.mcCat === "otras" ? "otras" : Number(c.dataset.mcCat); pintarMenu(); document.getElementById("menuCuerpo").scrollTop = 0; return; }
+  if (e.target.closest("[data-mc-volver]")){ menuCat = null; pintarMenu(); return; }
+  const d = e.target.closest("[data-mc-directo]"); if (d){ abrirMenuLateral(false); const el = document.getElementById(d.dataset.mcDirecto); if (el) el.click(); return; }
+  const o = e.target.closest("[data-mc-op]"); if (o) usarOpcion(MENU_PINTADAS[Number(o.dataset.mcOp)]);
+});
+function pintarCabeceraUsuario(user){
+  try{
+    const nombre = (user.user_metadata && (user.user_metadata.nombre || user.user_metadata.full_name)) || String(user.email || "").split("@")[0];
+    document.getElementById("cabeceraUsuario").textContent = String(nombre).toUpperCase() + (esAdmin() ? " · Administrador" : "");
+    const f = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
+    document.getElementById("cabeceraIngreso").textContent = f ? `Último ingreso ${f.toLocaleDateString("es-CO")} ${f.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}` : "";
+    if (esModoConta()) document.getElementById("cabeceraApp").textContent = "Contabilidad";
+  }catch(e){}
+}
+function renderCentroGestion(){
+  const cont = document.getElementById("cgAvisos"); if (!cont || esModoConta()) return;
+  let d; try{ d = datosHoy(); }catch(e){ return; }
+  let seg = 0; try{ seg = avisosSegurosHoy().length; }catch(e){}
+  let afil = 0; try{ afil = atTodosAbiertos().filter(x => atPasado(x) || x.estado === "devuelta").length; }catch(e){}
+  const filas = [
+    ["pendientes", "Pendientes de pago", d.cobrar.length, d.atrasados.length ? `${d.atrasados.length} ya pasaron el día 16` : "Pagar antes del día 16"],
+    ["consig", "Consignaciones por aplicar", d.consig.length, "Mensajes de la cuenta *8222"],
+    ["afiltramite", "Afiliaciones pasadas de tiempo", afil, "La entidad no ha confirmado"],
+    ["seguros", "Muelles y Seguros", seg, "Avisos de muelles, SOAT y pólizas"],
+    ["tareas", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo"],
+    ["retiros", "Retiros que deben planilla", d.retiros.length, "Falta subir el retiro"],
+  ].filter(f => f[2] > 0);
+  cont.innerHTML = filas.length ? filas.map(([k, t, n, s]) => `<button type="button" class="cg-aviso" data-cg-aviso="${k}"><span>${escHtml(t)}<small>${escHtml(s)}</small></span><b>${n}</b></button>`).join("")
+    : `<div class="cg-vacio">✓ Nada pendiente por ahora. ¡Todo al día!</div>`;
+}
+document.getElementById("centroGestion").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-cg]");
+  if (t){
+    const id = t.dataset.cg;
+    if (id === "cobrar") iniciarOContinuarRecordatorios();
+    else { const el = document.getElementById(id); if (el) el.click(); }
+    return;
+  }
+  const a = e.target.closest("[data-cg-aviso]"); if (!a) return;
+  const k = a.dataset.cgAviso;
+  if (k === "pendientes"){ filtroEstado = "__PENDIENTES__"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior: "smooth", block: "start" }); }
+  else if (k === "consig") document.getElementById("navConsigBtn").click();
+  else if (k === "afiltramite") abrirAfilTramites();
+  else if (k === "seguros") abrirAppSeguros("");
+  else if (k === "tareas") document.getElementById("navTareasBtn").click();
+  else if (k === "retiros"){ filtroEstado = "RETIRO"; renderList(searchInput.value); }
+});
+
 /* ---------- App de Contabilidad (index.html?modo=contabilidad · contabilidad.html) ----------
    Es la misma app con los mismos cálculos; en ese modo solo se ve lo contable (solo administrador).
    En la app de Planillas lo contable queda oculto y hay un enlace «Contabilidad · app ↗» para el administrador. */
