@@ -1812,6 +1812,18 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .app-shell{ background:var(--bg) !important; }
   .wrap{ max-width:1320px !important; }
   header.top{ background:var(--panel); border-bottom:3px solid #C0272D; margin:0 0 10px; padding:10px 14px; border-radius:0 0 14px 14px; box-shadow:0 1px 3px rgba(16,24,40,.06); }
+  header.top.cabecera-ancha{ position:sticky; top:0; z-index:60; margin:0; border-radius:0; padding:10px max(16px, calc((100% - 1320px) / 2 + 20px)); background:var(--panel); }
+  header.top.cabecera-ancha .header-right{ align-items:center; }
+  @media (min-width:1180px){ header.top.cabecera-ancha{ flex-wrap:nowrap; } header.top.cabecera-ancha .header-left{ flex-wrap:nowrap; flex:none; } header.top.cabecera-ancha .header-right{ flex-wrap:nowrap; } }
+  header.top.cabecera-ancha .header-right .btn{ white-space:nowrap; }
+  @media (max-width:760px){ header.top.cabecera-ancha{ position:static; padding:8px 12px; } header.top.cabecera-ancha .header-right{ gap:4px; row-gap:4px; } header.top.cabecera-ancha .month-select-wrap{ order:-1; width:100%; } }
+  header.top.cabecera-ancha .month-select-wrap{ margin-right:6px; }
+  .main-area .wrap{ padding-top:14px; }
+  .cg-izq .search-panel{ margin:2px 0 4px; }
+  .cg-izq .search-row input{ font-size:17px; min-height:52px; border:2px solid #1F3D70 !important; border-radius:14px !important; }
+  .cg-izq .fecha-sistema{ font-size:12.5px; color:var(--muted); }
+  .lista-card{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:12px 12px 4px; margin-top:12px; }
+  .lista-card .filter-pills{ margin-top:0; }
   .menu-abrir{ width:44px; height:44px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--titulo, #13213A); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
   .menu-abrir svg{ width:22px; height:22px; }
   .cabecera-marca{ display:flex; align-items:center; gap:10px; }
@@ -1983,15 +1995,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   <div class="velo-principal" id="veloPrincipal" hidden></div>
   <div class="main-area">
-  <div class="wrap">
-
-  <div class="backup-reminder" id="backupReminder" style="display:none;">
-    <span id="backupReminderText">Hace tiempo no exportas un respaldo.</span>
-    <button class="btn small primary" id="backupReminderBtn">Exportar ahora</button>
-    <button class="btn small ghost" id="backupReminderDismiss">Ahora no</button>
-  </div>
-
-  <header class="top">
+  <header class="top cabecera-ancha">
     <div class="header-left">
       <button type="button" class="menu-abrir" id="menuAbrirBtn" aria-label="Abrir el menú" aria-controls="sidebar" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <div class="cabecera-marca"><svg width="30" height="34" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z" fill="#C0272D"/><path d="M20 30 l8 8 l16 -16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>PROSEGUROSNET</b><small id="cabeceraApp">Control de planillas</small></div></div>
@@ -2000,6 +2004,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <button type="button" class="buscar-rapido-btn" id="buscarRapidoBtn" aria-haspopup="dialog"><svg class="ico" aria-hidden="true"><use href="#i-lupa"/></svg><span>Buscar cédula o sección…</span><kbd>Ctrl K</kbd></button>
     </div>
     <div class="header-right" style="margin-left:auto;">
+      <div class="month-select-wrap" id="monthSelectWrap">
+      <label for="monthSelect">Mes</label>
+      <select id="monthSelect"></select>
+      </div>
       <span class="user-chip"><span class="dot"></span><span id="whoAmI"></span></span>
       <span class="sync-chip" id="cloudStatus" title="Estado de sincronización">💾 Conectando…</span>
       <button type="button" class="btn small ghost" id="claveBtn" title="Cambiar mi contraseña" style="margin-right:4px;">🔑 Clave</button>
@@ -2012,14 +2020,17 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <div class="count" id="totalCount" style="display:none;"></div>
     </div>
   </header>
+  <div class="wrap">
+
+  <div class="backup-reminder" id="backupReminder" style="display:none;">
+    <span id="backupReminderText">Hace tiempo no exportas un respaldo.</span>
+    <button class="btn small primary" id="backupReminderBtn">Exportar ahora</button>
+    <button class="btn small ghost" id="backupReminderDismiss">Ahora no</button>
+  </div>
+
 
   <div class="month-bar">
-    <div class="month-select-wrap" id="monthSelectWrap">
-      <label for="monthSelect">Mes</label>
-      <select id="monthSelect"></select>
-    </div>
-    <button class="btn primary" id="advanceBtn">Avanzar al siguiente mes</button>
-    <div class="fecha-sistema" id="fechaSistema" aria-live="polite"></div>
+    <button class="btn primary" id="advanceBtn" style="display:none;">Avanzar al siguiente mes</button>
     <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
       <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
       <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
@@ -2032,44 +2043,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="cg-izq">
       <h2>Centro de gestión</h2>
       <p>Lo que más se usa. Para todo lo demás, abra el menú ☰ y búsquelo por su nombre.</p>
-      <div class="cg-tarjetas">
-        <button type="button" class="cg-tarjeta" data-cg="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
-        <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes (recordatorios)</button>
-        <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
-        <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Excel para SUAPORTE</button>
-        <button type="button" class="cg-tarjeta" data-cg="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite</button>
-        <button type="button" class="cg-tarjeta" data-cg="navEstadoCuentaBtn"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
-      </div>
-    </div>
-    <aside class="cg-der" aria-label="Para hoy">
-      <div class="cg-der-h"><svg class="ico" aria-hidden="true" style="width:22px;height:22px"><use href="#i-casa"/></svg>Para hoy</div>
-      <div id="cgAvisos"><div class="cg-vacio">Cargando…</div></div>
-      <button type="button" class="cg-ver" data-cg="navHoyBtn">Ver todo en «Hoy» →</button>
-    </aside>
-  </section>
-  <div class="stats-strip" id="statsStrip"></div>
-
-
-  <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
-
-  <div class="month-total" id="monthTotalBox" style="display:none;">
-    <div>
-      <span class="month-total-label">Total a cobrar este mes</span>
-      <div class="month-total-pagos" id="monthPagosValue">—</div>
-    </div>
-    <span class="month-total-value" id="monthTotalValue">—</span>
-  </div>
-  <div class="cobros-extra-list" id="cobrosExtraList"></div>
-
-  <div class="toolbar" style="display:none;">
-    <button class="btn primary" id="addBtn">+ Agregar cliente</button>
-    <button class="btn ghost" id="exportBtn">Exportar respaldo (.json)</button>
-    <button class="btn ghost" id="importBtn">Importar respaldo</button>
-    <button class="btn ghost" id="exportCsvBtn">Exportar cobro del mes (.csv)</button>
-    <button class="btn ghost" id="editResponsablesBtn">Editar responsables</button>
-    <input type="file" id="importFile" class="hidden-file" accept="application/json">
-  </div>
-
+  <div class="fecha-sistema" id="fechaSistema" aria-live="polite"></div>
   <div class="search-panel">
     <div class="search-row">
       <input id="searchInput" type="text" inputmode="numeric" placeholder="Cédula, nombre o N.º del cliente (ej.: 45)…" autocomplete="off">
@@ -2124,7 +2098,46 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <div id="bTareasCliente"></div>
     </div>
   </div>
+      <div class="cg-tarjetas">
+        <button type="button" class="cg-tarjeta" data-cg="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
+        <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes (recordatorios)</button>
+        <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
+        <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Excel para SUAPORTE</button>
+        <button type="button" class="cg-tarjeta" data-cg="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite</button>
+        <button type="button" class="cg-tarjeta" data-cg="navEstadoCuentaBtn"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
+      </div>
+    </div>
+    <aside class="cg-der" aria-label="Para hoy">
+      <div class="cg-der-h"><svg class="ico" aria-hidden="true" style="width:22px;height:22px"><use href="#i-casa"/></svg>Para hoy</div>
+      <div id="cgAvisos"><div class="cg-vacio">Cargando…</div></div>
+      <button type="button" class="cg-ver" data-cg="navHoyBtn">Ver todo en «Hoy» →</button>
+    </aside>
+  </section>
+  <div class="stats-strip" id="statsStrip"></div>
 
+
+  <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
+
+  <div class="month-total" id="monthTotalBox" style="display:none;">
+    <div>
+      <span class="month-total-label">Total a cobrar este mes</span>
+      <div class="month-total-pagos" id="monthPagosValue">—</div>
+    </div>
+    <span class="month-total-value" id="monthTotalValue">—</span>
+  </div>
+  <div class="cobros-extra-list" id="cobrosExtraList"></div>
+
+  <div class="toolbar" style="display:none;">
+    <button class="btn primary" id="addBtn">+ Agregar cliente</button>
+    <button class="btn ghost" id="exportBtn">Exportar respaldo (.json)</button>
+    <button class="btn ghost" id="importBtn">Importar respaldo</button>
+    <button class="btn ghost" id="exportCsvBtn">Exportar cobro del mes (.csv)</button>
+    <button class="btn ghost" id="editResponsablesBtn">Editar responsables</button>
+    <input type="file" id="importFile" class="hidden-file" accept="application/json">
+  </div>
+
+
+  <section class="lista-card" aria-label="Lista de clientes">
   <div class="filter-pills" id="filterPills"></div>
 
   <div class="bulk-bar" id="bulkBar" style="display:none;">
@@ -2140,6 +2153,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <span></span><span>No.</span><span>Estado</span><span>Nombre</span><span>Cédula</span><span>Muelle</span><span></span>
   </div>
   <div class="list" id="list"></div>
+  </section>
 
   <footer>Datos guardados localmente en este dispositivo — usa "Exportar respaldo" para llevarlos a otro equipo<br>
     <span class="footer-version">PROSEGUROSNET · v1.0 · Última actualización: 15/10/2026</span>
@@ -15957,7 +15971,7 @@ const MENU_CATS = [
     { sel: '#sidebar [data-informe="general"]', texto: "Suma final (todas las empresas)", valor: "sidebarTotalGeneral" },
     { id: "navGananciasBtn", valor: "sidebarTotalGestiones" }, { id: "navCobroExtraBtn" }, { id: "navMensajeBtn" },
     { id: "navConsigBtn", badge: "consigBadge" }, { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
-  { nombre: "Planillas", items: [{ id: "navImportPilaBtn" }, { id: "navPilaBtn" }] },
+  { nombre: "Planillas", items: [{ id: "navImportPilaBtn" }, { id: "navPilaBtn" }, { id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }, { id: "navAppSegurosBtn", texto: "Muelles y Seguros · app aparte ↗" }] },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
@@ -15979,10 +15993,10 @@ function menuOpciones(cat){
       if (esAdmin()) out.push({ texto: "Agregar o quitar enlaces", sub: "Enlaces rápidos", editarEnlaces: true });
       return;
     }
-    const el = menuFuente(it); if (!menuVisible(el)) return;
+    const el = menuFuente(it); if (!el || (!it.siempre && !menuVisible(el))) return;
     const v = it.valor ? (document.getElementById(it.valor) || {}).textContent : "";
     const b = it.badge ? document.getElementById(it.badge) : null;
-    out.push({ texto: it.texto || menuTexto(el), valor: v && v !== "—" ? v : "", badge: b && b.style.display !== "none" && b.textContent !== "0" ? b.textContent : "", el });
+    out.push({ sub: it.sub || "", texto: it.texto || menuTexto(el), valor: v && v !== "—" ? v : "", badge: b && b.style.display !== "none" && b.textContent !== "0" ? b.textContent : "", el });
   });
   return out;
 }
