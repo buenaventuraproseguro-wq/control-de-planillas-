@@ -1808,6 +1808,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .mc-volver{ background:#F7F9FC; font-weight:700; color:#1F3D70; font-size:14px; min-height:46px; }
   .mc-item{ padding-left:44px; }
   .mc-vacio{ padding:16px; color:#52607A; font-size:14px; }
+  .mc-titulo{ padding:14px 16px 6px; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#6B7891; background:#F7F9FC; border-bottom:1px solid #EEF1F6; }
   .main-area{ border-top-left-radius:0 !important; }
   .app-shell{ background:var(--bg) !important; }
   .wrap{ max-width:1320px !important; }
@@ -15973,10 +15974,11 @@ const MENU_CATS = [
     { id: "navConsigBtn", badge: "consigBadge" }, { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
   { nombre: "Planillas", items: [{ id: "navImportPilaBtn" }, { id: "navPilaBtn" }, { id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
-  { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }, { id: "navAppSegurosBtn", texto: "Muelles y Seguros · app aparte ↗" }] },
+  { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }] },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
   { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navTemaBtn" }] },
-  { nombre: "Contabilidad · app aparte ↗", directo: "navAppContaBtn" },
+  { nombre: "Muelles y Seguros · app aparte ↗", directo: "navAppSegurosBtn", app: true },
+  { nombre: "Contabilidad · app aparte ↗", directo: "navAppContaBtn", app: true },
 ];
 const MENU_NO_SON_OPCIONES = ["navHoyBtn", "navCarteraBtn", "navAyudasBtn", "navEnlacesBtn", "navMenuBtn", "enlacesEditarBtn"];
 let menuCat = null;
@@ -16036,10 +16038,14 @@ function pintarMenu(){
   if (menuCat === null){
     const otras = menuOtras();
     const cats = MENU_CATS.map((c, i) => {
-      if (c.directo){ return menuVisible(document.getElementById(c.directo)) ? `<button type="button" class="mc-fila" data-mc-directo="${escHtml(c.directo)}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span></button>` : ""; }
+      if (c.directo){
+        if (!menuVisible(document.getElementById(c.directo))) return "";
+        const primeraApp = c.app && MENU_CATS.findIndex(x => x.app && menuVisible(document.getElementById(x.directo))) === i;
+        return (primeraApp ? `<div class="mc-titulo">Apps aparte (mismo usuario y clave)</div>` : "") + `<button type="button" class="mc-fila" data-mc-directo="${escHtml(c.directo)}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span></button>`;
+      }
       const ops = menuOpciones(c); if (!ops.length) return "";
       const avisos = ops.reduce((a, o) => a + (Number(o.badge) || 0), 0);
-      return `<button type="button" class="mc-fila" data-mc-cat="${i}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span>${avisos ? `<span class="mc-badge">${avisos}</span>` : `<small>${ops.length} opciones</small>`}</button>`;
+      return `<button type="button" class="mc-fila" data-mc-cat="${i}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span>${avisos ? `<span class="mc-badge">${avisos}</span>` : `<small>${ops.length} ${ops.length === 1 ? "opción" : "opciones"}</small>`}</button>`;
     }).join("");
     cuerpo.innerHTML = `<button type="button" class="mc-fila mc-hoy" data-mc-directo="navHoyBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0272D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg><span class="mc-txt">Hoy: lo que toca hacer</span></button>`
       + cats + (otras.length ? `<button type="button" class="mc-fila" data-mc-cat="otras">${FLECHA}<span class="mc-txt">Otras opciones</span><small>${otras.length}</small></button>` : "");
