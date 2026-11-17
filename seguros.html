@@ -278,6 +278,10 @@ const tieneMuelle = (c) => !!String(c.muelle || "").trim() || esServicioMuelle(c
 
 /* Todo lo que vence (muelles, SOAT, licencia, tecnomecánica, pólizas).
    avisado = fecha del último aviso por WhatsApp para ESA fecha de vencimiento. */
+// VENTA DE SOAT EN PAUSA (17-nov-2026, lo pidió Nestor): no se borra nada; para reactivarla poner false.
+// En pausa se esconden «Registrar SOAT vendido», «Vendí», las oportunidades de venta de SOAT y la opción SOAT al registrar una venta.
+// Los SOAT ya guardados, las fechas del vehículo y sus avisos siguen funcionando.
+var VENTA_SOAT_EN_PAUSA = true;
 const POL_TIPOS = ["SOAT", "Todo riesgo vehículo", "Responsabilidad civil", "Póliza de muelles", "Hogar", "Vida", "Accidentes personales", "Cumplimiento", "Otro"];
 const ETAPAS = [20, 7, 1]; // días antes del vencimiento en que se avisa
 const polActiva = (p) => (p.estado || "activa") === "activa";
@@ -329,7 +333,7 @@ function mensajeVence(v){
 
 /* ---------- Pantallas ---------- */
 const TITULOS = {
-  inicio: ["Hoy", "A quién avisar hoy y lo que se puede vender"],
+  inicio: ["Hoy", VENTA_SOAT_EN_PAUSA ? "A quién avisar hoy" : "A quién avisar hoy y lo que se puede vender"],
   muelles: ["Muelles", "Actualización, enrolamiento y cursos"],
   soat: ["SOAT y vehículos", "SOAT, licencia y tecnomecánica de los clientes"],
   polizas: ["Pólizas", "Ventas de SOAT y pólizas, renovaciones y comisiones"],
@@ -402,7 +406,7 @@ function vistaInicio(v){
       </div>
       <p class="sub">Al tocar <b>Avisar</b> se abre WhatsApp con el mensaje listo y queda anotado. El cliente vuelve a salir cuando le toque el siguiente aviso (20, 7 y 1 día antes).</p>
     </section>
-    <section class="card" style="flex:2 1 300px">
+    ${VENTA_SOAT_EN_PAUSA ? "" : `<section class="card" style="flex:2 1 300px">
       <h2>Oportunidades de venta</h2>
       <p class="sub">Clientes que trabajan en muelles y todavía no tienen SOAT registrado con nosotros (${sinSoat.length}).</p>
       ${sinSoat.slice(0, 6).map(c => {
@@ -411,7 +415,7 @@ function vistaInicio(v){
           <span style="display:flex;gap:6px"><a class="btn-wa" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>Ofrecer</a><button type="button" class="btn-prim" data-vender="${esc(c.cedula)}" data-vender-tipo="SOAT">Vendí</button></span></div>`;
       }).join("") || `<div class="vacio">No hay oportunidades por ahora.</div>`}
       ${sinSoat.length > 6 ? `<p class="sub">…y ${sinSoat.length - 6} más.</p>` : ""}
-    </section>
+    </section>`}
   </div>`;
 }
 function vistaMuelles(){
@@ -445,10 +449,10 @@ function vistaSoat(v){
   const conPlaca = D.clientes.filter(c => c.placa || c.venc_licencia || c.venc_tecno || c.venc_soat).filter(c => !q || norm(c.nombre).includes(q) || String(c.cedula).includes(q) || norm(c.placa).includes(q));
   return `<div class="fila2">
     <section class="card" style="flex:3 1 520px">
-      <div class="card-h"><h2>Vencimientos de SOAT, licencia y tecnomecánica</h2><button type="button" class="btn-prim" data-vender="" data-vender-tipo="SOAT">＋ Registrar SOAT vendido</button></div>
+      <div class="card-h"><h2>Vencimientos de SOAT, licencia y tecnomecánica</h2>${VENTA_SOAT_EN_PAUSA ? "" : `<button type="button" class="btn-prim" data-vender="" data-vender-tipo="SOAT">＋ Registrar SOAT vendido</button>`}</div>
       <div class="tabla">
         <div class="t-fila t-agenda t-cab"><span>Cliente</span><span>Qué vence</span><span>Fecha</span><span>Estado</span><span>Aviso</span></div>
-        ${veh.length ? veh.filter(x => x.dias >= -60).map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">Todavía no hay fechas guardadas. Registre un SOAT vendido, o toque ✏️ en un cliente de la lista de abajo para poner la placa y las fechas de licencia y tecnomecánica.</div>`}
+        ${veh.length ? veh.filter(x => x.dias >= -60).map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">Todavía no hay fechas guardadas. ${VENTA_SOAT_EN_PAUSA ? "" : "Registre un SOAT vendido, o "}Toque ✏️ en un cliente de la lista de abajo para poner la placa y las fechas de licencia y tecnomecánica.</div>`}
       </div>
     </section>
     <section class="card" style="flex:2 1 320px">
@@ -524,7 +528,7 @@ function vistaCliente(){
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-prim" data-muelle-edit="${esc(c.id)}">✏️ Cambiar muelles</button>` : ""}
         ${c.id ? `<button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">🚗 Vehículo</button>` : ""}
-        <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="SOAT">＋ Vender SOAT o póliza</button>
+        <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="${VENTA_SOAT_EN_PAUSA ? "" : "SOAT"}">＋ ${VENTA_SOAT_EN_PAUSA ? "Registrar póliza" : "Vender SOAT o póliza"}</button>
       </div>
       <button type="button" class="pill-btn" data-volver="1" style="align-self:flex-start">← Buscar otro</button>
     </section>
@@ -658,7 +662,7 @@ let polEdit = null, polRenov = null;
 function abrirFormPoliza(p, renovarDe){
   polEdit = p && p.id && !renovarDe ? p : null; polRenov = renovarDe || null;
   const v = p || {};
-  const tipos = [...new Set([...POL_TIPOS, ...(v.tipo ? [v.tipo] : [])])];
+  const tipos = [...new Set([...POL_TIPOS.filter(x => !(VENTA_SOAT_EN_PAUSA && x === "SOAT")), ...(v.tipo ? [v.tipo] : [])])];
   const asegs = [...new Set(D.polizas.map(x => x.aseguradora).filter(Boolean))].sort();
   $("modal2").innerHTML = `<form class="modal" id="formPol" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="pTit">
     <h2 id="pTit">${renovarDe ? "Renovación de " + esc(propio(renovarDe.nombre)) : polEdit ? "Editar " + esc(v.tipo || "póliza") : "Registrar venta"}</h2>
@@ -667,7 +671,7 @@ function abrirFormPoliza(p, renovarDe){
       <label class="f">Cédula (si es cliente trae sus datos)<input class="m-input" id="pCedula" inputmode="numeric" maxlength="12" value="${esc(v.cedula || "")}"></label>
       <label class="f">Nombre *<input class="m-input" id="pNombre" maxlength="120" value="${esc(v.nombre ? propio(v.nombre) : "")}"></label>
       <label class="f">Teléfono (WhatsApp)<input class="m-input" id="pTel" inputmode="numeric" maxlength="14" value="${esc(v.telefono || "")}"></label>
-      <label class="f">Tipo *<select class="m-input" id="pTipo">${tipos.map(t => `<option ${t === (v.tipo || "SOAT") ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
+      <label class="f">Tipo *<select class="m-input" id="pTipo">${tipos.map(t => `<option ${t === (v.tipo || tipos[0]) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
       <label class="f">Aseguradora<input class="m-input" id="pAseg" maxlength="80" list="listaAseg" placeholder="Ej: Sura, Mundial, Previsora" value="${esc(v.aseguradora || "")}"><datalist id="listaAseg">${asegs.map(a => `<option value="${esc(a)}">`).join("")}</datalist></label>
       <label class="f">Número de póliza<input class="m-input" id="pNum" maxlength="40" value="${esc(renovarDe ? "" : (v.numero_poliza || ""))}"></label>
       <label class="f">Placa (si es de vehículo)<input class="m-input" id="pPlaca" maxlength="8" value="${esc(v.placa || "")}" style="text-transform:uppercase"></label>
@@ -689,7 +693,7 @@ function abrirFormPoliza(p, renovarDe){
 function cerrarModal2(){ polEdit = null; polRenov = null; vehEdit = null; $("modal2").hidden = true; $("modal2").innerHTML = ""; }
 function abrirVenta(cedula, tipo){
   const c = cedula ? D.clientes.find(x => String(x.cedula) === String(cedula)) : null;
-  abrirFormPoliza(c ? { cedula: c.cedula, nombre: c.nombre, telefono: telValido(c.telefono) || "", placa: c.placa || "", tipo: tipo || "SOAT" } : (tipo ? { tipo } : null));
+  abrirFormPoliza(c ? { cedula: c.cedula, nombre: c.nombre, telefono: telValido(c.telefono) || "", placa: c.placa || "", tipo: tipo || (VENTA_SOAT_EN_PAUSA ? "" : "SOAT") } : (tipo ? { tipo } : null));
 }
 async function guardarPoliza(){
   const v = (id) => ($(id) ? $(id).value.trim() : "");
@@ -771,7 +775,7 @@ function abrirVehiculo(id){
       <label class="f">SOAT vence<input class="m-input" id="vSoat" type="date" value="${esc(String(c.venc_soat || "").slice(0, 10))}"></label>
       <label class="f">Tecnomecánica vence<input class="m-input" id="vTec" type="date" value="${esc(String(c.venc_tecno || "").slice(0, 10))}"></label>
     </div>
-    <p class="sub" style="margin:0">Si usted le vendió el SOAT, mejor regístrelo con «＋ Registrar SOAT vendido»: así queda la comisión.</p>
+    ${VENTA_SOAT_EN_PAUSA ? "" : `<p class="sub" style="margin:0">Si usted le vendió el SOAT, mejor regístrelo con «＋ Registrar SOAT vendido»: así queda la comisión.</p>`}
     <div class="err" id="vErr"></div>
     <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button><button type="submit" class="btn-prim" id="vGuardar">Guardar</button></div>
   </form>`;
