@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROSEGUROSNET · Muelles y Seguros</title>
+<meta name="theme-color" content="#1F3D70">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  App "Muelles y Seguros" (paso 1 · 17-nov-2026)
+  Trabaja con la MISMA base de datos y el MISMO usuario que la app de Planillas (index.html).
+  En este paso SOLO LEE: no guarda ni cambia nada en la nube. Los avisos por WhatsApp solo
+  abren el chat con el mensaje listo.
+-->
+<style>
+  :root{
+    --azul:#1F3D70; --azul-2:#2A4E8A; --naranja:#E8590C; --naranja-osc:#C2410C;
+    --fondo:#F4F6FA; --panel:#FFFFFF; --linea:#E3E8F1; --texto:#13213A; --suave:#52607A; --muted:#6B7891;
+    --verde:#137A42; --verde-f:#E8F6EE; --rojo:#9B1C1C; --rojo-f:#FDECEC; --nar-f:#FFF4E5; --nar-t:#8A4B08; --azul-f:#E8EEF9; --gris-f:#EEF1F6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --fondo:#0F1729; --panel:#17223A; --linea:#26324D; --texto:#E8EDF7; --suave:#AAB6CC; --muted:#8C99B2;
+      --verde:#5FD394; --verde-f:#123524; --rojo:#F7A1A1; --rojo-f:#3A1717; --nar-f:#3A2A10; --nar-t:#FCD9A8; --azul-f:#1C2C4D; --gris-f:#212C44;
+    }
+  }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
+  body{ margin:0; background:var(--fondo); color:var(--texto); font-family:Inter, system-ui, sans-serif; }
+  button, input{ font-family:inherit; }
+  a{ color:inherit; }
+  .app{ display:flex; min-height:100vh; }
+  .side{ width:244px; flex:0 0 244px; background:var(--azul); color:#fff; padding:18px 12px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh; }
+  .brand{ display:flex; align-items:center; gap:10px; padding:4px 8px 16px; }
+  .brand .escudo{ width:34px; height:38px; background:#C8102E; border-radius:8px 8px 17px 17px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:19px; }
+  .brand b{ display:block; font-size:15px; letter-spacing:.02em; }
+  .brand small{ color:#C9D6EE; font-size:12px; }
+  .nav{ display:flex; justify-content:space-between; align-items:center; width:100%; min-height:44px; padding:0 12px; border:0; border-radius:10px; background:transparent; color:#DCE5F5; font-size:15px; font-weight:600; text-align:left; cursor:pointer; }
+  .nav:hover{ background:rgba(255,255,255,.08); color:#fff; }
+  .nav.on{ background:rgba(255,255,255,.14); color:#fff; box-shadow:inset 3px 0 0 #F2803F; }
+  .nav .badge{ background:var(--naranja); color:#fff; border-radius:999px; font-size:12px; font-weight:700; padding:2px 8px; }
+  .side-pie{ margin-top:auto; border-top:1px solid rgba(255,255,255,.18); padding:12px 8px 0; display:flex; flex-direction:column; gap:6px; font-size:13px; }
+  .side-pie a{ color:#fff; font-weight:600; text-decoration:none; }
+  .side-pie small{ color:#C9D6EE; }
+  main{ flex:1; min-width:0; padding:22px 26px 40px; display:flex; flex-direction:column; gap:18px; }
+  .top{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  .top h1{ margin:0; font-size:24px; font-weight:800; }
+  .top p{ margin:2px 0 0; color:var(--suave); font-size:14px; }
+  .buscar{ display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--linea); border-radius:10px; padding:0 12px; height:44px; min-width:min(320px, 100%); }
+  .buscar input{ border:0; outline:none; background:transparent; color:var(--texto); font-size:15px; width:100%; }
+  .aviso-lectura{ background:var(--azul-f); color:var(--azul); border-radius:10px; padding:10px 14px; font-size:13px; font-weight:600; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .aviso-lectura{ color:#C9D6EE; } }
+  .kpis{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; }
+  .kpi{ background:var(--panel); border:1px solid var(--linea); border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .kpi span{ color:var(--suave); font-size:13px; font-weight:600; }
+  .kpi b{ font-size:28px; font-weight:800; }
+  .kpi small{ color:var(--muted); font-size:12px; }
+  .fila2{ display:flex; flex-wrap:wrap; gap:18px; }
+  .card{ background:var(--panel); border:1px solid var(--linea); border-radius:14px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card h2{ margin:0; font-size:17px; font-weight:800; }
+  .card .sub{ margin:0; color:var(--suave); font-size:13px; }
+  .card-h{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .pills{ display:flex; gap:6px; flex-wrap:wrap; }
+  .pill-btn{ height:34px; padding:0 12px; border-radius:999px; border:1px solid var(--linea); background:var(--panel); color:var(--texto); font-size:13px; font-weight:600; cursor:pointer; }
+  .pill-btn.on{ background:var(--azul); color:#fff; border-color:var(--azul); }
+  .tabla{ overflow-x:auto; }
+  .t-fila{ display:grid; gap:10px; padding:10px; align-items:center; border-bottom:1px solid var(--linea); font-size:14px; min-width:620px; }
+  .t-cab{ font-size:12px; font-weight:700; color:var(--suave); text-transform:uppercase; letter-spacing:.04em; padding-top:6px; padding-bottom:8px; }
+  .t-agenda{ grid-template-columns:2.2fr 1.4fr 1.1fr 1fr 1fr; }
+  .nombre{ font-weight:700; }
+  .nombre-btn{ background:none; border:0; padding:0; text-align:left; cursor:pointer; color:var(--texto); display:flex; flex-direction:column; gap:2px; }
+  .nombre-btn small, .detalle{ color:var(--muted); font-size:12px; font-weight:500; }
+  .estado{ display:inline-block; justify-self:start; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; white-space:nowrap; }
+  .e-rojo{ background:var(--rojo-f); color:var(--rojo); } .e-nar{ background:var(--nar-f); color:var(--nar-t); }
+  .e-verde{ background:var(--verde-f); color:var(--verde); } .e-azul{ background:var(--azul-f); color:var(--azul); } .e-gris{ background:var(--gris-f); color:var(--suave); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .e-azul{ color:#C9D6EE; } }
+  .btn-wa{ height:36px; padding:0 12px; border-radius:9px; border:1px solid #1F9D55; background:var(--panel); color:var(--verde); font-weight:700; font-size:13px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+  .btn-wa[aria-disabled="true"]{ opacity:.45; pointer-events:none; }
+  .btn-prim{ height:36px; padding:0 12px; border-radius:9px; border:0; background:var(--azul); color:#fff; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .opor{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; background:var(--nar-f); border-radius:10px; }
+  .vacio{ color:var(--suave); font-size:14px; padding:14px; background:var(--gris-f); border-radius:10px; line-height:1.5; }
+  .kanban{ display:grid; grid-template-columns:repeat(3, minmax(240px, 1fr)); gap:14px; overflow-x:auto; }
+  .col{ background:var(--gris-f); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:10px; min-width:240px; }
+  .col-h{ display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:14px; padding:2px 4px; }
+  .col-h span{ background:var(--panel); border-radius:999px; padding:2px 10px; font-size:12px; }
+  .tarjeta{ background:var(--panel); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px; box-shadow:0 1px 2px rgba(19,33,58,.08); cursor:pointer; border:0; text-align:left; color:var(--texto); }
+  .puntos{ display:flex; gap:6px; flex-wrap:wrap; }
+  .punto{ font-size:12px; font-weight:700; border-radius:999px; padding:3px 9px; }
+  .ficha-grid{ display:grid; grid-template-columns:1.2fr 2fr 1fr; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--linea); font-size:14px; }
+  .login{ max-width:380px; margin:12vh auto; background:var(--panel); border:1px solid var(--linea); border-radius:16px; padding:28px; display:flex; flex-direction:column; gap:12px; }
+  .login input{ height:44px; border:1px solid var(--linea); border-radius:10px; padding:0 12px; font-size:15px; background:var(--panel); color:var(--texto); }
+  .login button{ height:44px; border:0; border-radius:10px; background:var(--naranja); color:#fff; font-weight:700; font-size:15px; cursor:pointer; }
+  .err{ color:var(--rojo); font-size:13px; min-height:18px; }
+  .menu-movil{ display:none; }
+  @media (max-width: 860px){
+    .app{ flex-direction:column; }
+    .side{ width:auto; flex:none; height:auto; position:static; flex-direction:row; flex-wrap:wrap; padding:10px; }
+    .brand{ width:100%; padding-bottom:6px; }
+    .nav{ width:auto; min-height:40px; font-size:14px; }
+    .side-pie{ width:100%; margin-top:6px; }
+    main{ padding:16px; }
+    .kpis{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .ficha-grid{ grid-template-columns:1fr; gap:4px; }
+  }
+</style>
+</head>
+<body>
+<div id="pantallaLogin" class="login" hidden>
+  <div class="brand" style="color:var(--texto)"><div class="escudo" style="color:#fff">P</div><div><b>PROSEGUROSNET</b><small style="color:var(--suave)">Muelles y Seguros</small></div></div>
+  <p style="margin:0;color:var(--suave);font-size:14px">Entre con el mismo correo y clave de la app de Planillas.</p>
+  <input id="lgEmail" type="email" placeholder="Correo" autocomplete="username" aria-label="Correo">
+  <input id="lgPass" type="password" placeholder="Clave" autocomplete="current-password" aria-label="Clave">
+  <button type="button" id="lgBtn">Entrar</button>
+  <div class="err" id="lgErr"></div>
+</div>
+
+<div class="app" id="app" hidden>
+  <nav class="side" aria-label="Menú">
+    <div class="brand"><div class="escudo">P</div><div><b>PROSEGUROSNET</b><small>Muelles y Seguros</small></div></div>
+    <button type="button" class="nav" data-vista="inicio">Hoy <span class="badge" id="bInicio" hidden></span></button>
+    <button type="button" class="nav" data-vista="muelles">Muelles <span class="badge" id="bMuelles" hidden></span></button>
+    <button type="button" class="nav" data-vista="soat">SOAT y vehículos <span class="badge" id="bSoat" hidden></span></button>
+    <button type="button" class="nav" data-vista="polizas">Pólizas</button>
+    <button type="button" class="nav" data-vista="cliente">Ficha del cliente</button>
+    <div class="side-pie">
+      <a href="./">← Ir a la app de Planillas</a>
+      <small id="pieMes"></small>
+    </div>
+  </nav>
+  <main>
+    <div class="top">
+      <div><h1 id="titulo">Hoy</h1><p id="subtitulo"></p></div>
+      <label class="buscar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8590C" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <input id="buscar" type="search" placeholder="Cédula, nombre o placa" aria-label="Buscar cliente">
+      </label>
+    </div>
+    <div class="aviso-lectura">Primera versión: aquí se consulta todo, pero los cambios se siguen haciendo en la app de Planillas. Nada de lo que haga aquí cambia sus datos.</div>
+    <div id="contenido"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+"use strict";
+const SUPABASE_URL = "https://jjygarfwdmhzspqonvql.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const MUELLES = ["Sociedad", "TC Buen", "Agua Dulce"];
+const EMPRESA_MUELLES = "actualización de muelles";
+const DIAS_VENTANA = 30;
+
+const D = { mes: null, clientes: [], polizas: [], responsables: new Map() };
+let vista = "inicio", filtroAgenda = "semana", filtroMuelle = "", clienteSel = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const propio = (s) => String(s || "").toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase());
+const fmt = (n) => "$" + Math.round(Number(n) || 0).toLocaleString("es-CO");
+const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+const hoy0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+function diasHasta(f){ if (!f) return null; const d = new Date(String(f).slice(0,10) + "T00:00:00"); if (isNaN(d)) return null; return Math.round((d - hoy0()) / 86400000); }
+function fechaCorta(f){ if (!f) return ""; const d = new Date(String(f).slice(0,10) + "T00:00:00"); return d.toLocaleDateString("es-CO", { day:"numeric", month:"short", year:"numeric" }); }
+function textoDias(d){ return d < 0 ? `vencido hace ${-d} día${d === -1 ? "" : "s"}` : d === 0 ? "vence hoy" : `en ${d} día${d === 1 ? "" : "s"}`; }
+function claseDias(d){ return d < 0 ? "e-rojo" : d <= 7 ? "e-nar" : "e-azul"; }
+const telValido = (t) => { const x = String(t || "").replace(/\D/g, ""); return /^3\d{9}$/.test(x) ? x : (/^573\d{9}$/.test(x) ? x.slice(2) : ""); };
+function linkWa(tel, msg){ const t = telValido(tel); return t ? `https://wa.me/57${t}?text=${encodeURIComponent(msg)}` : ""; }
+
+/* ---------- Datos ---------- */
+async function cargar(){
+  const { data: meses, error: e1 } = await sb.from("months").select("id,name,sort_order").order("sort_order", { ascending: false }).limit(1);
+  if (e1) throw e1;
+  D.mes = (meses || [])[0] || null;
+  if (!D.mes){ D.clientes = []; return; }
+  const cols = "id,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
+  const [cl, po, re] = await Promise.all([
+    sb.from("clients").select(cols).eq("month_id", D.mes.id).order("row_no"),
+    sb.from("polizas").select("*").order("fecha_vencimiento", { ascending: true }),
+    sb.from("responsables").select("nombre,clave,telefono")
+  ]);
+  if (cl.error) throw cl.error;
+  D.clientes = cl.data || [];
+  D.polizas = po.error ? [] : (po.data || []);
+  D.responsables = new Map((re.data || []).map(r => [norm(r.clave || r.nombre), r]));
+}
+// A quién se le escribe: si tiene responsable (persona) con teléfono, a él; si no, al cliente
+function telDestino(c){
+  const resp = norm(c.responsable_grupo);
+  if (resp && resp !== "independiente" && resp !== "independientes"){
+    const r = D.responsables.get(resp);
+    if (r && telValido(r.telefono)) return r.telefono;
+  }
+  return c.telefono;
+}
+const esServicioMuelle = (c) => norm(c.empresa) === norm(EMPRESA_MUELLES);
+const tieneMuelle = (c) => !!String(c.muelle || "").trim() || esServicioMuelle(c);
+
+/* Todo lo que vence (muelles, SOAT, licencia, tecnomecánica, pólizas) */
+function vencimientos(){
+  const out = [];
+  D.clientes.forEach(c => {
+    const add = (que, tipo, fecha) => { const d = diasHasta(fecha); if (d !== null) out.push({ c, que, tipo, fecha, dias: d }); };
+    Object.entries(c.venc_por_muelle || {}).forEach(([m, f]) => add(`Actualización ${m}`, "muelle", f));
+    add("SOAT", "soat", c.venc_soat);
+    add("Licencia de conducción", "licencia", c.venc_licencia);
+    add("Tecnomecánica", "tecno", c.venc_tecno);
+    add("Póliza", "poliza", c.venc_poliza);
+  });
+  D.polizas.forEach(p => {
+    const d = diasHasta(p.fecha_vencimiento);
+    if (d === null) return;
+    const c = D.clientes.find(x => x.cedula === p.cedula) || { nombre: p.nombre, cedula: p.cedula, telefono: p.telefono, placa: p.placa };
+    out.push({ c, que: `Póliza ${p.tipo || ""}`.trim(), tipo: "poliza", fecha: p.fecha_vencimiento, dias: d, poliza: p });
+  });
+  return out.sort((a, b) => a.dias - b.dias);
+}
+function mensajeVence(v){
+  const nombre = propio(v.c.nombre).split(" ")[0] || "";
+  const placa = v.c.placa ? ` de su vehículo ${String(v.c.placa).toUpperCase()}` : "";
+  const cuando = v.dias < 0 ? `venció el ${fechaCorta(v.fecha)}` : `vence el ${fechaCorta(v.fecha)}`;
+  return `¡Hola, ${nombre}! 👋\n\nLe recordamos que ${v.tipo === "muelle" ? "la " + v.que.toLowerCase() : "su " + v.que}${v.tipo === "soat" || v.tipo === "tecno" ? placa : ""} ${cuando}.\n\nEn PROSEGUROSNET se lo gestionamos sin filas. Escríbanos por aquí y le ayudamos.\n\n— Equipo PROSEGUROSNET 🛡️\nprosnet.co`;
+}
+
+/* ---------- Pantallas ---------- */
+const TITULOS = {
+  inicio: ["Hoy", "Lo que vence y lo que se puede vender"],
+  muelles: ["Muelles", "Actualización, enrolamiento y cursos"],
+  soat: ["SOAT y vehículos", "SOAT, licencia y tecnomecánica de los clientes"],
+  polizas: ["Pólizas", "Pólizas registradas y sus vencimientos"],
+  cliente: ["Ficha del cliente", "Planilla, muelles, vehículo y pólizas en una sola vista"]
+};
+function render(){
+  document.querySelectorAll(".nav").forEach(b => b.classList.toggle("on", b.dataset.vista === vista));
+  $("titulo").textContent = TITULOS[vista][0];
+  $("subtitulo").textContent = TITULOS[vista][1];
+  $("pieMes").textContent = D.mes ? `Mes: ${D.mes.name}` : "";
+  const v = vencimientos();
+  const urgentes = v.filter(x => x.dias <= 7).length;
+  const bI = $("bInicio"); bI.hidden = !urgentes; bI.textContent = urgentes;
+  const pendMuelle = D.clientes.filter(c => tieneMuelle(c) && MUELLES.some(m => !(c.aceptado_por_muelle || {})[m])).length;
+  const bM = $("bMuelles"); bM.hidden = !pendMuelle; bM.textContent = pendMuelle;
+  const soatPronto = v.filter(x => x.tipo === "soat" && x.dias <= DIAS_VENTANA).length;
+  const bS = $("bSoat"); bS.hidden = !soatPronto; bS.textContent = soatPronto;
+  const c = $("contenido");
+  if (vista === "inicio") c.innerHTML = vistaInicio(v);
+  else if (vista === "muelles") c.innerHTML = vistaMuelles();
+  else if (vista === "soat") c.innerHTML = vistaSoat(v);
+  else if (vista === "polizas") c.innerHTML = vistaPolizas();
+  else c.innerHTML = vistaCliente();
+}
+
+function filaAgenda(x){
+  const wa = linkWa(telDestino(x.c), mensajeVence(x));
+  return `<div class="t-fila t-agenda">
+    <button type="button" class="nombre-btn" data-ficha="${esc(x.c.cedula)}"><span class="nombre">${esc(propio(x.c.nombre))}</span><small>${esc([x.c.placa ? String(x.c.placa).toUpperCase() : "", x.c.responsable_grupo ? "Resp.: " + propio(x.c.responsable_grupo) : ""].filter(Boolean).join(" · ") || "CC " + (x.c.cedula || ""))}</small></button>
+    <span>${esc(x.que)}</span>
+    <span style="font-weight:600">${esc(fechaCorta(x.fecha))}</span>
+    <span class="estado ${claseDias(x.dias)}">${esc(textoDias(x.dias))}</span>
+    <a class="btn-wa" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>WhatsApp</a>
+  </div>`;
+}
+function vistaInicio(v){
+  const semana = v.filter(x => x.dias >= 0 && x.dias <= 7).length, vencidos = v.filter(x => x.dias < 0).length;
+  const conMuelle = D.clientes.filter(tieneMuelle);
+  const pendientes = conMuelle.filter(c => MUELLES.some(m => !(c.aceptado_por_muelle || {})[m])).length;
+  const sinSoat = D.clientes.filter(c => tieneMuelle(c) && !c.venc_soat);
+  const filtrado = v.filter(x => filtroAgenda === "todos" ? x.dias <= 60 : filtroAgenda === "vencidos" ? x.dias < 0 : filtroAgenda === "semana" ? x.dias <= 7 : x.dias <= DIAS_VENTANA);
+  const pills = [["vencidos","Vencidos"],["semana","Esta semana"],["mes","Este mes"],["todos","Próximos 60 días"]]
+    .map(([k, t]) => `<button type="button" class="pill-btn ${filtroAgenda === k ? "on" : ""}" data-filtro="${k}">${t}</button>`).join("");
+  return `
+  <div class="kpis">
+    <div class="kpi"><span>Vencen esta semana</span><b style="color:var(--naranja-osc)">${semana}</b><small>Muelles, SOAT, licencias y pólizas</small></div>
+    <div class="kpi"><span>Ya vencidos</span><b style="color:var(--rojo)">${vencidos}</b><small>Para avisar hoy</small></div>
+    <div class="kpi"><span>Clientes con muelle</span><b>${conMuelle.length}</b><small>${pendientes} con algún muelle pendiente</small></div>
+    <div class="kpi"><span>Pólizas registradas</span><b>${D.polizas.length}</b><small>Con nosotros</small></div>
+  </div>
+  <div class="fila2">
+    <section class="card" style="flex:3 1 520px">
+      <div class="card-h"><h2>Agenda de vencimientos</h2><div class="pills">${pills}</div></div>
+      <div class="tabla">
+        <div class="t-fila t-agenda t-cab"><span>Cliente</span><span>Qué vence</span><span>Fecha</span><span>Estado</span><span>Aviso</span></div>
+        ${filtrado.length ? filtrado.map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">No hay vencimientos en este filtro. Las fechas se ponen en la app de Planillas → Editar cliente → 🚗 Vehículo y licencia, y en los muelles de cada cliente.</div>`}
+      </div>
+    </section>
+    <section class="card" style="flex:2 1 300px">
+      <h2>Oportunidades de venta</h2>
+      <p class="sub">Clientes que trabajan en muelles y todavía no tienen SOAT registrado con nosotros (${sinSoat.length}).</p>
+      ${sinSoat.slice(0, 6).map(c => {
+        const wa = linkWa(telDestino(c), `¡Hola, ${propio(c.nombre).split(" ")[0]}! 👋\n\nEn PROSEGUROSNET también le renovamos el SOAT de su vehículo, sin filas y digital al WhatsApp. ¿Cuándo se le vence? Así le avisamos a tiempo.\n\n— Equipo PROSEGUROSNET 🛡️`);
+        return `<div class="opor"><div style="min-width:0"><div class="nombre" style="font-size:14px">${esc(propio(c.nombre))}</div><div class="detalle">Sin SOAT registrado</div></div>
+          <a class="btn-prim" style="display:inline-flex;align-items:center;text-decoration:none" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true"`}>Ofrecer</a></div>`;
+      }).join("") || `<div class="vacio">No hay oportunidades por ahora.</div>`}
+      ${sinSoat.length > 6 ? `<p class="sub">…y ${sinSoat.length - 6} más.</p>` : ""}
+    </section>
+  </div>`;
+}
+function vistaMuelles(){
+  const lista = D.clientes.filter(tieneMuelle).filter(c => {
+    if (!filtroMuelle) return true;
+    if (filtroMuelle === "independientes") return esServicioMuelle(c);
+    return !esServicioMuelle(c);
+  });
+  const estadoDe = (c) => { const ac = c.aceptado_por_muelle || {}; const n = MUELLES.filter(m => ac[m]).length; return n === 0 ? 0 : n === MUELLES.length ? 2 : 1; };
+  const cols = [["Pendiente en todos los muelles", 0], ["Aceptado en algunos", 1], ["Aceptado en los 3", 2]];
+  const pills = [["","Todos"],["prosegurosnet","Clientes PROSEGUROSNET"],["independientes","Independientes (otras empresas)"]]
+    .map(([k, t]) => `<button type="button" class="pill-btn ${filtroMuelle === k ? "on" : ""}" data-fmuelle="${k}">${t}</button>`).join("");
+  const tarjeta = (c) => {
+    const ac = c.aceptado_por_muelle || {}, vpm = c.venc_por_muelle || {};
+    return `<button type="button" class="tarjeta" data-ficha="${esc(c.cedula)}">
+      <span class="nombre" style="font-size:14px">${esc(propio(c.nombre))}</span>
+      <span class="detalle">${esServicioMuelle(c) ? "Independiente · " + esc(propio(c.responsable_grupo || "")) : "Cliente PROSEGUROSNET"}</span>
+      <div class="puntos">${MUELLES.map(m => { const d = diasHasta(vpm[m]); return `<span class="punto ${ac[m] ? "e-verde" : "e-gris"}" title="${esc(m)}">${esc(m)}${d !== null ? " · " + (d < 0 ? "venció" : d + " d") : ""}</span>`; }).join("")}</div>
+    </button>`;
+  };
+  return `<div class="card">
+    <div class="card-h"><h2>Trámites de muelles · ${esc(D.mes ? D.mes.name : "")}</h2><div class="pills">${pills}</div></div>
+    <div class="kanban">${cols.map(([t, k]) => { const it = lista.filter(c => estadoDe(c) === k); return `<div class="col"><div class="col-h">${t}<span>${it.length}</span></div>${it.map(tarjeta).join("") || `<div class="vacio">Nadie aquí.</div>`}</div>`; }).join("")}</div>
+    <p class="sub">Verde = aceptado en ese muelle. Para marcar un muelle como aceptado, por ahora se hace en la app de Planillas → Muelles.</p>
+  </div>`;
+}
+function vistaSoat(v){
+  const veh = v.filter(x => x.tipo === "soat" || x.tipo === "licencia" || x.tipo === "tecno");
+  const conPlaca = D.clientes.filter(c => c.placa);
+  return `<div class="fila2">
+    <section class="card" style="flex:3 1 520px">
+      <h2>Vencimientos de SOAT, licencia y tecnomecánica</h2>
+      <div class="tabla">
+        <div class="t-fila t-agenda t-cab"><span>Cliente</span><span>Qué vence</span><span>Fecha</span><span>Estado</span><span>Aviso</span></div>
+        ${veh.length ? veh.map(filaAgenda).join("") : `<div class="vacio" style="min-width:620px">Todavía no hay fechas de SOAT, licencia ni tecnomecánica guardadas (${conPlaca.length} clientes con placa). Se ponen en la app de Planillas → Editar cliente → 🚗 Vehículo y licencia. Cuando estén, aquí sale la lista de renovaciones con el aviso listo.</div>`}
+      </div>
+    </section>
+    <section class="card" style="flex:2 1 300px;background:var(--azul);color:#fff;border-color:var(--azul)">
+      <h2>Cómo funcionará el aviso</h2>
+      <p class="sub" style="color:#DCE5F5">Cuando falten 20, 7 y 1 día para que venza, el cliente aparece aquí con el mensaje listo para WhatsApp. Si tiene responsable, el aviso va al responsable.</p>
+      <p class="sub" style="color:#DCE5F5">Próximo paso: renovar el SOAT desde aquí y registrar la comisión, que pasa sola a Contabilidad.</p>
+    </section>
+  </div>`;
+}
+function vistaPolizas(){
+  if (!D.polizas.length) return `<div class="card"><h2>Pólizas</h2><div class="vacio">Todavía no hay pólizas registradas. Por ahora se registran en la app de Planillas → Seguros y pólizas; aquí aparecen solas con su vencimiento y comisión.</div></div>`;
+  return `<div class="card"><h2>Pólizas registradas (${D.polizas.length})</h2><div class="tabla">
+    <div class="t-fila t-cab" style="grid-template-columns:1.8fr 1.2fr 1.2fr 1fr 1fr 1fr"><span>Cliente</span><span>Tipo</span><span>Aseguradora</span><span>Vence</span><span>Prima</span><span>Comisión</span></div>
+    ${D.polizas.map(p => { const d = diasHasta(p.fecha_vencimiento); return `<div class="t-fila" style="grid-template-columns:1.8fr 1.2fr 1.2fr 1fr 1fr 1fr">
+      <button type="button" class="nombre-btn" data-ficha="${esc(p.cedula)}"><span class="nombre">${esc(propio(p.nombre))}</span><small>${esc(p.numero_poliza || "")}</small></button>
+      <span>${esc(p.tipo || "")}</span><span>${esc(p.aseguradora || "")}</span>
+      <span class="estado ${d === null ? "e-gris" : claseDias(d)}">${d === null ? "sin fecha" : esc(textoDias(d))}</span>
+      <span>${p.valor_prima != null ? fmt(p.valor_prima) : ""}</span><span style="font-weight:700;color:var(--verde)">${p.comision != null ? fmt(p.comision) : ""}</span></div>`; }).join("")}
+  </div></div>`;
+}
+function vistaCliente(){
+  const q = norm($("buscar").value);
+  if (!clienteSel){
+    const res = q ? D.clientes.filter(c => norm(c.nombre).includes(q) || String(c.cedula || "").includes(q) || norm(c.placa).includes(q)).slice(0, 30) : [];
+    return `<div class="card"><h2>Buscar cliente</h2><p class="sub">Escriba la cédula, el nombre o la placa en el buscador de arriba.</p>
+      ${res.map(c => `<button type="button" class="tarjeta" data-ficha="${esc(c.cedula)}" style="box-shadow:none;border:1px solid var(--linea)"><span class="nombre">${esc(propio(c.nombre))}</span><span class="detalle">CC ${esc(c.cedula)}${c.placa ? " · " + esc(String(c.placa).toUpperCase()) : ""}</span></button>`).join("") || (q ? `<div class="vacio">No encontré a nadie con "${esc(q)}".</div>` : "")}</div>`;
+  }
+  const c = D.clientes.find(x => x.cedula === clienteSel) || { cedula: clienteSel, nombre: "" };
+  const ac = c.aceptado_por_muelle || {}, vpm = c.venc_por_muelle || {};
+  const pagado = /^PAGO/i.test(c.estado_tramite || "");
+  const pol = D.polizas.filter(p => p.cedula === c.cedula);
+  const vehiculo = [["SOAT", c.venc_soat], ["Licencia", c.venc_licencia], ["Tecnomecánica", c.venc_tecno]].filter(([, f]) => f);
+  const filaF = (area, detalle, estado, clase) => `<div class="ficha-grid"><span class="nombre">${area}</span><span style="color:var(--suave)">${detalle}</span><span class="estado ${clase}">${estado}</span></div>`;
+  const iniciales = propio(c.nombre).split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("");
+  return `<div class="fila2">
+    <section class="card" style="flex:1 1 280px">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--azul);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px">${esc(iniciales)}</div>
+      <h2 style="font-size:20px">${esc(propio(c.nombre))}</h2>
+      <p class="sub">CC ${esc(c.cedula)}${c.placa ? " · Placa " + esc(String(c.placa).toUpperCase()) : ""}${c.responsable_grupo ? " · Responsable: " + esc(propio(c.responsable_grupo)) : ""}</p>
+      <p class="sub">📱 ${esc(c.telefono || "sin teléfono")}</p>
+      <a href="./" style="font-weight:700;font-size:14px;color:var(--azul)">Ver en la app de Planillas →</a>
+      <button type="button" class="pill-btn" data-volver="1" style="align-self:flex-start">← Buscar otro</button>
+    </section>
+    <section class="card" style="flex:2 1 460px">
+      <h2>Todo lo de este cliente</h2>
+      ${filaF("Planilla", `${esc(D.mes ? D.mes.name : "")} · ${esc(c.estado_tramite || "sin estado")}`, pagado ? "Al día" : "Pendiente", pagado ? "e-verde" : "e-nar")}
+      ${filaF("Muelles", tieneMuelle(c) ? MUELLES.map(m => `${esc(m)}: ${ac[m] ? "aceptado" : "pendiente"}${vpm[m] ? " (vence " + esc(fechaCorta(vpm[m])) + ")" : ""}`).join(" · ") : "No trabaja en muelles", tieneMuelle(c) ? (MUELLES.every(m => ac[m]) ? "Al día" : "Pendiente") : "—", tieneMuelle(c) ? (MUELLES.every(m => ac[m]) ? "e-verde" : "e-nar") : "e-gris")}
+      ${filaF("Vehículo", vehiculo.length ? vehiculo.map(([n, f]) => `${n} vence ${esc(fechaCorta(f))}`).join(" · ") : "Sin fechas de SOAT, licencia ni tecnomecánica", vehiculo.length ? "Registrado" : "Oportunidad", vehiculo.length ? "e-azul" : "e-nar")}
+      ${filaF("Pólizas", pol.length ? pol.map(p => esc(p.tipo || "Póliza")).join(", ") : "Ninguna con nosotros", pol.length ? pol.length + " póliza(s)" : "Oportunidad", pol.length ? "e-verde" : "e-nar")}
+    </section>
+  </div>`;
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener("click", (e) => {
+  const n = e.target.closest("[data-vista]");
+  if (n){ vista = n.dataset.vista; if (vista === "cliente") clienteSel = null; render(); return; }
+  const f = e.target.closest("[data-filtro]"); if (f){ filtroAgenda = f.dataset.filtro; render(); return; }
+  const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
+  const fi = e.target.closest("[data-ficha]"); if (fi){ clienteSel = fi.dataset.ficha; vista = "cliente"; render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest("[data-volver]")){ clienteSel = null; render(); }
+});
+$("buscar").addEventListener("input", () => { vista = "cliente"; clienteSel = null; render(); });
+
+async function entrar(){
+  try{
+    await cargar();
+    $("pantallaLogin").hidden = true; $("app").hidden = false;
+    // Abrir directo a un cliente: seguros.html?cedula=123
+    const ced = new URLSearchParams(location.search).get("cedula");
+    if (ced){ clienteSel = ced; vista = "cliente"; }
+    render();
+  }catch(err){
+    $("pantallaLogin").hidden = false; $("app").hidden = true;
+    $("lgErr").textContent = "No se pudieron cargar los datos: " + (err.message || err);
+  }
+}
+$("lgBtn").addEventListener("click", async () => {
+  $("lgErr").textContent = "";
+  const { error } = await sb.auth.signInWithPassword({ email: $("lgEmail").value.trim(), password: $("lgPass").value });
+  if (error){ $("lgErr").textContent = "Correo o clave incorrectos."; return; }
+  entrar();
+});
+$("lgPass").addEventListener("keydown", (e) => { if (e.key === "Enter") $("lgBtn").click(); });
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) entrar(); else $("pantallaLogin").hidden = false;
+})();
+</script>
+</body>
+</html>

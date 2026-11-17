@@ -252,3 +252,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 
 ## 16-nov-2026 · Recordatorio también al número del cliente
 - Además del mensaje agrupado al responsable, cada cliente con teléfono propio (distinto al del responsable) recibe su propio recordatorio con solo su valor (`agregarEnviosDirectos`, `mensajeDirectoCliente`). Casilla en el panel de recordatorios, activada por defecto y recordada en el equipo (`rec_tambien_cliente`). Desde la ficha, después de abrir el del responsable la app pregunta si mandarlo también al cliente.
+
+- 2026-11-17 · App nueva «Muelles y Seguros» (`seguros.html`), paso 1: solo lectura. Usa la misma base y el mismo inicio de sesión. Pantallas: Hoy (vencimientos y oportunidades), Muelles (tablero por avance), SOAT y vehículos, Pólizas, Ficha del cliente (`?cedula=`). Enlace en el menú lateral de la app de Planillas. Por qué: separar muelles, SOAT y pólizas para dar más espacio a la app principal. Siguientes pasos: pasar la edición de muelles, SOAT/pólizas con avisos por WhatsApp y resumen en la app principal (ficha, Hoy, Contabilidad).
