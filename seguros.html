@@ -129,6 +129,41 @@
     .kpis{ grid-template-columns:repeat(2, minmax(0,1fr)); }
     .ficha-grid{ grid-template-columns:1fr; gap:4px; }
   }
+  /* ===== Estilo como la app de Planillas (encabezado blanco con línea roja y menú que se abre de lado) ===== */
+  .app{ display:block; min-height:100vh; }
+  .cab{ position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:10px max(16px, calc((100% - 1320px) / 2 + 20px)); background:var(--panel); border-bottom:3px solid #C8102E; }
+  .cab-menu{ width:44px; height:44px; border:1px solid var(--linea); border-radius:10px; background:var(--panel); color:var(--texto); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .cab-marca{ display:flex; align-items:center; gap:10px; }
+  .cab-marca b{ display:block; font-size:18px; font-weight:800; letter-spacing:.02em; line-height:1.1; color:var(--texto); }
+  .cab-marca small{ display:block; font-size:12px; color:var(--suave); }
+  .cab-usuario{ display:flex; flex-direction:column; padding-left:12px; border-left:1px solid var(--linea); font-size:12.5px; color:var(--suave); line-height:1.35; }
+  .cab-usuario b{ color:var(--texto); }
+  .cab-der{ margin-left:auto; display:flex; align-items:center; gap:12px; }
+  .cab-mes{ font-size:13px; font-weight:700; color:var(--azul); background:var(--azul-f); border-radius:999px; padding:6px 12px; }
+  .usu-caja{ position:relative; }
+  .usu-btn{ display:flex; align-items:center; gap:10px; min-height:44px; padding:4px 8px 4px 4px; border:0; border-radius:12px; background:transparent; cursor:pointer; color:var(--texto); text-align:left; }
+  .usu-ini{ width:40px; height:40px; border-radius:50%; background:var(--azul); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+  .usu-txt{ display:flex; flex-direction:column; line-height:1.2; } .usu-txt b{ font-size:13.5px; white-space:nowrap; } .usu-txt small{ font-size:12px; color:var(--suave); }
+  .usu-menu{ position:absolute; right:0; top:calc(100% + 6px); min-width:220px; background:var(--panel); border:1px solid var(--linea); border-radius:12px; box-shadow:0 12px 28px rgba(15,23,42,.18); padding:6px; z-index:80; display:flex; flex-direction:column; }
+  .usu-menu[hidden]{ display:none; }
+  .usu-menu a, .usu-menu button{ display:flex; align-items:center; min-height:42px; padding:0 12px; border:0; border-radius:8px; background:transparent; font-size:14px; color:var(--texto); text-decoration:none; cursor:pointer; text-align:left; }
+  .usu-menu a:hover, .usu-menu button:hover{ background:var(--gris-f); }
+  .usu-salir{ color:#B42318 !important; border-top:1px solid var(--linea) !important; border-radius:0 0 8px 8px !important; }
+  .menu-velo{ position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:90; }
+  .side{ position:fixed !important; top:0; left:0; bottom:0; width:340px !important; max-width:90vw; height:100vh !important; z-index:95; background:#FFFFFF !important; color:#13213A !important; padding:0 !important; gap:0 !important;
+    box-shadow:8px 0 28px rgba(15,23,42,.25); transform:translateX(-105%); transition:transform .2s ease; visibility:hidden; overflow-y:auto; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; }
+  body.menu-abierto .side{ transform:none; visibility:visible; }
+  .mc-cab{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:3px solid #C8102E; }
+  .mc-cab b{ display:block; font-size:16px; font-weight:800; color:#1F3D70; } .mc-cab small{ display:block; font-size:11.5px; color:#52607A; }
+  .mc-cerrar{ margin-left:auto; width:44px; height:44px; border:0; border-radius:10px; background:#EEF1F6; color:#13213A; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .side .nav{ display:flex !important; justify-content:flex-start !important; gap:12px; width:100% !important; min-height:52px; padding:0 16px !important; border:0 !important; border-bottom:1px solid #EEF1F6 !important; border-radius:0 !important; background:#FFFFFF !important; color:#13213A !important; font-size:15px !important; font-weight:500 !important; text-decoration:none; box-shadow:none !important; }
+  .side .nav:hover{ background:#F2F5FA !important; }
+  .side .nav[hidden], .usu-menu [hidden]{ display:none !important; }
+  .side .nav.on{ background:#FFF4EC !important; font-weight:700 !important; box-shadow:inset 4px 0 0 #C8102E !important; }
+  .nav-t{ flex:1; }
+  .mc-titulo{ padding:14px 16px 6px; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#6B7891; background:#F7F9FC; border-bottom:1px solid #EEF1F6; }
+  main{ max-width:1320px; margin:0 auto; }
+  @media (max-width: 860px){ .cab-usuario, .usu-txt{ display:none; } .cab{ position:static; } .side .nav{ width:100% !important; } }
 </style>
 </head>
 <body>
@@ -142,17 +177,34 @@
 </div>
 
 <div class="app" id="app" hidden>
-  <nav class="side" aria-label="Menú">
-    <div class="brand"><div class="escudo">P</div><div><b>PROSEGUROSNET</b><small>Muelles y Seguros</small></div></div>
-    <button type="button" class="nav" data-vista="inicio">Hoy <span class="badge" id="bInicio" hidden></span></button>
-    <button type="button" class="nav" data-vista="muelles">Muelles <span class="badge" id="bMuelles" hidden></span></button>
-    <button type="button" class="nav" data-vista="soat">SOAT y vehículos <span class="badge" id="bSoat" hidden></span></button>
-    <button type="button" class="nav" data-vista="polizas">Pólizas <span class="badge" id="bPolizas" hidden></span></button>
-    <button type="button" class="nav" data-vista="cliente">Ficha del cliente</button>
-    <div class="side-pie">
-      <a href="./">← Ir a la app de Planillas</a>
-      <small id="pieMes"></small>
+  <header class="cab">
+    <button type="button" class="cab-menu" id="menuAbrir" aria-label="Abrir el menú" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <div class="cab-marca"><svg width="30" height="34" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z" fill="#C8102E"/><path d="M20 30 l8 8 l16 -16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>PROSEGUROSNET</b><small>Muelles y Seguros</small></div></div>
+    <div class="cab-usuario"><span>Usuario <b id="cabUsuario">—</b></span><span id="cabIngreso"></span></div>
+    <div class="cab-der">
+      <span class="cab-mes" id="pieMes"></span>
+      <div class="usu-caja">
+        <button type="button" class="usu-btn" id="usuBtn" aria-haspopup="menu" aria-expanded="false"><span class="usu-ini" id="usuIni">—</span><span class="usu-txt"><b id="usuNombre">—</b><small id="usuRol"></small></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="usu-menu" id="usuMenu" role="menu" hidden>
+          <a role="menuitem" href="./">App de Planillas</a>
+          <a role="menuitem" href="contabilidad.html" id="usuConta" hidden>App de Contabilidad</a>
+          <button type="button" role="menuitem" id="usuSalir" class="usu-salir">Salir</button>
+        </div>
+      </div>
     </div>
+  </header>
+  <div class="menu-velo" id="menuVelo" hidden></div>
+  <nav class="side" id="menuLado" aria-label="Menú">
+    <div class="mc-cab"><svg width="30" height="34" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z" fill="#C8102E"/><path d="M20 30 l8 8 l16 -16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>PROSEGUROSNET</b><small>Muelles y Seguros</small></div>
+      <button type="button" class="mc-cerrar" id="menuCerrar" aria-label="Cerrar el menú"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button></div>
+    <button type="button" class="nav" data-vista="inicio"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">Hoy</span><span class="badge" id="bInicio" hidden></span></button>
+    <button type="button" class="nav" data-vista="muelles"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">Muelles</span><span class="badge" id="bMuelles" hidden></span></button>
+    <button type="button" class="nav" data-vista="soat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">SOAT y vehículos</span><span class="badge" id="bSoat" hidden></span></button>
+    <button type="button" class="nav" data-vista="polizas"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">Pólizas</span><span class="badge" id="bPolizas" hidden></span></button>
+    <button type="button" class="nav" data-vista="cliente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">Ficha del cliente</span></button>
+    <div class="mc-titulo">Apps aparte (mismo usuario y clave)</div>
+    <a class="nav" href="./"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">App de Planillas</span></a>
+    <a class="nav" href="contabilidad.html" id="navConta" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="nav-t">Contabilidad ↗</span></a>
   </nav>
   <main>
     <div class="top">
@@ -162,7 +214,6 @@
         <input id="buscar" type="search" placeholder="Cédula, nombre o placa" aria-label="Buscar cliente">
       </label>
     </div>
-    <div class="aviso-lectura">Nuevo: los <b>muelles</b> ya se pueden cambiar aquí (toque un cliente en Muelles). También se registran aquí las <b>ventas de SOAT y pólizas</b> (con su comisión) y se avisa por WhatsApp a los 20, 7 y 1 día. Pagos y datos del cliente se siguen cambiando en la app de Planillas.</div>
     <div id="contenido"></div>
   </main>
 </div>
@@ -774,9 +825,38 @@ document.addEventListener("click", (e) => {
 });
 $("buscar").addEventListener("input", () => { vista = "cliente"; clienteSel = null; render(); });
 
+function abrirMenu(on){
+  document.body.classList.toggle("menu-abierto", !!on);
+  $("menuVelo").hidden = !on; $("menuAbrir").setAttribute("aria-expanded", on ? "true" : "false");
+}
+$("menuAbrir").addEventListener("click", () => abrirMenu(!document.body.classList.contains("menu-abierto")));
+$("menuCerrar").addEventListener("click", () => abrirMenu(false));
+$("menuVelo").addEventListener("click", () => abrirMenu(false));
+$("menuLado").addEventListener("click", (e) => { if (e.target.closest(".nav")) abrirMenu(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape"){ abrirMenu(false); $("usuMenu").hidden = true; } });
+$("usuBtn").addEventListener("click", (e) => { e.stopPropagation(); $("usuMenu").hidden = !$("usuMenu").hidden; $("usuBtn").setAttribute("aria-expanded", $("usuMenu").hidden ? "false" : "true"); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".usu-caja")) $("usuMenu").hidden = true; });
+$("usuSalir").addEventListener("click", async () => { try{ await sb.auth.signOut(); }catch(e){} location.reload(); });
+async function pintarUsuario(){
+  try{
+    const { data: u } = await sb.auth.getUser(); const user = u && u.user; if (!user) return;
+    let nombre = String(user.email || "").split("@")[0], rol = "";
+    try{ const { data: p } = await sb.from("profiles").select("full_name,role").eq("id", user.id).maybeSingle();
+      if (p){ if (p.full_name && !String(p.full_name).includes("@")) nombre = p.full_name; rol = p.role || ""; } }catch(e){}
+    const pal = nombre.trim().split(/\s+/).filter(Boolean);
+    $("cabUsuario").textContent = (pal.length > 1 ? pal[0] + " " + pal[pal.length - 1] : nombre).toUpperCase();
+    $("usuNombre").textContent = propio(nombre);
+    $("usuRol").textContent = rol === "admin" ? "Administrador" : "Operador";
+    $("usuIni").textContent = (pal.length > 1 ? pal[0][0] + pal[pal.length - 1][0] : nombre.slice(0, 2)).toUpperCase();
+    const f = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
+    $("cabIngreso").textContent = f ? `Último ingreso ${f.toLocaleDateString("es-CO")} ${f.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}` : "";
+    $("navConta").hidden = $("usuConta").hidden = rol !== "admin";
+  }catch(e){}
+}
 async function entrar(){
   try{
     await cargar();
+    pintarUsuario();
     try{ const { data: u } = await sb.auth.getUser(); D.usuario = (u && u.user && u.user.id) || null; }catch(e){}
     escucharCambios();
     $("pantallaLogin").hidden = true; $("app").hidden = false;
