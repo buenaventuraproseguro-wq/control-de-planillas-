@@ -492,6 +492,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .srv-fila input[type=text]{ flex:1 1 150px; min-width:0; }
   .srv-fila input[data-srv-tipo][hidden]{ display:none; }
   .srv-total{ text-align:right; font-weight:800; font-variant-numeric:tabular-nums; }
+  .seg-resumen{ margin-top:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; max-width:560px; }
+  .seg-resumen-txt{ display:flex; flex-direction:column; gap:2px; font-size:13px; min-width:0; }
+  .seg-resumen-aviso{ color:#B42318; font-weight:700; }
   .srv-detalle{ margin-top:8px; border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; max-width:440px; }
   .srv-detalle-fila{ display:flex; justify-content:space-between; gap:12px; padding:3px 0; font-variant-numeric:tabular-nums; }
   .srv-detalle-total{ border-top:1px solid var(--line); margin-top:4px; padding-top:5px; }
@@ -1851,18 +1854,19 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
     <div class="sidebar-section-title">Clientes y ventas</div>
     <button type="button" class="sidebar-link" id="navCrmBtn"><span class="sidebar-num">2</span><svg class="ico" aria-hidden="true"><use href="#i-contacto"/></svg>CRM · Prospectos <span class="sidebar-badge" id="crmBadge" style="display:none;" title="Prospectos que toca contactar hoy">0</span></button>
-    <button type="button" class="sidebar-link" id="navPolizasBtn"><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Seguros y pólizas <span class="sidebar-badge" id="polBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navPolizasBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Seguros y pólizas <span class="sidebar-badge" id="polBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">5</span><svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
     <button type="button" class="sidebar-link" id="navEstadoCuentaBtn"><span class="sidebar-num">20</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
     <button type="button" class="sidebar-link" id="navPresuncionBtn"><span class="sidebar-num">10.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Presunción de costos (independientes)</button>
 
-    <div class="sidebar-section-title">Muelles y vehículos</div>
+    <div class="sidebar-section-title">Muelles y Seguros</div>
     <a class="sidebar-link" id="navAppSegurosBtn" href="seguros.html" target="_blank" rel="noopener" title="App nueva: muelles, SOAT y pólizas (mismos clientes y misma clave)"><span class="sidebar-num"></span><svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles y Seguros · app nueva ↗</a>
     <button type="button" class="sidebar-link" id="navMuellesUpdateBtn"><span class="sidebar-num">6</span><svg class="ico" aria-hidden="true"><use href="#i-barco"/></svg>Muelles PROSEGUROSNET</button>
     <button type="button" class="sidebar-link" id="navMuellesServicioBtn"><span class="sidebar-num">7</span><svg class="ico" aria-hidden="true"><use href="#i-ancla"/></svg>Muelles independientes (otras empresas)</button>
-    <button type="button" class="sidebar-link" id="navVencimientosBtn"><span class="sidebar-num">24</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Vencimientos (licencia, SOAT, póliza) <span class="sidebar-badge" id="vencBadge" style="display:none;">0</span></button>
+    <button type="button" class="sidebar-link" id="navVencimientosBtn" style="display:none;"><span class="sidebar-num">24</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Vencimientos (licencia, SOAT, póliza) <span class="sidebar-badge" id="vencBadge" style="display:none;">0</span></button>
 
     <div class="sidebar-section-title">Contabilidad</div>
+    <button type="button" class="sidebar-link" id="navResumenNegocio" data-informe="ingresos" style="display:none;" title="Ingresos de todo el negocio: planillas, muelles, SOAT y pólizas, gestiones e incapacidades"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Resumen del mes (Planillas + Muelles y Seguros)</button>
     <button type="button" class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Libro contable (ingresos y gastos) <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
     <button type="button" class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Crear borradores en Alegra</button>
     <button type="button" class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Recibos y pagos en Alegra</button>
@@ -1971,7 +1975,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
             <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
             <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
             <button type="button" class="btn small" id="mandatoBtn">📄 Contrato de mandato</button>
-            <button type="button" class="btn small" id="polizasClienteBtn">🛡️ Seguros y pólizas</button>
+            <button type="button" class="btn small" id="polizasClienteBtn" title="Abre este cliente en la app Muelles y Seguros">🛡️ Muelles y Seguros ↗</button>
             <button type="button" class="btn small ghost" id="cambiosBtn" style="display:none;">🕘 Ver cambios</button>
             <button class="btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           </div>
@@ -6182,7 +6186,7 @@ function masUnAnio(iso){
   return isoDia(d);
 }
 document.getElementById("navPolizasBtn").addEventListener("click", () => abrirPolizas(""));
-document.getElementById("polizasClienteBtn").addEventListener("click", () => { if (activeCedula) abrirPolizas(String(activeCedula)); });
+document.getElementById("polizasClienteBtn").addEventListener("click", () => { if (activeCedula) abrirAppSeguros(activeCedula); });
 document.getElementById("polCerrarBtn").addEventListener("click", () => document.getElementById("overlayPolizas").classList.remove("show"));
 document.getElementById("polCancelarBtn").addEventListener("click", polCerrarForm);
 document.getElementById("polBuscar").addEventListener("input", (e) => { polFiltro = e.target.value; renderPolizas(); });
@@ -7854,6 +7858,7 @@ function renderMonthTotal(){
   // Los tres totales (PROSEGUROSNET, Conductores, Gestiones) se suman al final.
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
   document.getElementById("navFacturarMes").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navResumenNegocio").style.display = esAdmin() ? "" : "none";
   document.getElementById("navCambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("cambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navRecibosCaja").style.display = esAdmin() ? "" : "none";
@@ -8602,6 +8607,7 @@ function showBreakdown(cedula){
   `;
   };
 
+  document.getElementById("bMeta").insertAdjacentHTML("beforeend", resumenSegurosFicha(r));
   if (esServicioMuelles(r)){
     const sv = serviciosMuelle(r);
     document.getElementById("bMeta").insertAdjacentHTML("beforeend", `<div class="srv-detalle"><b>Servicios prestados en muelles</b>${Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<div class="srv-detalle-fila"><span>${iconoServicio(k)} ${escHtml(nombreServicio(r, k))}${k === "enrolamiento" ? " (una sola vez)" : k === "curso" ? " (solo este mes)" : " (cada mes)"}</span><b>${fmt(sv[k])}</b></div>`).join("")}<div class="srv-detalle-fila srv-detalle-total"><span>Total</span><b>${fmt(totalServicios(sv))}</b></div></div>`);
@@ -10694,6 +10700,7 @@ async function copiarTexto(texto){
   }catch(e){ return false; }
 }
 document.getElementById("bMeta").addEventListener("click", async (e) => {
+  const ap = e.target.closest("[data-abrir-seguros]"); if (ap){ abrirAppSeguros(ap.dataset.abrirSeguros); return; }
   if (e.target.closest("[data-pasar-diasprop]")){
     const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
     if (r) await pasarADiasProporcionales(r);
@@ -15816,6 +15823,59 @@ function datosHoy(){
     vencen: clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)),
   };
 }
+/* ---------- Unión con la app «Muelles y Seguros» (seguros.html) ----------
+   Misma lógica de avisos que la app nueva: 20, 7 y 1 día antes, y vencidos hasta 60 días.
+   Solo lee; los avisos se marcan desde la app nueva. */
+function abrirAppSeguros(cedula){
+  window.open("seguros.html" + (cedula ? "?cedula=" + encodeURIComponent(String(cedula)) : ""), "_blank", "noopener");
+}
+function _etapaAviso(dias){ if (dias < -60 || dias > 20) return null; if (dias < 0) return -1; return dias <= 1 ? 1 : dias <= 7 ? 7 : 20; }
+function _tocaAviso(fecha, dias, avisado){
+  const s = _etapaAviso(dias); if (s === null) return false;
+  if (!avisado) return true;
+  const m1 = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/), m2 = String(avisado).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m1 || !m2) return true;
+  return Math.round((new Date(+m1[1], +m1[2] - 1, +m1[3]) - new Date(+m2[1], +m2[2] - 1, +m2[3])) / 86400000) > s;
+}
+function avisosSegurosHoy(){
+  const out = [];
+  const soatPol = new Set((polizas || []).filter(p => (p.estado || "activa") === "activa" && p.tipo === "SOAT" && p.cedula).map(p => String(p.cedula)));
+  records.filter(r => !isRetiro(r)).forEach(r => {
+    const av = r["Avisos Vencimiento"] || {};
+    docsVencenDe(r).forEach(d => {
+      if (d.k === "soat" && soatPol.has(String(r["Cédula"]))) return;
+      const dias = diasHasta(d.fecha); if (dias === null) return;
+      const a = av[d.k], avisado = a && a.venc === d.fecha ? a.enviado : "";
+      if (_tocaAviso(d.fecha, dias, avisado)) out.push({ r, que: d.nombre, fecha: d.fecha, dias });
+    });
+  });
+  (polizas || []).filter(p => (p.estado || "activa") === "activa" && p.fecha_vencimiento).forEach(p => {
+    const dias = diasHasta(p.fecha_vencimiento); if (dias === null) return;
+    if (_tocaAviso(String(p.fecha_vencimiento).slice(0, 10), dias, p.avisado_el)) out.push({ p, que: p.tipo, fecha: p.fecha_vencimiento, dias });
+  });
+  return out;
+}
+// Resumen en la ficha del cliente: muelles, vehículo y pólizas (lo maneja la app nueva)
+function resumenSegurosFicha(r){
+  const ced = String(r["Cédula"] || ""); if (!ced) return "";
+  const partes = [];
+  if (r["Muelle"] || esServicioMuelles(r)){
+    const ac = r["AceptadoPorMuelle"] || {}, n = MUELLES_NOMBRES.filter(m => ac[m]).length;
+    partes.push(`⚓ Muelles: <b>${n} de ${MUELLES_NOMBRES.length}</b> aceptados`);
+  }
+  const pols = (polizas || []).filter(p => String(p.cedula || "") === ced && (p.estado || "activa") === "activa");
+  const soatPol = pols.find(p => p.tipo === "SOAT");
+  const veh = [["SOAT", soatPol ? soatPol.fecha_vencimiento : r["Vence SOAT"]], ["licencia", r["Vence Licencia"]], ["tecno", r["Vence Tecno"]]].filter(([, f]) => f);
+  if (veh.length) partes.push(`🚗 ${r["Placa"] ? escHtml(r["Placa"]) + " · " : ""}${veh.map(([n, f]) => { const d = diasHasta(f); return `${n} ${d !== null && d < 0 ? "<b>venció</b>" : "vence"} ${fechaLarga(String(f).slice(0, 10))}`; }).join(" · ")}`);
+  const otras = pols.filter(p => p.tipo !== "SOAT");
+  if (otras.length) partes.push(`🛡️ ${otras.map(p => escHtml(p.tipo)).join(", ")}`);
+  const avisos = avisosSegurosHoy().filter(x => (x.r && String(x.r["Cédula"]) === ced) || (x.p && String(x.p.cedula || "") === ced)).length;
+  return `<div class="seg-resumen">
+    <span class="seg-resumen-txt"><b>Muelles y Seguros</b>${partes.length ? partes.map(x => `<span>${x}</span>`).join("") : `<span>Sin muelles, SOAT ni pólizas con nosotros: oportunidad de venta.</span>`}${avisos ? `<span class="seg-resumen-aviso">🔔 ${avisos} aviso(s) para hoy</span>` : ""}</span>
+    <button type="button" class="btn small" data-abrir-seguros="${escHtml(ced)}">Abrir ↗</button>
+  </div>`;
+}
+
 function abrirHoy(){
   const d = datosHoy();
   const activos = records.filter(r => !esConductorExcluido(r));
@@ -15881,13 +15941,12 @@ function abrirHoy(){
     tarea("i-mensaje", "naranja", "Enviar soportes", soportes.length, ENVIO_PLANILLAS_EN_PAUSA ? "En pausa hasta tener la API de Enlace" : "Planillas pagadas sin enviar", "soportes"),
     tarea("i-billete", "azul", "Aplicar consignaciones", d.consig.length, "Pagos de la cuenta *8222 por relacionar", "consig"),
     tarea("i-check", "verde", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo", "tareas"),
-    tarea("i-reloj", "naranja", "Documentos por vencer", d.vencen.length, "Licencias, SOAT, tecnomecánicas y pólizas sin avisar", "vencen"),
+    tarea("i-barco", "naranja", "Muelles y Seguros: avisos de hoy", avisosSegurosHoy().length, "Muelles, SOAT, licencias y pólizas (20, 7 y 1 día antes) · se abre la app nueva", "seguros"),
     tarea("i-bandeja", "rojo", "Retiros que deben planilla", d.retiros.length, "Todavía no se ha subido el retiro", "retiros"),
     tarea("i-ancla", "gris", "Retiros de otra empresa sin soporte", d.soportes.length, "Falta la imagen o planilla", "", lista(d.soportes, r => escHtml(r["Empresa"] || ""))),
     tarea("i-contacto", "azul", `Afiliaciones sin confirmar`, d.afiliaciones.length, `${DIAS_ALERTA_CONFIRMACION}+ días esperando`, "", lista(d.afiliaciones, r => `Falta ${escHtml(pendientesConfirmacion(r).join(", "))} · ${diasEnProceso(r)} días`)),
     tarea("i-reloj", "rojo", "Afiliaciones pasadas de tiempo", atTodosAbiertos().filter(t => atPasado(t) || t.estado === "devuelta").length, "La entidad no ha confirmado o devolvió la solicitud", "afiltramite"),
     tarea("i-contacto", "rojo", "En AFILIACIÓN con ingreso de un mes anterior", records.filter(r => afiliacionDeMesAnterior(r, store.currentMonth)).length, "Solo se les cobra el servicio: revisar si pasan a días proporcionales", "", lista(records.filter(r => afiliacionDeMesAnterior(r, store.currentMonth)), r => `Ingresó en ${escHtml(afiliacionDeMesAnterior(r, store.currentMonth))}`)),
-    tarea("i-escudo", "naranja", "Pólizas por vencer sin avisar", polizas.filter(polToca).length, "Ofrecer la renovación por WhatsApp", "polizas"),
     tarea("i-sol", "gris", "Recordatorios de clientes", d.recordatorios.length, "Notas que vencieron", "", lista(d.recordatorios, r => escHtml(r["Observación"] || ""))),
     tarea("i-lupa", "gris", "Datos con problemas", d.problemas, "Cédulas repetidas, teléfonos, nombres distintos", "revision"),
   ].join("");
@@ -15912,6 +15971,7 @@ document.getElementById("hoyCuerpo").addEventListener("click", (e) => {
   else if (a === "consig") document.getElementById("navConsigBtn").click();
   else if (a === "revision") abrirRevision();
   else if (a === "vencen") abrirVencimientos();
+  else if (a === "seguros") abrirAppSeguros("");
   else if (a === "afiltramite") abrirAfilTramites();
   else if (a === "polizas") abrirPolizas("");
   else if (a === "soportes") document.getElementById("enviarSoportesBtn").click();
