@@ -1857,6 +1857,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <button type="button" class="sidebar-link" id="navPolizasBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Seguros y pólizas <span class="sidebar-badge" id="polBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navEditResponsablesBtn"><span class="sidebar-num">5</span><svg class="ico" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar responsables</button>
     <button type="button" class="sidebar-link" id="navEstadoCuentaBtn"><span class="sidebar-num">20</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
+    <button type="button" class="sidebar-link" id="navSalariosBtn"><svg class="ico" aria-hidden="true"><use href="#i-monedas"/></svg>Salarios (otras empresas e independientes)</button>
     <button type="button" class="sidebar-link" id="navPresuncionBtn"><span class="sidebar-num">10.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Presunción de costos (independientes)</button>
 
     <div class="sidebar-section-title">Muelles y Seguros</div>
@@ -1973,6 +1974,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
           <div class="acc-grupo"><span class="acc-t">Cliente</span>
             <button class="btn small primary" id="editBtn">Editar</button>
             <button class="btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
+            <button type="button" class="btn small" id="salarioClienteBtn" hidden title="Salario con el que cotiza: con él se calculan salud, pensión, ARL y caja">💰 Salario</button>
             <button type="button" class="btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
             <button type="button" class="btn small" id="mandatoBtn">📄 Contrato de mandato</button>
             <button type="button" class="btn small" id="polizasClienteBtn" title="Abre este cliente en la app Muelles y Seguros">🛡️ Muelles y Seguros ↗</button>
@@ -8608,6 +8610,7 @@ function showBreakdown(cedula){
   };
 
   document.getElementById("bMeta").insertAdjacentHTML("beforeend", resumenSegurosFicha(r));
+  pintarBotonSalario(r);
   if (esServicioMuelles(r)){
     const sv = serviciosMuelle(r);
     document.getElementById("bMeta").insertAdjacentHTML("beforeend", `<div class="srv-detalle"><b>Servicios prestados en muelles</b>${Object.keys(SERVICIOS_MUELLE).filter(k => k in sv).map(k => `<div class="srv-detalle-fila"><span>${iconoServicio(k)} ${escHtml(nombreServicio(r, k))}${k === "enrolamiento" ? " (una sola vez)" : k === "curso" ? " (solo este mes)" : " (cada mes)"}</span><b>${fmt(sv[k])}</b></div>`).join("")}<div class="srv-detalle-fila srv-detalle-total"><span>Total</span><b>${fmt(totalServicios(sv))}</b></div></div>`);
@@ -12704,6 +12707,7 @@ async function mostrarAppPrincipal(user){
   renderEnlacesRapidos();
   await iniciarAppConSupabase();
   cargarResponsablesCreados(); // teléfonos y cédulas de los responsables (los mensajes van a ellos)
+  cargarCodigosPila(); // trae también los salarios (bases) de otras empresas e independientes
   cargarGastos();
   cargarCRM();
   if (esAdmin()) borrarArchivosPlanillaIndividual();
@@ -15823,6 +15827,72 @@ function datosHoy(){
     vencen: clientesPorVencer().filter(x => x.docs.some(d => !d.avisado)),
   };
 }
+/* ---------- Salario de clientes de otras empresas e independientes ----------
+   Los de PROSEGUROSNET van siempre por el salario mínimo. Los demás cotizan sobre su salario:
+   se guarda por cédula en configuracion «pila_base_independientes» (la misma base que usa la planilla)
+   y con él se recalculan salud, pensión, ARL y caja en la ficha (este mes y los siguientes). */
+const lleveSalario = (r) => !!r && !esConductorExcluido(r) && !esServicioMuelles(r) && (esIndependiente(r) || esOtraEmpresa(r));
+function salarioDe(r){ return pilaBaseIndependiente(r); }
+function aportesPorSalario(r, salario){
+  const tipoI = esIndependiente(r) && pilaEsTipoI(r);
+  const nivel = Number(r["ARL Nivel"]) || clasificarRiesgoArl(r["ARL (Riesgo/Código)"]) || 0;
+  const sinPension = noAportaPension(r) || /pensionad|no aporta|indemniz/i.test(r["AFP"] || "");
+  return {
+    "Valor EPS": techo100(salario * (tipoI ? 0.125 : 0.04)),
+    "Valor Pensión (AFP)": sinPension ? 0 : techo100(salario * 0.16),
+    "Valor ARL": nivel && PILA_TARIFA_ARL[nivel] ? techo100(salario * PILA_TARIFA_ARL[nivel]) : numOrZero(r["Valor ARL"]),
+    "Valor Caja": tieneCaja(r) ? techo100(salario * (tipoI ? 0.02 : 0.04)) : numOrZero(r["Valor Caja"]),
+  };
+}
+function pintarBotonSalario(r){
+  const btn = document.getElementById("salarioClienteBtn"); if (!btn) return;
+  btn.hidden = !lleveSalario(r);
+  if (btn.hidden) return;
+  btn.textContent = `💰 Salario: ${fmt(salarioDe(r))}`;
+  btn.onclick = () => editarSalario(r);
+}
+async function editarSalario(r){
+  const ced = String(r["Cédula"]).trim(), actual = salarioDe(r);
+  const d = await pedirDatosApp(`Salario de ${nombrePropio(r["Nombre del Afiliado"] || "")} (${esIndependiente(r) ? "independiente" : r["Empresa"]}). Con él se calculan salud, pensión, ARL y caja. Mínimo: ${fmt(PILA_SALARIO)}.`,
+    [{ id: "s", label: "Salario mensual en pesos", tipo: "number", valor: actual }], "Calcular");
+  if (!d) return false;
+  if (d.s < PILA_SALARIO){ await alertApp(`El salario no puede ser menor al mínimo (${fmt(PILA_SALARIO)}). No se cambió nada.`); return false; }
+  const nuevo = aportesPorSalario(r, d.s);
+  const lineas = [["Salud", "Valor EPS"], ["Pensión", "Valor Pensión (AFP)"], ["ARL", "Valor ARL"], ["Caja", "Valor Caja"]]
+    .map(([n, k]) => `${n}: ${fmt(numOrZero(r[k]))} → ${fmt(nuevo[k])}`).join("\n");
+  if (!(await confirmarApp(`Salario ${fmt(d.s)}\n\n${lineas}\n\n¿Guardar? Se aplica a ${store.currentMonth} y a los meses siguientes. (El servicio no cambia; si debe cambiar, edítelo en el cliente.)`))) return false;
+  pilaBaseInd[ced] = d.s;
+  if (!(await pilaGuardarConfig("pila_base_independientes", pilaBaseInd))) return false;
+  Object.assign(r, nuevo);
+  r["_ultimaEdicion"] = new Date().toISOString();
+  propagarAMesesPosteriores(ced, nuevo, false);
+  saveStore(); renderList(searchInput.value);
+  if (String(activeCedula) === ced) showBreakdown(ced);
+  showToast(`✅ Salario ${fmt(d.s)} guardado. Aportes recalculados.`);
+  return true;
+}
+function abrirSalarios(){
+  const lista = records.filter(r => lleveSalario(r) && estadoClass(r["Estado Trámite"]) !== "RETIRO")
+    .sort((a, b) => String(a["Empresa"] || "").localeCompare(String(b["Empresa"] || "")) || (Number(a["No."]) || 0) - (Number(b["No."]) || 0));
+  document.getElementById("informeTitulo").textContent = "💰 Salarios · otras empresas e independientes";
+  document.getElementById("informeSubtitulo").textContent = `${store.currentMonth} · Los de PROSEGUROSNET van por el mínimo (${fmt(PILA_SALARIO)}). Toque ✏️ para cambiar el salario: se recalculan salud, pensión, ARL y caja.`;
+  document.getElementById("informeContenido").innerHTML = lista.length ? `<div class="hoy-tabla-caja"><table class="hoy-tabla">
+    <thead><tr><th>N.º</th><th>Cliente</th><th>Empresa</th><th class="num">Salario</th><th class="num">Aportes</th><th></th></tr></thead>
+    <tbody>${lista.map(r => { const s = salarioDe(r), ap = calcularAportesApp(r, store.currentMonth).total; return `<tr>
+      <td class="muted">${escHtml(r["No."] ?? "")}</td><td><b>${escHtml(nombrePropio(r["Nombre del Afiliado"] || ""))}</b></td>
+      <td class="muted">${escHtml(esIndependiente(r) ? "Independiente" : nombrePropio(r["Empresa"] || ""))}</td>
+      <td class="num">${fmt(s)}${s > PILA_SALARIO ? "" : ' <small class="muted">(mínimo)</small>'}</td><td class="num">${fmt(ap)}</td>
+      <td><button type="button" class="btn small" data-salario-ced="${escHtml(r["Cédula"])}">✏️ Salario</button></td></tr>`; }).join("")}</tbody></table></div>`
+    : `<div class="empty">No hay clientes de otras empresas ni independientes en ${escHtml(store.currentMonth)}.</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+}
+document.getElementById("informeContenido").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-salario-ced]"); if (!b) return;
+  const r = records.find(x => String(x["Cédula"]) === b.dataset.salarioCed); if (!r) return;
+  if (await editarSalario(r)) abrirSalarios();
+});
+document.getElementById("navSalariosBtn").addEventListener("click", async () => { await cargarCodigosPila(); abrirSalarios(); });
+
 /* ---------- Unión con la app «Muelles y Seguros» (seguros.html) ----------
    Misma lógica de avisos que la app nueva: 20, 7 y 1 día antes, y vencidos hasta 60 días.
    Solo lee; los avisos se marcan desde la app nueva. */
@@ -17456,7 +17526,8 @@ function pilaFila(r, secuencia, opts){
   if (!centro && clase) avisos.push("falta el centro de trabajo ARL");
   // PROSEGUROSNET: ARL siempre Sura. El independiente va con la ARL que tenga (p. ej. Positiva).
   const arlCod = opts.independiente && /positiva/i.test(textoArl) ? (pilaCodigos.arl.positiva || "14-23") : (pilaCodigos.arl.sura || "14-11");
-  const base = opts.independiente ? pilaBaseIndependiente(r) : PILA_SALARIO;
+  const baseEscrita = numOrZero(pilaBaseInd[String(r["Cédula"]).trim()]);
+  const base = opts.independiente ? pilaBaseIndependiente(r) : (esOtraEmpresa(r) && baseEscrita ? Math.max(PILA_SALARIO, baseEscrita) : PILA_SALARIO);
   const ibc = Math.ceil(base * dias / 30);
   // Planilla I (independiente, cotizante 57): salud 12,5 %, caja 2 % (si tiene), sin exoneración
   const tipoI = !!opts.tipoI;
