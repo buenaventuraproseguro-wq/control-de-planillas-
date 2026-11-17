@@ -1825,6 +1825,26 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .cg-izq .fecha-sistema{ font-size:12.5px; color:var(--muted); }
   .lista-card{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:12px 12px 4px; margin-top:12px; }
   .lista-card .filter-pills{ margin-top:0; }
+  #backupReminder{ display:none !important; }
+  .cg-fecha{ padding:10px 16px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); }
+  #claveBtn[hidden], #logoutBtn[hidden], #helpBtn[hidden], .user-chip[hidden]{ display:none !important; }
+  .usuario-caja{ position:relative; }
+  .usuario-btn{ display:flex; align-items:center; gap:10px; min-height:44px; padding:4px 8px 4px 4px; border:0; border-radius:12px; background:transparent; cursor:pointer; font:inherit; color:var(--titulo, #13213A); text-align:left; }
+  .usuario-btn:hover{ background:rgba(31,61,112,.06); }
+  .usuario-ini{ width:40px; height:40px; border-radius:50%; background:#1F3D70; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
+  .usuario-txt{ display:flex; flex-direction:column; line-height:1.2; }
+  .usuario-txt b{ font-size:13.5px; white-space:nowrap; }
+  .usuario-txt small{ font-size:12px; color:var(--muted); }
+  .usuario-menu{ position:absolute; right:0; top:calc(100% + 6px); min-width:220px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 28px rgba(15,23,42,.18); padding:6px; z-index:80; display:flex; flex-direction:column; }
+  .usuario-menu[hidden]{ display:none; }
+  .usuario-menu button{ display:block; width:100%; min-height:42px; padding:0 12px; border:0; border-radius:8px; background:transparent; text-align:left; font:inherit; font-size:14px; color:var(--titulo, #13213A); cursor:pointer; }
+  .usuario-menu button:hover{ background:rgba(31,61,112,.07); }
+  .usuario-menu .um-salir{ color:#B42318; border-top:1px solid var(--line); border-radius:0 0 8px 8px; margin-top:4px; }
+  .mas-filtros{ margin:0 0 10px; }
+  .mas-filtros > summary{ cursor:pointer; list-style:none; display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:0 12px; border:1px solid var(--line); border-radius:999px; font-size:13px; font-weight:700; color:var(--titulo, #13213A); background:var(--panel); }
+  .mas-filtros > summary::-webkit-details-marker{ display:none; }
+  .mas-filtros[open] > summary{ background:#1F3D70; color:#fff; border-color:#1F3D70; margin-bottom:10px; }
+  @media (max-width:760px){ .usuario-txt{ display:none; } .cg-tarjetas{ grid-template-columns:repeat(2, minmax(0, 1fr)); } .cg-tarjeta{ min-height:60px; gap:10px; } .cg-tarjeta .ico{ width:36px; height:36px; padding:8px; } }
   .menu-abrir{ width:44px; height:44px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--titulo, #13213A); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
   .menu-abrir svg{ width:22px; height:22px; }
   .cabecera-marca{ display:flex; align-items:center; gap:10px; }
@@ -1837,10 +1857,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .cg-izq{ flex:999 1 520px; min-width:0; display:flex; flex-direction:column; gap:10px; }
   .cg-izq h2{ margin:0; font-size:22px; font-weight:800; color:var(--titulo, #13213A); }
   .cg-izq p{ margin:0; font-size:13.5px; color:var(--muted); }
-  .cg-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; }
-  .cg-tarjeta{ display:flex; align-items:center; gap:10px; min-height:58px; padding:10px 14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:700; color:var(--titulo, #13213A); }
+  .cg-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; }
+  .main-area footer{ display:none; }
+  .cg-tarjeta{ display:flex; align-items:center; gap:14px; min-height:72px; padding:12px 16px; background:var(--panel); border:1px solid var(--line); border-radius:14px; cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:700; color:var(--titulo, #13213A); }
   .cg-tarjeta:hover{ border-color:#1F3D70; box-shadow:0 4px 14px rgba(16,24,40,.08); }
-  .cg-tarjeta .ico{ width:22px; height:22px; flex-shrink:0; color:#C0272D; }
+  .cg-tarjeta .cg-t{ flex:1; display:flex; flex-direction:column; gap:1px; }
+  .cg-tarjeta .cg-t small{ font-size:12px; font-weight:500; color:var(--muted); }
+  .cg-badge{ background:#C0272D; color:#fff; border-radius:999px; font-size:13px; font-weight:700; padding:2px 9px; }
+  .cg-tarjeta .ico{ width:42px; height:42px; padding:10px; box-sizing:border-box; border-radius:10px; flex-shrink:0; background:#E8EEF9; color:#1F3D70; }
   .cg-der{ flex:1 1 300px; background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; align-self:flex-start; }
   .cg-der-h{ display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); font-size:16px; font-weight:800; color:var(--titulo, #13213A); }
   .cg-aviso{ display:flex; align-items:center; gap:10px; width:100%; padding:10px 16px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; font:inherit; color:inherit; }
@@ -2009,15 +2033,29 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <label for="monthSelect">Mes</label>
       <select id="monthSelect"></select>
       </div>
-      <span class="user-chip"><span class="dot"></span><span id="whoAmI"></span></span>
+      <span class="user-chip" hidden><span class="dot"></span><span id="whoAmI"></span></span>
       <span class="sync-chip" id="cloudStatus" title="Estado de sincronización">💾 Conectando…</span>
-      <button type="button" class="btn small ghost" id="claveBtn" title="Cambiar mi contraseña" style="margin-right:4px;">🔑 Clave</button>
-      <button type="button" class="btn small ghost" id="logoutBtn" style="margin-right:6px;">Salir</button>
-      <button type="button" class="bell-btn" id="helpBtn" title="Ayuda">❓</button>
+      <button type="button" class="btn small ghost" id="claveBtn" title="Cambiar mi contraseña" hidden>🔑 Clave</button>
+      <button type="button" class="btn small ghost" id="logoutBtn" hidden>Salir</button>
+      <button type="button" class="bell-btn" id="helpBtn" title="Ayuda" hidden>❓</button>
       <button type="button" class="bell-btn" id="bellBtn" title="Alertas">
         🔔<span class="bell-badge" id="bellBadge" style="display:none;">0</span>
       </button>
       <div class="bell-panel" id="bellPanel"></div>
+      <div class="usuario-caja">
+        <button type="button" class="usuario-btn" id="usuarioBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="usuarioMenu">
+          <span class="usuario-ini" id="usuarioIni" aria-hidden="true">—</span>
+          <span class="usuario-txt"><b id="usuarioNombre">—</b><small id="usuarioRol"></small></span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="usuario-menu" id="usuarioMenu" role="menu" hidden>
+          <button type="button" role="menuitem" data-um="claveBtn">🔑 Cambiar mi clave</button>
+          <button type="button" role="menuitem" data-um="nombre">✏️ Mi nombre</button>
+          <button type="button" role="menuitem" data-um="navTemaBtn">🎨 Colores de la página</button>
+          <button type="button" role="menuitem" data-um="helpBtn">❓ Ayuda</button>
+          <button type="button" role="menuitem" data-um="logoutBtn" class="um-salir">Salir</button>
+        </div>
+      </div>
       <div class="count" id="totalCount" style="display:none;"></div>
     </div>
   </header>
@@ -2043,8 +2081,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   <section class="centro-gestion" id="centroGestion" aria-label="Centro de gestión">
     <div class="cg-izq">
       <h2>Centro de gestión</h2>
-      <p>Lo que más se usa. Para todo lo demás, abra el menú ☰ y búsquelo por su nombre.</p>
-  <div class="fecha-sistema" id="fechaSistema" aria-live="polite"></div>
+      <p>Busque un cliente o use un acceso. Todo lo demás está en el menú ☰.</p>
   <div class="search-panel">
     <div class="search-row">
       <input id="searchInput" type="text" inputmode="numeric" placeholder="Cédula, nombre o N.º del cliente (ej.: 45)…" autocomplete="off">
@@ -2101,20 +2138,18 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
       <div class="cg-tarjetas">
         <button type="button" class="cg-tarjeta" data-cg="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
-        <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes (recordatorios)</button>
+        <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes</button>
+        <button type="button" class="cg-tarjeta" data-cg="navConsigBtn"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg><span class="cg-t">Consignaciones<small>Mensajes de la cuenta *8222</small></span><span class="cg-badge" id="cgConsigBadge" hidden>0</span></button>
         <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
-        <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Excel para SUAPORTE</button>
-        <button type="button" class="cg-tarjeta" data-cg="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite</button>
-        <button type="button" class="cg-tarjeta" data-cg="navEstadoCuentaBtn"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Estado de cuenta por responsable</button>
       </div>
     </div>
     <aside class="cg-der" aria-label="Para hoy">
       <div class="cg-der-h"><svg class="ico" aria-hidden="true" style="width:22px;height:22px"><use href="#i-casa"/></svg>Para hoy</div>
       <div id="cgAvisos"><div class="cg-vacio">Cargando…</div></div>
+      <div class="fecha-sistema cg-fecha" id="fechaSistema" aria-live="polite"></div>
       <button type="button" class="cg-ver" data-cg="navHoyBtn">Ver todo en «Hoy» →</button>
     </aside>
   </section>
-  <div class="stats-strip" id="statsStrip"></div>
 
 
   <div class="mes-no-actual-aviso" id="mesNoActualAviso" style="display:none;"></div>
@@ -2139,6 +2174,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
 
   <section class="lista-card" aria-label="Lista de clientes">
+  <details class="mas-filtros" id="masFiltros"><summary>Más filtros y resumen del mes ▾</summary>
+  <div class="filter-pills" id="filterPillsExtra"></div>
+  <div class="stats-strip" id="statsStrip"></div>
+  </details>
   <div class="filter-pills" id="filterPills"></div>
 
   <div class="bulk-bar" id="bulkBar" style="display:none;">
@@ -8348,10 +8387,11 @@ const esConductorExcluido = (r) => esEmpresaConductores(r) || esServicioMuelles(
 const esNombreEmpresaServicio = (nombre) => [NOMBRE_EMPRESA_CONDUCTORES, NOMBRE_EMPRESA_MUELLES].some(n => normalizarEmpresa(n) === normalizarEmpresa(nombre));
 
 function renderFilterPills(){
-  const estados = ["__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "SIN INICIAR"];
-  const etiquetas = { "": "Todos", "__CONDUCTORES__": "Conductores", "__SERV_MUELLES__": "Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "SIN PAGO": "Sin pago", "DIAS PROPORCIONALES": "Días prop.", "AFILIACION": "Afiliación", "RETIRO": "Retiro", "SIN INICIAR": "Sin iniciar" };
+  const estados = ["", "SIN PAGO", "PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN INICIAR"];
+  const EXTRA = ["__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN INICIAR"];
+  const etiquetas = { "": "Todos", "__CONDUCTORES__": "Conductores", "__SERV_MUELLES__": "Muelles otras empresas", "__OTRA_EMPRESA__": "Otra empresa", "__INDEPENDIENTES__": "Independientes", "SIN PAGO": "Sin pago", "PAGO": "Pagados", "DIAS PROPORCIONALES": "Días prop.", "AFILIACION": "Afiliación", "RETIRO": "Retiro", "SIN INICIAR": "Sin iniciar" };
   const sinConductores = records.filter(r => !esConductorExcluido(r));
-  document.getElementById("filterPills").innerHTML = estados.map(e => {
+  const pill = (e) => {
     let count;
     if (e === "") count = sinConductores.length;
     else if (e === "__CONDUCTORES__") count = records.filter(esEmpresaConductores).length;
@@ -8362,7 +8402,10 @@ function renderFilterPills(){
     else count = sinConductores.filter(r => estadoClass(r["Estado Trámite"]) === estadoClass(e)).length;
     const activo = filtroEstado === e ? "active" : "";
     return `<button type="button" class="filter-pill ${activo}" data-estado="${e}">${etiquetas[e] || e} (${count})</button>`;
-  }).join("");
+  };
+  document.getElementById("filterPills").innerHTML = estados.filter(e => !EXTRA.includes(e)).map(pill).join("");
+  const ex = document.getElementById("filterPillsExtra"); if (ex) ex.innerHTML = estados.filter(e => EXTRA.includes(e)).map(pill).join("");
+  if (EXTRA.includes(filtroEstado)){ const d = document.getElementById("masFiltros"); if (d) d.open = true; }
 }
 
 function renderList(filterText){
@@ -8494,12 +8537,12 @@ function renderBulkBar(){
   document.getElementById("bulkCount").textContent = `${seleccionados.size} seleccionado(s)`;
 }
 
-document.getElementById("filterPills").addEventListener("click", (e) => {
+["filterPills", "filterPillsExtra"].forEach(id => document.getElementById(id).addEventListener("click", (e) => {
   const btn = e.target.closest(".filter-pill");
   if (!btn) return;
   filtroEstado = btn.dataset.estado;
   renderList(searchInput.value);
-});
+}));
 
 listEl.addEventListener("change", (e) => {
   const chk = e.target.closest(".chk");
@@ -12821,8 +12864,9 @@ async function mostrarAppPrincipal(user){
   currentUserRole = "operador";
   let rolLeido = false;
   try {
-    const { data: perfil, error: errPerfil } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    const { data: perfil, error: errPerfil } = await sb.from("profiles").select("role,full_name").eq("id", user.id).maybeSingle();
     if (!errPerfil && perfil && perfil.role){ currentUserRole = perfil.role; rolLeido = true; }
+    if (!errPerfil && perfil && perfil.full_name && !String(perfil.full_name).includes("@")) user = { ...user, user_metadata: { ...(user.user_metadata || {}), nombre: perfil.full_name } };
   } catch (e){ console.error("No se pudo leer el rol del perfil:", e); }
   try{
     if (rolLeido) localStorage.setItem(ROL_CACHE_KEY, JSON.stringify({ id: user.id, role: currentUserRole }));
@@ -13133,6 +13177,7 @@ document.getElementById("backupReminderBtn").addEventListener("click", () => {
 });
 document.getElementById("backupReminderDismiss").addEventListener("click", () => {
   document.getElementById("backupReminder").style.display = "none";
+  try{ renderCentroGestion(); }catch(e){}
 });
 
 /* ---- Exportar cobro del mes (.csv) ---- */
@@ -15555,6 +15600,7 @@ function actualizarBadgeConsig(){
   const n = consignaciones.filter(c => c.estado === "pendiente").length;
   const b = document.getElementById("consigBadge");
   b.textContent = n; b.style.display = n ? "inline-flex" : "none";
+  const cb = document.getElementById("cgConsigBadge"); if (cb){ cb.textContent = n; cb.hidden = !n; }
 }
 
 function renderConsignaciones(){
@@ -15963,6 +16009,7 @@ function datosHoy(){
    Se arma con los MISMOS botones de la barra vieja (escondida): tocar una opción hace clic en su botón,
    así ninguna función se pierde. Lo que no esté en una categoría sale en «Otras opciones». */
 const MENU_CATS = [
+  { nombre: "Consignaciones", directo: "navConsigBtn", sub: "Mensajes de la cuenta *8222", badge: "consigBadge", siempre: true },
   { nombre: "Clientes", items: [{ id: "navAddBtn" }, { id: "navRecientesBtn" }, { id: "navHistorialBtn" }, { id: "navEditResponsablesBtn" }, { id: "navEstadoCuentaBtn" }, { id: "navSalariosBtn" }, { id: "navRevisionBtn" }] },
   { nombre: "Cobros", items: [
     { accion: "cobrar", texto: "Enviar recordatorios por WhatsApp", sub: "A los que deben este mes" },
@@ -15971,7 +16018,7 @@ const MENU_CATS = [
     { sel: '#sidebar [data-informe="muelles"]', texto: "Total Muelles otras empresas", valor: "sidebarTotalMuelles" },
     { sel: '#sidebar [data-informe="general"]', texto: "Suma final (todas las empresas)", valor: "sidebarTotalGeneral" },
     { id: "navGananciasBtn", valor: "sidebarTotalGestiones" }, { id: "navCobroExtraBtn" }, { id: "navMensajeBtn" },
-    { id: "navConsigBtn", badge: "consigBadge" }, { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
+    { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
   { nombre: "Planillas", items: [{ id: "navImportPilaBtn" }, { id: "navPilaBtn" }, { id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }] },
@@ -16026,7 +16073,7 @@ function pintarMenu(){
   if (q){
     const res = [];
     MENU_CATS.forEach(c => {
-      if (c.directo){ const el = document.getElementById(c.directo); if (menuVisible(el) && normalizarTexto(c.nombre).includes(q)) res.push({ o: { texto: c.nombre, el }, cat: "" }); return; }
+      if (c.directo){ const el = document.getElementById(c.directo); if ((c.siempre || menuVisible(el)) && normalizarTexto(c.nombre + " " + (c.sub || "")).includes(q)) res.push({ o: { texto: c.nombre, el }, cat: "" }); return; }
       menuOpciones(c).forEach(o => { if (normalizarTexto(o.texto + " " + (o.sub || "")).includes(q)) res.push({ o, cat: "En " + c.nombre }); });
     });
     menuOtras().forEach(o => { if (normalizarTexto(o.texto).includes(q)) res.push({ o, cat: "En Otras opciones" }); });
@@ -16039,9 +16086,10 @@ function pintarMenu(){
     const otras = menuOtras();
     const cats = MENU_CATS.map((c, i) => {
       if (c.directo){
-        if (!menuVisible(document.getElementById(c.directo))) return "";
+        if (!c.siempre && !menuVisible(document.getElementById(c.directo))) return "";
+        const bd = c.badge ? document.getElementById(c.badge) : null, nb = bd && bd.style.display !== "none" && bd.textContent !== "0" ? bd.textContent : "";
         const primeraApp = c.app && MENU_CATS.findIndex(x => x.app && menuVisible(document.getElementById(x.directo))) === i;
-        return (primeraApp ? `<div class="mc-titulo">Apps aparte (mismo usuario y clave)</div>` : "") + `<button type="button" class="mc-fila" data-mc-directo="${escHtml(c.directo)}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}</span></button>`;
+        return (primeraApp ? `<div class="mc-titulo">Apps aparte (mismo usuario y clave)</div>` : "") + `<button type="button" class="mc-fila" data-mc-directo="${escHtml(c.directo)}">${FLECHA}<span class="mc-txt">${escHtml(c.nombre)}${c.sub ? `<small>${escHtml(c.sub)}</small>` : ""}</span>${nb ? `<span class="mc-badge">${escHtml(nb)}</span>` : ""}</button>`;
       }
       const ops = menuOpciones(c); if (!ops.length) return "";
       const avisos = ops.reduce((a, o) => a + (Number(o.badge) || 0), 0);
@@ -16083,10 +16131,40 @@ document.getElementById("menuCuerpo").addEventListener("click", (e) => {
   const d = e.target.closest("[data-mc-directo]"); if (d){ abrirMenuLateral(false); const el = document.getElementById(d.dataset.mcDirecto); if (el) el.click(); return; }
   const o = e.target.closest("[data-mc-op]"); if (o) usarOpcion(MENU_PINTADAS[Number(o.dataset.mcOp)]);
 });
+let _usuarioActual = null;
+function cerrarMenuUsuario(){ document.getElementById("usuarioMenu").hidden = true; document.getElementById("usuarioBtn").setAttribute("aria-expanded", "false"); }
+document.getElementById("usuarioBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const m = document.getElementById("usuarioMenu"); m.hidden = !m.hidden;
+  document.getElementById("usuarioBtn").setAttribute("aria-expanded", m.hidden ? "false" : "true");
+});
+document.addEventListener("click", (e) => { if (!e.target.closest(".usuario-caja")) cerrarMenuUsuario(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenuUsuario(); });
+document.getElementById("usuarioMenu").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-um]"); if (!b) return;
+  cerrarMenuUsuario();
+  const a = b.dataset.um;
+  if (a === "nombre"){
+    const d = await pedirDatosApp("Mi nombre (así sale arriba en la app)", [{ id: "n", label: "Nombre completo", valor: document.getElementById("usuarioNombre").textContent }], "Guardar");
+    if (!d) return;
+    const { error } = await sb.from("profiles").update({ full_name: d.n }).eq("id", currentUserId);
+    if (error){ showToast("No se pudo guardar el nombre: " + error.message); return; }
+    pintarCabeceraUsuario({ ...(_usuarioActual || {}), user_metadata: { ...((_usuarioActual || {}).user_metadata || {}), nombre: d.n } });
+    showToast("✅ Nombre guardado.");
+    return;
+  }
+  const el = document.getElementById(a); if (el) el.click();
+});
 function pintarCabeceraUsuario(user){
   try{
-    const nombre = (user.user_metadata && (user.user_metadata.nombre || user.user_metadata.full_name)) || String(user.email || "").split("@")[0];
-    document.getElementById("cabeceraUsuario").textContent = String(nombre).toUpperCase() + (esAdmin() ? " · Administrador" : "");
+    const nombre = String((user.user_metadata && (user.user_metadata.nombre || user.user_metadata.full_name)) || String(user.email || "").split("@")[0]).trim();
+    const palabras = nombre.split(/\s+/).filter(Boolean);
+    const corto = palabras.length > 1 ? `${palabras[0]} ${palabras[palabras.length - 1]}` : nombre;
+    document.getElementById("cabeceraUsuario").textContent = corto.toUpperCase();
+    document.getElementById("usuarioNombre").textContent = nombrePropio(nombre.toLowerCase());
+    document.getElementById("usuarioRol").textContent = esAdmin() ? "Administrador" : "Operador";
+    document.getElementById("usuarioIni").textContent = (palabras.length > 1 ? palabras[0][0] + palabras[palabras.length - 1][0] : nombre.slice(0, 2)).toUpperCase();
+    _usuarioActual = user;
     const f = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
     document.getElementById("cabeceraIngreso").textContent = f ? `Último ingreso ${f.toLocaleDateString("es-CO")} ${f.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}` : "";
     if (esModoConta()) document.getElementById("cabeceraApp").textContent = "Contabilidad";
@@ -16095,11 +16173,12 @@ function pintarCabeceraUsuario(user){
 function renderCentroGestion(){
   const cont = document.getElementById("cgAvisos"); if (!cont || esModoConta()) return;
   let d; try{ d = datosHoy(); }catch(e){ return; }
+  const cb = document.getElementById("cgConsigBadge"); if (cb){ cb.textContent = d.consig.length; cb.hidden = !d.consig.length; }
   let seg = 0; try{ seg = avisosSegurosHoy().length; }catch(e){}
   let afil = 0; try{ afil = atTodosAbiertos().filter(x => atPasado(x) || x.estado === "devuelta").length; }catch(e){}
   const filas = [
     ["pendientes", "Pendientes de pago", d.cobrar.length, d.atrasados.length ? `${d.atrasados.length} ya pasaron el día 16` : "Pagar antes del día 16"],
-    ["consig", "Consignaciones por aplicar", d.consig.length, "Mensajes de la cuenta *8222"],
+    ["respaldo", "Exportar respaldo", document.getElementById("backupReminder").style.display === "flex" ? 1 : 0, (document.getElementById("backupReminderText") || {}).textContent || ""],
     ["afiltramite", "Afiliaciones pasadas de tiempo", afil, "La entidad no ha confirmado"],
     ["seguros", "Muelles y Seguros", seg, "Avisos de muelles, SOAT y pólizas"],
     ["tareas", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo"],
@@ -16120,6 +16199,7 @@ document.getElementById("centroGestion").addEventListener("click", (e) => {
   const k = a.dataset.cgAviso;
   if (k === "pendientes"){ filtroEstado = "__PENDIENTES__"; renderList(searchInput.value); document.getElementById("searchInput").scrollIntoView({ behavior: "smooth", block: "start" }); }
   else if (k === "consig") document.getElementById("navConsigBtn").click();
+  else if (k === "respaldo") document.getElementById("exportBtn").click();
   else if (k === "afiltramite") abrirAfilTramites();
   else if (k === "seguros") abrirAppSeguros("");
   else if (k === "tareas") document.getElementById("navTareasBtn").click();
