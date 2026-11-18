@@ -15644,15 +15644,16 @@ function renderConsignaciones(){
       const sug = sugerirClientes(info);
       const sugG = sugerirGrupos(info);
       const opcionesG = sugG.map((x, i) => `<label><input type="radio" name="cs-${c.id}" value="grupo:${escHtml(x.g.k)}" ${i === 0 && !(sug[0] && sug[0].puntos >= 100) ? "checked" : ""}>
-          <span><b>${x.g.esEmpresa ? "🏢" : "👤"} ${escHtml(nombrePropio(x.g.nombre))}</b> · todos sus ${x.g.deben.length} afiliados · deben ${fmt(x.g.total)}<br><small>${x.motivos.join(" + ")}</small></span></label>`).join("");
+          <span><b>${x.g.esEmpresa ? "🏢" : "👤"} ${escHtml(nombrePropio(x.g.nombre))}</b> · todos sus ${x.g.deben.length} afiliados · deben ${fmt(x.g.total)} ${chipMonto(info.valor, x.g.total)}<br><small>${x.motivos.join(" + ")}</small></span></label>`).join("");
       const hayG = opcionesG && !(sug[0] && sug[0].puntos >= 100);
       const opciones = opcionesG + sug.map((s, i) => `<label><input type="radio" name="cs-${c.id}" value="${escHtml(s.r["Cédula"])}" ${i === 0 && !hayG ? "checked" : ""}>
-          <span><b>${escHtml(s.r["Nombre del Afiliado"])}</b> · ${escHtml(s.r["Estado Trámite"])} · debe ${fmt(totalEsperado(s.r))}<br><small>${s.motivos.join(" + ")}</small></span></label>`).join("");
+          <span><b>${escHtml(s.r["Nombre del Afiliado"])}</b> · ${escHtml(s.r["Estado Trámite"])} · debe ${fmt(totalEsperado(s.r))} ${chipMonto(info.valor, totalEsperado(s.r))}<br><small>${s.motivos.join(" + ")}</small></span></label>`).join("");
       cuerpo = `
         <div class="cs-sug">${opciones || `<div class="cs-meta">No encontré un cliente que coincida${info.nombre ? "" : " (el mensaje no trae nombre)"}. Elíjalo abajo.</div>`}</div>
         <div class="cs-acciones">
           <input class="cs-otro" list="csClientesLista" placeholder="Otro cliente: escriba nombre o cédula" data-cs-otro="${c.id}">
           <label style="font-size:12.5px;display:flex;gap:6px;align-items:center;"><input type="checkbox" data-cs-pago="${c.id}"> Marcar también PAGO</label>
+          <div class="cs-meta" data-cs-estado="${c.id}" style="flex-basis:100%;font-weight:700;"></div>
           <button type="button" class="btn ghost small" data-cs-descartar="${c.id}">Descartar</button>
           <button type="button" class="btn primary small" data-cs-aplicar="${c.id}">✅ Aplicar</button>
         </div>`;
@@ -15676,7 +15677,55 @@ function renderConsignaciones(){
       ${cuerpo}
     </div>`;
   }).join("") + `<datalist id="csClientesLista">${records.map(r => `<option value="${escHtml(r["Cédula"])} · ${escHtml(r["Nombre del Afiliado"])}">`).join("")}</datalist>`;
+  if (csTab === "pendiente") revisarMontosConsig();
 }
+
+/* ---------- ¿El pago es completo? ----------
+   Compara lo consignado con lo que debe el cliente (o el grupo) elegido. Si es completo marca «PAGO» solo;
+   si es una parte, lo deja sin marcar y avisa cuánto falta, para no sacarlo de cobros por error. */
+const TOLERANCIA_PAGO = 100; // diferencias de redondeo
+function estadoMonto(valor, debe){
+  const v = Number(valor) || 0, d = Number(debe) || 0;
+  if (!v || !d) return { tipo: "?", falta: 0, sobra: 0 };
+  if (v + TOLERANCIA_PAGO < d) return { tipo: "parcial", falta: d - v, sobra: 0 };
+  if (v > d + TOLERANCIA_PAGO) return { tipo: "demas", falta: 0, sobra: v - d };
+  return { tipo: "completo", falta: 0, sobra: 0 };
+}
+function chipMonto(valor, debe){
+  const e = estadoMonto(valor, debe);
+  return e.tipo === "completo" ? `<span style="color:#1E7A46;font-weight:700;">✅ completo</span>`
+    : e.tipo === "parcial" ? `<span style="color:#B42318;font-weight:700;">⚠️ incompleto: faltan ${fmt(e.falta)}</span>`
+    : e.tipo === "demas" ? `<span style="color:#8A5A0B;font-weight:700;">💡 ${fmt(e.sobra)} de más</span>` : "";
+}
+function debeDeEleccion(card, id){
+  const otro = card.querySelector("[data-cs-otro]").value.trim();
+  const elegido = card.querySelector(`input[name="cs-${id}"]:checked`);
+  const ced = otro ? (otro.match(/^\d{5,12}/) || [""])[0] : (elegido ? elegido.value : "");
+  if (!otro && ced.startsWith("grupo:")){
+    const g = gruposEstadoCuenta().find(x => x.k === ced.slice(6));
+    return g ? { debe: g.total, quien: nombrePropio(g.nombre) } : null;
+  }
+  const r = records.find(x => String(x["Cédula"]) === String(ced));
+  return r ? { debe: totalEsperado(r), quien: nombrePropio(r["Nombre del Afiliado"] || "") } : null;
+}
+function revisarMontoConsig(id){
+  const c = consignaciones.find(x => x.id === id); if (!c) return;
+  const card = document.querySelector(`[data-cs-id="${id}"]`); if (!card) return;
+  const caja = card.querySelector(`[data-cs-estado="${id}"]`), chk = card.querySelector("[data-cs-pago]");
+  if (!caja || !chk) return;
+  const valor = leerMensajeBanco(c.texto).valor, sel = debeDeEleccion(card, id);
+  if (!sel){ caja.textContent = ""; return; }
+  const e = estadoMonto(valor, sel.debe);
+  if (e.tipo === "completo"){ chk.checked = true; caja.style.color = "#1E7A46"; caja.textContent = `✅ Pago completo de ${sel.quien}: se marcará PAGO.`; }
+  else if (e.tipo === "parcial"){ chk.checked = false; caja.style.color = "#B42318"; caja.textContent = `⚠️ Es de ${sel.quien}, pero NO es completo: debe ${fmt(sel.debe)}, consignó ${fmt(valor)}, faltan ${fmt(e.falta)}. Se aplica como abono y sigue en cobros.`; }
+  else if (e.tipo === "demas"){ chk.checked = true; caja.style.color = "#8A5A0B"; caja.textContent = `💡 ${sel.quien} pagó ${fmt(e.sobra)} de más (debe ${fmt(sel.debe)}). Revise si incluye otro mes u otra persona.`; }
+  else { caja.textContent = ""; }
+}
+function revisarMontosConsig(){ consignaciones.filter(x => x.estado === "pendiente").forEach(x => revisarMontoConsig(x.id)); }
+document.getElementById("overlayConsig").addEventListener("change", (e) => {
+  const card = e.target.closest("[data-cs-id]"); if (!card) return;
+  if (e.target.matches(`input[type="radio"], [data-cs-otro]`)) revisarMontoConsig(card.dataset.csId);
+});
 
 async function aplicarConsignacion(id){
   const c = consignaciones.find(x => x.id === id);
@@ -15689,26 +15738,31 @@ async function aplicarConsignacion(id){
   const r = records.find(x => String(x["Cédula"]) === String(ced));
   if (!r){ showToast("Elija a qué cliente corresponde la consignación."); return; }
   const info = leerMensajeBanco(c.texto);
+  const em = estadoMonto(info.valor, totalEsperado(r));
+  const marca = card.querySelector("[data-cs-pago]").checked;
+  if (marca && em.tipo === "parcial" && !(await confirmarApp(`${nombrePropio(r["Nombre del Afiliado"] || "")} debe ${fmt(totalEsperado(r))} y consignó ${fmt(info.valor)}: faltan ${fmt(em.falta)}.\n\n¿Marcarlo PAGO de todas formas? (Si no, quite «Marcar también PAGO» y aplíquelo como abono.)`))) return;
   const cambio = { estado: "aplicada", cedula: String(r["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || info.lugar || null,
     banco: info.banco || null, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
   const { error } = await sb.from("consignaciones").update(cambio).eq("id", id);
   if (error){ showToast("No se pudo aplicar: " + error.message); return; }
   Object.assign(c, cambio);
   // Nota en el cliente y, si se pidió, estado PAGO
-  const nota = `consignó ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}${info.banco ? " (" + info.banco.toLowerCase() + ")" : ""}`;
+  const nota = `${em.tipo === "parcial" ? "abonó" : "consignó"} ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}${info.banco ? " (" + info.banco.toLowerCase() + ")" : ""}${em.tipo === "parcial" ? ", faltan " + fmt(em.falta) : ""}`;
   r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${nota}` : nota;
   if (card.querySelector("[data-cs-pago]").checked) r["Estado Trámite"] = esConductorExcluido(r) ? "PAGO CONDUCTOR" : "PAGO";
   r["_ultimaEdicion"] = new Date().toISOString();
   saveStore();
   actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
-  showToast(`✅ ${fmt(info.valor)} aplicado a ${r["Nombre del Afiliado"]}.`);
+  showToast(em.tipo === "parcial" && !marca ? `✅ Abono de ${fmt(info.valor)} aplicado a ${r["Nombre del Afiliado"]}. Faltan ${fmt(em.falta)}: sigue en cobros.` : `✅ ${fmt(info.valor)} aplicado a ${r["Nombre del Afiliado"]}.`);
 }
 async function aplicarConsignacionGrupo(c, card, k){
   const g = gruposEstadoCuenta().find(x => x.k === k);
   if (!g){ showToast("Ese grupo ya no tiene valores pendientes."); return; }
   const info = leerMensajeBanco(c.texto);
   const marcarPago = card.querySelector("[data-cs-pago]").checked;
-  if (!(await confirmarApp(`¿Aplicar ${fmt(info.valor)} a los ${g.deben.length} afiliados de ${nombrePropio(g.nombre)}?${marcarPago ? " Todos quedan en PAGO." : ""}`))) return;
+  const emG = estadoMonto(info.valor, g.total);
+  const avisoG = emG.tipo === "parcial" ? `\n\n⚠️ No es completo: deben ${fmt(g.total)}, consignaron ${fmt(info.valor)}, faltan ${fmt(emG.falta)}.${marcarPago ? " Aun así quedarían TODOS en PAGO." : " Quedan en cobros."}` : "";
+  if (!(await confirmarApp(`¿Aplicar ${fmt(info.valor)} a los ${g.deben.length} afiliados de ${nombrePropio(g.nombre)}?${marcarPago ? " Todos quedan en PAGO." : ""}${avisoG}`))) return;
   const primero = g.deben[0];
   const cambio = { estado: "aplicada", cedula: String(primero["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || info.lugar || null,
     banco: info.banco || null, relacion: `Pago del grupo ${g.nombre}: ${g.deben.length} afiliados`, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
