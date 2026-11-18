@@ -941,7 +941,10 @@ async function guardarAgregar(){
       }catch(e2){ console.error(e2); toast("La persona quedó guardada, pero la cédula no se pudo subir."); }
     }
     await cargar(); cerrarModal2(); vista = "muelles"; render();
-    toast(`✅ ${propio(nombre).split(" ")[0]} agregado(a) a Muelles · ${fmt(tot)}. Ya aparece en la app de Planillas.`);
+    toast(`✅ ${propio(nombre).split(" ")[0]} agregado(a) a Muelles · ${fmt(tot)}. Ahora suba sus documentos.`);
+    // Recién creada: abre de una vez la ventana de documentos para llenarlos
+    const nueva = D.clientes.find(x => String(x.cedula) === ced);
+    if (nueva) abrirDocs(nueva.id);
   }catch(e){ console.error(e); b.disabled = false; b.textContent = "Guardar"; err("No se pudo guardar (revise el internet). No se creó nada."); }
 }
 $("modal2").addEventListener("input", (e) => { if (e.target.closest("#formAgregar")) $("aTotal").textContent = "Total: " + fmt(totalServiciosForm().tot); });

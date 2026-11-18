@@ -279,3 +279,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - Pantalla principal: nuevo acceso «Generar Excel SUAPORTE»; accesos más pequeños. Se quitaron del menú los que ya están en la pantalla (Agregar cliente, Cobrar, Consignaciones, Subir planilla pagada, Excel SUAPORTE) para que nada se repita (`MENU_NO_SON_OPCIONES`).
 - Por qué: pedido de Nestor; quedaban repetidas en dos sitios y una consignación se perdió.
 - Pendiente: duplicadas ya aplicadas dos veces (Edgar Cañón $211.280 ×2; Manuel Felipe Sarmiento $561.000 pegada + correo). Esperando que Nestor diga si se marcan como descartadas.
+- 2026-11-17 · App Muelles y Seguros: al guardar una persona nueva con «+ Agregar persona de muelles», se abre sola la ventana «📎 Documentos» para subirle todo de una vez (antes solo se podía la cédula al crearla). Solo pantalla, no toca la base.
