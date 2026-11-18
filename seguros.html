@@ -728,27 +728,30 @@ async function enviarAMuelle(id, m){
     <div class="m-acciones">
       ${v.faltan.length ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos</button>` : `<button type="button" class="btn-sec" data-envio-mano="1" style="margin-right:auto">Abrir en Gmail</button>`}
       <button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button>
+      ${!v.faltan.length && v.listo ? `<button type="button" class="btn-sec" id="ePrueba" data-envio-prueba="1" title="Le llega a ${esc(v.desde)}, no al muelle">Probar (enviar a mí)</button>` : ""}
       <button type="button" class="btn-prim" id="eEnviar" data-envio-ya="1" ${v.faltan.length || !v.listo ? "disabled" : ""}>Enviar ahora</button>
     </div>
   </div>`;
   $("modal2").hidden = false;
 }
-async function confirmarEnvio(){
+async function confirmarEnvio(prueba){
   const p = envioPend; if (!p) return;
-  const b = $("eEnviar"); b.disabled = true; b.textContent = "Enviando…";
-  const { data: r, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: "enviar", cedula: p.cedula, muelle: p.m } });
+  const b = $(prueba ? "ePrueba" : "eEnviar"), txt = b.textContent; b.disabled = true; b.textContent = "Enviando…";
+  const { data: r, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: prueba ? "prueba" : "enviar", cedula: p.cedula, muelle: p.m } });
   if (error || !r || r.error){
     let msg = (r && r.error) || "";
     try{ if (!msg && error && error.context) msg = (await error.context.json()).error; }catch(e){}
     $("eErr").textContent = (msg || "No se pudo enviar.") + " No se envió nada.";
-    b.disabled = false; b.textContent = "Enviar ahora"; return;
+    b.disabled = false; b.textContent = txt; return;
   }
+  if (prueba){ b.disabled = false; b.textContent = txt; $("eErr").style.color = "var(--verde)"; $("eErr").textContent = `✅ Prueba enviada a ${r.para}. Revise ese correo; al muelle no se mandó nada.`; return; }
   envioPend = null; cerrarModal2();
   await cargarEnviosMuelle(); render();
   toast(`✅ Enviado a ${p.m} (${r.para}). Cuando respondan, se marca solo.`);
 }
 $("modal2").addEventListener("click", (e) => {
-  if (e.target.closest("[data-envio-ya]")){ confirmarEnvio(); return; }
+  if (e.target.closest("[data-envio-ya]")){ confirmarEnvio(false); return; }
+  if (e.target.closest("[data-envio-prueba]")){ confirmarEnvio(true); return; }
   if (e.target.closest("[data-envio-mano]") && envioPend){ const p = envioPend; envioPend = null; cerrarModal2(); enviarAMano(p.id, p.m); }
 });
 // Modo a mano: baja el PDF y abre Gmail para adjuntarlo

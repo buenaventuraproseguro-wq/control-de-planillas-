@@ -102,6 +102,11 @@ Deno.serve(async (req) => {
       adjuntos.push({ filename: `${n}_${cedula}.pdf`, content: pdf, contentType: "application/pdf" });
     }
     const transporte = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD } });
+    // «prueba»: el mismo correo, pero a proseguros44 (no al muelle) y sin anotarlo como enviado
+    if (accion === "prueba") {
+      await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: GMAIL_USER, subject: `[PRUEBA] ${asunto}`, text: texto, attachments: adjuntos });
+      return json({ ok: true, prueba: true, para: GMAIL_USER });
+    }
     const info = await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: destino.para, subject: asunto, text: texto, attachments: adjuntos });
     await admin.from("envios_muelle").upsert({
       month_id: mes.id, cedula, nombre: c.nombre, muelle, correo: destino.para, enviado_at: new Date().toISOString(),
