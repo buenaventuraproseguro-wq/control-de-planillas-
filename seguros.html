@@ -703,7 +703,56 @@ function botonEnviar(c, m){
   const e = envioDe(c, m);
   return `<button type="button" class="btn-sec" data-enviar-muelle="${esc(m)}" data-enviar-id="${esc(c.id)}" style="height:36px;font-size:13px">✉️ ${e ? "Reenviar" : "Enviar"} a ${esc(m)}</button>`;
 }
+/* Envío directo con confirmación: la función «enviar-muelle» (Supabase) arma un PDF por documento
+   (cédula, planilla y comprobante del mes) y lo envía desde proseguros44@gmail.com. Antes se muestra
+   todo y la persona toca «Enviar ahora». Si el correo de envío no está conectado, se ofrece el modo a mano. */
+let envioPend = null;
 async function enviarAMuelle(id, m){
+  const c = D.clientes.find(x => String(x.id) === String(id)); if (!c || !D.correosMuelles[m]) return;
+  toast("Preparando el correo…");
+  const { data: v, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: "vista", cedula: String(c.cedula), muelle: m } });
+  if (error || !v || v.error){ console.error(error, v); return enviarAMano(id, m); }
+  envioPend = { id, m, cedula: String(c.cedula) };
+  if (edicion) cerrarEditor();
+  $("modal2").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="eTit">
+    <div><h2 id="eTit">✉️ Enviar a ${esc(m)}</h2><p class="sub" style="margin:4px 0 0">Revise y toque «Enviar ahora». Sale desde ${esc(v.desde || "el correo del equipo")}.</p></div>
+    <div class="m-fila" style="grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px">
+      <b>Para:</b><span>${esc(v.para)}</span>
+      <b>Asunto:</b><span>${esc(v.asunto)}</span>
+      <b>Adjuntos:</b><span>${v.adjuntos.map(a => "📄 " + esc(a)).join("<br>") || "—"}</span>
+    </div>
+    <div class="m-fila" style="grid-template-columns:1fr;white-space:pre-wrap;font-size:13.5px;color:var(--suave)">${esc(v.texto)}</div>
+    ${v.faltan.length ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)"><b>Falta subir:</b> ${esc(v.faltan.join(", "))}. Súbalo en «📎 Documentos» y vuelva a intentar.</div>` : ""}
+    ${!v.listo ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">El correo de envío todavía no está conectado. Por ahora use «Abrir en Gmail» y adjunte a mano.</div>` : ""}
+    <div class="err" id="eErr"></div>
+    <div class="m-acciones">
+      ${v.faltan.length ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos</button>` : `<button type="button" class="btn-sec" data-envio-mano="1" style="margin-right:auto">Abrir en Gmail</button>`}
+      <button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button>
+      <button type="button" class="btn-prim" id="eEnviar" data-envio-ya="1" ${v.faltan.length || !v.listo ? "disabled" : ""}>Enviar ahora</button>
+    </div>
+  </div>`;
+  $("modal2").hidden = false;
+}
+async function confirmarEnvio(){
+  const p = envioPend; if (!p) return;
+  const b = $("eEnviar"); b.disabled = true; b.textContent = "Enviando…";
+  const { data: r, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: "enviar", cedula: p.cedula, muelle: p.m } });
+  if (error || !r || r.error){
+    let msg = (r && r.error) || "";
+    try{ if (!msg && error && error.context) msg = (await error.context.json()).error; }catch(e){}
+    $("eErr").textContent = (msg || "No se pudo enviar.") + " No se envió nada.";
+    b.disabled = false; b.textContent = "Enviar ahora"; return;
+  }
+  envioPend = null; cerrarModal2();
+  await cargarEnviosMuelle(); render();
+  toast(`✅ Enviado a ${p.m} (${r.para}). Cuando respondan, se marca solo.`);
+}
+$("modal2").addEventListener("click", (e) => {
+  if (e.target.closest("[data-envio-ya]")){ confirmarEnvio(); return; }
+  if (e.target.closest("[data-envio-mano]") && envioPend){ const p = envioPend; envioPend = null; cerrarModal2(); enviarAMano(p.id, p.m); }
+});
+// Modo a mano: baja el PDF y abre Gmail para adjuntarlo
+async function enviarAMano(id, m){
   const c = D.clientes.find(x => String(x.id) === String(id)); const cfg = D.correosMuelles[m];
   if (!c || !cfg) return;
   const mes = mesISOActual();
