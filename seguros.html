@@ -239,7 +239,7 @@ const MUELLES = ["Sociedad", "TC Buen", "Agua Dulce"];
 const EMPRESA_MUELLES = "actualización de muelles";
 const DIAS_VENTANA = 30;
 
-const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null, docs: [] };
+const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null, docs: [], envios: [], correosMuelles: {} };
 let vista = "inicio", filtroAgenda = "toca", filtroMuelle = "", clienteSel = null;
 
 const $ = (id) => document.getElementById(id);
@@ -272,6 +272,7 @@ async function cargar(){
   D.polizas = po.error ? [] : (po.data || []);
   D.responsables = new Map((re.data || []).map(r => [norm(r.clave || r.nombre), r]));
   await cargarDocsMuelles();
+  await cargarEnviosMuelle();
 }
 // A quién se le escribe: si tiene responsable (persona) con teléfono, a él; si no, al cliente
 function telDestino(c){
@@ -455,6 +456,7 @@ function vistaMuelles(){
       <span class="detalle">${esServicioMuelle(c) ? "Independiente" + (c.responsable_grupo ? " · " + esc(propio(c.responsable_grupo)) : "") : "Cliente PROSEGUROSNET"}</span>
       <div class="puntos">${MUELLES.map(m => { const d = diasHasta(vpm[m]); return `<span class="punto ${ac[m] ? "e-verde" : "e-gris"}" title="${esc(m)}">${esc(m)}${d !== null ? " · " + (d < 0 ? "venció" : d + " d") : ""}</span>`; }).join("")}</div>
       ${(() => { const e = estadoDocs(c); return `<span class="detalle" style="font-weight:700;color:${e.ok === e.total ? "var(--verde)" : "var(--nar-t)"}">📎 ${e.ok} de ${e.total} documentos${e.ok === e.total ? " ✓" : ""}</span>`; })()}
+      ${Object.keys(D.correosMuelles).map(m => chipEnvio(c, m)).join("")}
       <span class="editar">✏️ Cambiar muelles y documentos</span>
     </button>`;
   };
@@ -492,7 +494,9 @@ function vistaEnrol(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="height:36px;font-size:13px">📎 Documentos</button>
         <button type="button" class="${enrolado(c) ? "btn-sec" : "btn-prim"}" data-enrolar="${esc(c.id)}" style="height:36px">${enrolado(c) ? "↩️ Volver a pendiente" : "✅ Marcar enrolado"}</button>
+        ${Object.keys(D.correosMuelles).map(m => botonEnviar(c, m)).join("")}
       </div>
+      ${Object.keys(D.correosMuelles).map(m => chipEnvio(c, m)).join("")}
     </div>`;
   const cols = [["Por enrolar", lista.filter(c => !enrolado(c))], ["Ya enrolados", lista.filter(enrolado)]];
   return `<div class="card">
@@ -659,6 +663,7 @@ function pintarEditor(){
       <b>${esc(m)}</b>
       <button type="button" class="toggle ${edicion.ac[m] ? "si" : ""}" data-tg="${esc(m)}" aria-pressed="${edicion.ac[m] ? "true" : "false"}">${edicion.ac[m] ? "✓ Aceptado" : "Pendiente"}</button>
       <label>Vence <input type="date" data-vence="${esc(m)}" value="${esc(String(edicion.vpm[m] || "").slice(0, 10))}"></label>
+      ${D.correosMuelles[m] ? `<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${botonEnviar(c, m)}${chipEnvio(c, m)}</div>` : ""}
     </div>`).join("")}
     <div class="m-acciones">
       <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>
@@ -668,6 +673,74 @@ function pintarEditor(){
     </div>
   </div>`;
 }
+/* ---------- Envío de planilla y comprobante a un muelle por correo (ej. Agua Dulce) ----------
+   El correo de cada muelle está en configuracion «correos_muelles» ({muelle: {para, desde}}).
+   La app arma el PDF y abre el correo listo en Gmail; la persona adjunta el PDF y toca Enviar (la app no envía sola).
+   Se anota en «envios_muelle»; la respuesta (aprobado/rechazado) la lee la tarea «Correo a la app»
+   con registrar_respuesta_muelle, que marca el muelle como aceptado. */
+async function cargarEnviosMuelle(){
+  try{
+    const [cf, en] = await Promise.all([
+      sb.from("configuracion").select("valor").eq("clave", "correos_muelles").maybeSingle(),
+      sb.from("envios_muelle").select("*").eq("month_id", D.mes.id)
+    ]);
+    D.correosMuelles = (cf.data && cf.data.valor) || {};
+    D.envios = en.error ? [] : (en.data || []);
+  }catch(e){ console.error(e); }
+}
+const envioDe = (c, m) => D.envios.find(e => String(e.cedula) === String(c.cedula) && e.muelle === m);
+function chipEnvio(c, m){
+  const e = envioDe(c, m); if (!e) return "";
+  const f = fechaCorta(String(e.respuesta_at || e.enviado_at).slice(0, 10));
+  return e.estado === "aprobado" ? `<small style="color:var(--verde);font-weight:700">✅ Aprobado por correo ${esc(f)}</small>`
+    : e.estado === "rechazado" ? `<small style="color:#B42318;font-weight:700" title="${esc(e.respuesta || "")}">⚠️ Respondieron con novedad ${esc(f)}: ${esc(String(e.respuesta || "").slice(0, 90))}</small>`
+    : `<small style="color:var(--nar-t);font-weight:700">✉️ Enviado ${esc(f)} · esperando respuesta</small>`;
+}
+function botonEnviar(c, m){
+  if (!D.correosMuelles[m]) return "";
+  const e = envioDe(c, m);
+  return `<button type="button" class="btn-sec" data-enviar-muelle="${esc(m)}" data-enviar-id="${esc(c.id)}" style="height:36px;font-size:13px">✉️ ${e ? "Reenviar" : "Enviar"} a ${esc(m)}</button>`;
+}
+async function enviarAMuelle(id, m){
+  const c = D.clientes.find(x => String(x.id) === String(id)); const cfg = D.correosMuelles[m];
+  if (!c || !cfg) return;
+  const mes = mesISOActual();
+  const pedidos = [["planilla_pagada", "Planilla pagada"], ["comprobante_pago", "Comprobante de pago"]];
+  const faltan = pedidos.filter(([k]) => !docDe(c.cedula, k, mes)).map(([, n]) => n);
+  if (faltan.length){
+    toast(`Falta subir: ${faltan.join(" y ")} de ${D.mes.name}. Súbalos en «📎 Documentos» y vuelva a intentar.`);
+    abrirDocs(c.id); return;
+  }
+  const nombre = propio(c.nombre), ced = String(c.cedula);
+  const servicio = (c.servicios_muelle && "enrolamiento" in c.servicios_muelle) ? "enrolamiento" : "actualización";
+  const sinTildes = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const archivo = `${sinTildes(m)}_${sinTildes(nombre)}_${ced}.pdf`;
+  toast("Armando el PDF…");
+  try{
+    const JsPDF = await cargarJsPDF();
+    const pdf = new JsPDF({ unit: "pt", format: "letter" });
+    let primera = true;
+    for (const [k, n] of pedidos){ const cv = await imagenDeRuta(docDe(c.cedula, k, mes).storage_path); agregarAlPDF(pdf, cv, `${n} · ${nombre} · CC ${ced}`, primera); primera = false; }
+    pdf.save(archivo);
+  }catch(err){ console.error(err); toast("No se pudo armar el PDF (revise el internet). No se envió nada."); return; }
+  const asunto = `${servicio === "enrolamiento" ? "Enrolamiento" : "Actualización"} ${m} · CC ${ced} · ${nombre}`;
+  const cuerpo = `Cordial saludo.\n\nAdjuntamos la planilla de seguridad social y el comprobante de pago de ${D.mes.name} de ${nombre}, cédula ${ced}, para su ${servicio} en ${m}.\n\nQuedamos atentos a su respuesta.\n\nPROSEGUROSNET\nBuenaventura · 311 613 3523`;
+  const url = `https://mail.google.com/mail/?${cfg.desde ? "authuser=" + encodeURIComponent(cfg.desde) + "&" : ""}view=cm&fs=1&to=${encodeURIComponent(cfg.para)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+  window.open(url, "_blank", "noopener");
+  try{
+    const fila = { month_id: D.mes.id, cedula: ced, nombre: c.nombre, muelle: m, correo: cfg.para, enviado_at: new Date().toISOString(), estado: "enviado", respuesta: null, respuesta_at: null };
+    const { error } = await sb.from("envios_muelle").upsert(fila, { onConflict: "month_id,cedula,muelle" });
+    if (error) throw error;
+    await cargarEnviosMuelle();
+  }catch(err){ console.error(err); }
+  toast(`✅ PDF descargado (${archivo}). En el correo que se abrió, adjúntelo y toque Enviar.`);
+  if (edicion) pintarEditor(); else render();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-enviar-muelle]"); if (!b) return;
+  e.stopPropagation(); enviarAMuelle(b.dataset.enviarId, b.dataset.enviarMuelle);
+}, true);
+
 // Guarda SOLO lo que cambió, sobre lo que hay en la nube en este momento
 async function guardarMuelles(){
   const c = D.clientes.find(x => x.id === edicion.id); if (!c) return;
