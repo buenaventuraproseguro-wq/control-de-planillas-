@@ -513,6 +513,21 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .conta-card b{ font-size:16px; }
   .conta-card span{ color:var(--muted, #667085); font-size:13px; }
   .conta-card .sidebar-badge{ position:static; align-self:flex-start; }
+  .ck{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+  .ck-izq{ flex:999 1 560px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ck-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; }
+  .ck-kpi{ background:var(--panel, #fff); border:1px solid var(--line, #E4E7EC); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:2px; }
+  .ck-kpi small{ font-size:12.5px; font-weight:600; color:var(--muted, #667085); }
+  .ck-kpi b{ font-size:21px; font-weight:800; color:var(--titulo, #13213A); }
+  .ck-kpi span{ font-size:12px; color:var(--muted, #667085); }
+  .ck-kpi.bien b{ color:#1E7A46; } .ck-kpi.mal b{ color:#B42318; }
+  .ck-grupo h3{ margin:0 0 6px; font-size:12.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--muted, #667085); }
+  .ck-tabla{ background:var(--panel, #fff); border:1px solid var(--line, #E4E7EC); border-radius:14px; overflow:hidden; }
+  .ck-fila{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--line, #E4E7EC); font-size:14px; }
+  .ck-fila small{ color:var(--muted, #667085); font-size:12.5px; }
+  .ck-fila b{ min-width:110px; text-align:right; }
+  .ck-total{ border-bottom:0; background:rgba(31,61,112,.05); font-weight:800; }
+  @media (prefers-color-scheme: dark){ .ck-kpi.bien b{ color:#7BD6A0; } .ck-kpi.mal b{ color:#FFB4A8; } }
   .seg-resumen{ margin-top:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; border:1.5px solid var(--navy); border-radius:var(--radius); padding:8px 12px; max-width:560px; }
   .seg-resumen-txt{ display:flex; flex-direction:column; gap:2px; font-size:13px; min-width:0; }
   .seg-resumen-aviso{ color:#B42318; font-weight:700; }
@@ -13990,6 +14005,7 @@ function actualizarBadgeGastos(){
   const n = gastos.filter(g => g.estado !== "pagado" && g.vence && g.vence <= lim).length;
   b.textContent = n;
   b.style.display = n ? "inline-flex" : "none";
+  try{ renderContaPanel(); }catch(e){}
 }
 
 function llenarSelectCategorias(sel, conTodas, valor){
@@ -16230,24 +16246,57 @@ function renderContaPanel(){
       <a class="btn primary" href="./" style="align-self:flex-start">← Ir a la app de Planillas</a>`;
     return;
   }
-  const v = (id) => { const el = document.getElementById(id); return el ? el.textContent : "—"; };
-  const gb = document.getElementById("gastosBadge"), nGastos = gb && gb.style.display !== "none" ? gb.textContent : "";
-  const tarjeta = (accion, titulo, sub, extra) => `<button type="button" class="conta-card" data-conta-accion="${accion}"><b>${titulo}</b><span>${sub}</span>${extra || ""}</button>`;
+  // Mismo estilo del Centro de gestión (tipo Enlace): cifras arriba, accesos por grupos y «Para revisar» al lado.
+  const mes = store.currentMonth || "";
+  let ri = null; try{ ri = resumenIngresos(mes); }catch(e){ console.error(e); }
+  const ym = (() => { try{ return mesISODe(mes); }catch(e){ return ""; } })();
+  const deMes = (gastos || []).filter(g => ym && mesDeFecha(g.fecha) === ym);
+  const gas = deMes.filter(g => (g.tipo || "gasto") === "gasto");
+  const suma = (a) => a.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+  const gasPag = suma(gas.filter(g => g.estado === "pagado")), gasPend = gas.filter(g => g.estado !== "pagado");
+  const ingresoMes = ri ? ri.ingreso : 0;
+  const gb = document.getElementById("gastosBadge"), nVencen = gb && gb.style.display !== "none" ? Number(gb.textContent) || 0 : 0;
+  const ico = (id) => `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`;
+  const acceso = (accion, icono, titulo, sub, badge) => `<button type="button" class="cg-tarjeta" data-conta-accion="${accion}">${ico(icono)}<span class="cg-t">${titulo}<small>${sub}</small></span>${badge ? `<span class="cg-badge">${badge}</span>` : ""}</button>`;
+  const kpi = (titulo, valor, nota, clase) => `<div class="ck-kpi ${clase || ""}"><small>${titulo}</small><b>${valor}</b><span>${nota}</span></div>`;
+  const lineas = ri ? Object.entries(ri.lineas).filter(([, l]) => l.ingreso > 0).sort((a, b) => b[1].ingreso - a[1].ingreso) : [];
+  const revisar = [];
+  if (nVencen) revisar.push(["gastos", "Facturas de proveedores", "Vencidas o vencen en 3 días", nVencen]);
+  if (gasPend.length) revisar.push(["gastos", "Gastos por pagar del mes", fmt(suma(gasPend)), gasPend.length]);
+  if (ri && ri.porCobrar > 0) revisar.push(["ingresos", "Falta por cobrar", fmt(ri.porCobrar) + " (de eso " + fmt(ri.ingresoPorCobrar) + " es de la empresa)", ""]);
+  revisar.push(["cierre", "Cierre para el contador", "Descárguelo al terminar el mes", ""]);
   cont.innerHTML = `
-    <div class="conta-titulo"><div><h2>Contabilidad · ${escHtml(store.currentMonth || "")}</h2><p>Todo el negocio: Planillas + Muelles y Seguros. Cambie el mes arriba.</p></div>
-      <a class="btn small ghost" href="./">← App de Planillas</a></div>
-    <div class="conta-kpis">
-      <div class="conta-kpi"><small>Ingresos propios del mes</small><b>${escHtml(v("sidebarIngresosValue"))}</b><span class="muted">${escHtml(v("sidebarIngresosPagos"))}</span></div>
-      <div class="conta-kpi"><small>Aportes recibidos (dinero de terceros)</small><b>${escHtml(v("sidebarAportesValue"))}</b><span class="muted">${escHtml(v("sidebarAportesPagos"))}</span></div>
-      <div class="conta-kpi"><small>Total a cobrar del mes</small><b>${escHtml(v("sidebarTotalGeneral"))}</b><span class="muted">Todas las empresas</span></div>
-    </div>
-    <div class="conta-grid">
-      ${tarjeta("ingresos", "📈 Resumen del mes", "Ingresos por línea: planillas, afiliaciones, muelles, SOAT y pólizas, gestiones e incapacidades")}
-      ${tarjeta("aportes", "🧾 Aportes recibidos y pagados", "Lo que pagaron los clientes para salud, pensión, ARL y caja")}
-      ${tarjeta("gastos", "📒 Libro contable", "Ingresos y gastos, facturas de proveedores", nGastos ? `<span class="sidebar-badge" title="Facturas vencidas o por vencer">${escHtml(nGastos)}</span>` : "")}
-      ${tarjeta("facturar", "🧾 Borradores en Alegra", "Facturas en borrador; el contador las emite")}
-      ${tarjeta("recibos", "💵 Recibos y pagos en Alegra", "Recibos de caja de lo pagado")}
-      ${tarjeta("cierre", "📚 Cierre del mes para el contador", "Archivo para enviarle al contador")}
+    <div class="ck">
+      <div class="ck-izq">
+        <div class="conta-titulo"><div><h2>Centro contable · ${escHtml(mes)}</h2><p>Todo el negocio: Planillas + Muelles y Seguros. Para ver otro mes, cámbielo arriba.</p></div></div>
+        <div class="ck-kpis">
+          ${kpi("Ingresos de la empresa", fmt(ingresoMes), ri ? `${ri.pagos} ${ri.pagos === 1 ? "pago" : "pagos"} del mes` : "")}
+          ${kpi("Aportes de clientes", fmt(ri ? ri.aportes : 0), "Dinero de terceros (salud, pensión, ARL, caja)")}
+          ${kpi("Gastos pagados", fmt(gasPag), gasPend.length ? `${gasPend.length} por pagar · ${fmt(suma(gasPend))}` : "Sin gastos pendientes")}
+          ${kpi("Resultado del mes", fmt(ingresoMes - gasPag), "Ingresos de la empresa menos gastos pagados", ingresoMes - gasPag < 0 ? "mal" : "bien")}
+        </div>
+        <section class="ck-grupo"><h3>Ingresos y cobros</h3><div class="cg-tarjetas">
+          ${acceso("ingresos", "i-grafico", "Resumen del mes", "Ingresos por línea y día")}
+          ${acceso("aportes", "i-monedas", "Aportes recibidos y pagados", "Salud, pensión, ARL y caja")}
+        </div></section>
+        <section class="ck-grupo"><h3>Alegra</h3><div class="cg-tarjetas">
+          ${acceso("facturar", "i-recibo", "Borradores de facturas", "El contador las emite")}
+          ${acceso("recibos", "i-billete", "Recibos y pagos", "Recibos de caja de lo pagado")}
+        </div></section>
+        <section class="ck-grupo"><h3>Gastos y cierre</h3><div class="cg-tarjetas">
+          ${acceso("gastos", "i-libro", "Libro contable", "Ingresos, gastos y proveedores", nVencen || "")}
+          ${acceso("cierre", "i-bajar", "Cierre del mes", "Archivo para el contador")}
+        </div></section>
+        ${lineas.length ? `<section class="ck-grupo"><h3>Ingresos por línea</h3><div class="ck-tabla">
+          ${lineas.map(([n, l]) => `<div class="ck-fila"><span>${escHtml(n)}</span><small>${l.pagos ? l.pagos + (l.pagos === 1 ? " pago" : " pagos") : ""}</small><b>${fmt(l.ingreso)}</b></div>`).join("")}
+          <div class="ck-fila ck-total"><span>Total</span><small></small><b>${fmt(ingresoMes)}</b></div>
+        </div></section>` : ""}
+      </div>
+      <aside class="cg-der">
+        <div class="cg-der-h">${ico("i-check")}Para revisar</div>
+        ${revisar.map(([a, tit, sub, n]) => `<button type="button" class="cg-aviso" data-conta-accion="${a}"><span>${escHtml(tit)}<small>${escHtml(sub)}</small></span>${n ? `<b>${n}</b>` : ""}</button>`).join("")}
+        <a class="cg-ver" href="./">← Volver a la app de Planillas</a>
+      </aside>
     </div>`;
 }
 document.getElementById("contaPanel").addEventListener("click", (e) => {
