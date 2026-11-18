@@ -91,14 +91,19 @@ Deno.serve(async (req) => {
   const vehDocs = rutas.map(([, n]) => n === "SOAT" ? "SOAT" : "tecnomecánica");
   const vehQue = vehDocs.length === 2 ? "SOAT y tecnomecánica" : (vehDocs[0] || "SOAT y tecnomecánica");
   const asunto = esVeh
-    ? `Actualización ${vehQue} · Placa ${placa} · ${muelle} · CC ${cedula}`
-    : `${enrol ? "Enrolamiento" : "Actualización"} ${muelle} · CC ${cedula} · ${nombre}`;
-  // Saludo según la hora de Bogotá; mensaje corto y formal
+    ? `Actualización ${vehQue} · Placa ${placa} · CC ${cedula}`
+    : `${enrol ? "Enrolamiento" : "Actualización"} · CC ${cedula} · ${nombre}`;
+  // Saludo según la hora de Bogotá; mensaje lo más corto posible (el muelle ya sabe que es para ellos)
   const hora = Number(new Date().toLocaleString("en-US", { timeZone: "America/Bogota", hour: "numeric", hour12: false })) % 24;
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
   const texto = esVeh
-    ? `${saludo}.\n\nPor favor actualizar ${vehQue === "SOAT y tecnomecánica" ? "SOAT y tecnomecánica" : vehQue === "SOAT" ? "el SOAT" : "la tecnomecánica"} del vehículo de placa ${placa} (${nombre}, CC ${cedula}) en ${muelle}. Adjuntamos los documentos.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`
-    : `${saludo}.\n\nPor favor ${enrol ? "enrolar" : "actualizar"} a ${nombre}, CC ${cedula}, en ${muelle}. Adjuntamos cédula, planilla de seguridad social de ${mes.name} y comprobante de pago.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`;
+    ? `${saludo}, por favor actualizar ${vehQue === "SOAT y tecnomecánica" ? "SOAT y tecnomecánica" : vehQue === "SOAT" ? "el SOAT" : "la tecnomecánica"} del vehículo de placa ${placa}. Adjunto documentos.\n\nGracias.\nPROSEGUROSNET`
+    : `${saludo}, por favor ${enrol ? "enrolar" : "actualizar"} a ${nombre}, CC ${cedula}. Adjunto documentos.\n\nGracias.\nPROSEGUROSNET`;
+
+  // Si la persona cambió el asunto o el mensaje en la app, se usa el suyo (solo texto; el destinatario no cambia)
+  const limpio = (s: unknown, max: number) => String(s ?? "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
+  const asuntoFinal = accion !== "vista" && limpio(cuerpo.asunto, 200).replace(/\n/g, " ") || asunto;
+  const textoFinal = accion !== "vista" && limpio(cuerpo.texto, 2000) || texto;
 
   if (accion === "vista") {
     return json({ ok: true, para: destino.para, desde: GMAIL_USER || destino.desde || "", asunto, texto, faltan: esVeh && rutas.length ? [] : faltan, aviso: esVeh && rutas.length && faltan.length ? `No hay ${faltan.join(" ni ")} guardado; se envía solo lo que hay.` : "", adjuntos: rutas.map(([, n]) => esVeh ? `${n}_${placa}.pdf` : `${n}_${cedula}.pdf`), listo: !!(GMAIL_USER && GMAIL_APP_PASSWORD) });
@@ -117,10 +122,10 @@ Deno.serve(async (req) => {
     const transporte = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD } });
     // «prueba»: el mismo correo, pero a proseguros44 (no al muelle) y sin anotarlo como enviado
     if (accion === "prueba") {
-      await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: GMAIL_USER, subject: `[PRUEBA] ${asunto}`, text: texto, attachments: adjuntos });
+      await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: GMAIL_USER, subject: `[PRUEBA] ${asuntoFinal}`, text: textoFinal, attachments: adjuntos });
       return json({ ok: true, prueba: true, para: GMAIL_USER });
     }
-    const info = await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: destino.para, subject: asunto, text: texto, attachments: adjuntos });
+    const info = await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: destino.para, subject: asuntoFinal, text: textoFinal, attachments: adjuntos });
     await admin.from("envios_muelle").upsert({
       month_id: mes.id, cedula, nombre: c.nombre, muelle: esVeh ? `${muelle} · vehículo` : muelle, correo: destino.para, enviado_at: new Date().toISOString(),
       enviado_por: quien.user.id, estado: "enviado", respuesta: null, respuesta_at: null,
