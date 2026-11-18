@@ -16255,6 +16255,11 @@ function renderContaPanel(){
   const suma = (a) => a.reduce((s, g) => s + (Number(g.valor) || 0), 0);
   const gasPag = suma(gas.filter(g => g.estado === "pagado")), gasPend = gas.filter(g => g.estado !== "pagado");
   const ingresoMes = ri ? ri.ingreso : 0;
+  if (!prestamosCargados && !prestamosCargando) cargarPrestamos();
+  const pPend = prestamos.filter(p => p.estado === "pendiente" && saldoPrestamo(p) > 0);
+  const pMes = prestamos.filter(p => p.estado !== "anulado" && ym && mesDeFecha(p.fecha) === ym);
+  const sinRecuperarMes = pMes.filter(p => p.estado === "pendiente").reduce((s, p) => s + saldoPrestamo(p), 0);
+  const pVencidos = pPend.filter(p => p.vence && p.vence < hoyISO());
   const gb = document.getElementById("gastosBadge"), nVencen = gb && gb.style.display !== "none" ? Number(gb.textContent) || 0 : 0;
   const ico = (id) => `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`;
   const acceso = (accion, icono, titulo, sub, badge) => `<button type="button" class="cg-tarjeta" data-conta-accion="${accion}">${ico(icono)}<span class="cg-t">${titulo}<small>${sub}</small></span>${badge ? `<span class="cg-badge">${badge}</span>` : ""}</button>`;
@@ -16262,6 +16267,7 @@ function renderContaPanel(){
   const lineas = ri ? Object.entries(ri.lineas).filter(([, l]) => l.ingreso > 0).sort((a, b) => b[1].ingreso - a[1].ingreso) : [];
   const revisar = [];
   if (nVencen) revisar.push(["gastos", "Facturas de proveedores", "Vencidas o vencen en 3 días", nVencen]);
+  if (pPend.length) revisar.push(["prestamos", pVencidos.length ? "Préstamos vencidos sin recuperar" : "Préstamos por recuperar", `${fmt(pPend.reduce((s, p) => s + saldoPrestamo(p), 0))}${pVencidos.length ? " · " + pVencidos.length + " ya pasaron la fecha" : " · antes de fin de mes"}`, pPend.length]);
   if (gasPend.length) revisar.push(["gastos", "Gastos por pagar del mes", fmt(suma(gasPend)), gasPend.length]);
   if (ri && ri.porCobrar > 0) revisar.push(["ingresos", "Falta por cobrar", fmt(ri.porCobrar) + " (de eso " + fmt(ri.ingresoPorCobrar) + " es de la empresa)", ""]);
   revisar.push(["cierre", "Cierre para el contador", "Descárguelo al terminar el mes", ""]);
@@ -16273,7 +16279,7 @@ function renderContaPanel(){
           ${kpi("Ingresos de la empresa", fmt(ingresoMes), ri ? `${ri.pagos} ${ri.pagos === 1 ? "pago" : "pagos"} del mes` : "")}
           ${kpi("Aportes de clientes", fmt(ri ? ri.aportes : 0), "Dinero de terceros (salud, pensión, ARL, caja)")}
           ${kpi("Gastos pagados", fmt(gasPag), gasPend.length ? `${gasPend.length} por pagar · ${fmt(suma(gasPend))}` : "Sin gastos pendientes")}
-          ${kpi("Resultado del mes", fmt(ingresoMes - gasPag), "Ingresos de la empresa menos gastos pagados", ingresoMes - gasPag < 0 ? "mal" : "bien")}
+          ${kpi("Resultado del mes", fmt(ingresoMes - gasPag - sinRecuperarMes), sinRecuperarMes ? `Ingresos − gastos pagados − ${fmt(sinRecuperarMes)} prestados sin recuperar` : "Ingresos de la empresa menos gastos pagados", ingresoMes - gasPag - sinRecuperarMes < 0 ? "mal" : "bien")}
         </div>
         <section class="ck-grupo"><h3>Ingresos y cobros</h3><div class="cg-tarjetas">
           ${acceso("ingresos", "i-grafico", "Resumen del mes", "Ingresos por línea y día")}
@@ -16283,7 +16289,8 @@ function renderContaPanel(){
           ${acceso("facturar", "i-recibo", "Borradores de facturas", "El contador las emite")}
           ${acceso("recibos", "i-billete", "Recibos y pagos", "Recibos de caja de lo pagado")}
         </div></section>
-        <section class="ck-grupo"><h3>Gastos y cierre</h3><div class="cg-tarjetas">
+        <section class="ck-grupo"><h3>Gastos, préstamos y cierre</h3><div class="cg-tarjetas">
+          ${acceso("prestamos", "i-monedas", "Préstamos", pPend.length ? `${fmt(pPend.reduce((s, p) => s + saldoPrestamo(p), 0))} por recuperar` : "Plata prestada que se recupera a fin de mes", pPend.length || "")}
           ${acceso("gastos", "i-libro", "Libro contable", "Ingresos, gastos y proveedores", nVencen || "")}
           ${acceso("cierre", "i-bajar", "Cierre del mes", "Archivo para el contador")}
         </div></section>
@@ -16303,7 +16310,105 @@ document.getElementById("contaPanel").addEventListener("click", (e) => {
   const b = e.target.closest("[data-conta-accion]"); if (!b) return;
   const a = b.dataset.contaAccion;
   if (a === "gastos") document.getElementById("navGastosBtn").click();
+  else if (a === "prestamos") abrirPrestamos();
   else abrirInforme(a);
+});
+
+/* ---------- Préstamos (solo admin, app de Contabilidad) ----------
+   Plata que presta la empresa: sale como gasto del mes y se debe recuperar a fin de mes.
+   Tabla «prestamos» (abonos en jsonb [{fecha, valor, nota}]). Nunca se borra: se anula. */
+let prestamos = [], prestamosCargados = false, prestamosCargando = false;
+const saldoPrestamo = (p) => Math.max(0, (Number(p.valor) || 0) - (p.abonos || []).reduce((s, a) => s + (Number(a.valor) || 0), 0));
+function finDeMesISO(iso){ const [y, m] = String(iso).split("-").map(Number); const d = new Date(y, m, 0); return `${y}-${String(m).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+async function cargarPrestamos(){
+  if (!esAdmin()) return;
+  prestamosCargando = true;
+  try{
+    const { data, error } = await sb.from("prestamos").select("*").order("fecha", { ascending: false });
+    if (error) throw error;
+    prestamos = (data || []).map(p => ({ ...p, valor: Number(p.valor) || 0, abonos: Array.isArray(p.abonos) ? p.abonos : [] }));
+    prestamosCargados = true;
+  }catch(e){ console.error("No se pudieron cargar los préstamos:", e); }
+  prestamosCargando = false;
+  try{ renderContaPanel(); }catch(e){}
+  if (document.getElementById("overlayInforme").classList.contains("show") && document.getElementById("informeTitulo").textContent.startsWith("💸")) pintarPrestamos();
+}
+function abrirPrestamos(){
+  document.getElementById("informeTitulo").textContent = "💸 Préstamos";
+  document.getElementById("informeSubtitulo").textContent = "Plata que presta la empresa. Cuenta como gasto mientras no se recupere y se cobra a fin de mes.";
+  pintarPrestamos();
+  document.getElementById("overlayInforme").classList.add("show");
+  if (!prestamosCargados) cargarPrestamos();
+}
+function pintarPrestamos(){
+  const hoy = hoyISO();
+  const activos = prestamos.filter(p => p.estado !== "anulado");
+  const pend = activos.filter(p => p.estado === "pendiente" && saldoPrestamo(p) > 0);
+  const suma = (a, f) => a.reduce((s, p) => s + f(p), 0);
+  const fila = (p) => {
+    const abonado = (Number(p.valor) || 0) - saldoPrestamo(p), venc = p.estado === "pendiente" && p.vence && p.vence < hoy;
+    const estado = p.estado === "anulado" ? '<span class="muted">Anulado</span>' : p.estado === "pagado" || saldoPrestamo(p) === 0 ? '<b style="color:#1E7A46">Recuperado ✓</b>' : venc ? '<b style="color:#B42318">Vencido</b>' : "Pendiente";
+    return `<tr${p.estado === "anulado" ? ' style="opacity:.55"' : ""}>
+      <td class="muted">${escHtml(fechaCorta(p.fecha))}</td>
+      <td><b>${escHtml(nombrePropio(p.persona || ""))}</b>${p.motivo ? `<br><small class="muted">${escHtml(p.motivo)}</small>` : ""}${(p.abonos || []).length ? `<br><small class="muted">Abonos: ${p.abonos.map(a => `${escHtml(fechaCorta(a.fecha))} ${fmt(a.valor)}`).join(" · ")}</small>` : ""}</td>
+      <td class="num">${fmt(p.valor)}</td><td class="num">${fmt(abonado)}</td><td class="num"><b>${fmt(saldoPrestamo(p))}</b></td>
+      <td>${p.vence ? escHtml(fechaCorta(p.vence)) : "—"}<br><small>${estado}</small></td>
+      </tr>${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? `<tr><td></td><td colspan="5" style="padding-top:0"><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn small primary" data-pr-abonar="${escHtml(p.id)}">💵 Registrar abono</button> <button type="button" class="btn small" data-pr-pagado="${escHtml(p.id)}">✓ Pagó todo</button> <button type="button" class="btn small ghost" data-pr-anular="${escHtml(p.id)}">Anular</button></div></td></tr>` : ""}`;
+  };
+  document.getElementById("informeContenido").innerHTML = `
+    <div class="ck-kpis" style="margin-bottom:12px">
+      <div class="ck-kpi"><small>Por recuperar</small><b style="color:${pend.length ? "#B42318" : "#1E7A46"}">${fmt(suma(pend, saldoPrestamo))}</b><span>${pend.length} préstamo${pend.length === 1 ? "" : "s"} pendiente${pend.length === 1 ? "" : "s"}</span></div>
+      <div class="ck-kpi"><small>Prestado en total</small><b>${fmt(suma(activos, p => Number(p.valor) || 0))}</b><span>Sin contar los anulados</span></div>
+      <div class="ck-kpi"><small>Ya recuperado</small><b>${fmt(suma(activos, p => (Number(p.valor) || 0) - saldoPrestamo(p)))}</b><span>Abonos y pagos completos</span></div>
+    </div>
+    <button type="button" class="btn primary" id="prNuevoBtn" style="margin-bottom:12px">＋ Nuevo préstamo</button>
+    ${!prestamosCargados ? `<div class="empty">Cargando préstamos…</div>` : prestamos.length ? `<div class="hoy-tabla-caja"><table class="hoy-tabla">
+      <thead><tr><th>Fecha</th><th>A quién y para qué</th><th class="num">Prestado</th><th class="num">Abonado</th><th class="num">Saldo</th><th>Recuperar antes de</th></tr></thead>
+      <tbody>${[...pend, ...prestamos.filter(p => !pend.includes(p))].map(fila).join("")}</tbody></table></div>`
+      : `<div class="empty">Todavía no hay préstamos. Toque «＋ Nuevo préstamo».</div>`}`;
+}
+async function guardarPrestamo(id, cambios){
+  const ahora = new Date().toISOString();
+  const { data, error } = await sb.from("prestamos").update({ ...cambios, updated_at: ahora }).eq("id", id).select("*").single();
+  if (error){ console.error(error); await alertApp("No se pudo guardar (revise el internet). No se cambió nada."); return false; }
+  const i = prestamos.findIndex(p => p.id === id); if (i >= 0) prestamos[i] = { ...data, valor: Number(data.valor) || 0, abonos: Array.isArray(data.abonos) ? data.abonos : [] };
+  return true;
+}
+async function nuevoPrestamo(){
+  const d = await pedirDatosApp("Nuevo préstamo. Se cuenta como gasto del mes hasta que se recupere; la fecha para recuperarlo es el último día del mes.",
+    [{ id: "persona", label: "A quién se le prestó" }, { id: "motivo", label: "Para qué o nota", placeholder: "Ej.: adelanto, pago de planilla, transporte" }, { id: "valor", label: "Valor prestado en pesos", tipo: "number" }], "Guardar préstamo");
+  if (!d) return;
+  if (!(d.valor > 0)){ await alertApp("El valor debe ser mayor a cero. No se guardó nada."); return; }
+  const hoy = hoyISO();
+  const fila = { fecha: hoy, vence: finDeMesISO(hoy), persona: d.persona.toLowerCase(), motivo: d.motivo, valor: d.valor, abonos: [], estado: "pendiente" };
+  const { data, error } = await sb.from("prestamos").insert(fila).select("*").single();
+  if (error){ console.error(error); await alertApp("No se pudo guardar el préstamo (revise el internet). No se guardó nada."); return; }
+  prestamos.unshift({ ...data, valor: Number(data.valor) || 0, abonos: [] });
+  showToast(`✅ Préstamo de ${fmt(d.valor)} a ${nombrePropio(d.persona)} guardado. Recuperar antes del ${fechaCorta(fila.vence)}.`);
+  pintarPrestamos(); renderContaPanel();
+}
+document.getElementById("informeContenido").addEventListener("click", async (e) => {
+  if (e.target.closest("#prNuevoBtn")){ await nuevoPrestamo(); return; }
+  const ab = e.target.closest("[data-pr-abonar]"), pg = e.target.closest("[data-pr-pagado]"), an = e.target.closest("[data-pr-anular]");
+  const id = (ab || pg || an) ? (ab || pg || an).dataset[ab ? "prAbonar" : pg ? "prPagado" : "prAnular"] : null;
+  const p = id && prestamos.find(x => x.id === id); if (!p) return;
+  const quien = nombrePropio(p.persona || ""), saldo = saldoPrestamo(p);
+  if (ab){
+    const d = await pedirDatosApp(`Abono de ${quien}. Saldo: ${fmt(saldo)}.`, [{ id: "v", label: "Valor del abono en pesos", tipo: "number" }], "Guardar abono");
+    if (!d) return;
+    if (!(d.v > 0) || d.v > saldo){ await alertApp(`El abono debe ser mayor a cero y no más que el saldo (${fmt(saldo)}). No se guardó nada.`); return; }
+    const abonos = [...(p.abonos || []), { fecha: hoyISO(), valor: d.v }];
+    const queda = saldo - d.v;
+    if (await guardarPrestamo(p.id, { abonos, estado: queda <= 0 ? "pagado" : "pendiente" })) showToast(queda <= 0 ? `✅ ${quien} pagó todo el préstamo.` : `✅ Abono de ${fmt(d.v)} guardado. Queda ${fmt(queda)}.`);
+  } else if (pg){
+    if (!(await confirmarApp(`¿${quien} pagó el saldo completo (${fmt(saldo)})?`))) return;
+    const abonos = [...(p.abonos || []), { fecha: hoyISO(), valor: saldo }];
+    if (await guardarPrestamo(p.id, { abonos, estado: "pagado" })) showToast(`✅ Préstamo de ${quien} recuperado.`);
+  } else if (an){
+    if (!(await confirmarApp(`¿Anular el préstamo de ${quien} por ${fmt(p.valor)}? No se borra: queda en la lista como anulado y deja de contar.`))) return;
+    if (await guardarPrestamo(p.id, { estado: "anulado" })) showToast("Préstamo anulado.");
+  }
+  pintarPrestamos(); renderContaPanel();
 });
 
 /* ---------- «Pasar a cliente de planillas» (llega desde Muelles y Seguros con ?pasar=<cédula>) ----------
