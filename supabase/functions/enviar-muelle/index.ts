@@ -83,9 +83,11 @@ Deno.serve(async (req) => {
   }
   const nombre = propio(c.nombre);
   const enrol = c.servicios_muelle && typeof c.servicios_muelle === "object" && "enrolamiento" in c.servicios_muelle;
-  const tramite = enrol ? "enrolamiento" : "actualización";
   const asunto = `${enrol ? "Enrolamiento" : "Actualización"} ${muelle} · CC ${cedula} · ${nombre}`;
-  const texto = `Cordial saludo.\n\nRespetuosamente enviamos los documentos de ${nombre}, identificado(a) con cédula de ciudadanía N.° ${cedula}, para su ${tramite} en ${muelle}:\n\n• Cédula de ciudadanía\n• Planilla de seguridad social de ${mes.name}\n• Comprobante de pago de la planilla\n\nQuedamos atentos a su respuesta.\n\nAtentamente,\nPROSEGUROSNET\nBuenaventura · 311 613 3523`;
+  // Saludo según la hora de Bogotá; mensaje corto y formal
+  const hora = Number(new Date().toLocaleString("en-US", { timeZone: "America/Bogota", hour: "numeric", hour12: false })) % 24;
+  const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
+  const texto = `${saludo}.\n\nPor favor ${enrol ? "enrolar" : "actualizar"} a ${nombre}, CC ${cedula}, en ${muelle}. Adjuntamos cédula, planilla de seguridad social de ${mes.name} y comprobante de pago.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`;
 
   if (accion === "vista") {
     return json({ ok: true, para: destino.para, desde: GMAIL_USER || destino.desde || "", asunto, texto, faltan, adjuntos: rutas.map(([, n]) => `${n}_${cedula}.pdf`), listo: !!(GMAIL_USER && GMAIL_APP_PASSWORD) });

@@ -778,7 +778,8 @@ async function enviarAMano(id, m){
     pdf.save(archivo);
   }catch(err){ console.error(err); toast("No se pudo armar el PDF (revise el internet). No se envió nada."); return; }
   const asunto = `${servicio === "enrolamiento" ? "Enrolamiento" : "Actualización"} ${m} · CC ${ced} · ${nombre}`;
-  const cuerpo = `Cordial saludo.\n\nAdjuntamos la planilla de seguridad social y el comprobante de pago de ${D.mes.name} de ${nombre}, cédula ${ced}, para su ${servicio} en ${m}.\n\nQuedamos atentos a su respuesta.\n\nPROSEGUROSNET\nBuenaventura · 311 613 3523`;
+  const hora = new Date().getHours(), saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
+  const cuerpo = `${saludo}.\n\nPor favor ${servicio === "enrolamiento" ? "enrolar" : "actualizar"} a ${nombre}, CC ${ced}, en ${m}. Adjuntamos cédula, planilla de seguridad social de ${D.mes.name} y comprobante de pago.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`;
   const url = `https://mail.google.com/mail/?${cfg.desde ? "authuser=" + encodeURIComponent(cfg.desde) + "&" : ""}view=cm&fs=1&to=${encodeURIComponent(cfg.para)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
   window.open(url, "_blank", "noopener");
   try{
