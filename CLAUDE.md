@@ -59,3 +59,4 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Comfenalco Valle: inexactitud por aportes de caja de $100 (planilla 89893112341; plazo de 30 días desde el 9 de nov.), 3 reportados sin afiliación y 8 afiliados sin reportar. Avisos diarios a nestor.fabian.garzon.29@gmail.com.
 - Reactivar envío de planillas cuando Enlace dé la API.
 - Contrato de mandato: falta que el contador o un abogado revise el texto modelo.
+- Muelles por correo: las respuestas de Agua Dulce y Sociedad llegan a proseguros44@gmail.com (no conectado). Cuando Nestor tenga el correo profesional, conectarlo o reenviar solo esas respuestas para que se lea el aprobado solo.

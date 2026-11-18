@@ -692,6 +692,8 @@ const envioDe = (c, m) => D.envios.find(e => String(e.cedula) === String(c.cedul
 function chipEnvio(c, m){
   const e = envioDe(c, m); if (!e) return "";
   const f = fechaCorta(String(e.respuesta_at || e.enviado_at).slice(0, 10));
+  // Si ya lo marcaron aceptado a mano, no seguir diciendo «esperando respuesta»
+  if (e.estado !== "aprobado" && (c.aceptado_por_muelle || {})[m]) return `<small style="color:var(--verde);font-weight:700">✅ Aceptado (enviado ${esc(f)})</small>`;
   return e.estado === "aprobado" ? `<small style="color:var(--verde);font-weight:700">✅ Aprobado por correo ${esc(f)}</small>`
     : e.estado === "rechazado" ? `<small style="color:#B42318;font-weight:700" title="${esc(e.respuesta || "")}">⚠️ Respondieron con novedad ${esc(f)}: ${esc(String(e.respuesta || "").slice(0, 90))}</small>`
     : `<small style="color:var(--nar-t);font-weight:700">✉️ Enviado ${esc(f)} · esperando respuesta</small>`;
