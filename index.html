@@ -18001,6 +18001,10 @@ function pilaTienePlanilla(r){
   if (String(r["No. Planilla Pagada"] || "").trim() || r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return true;
   return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube.cedulas.has(String(r["Cédula"]).trim());
 }
+// Lo que el cliente ya consignó este mes (consignaciones aplicadas a su cédula), para ver abonos incompletos
+function abonadoConsig(r){
+  try{ return (consignaciones || []).filter(c => c.estado === "aplicada" && String(c.cedula) === String(r["Cédula"]) && c.mes === store.currentMonth).reduce((s, c) => s + (Number(c.valor) || 0), 0); }catch(e){ return 0; }
+}
 function pilaListo(r){ return (estadoClass(r["Estado Trámite"]) === "PAGO" && !pilaTienePlanilla(r)) || retiroQueDebe(r); }
 function pilaPendiente(r){ const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
 function pilaCandidatos(){
@@ -18254,7 +18258,7 @@ async function abrirGenerarPila(){
         <td><input type="checkbox" data-pila-ced="${escHtml(f.r["Cédula"])}" ${f.sel ? "checked" : ""} aria-label="Incluir"></td>
         <td><b>${escHtml(f.nombre)}</b> <button type="button" class="pila-nom-btn" data-pila-invertir="${escHtml(f.r["Cédula"])}" title="El nombre quedó al revés: poner los apellidos primero">⇄</button><button type="button" class="pila-nom-btn" data-pila-editar="${escHtml(f.r["Cédula"])}" title="Escribir apellidos y nombres">✏️</button><br><small>CC ${escHtml(f.r["Cédula"])}${f.r["Lugar Trabajo"] ? ` · 📍 ${escHtml(f.r["Lugar Trabajo"])} (${f.v[8]}-${f.v[9]})` : ""}${pilaTieneCaja(f.r) ? "" : " · sin caja: aporte mínimo $100 a Comfenalco Valle"}</small></td>
         <td>${f.dias}</td><td>${f.ing ? "ING" : ""}${f.ret ? "RET" : ""}</td>
-        <td class="num">${fmt(f.total)}</td>
+        <td class="num">${fmt(f.total)}${grupo === "pendientes" ? (() => { const ab = abonadoConsig(f.r); if (!ab) return ""; const falta = Math.max(0, totalEsperado(f.r) - ab); return `<br><small style="color:#B42318;font-weight:700;white-space:nowrap">💵 abonó ${fmt(ab)} · faltan ${fmt(falta)}</small>`; })() : ""}</td>
         <td>${f.avisos.length ? escHtml(f.avisos.join(" · ")) : "✓"}</td></tr>`; }).join("")}</tbody>
     </table></div>` : `<p class="ay-txt">No hay afiliados de PROSEGUROSNET por pagar en ${escHtml(store.currentMonth)}.</p>`)
   + (() => { const ind = records.filter(r => esIndependiente(r) && !esConductorExcluido(r) && !isRetiro(r));
