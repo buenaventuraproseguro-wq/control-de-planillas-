@@ -733,9 +733,11 @@ async function enviarAMuelle(id, m, tipo){
       <textarea class="m-input" id="eTexto" rows="8" maxlength="2000" style="height:auto;padding:10px 12px;font-family:inherit;font-size:14px;line-height:1.45;resize:vertical">${esc(v.texto)}</textarea>
     </label>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button type="button" class="btn-sec" data-envio-guardar="1" style="height:32px;font-size:12.5px" title="Las próximas veces sale este mensaje, con el nombre, la cédula y la placa de cada persona">💾 Dejar este mensaje para siempre</button>
+      <button type="button" class="btn-sec" data-envio-guardar="1" style="height:32px;font-size:12.5px" title="Las próximas veces sale este mensaje, con el nombre, la cédula y la placa de cada persona">💾 Guardar como mensaje de siempre</button>
       <button type="button" class="btn-sec" data-envio-original="1" style="height:32px;font-size:12.5px">↺ Deshacer cambios</button>
+      <button type="button" class="btn-sec" data-envio-restaurar="1" style="height:32px;font-size:12.5px">Volver al mensaje corto</button>
     </div>
+    <small style="color:var(--suave)">Lo puede editar y guardar las veces que quiera. Si no toca 💾, el cambio es solo para este correo.</small>
     ${v.faltan.length ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)"><b>Falta subir:</b> ${esc(v.faltan.join(", "))}. Súbalo en «📎 Documentos» y vuelva a intentar.</div>` : ""}
     ${v.aviso ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">${esc(v.aviso)}</div>` : ""}
     ${!v.listo ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">El correo de envío todavía no está conectado. Por ahora use «Abrir en Gmail» y adjunte a mano.</div>` : ""}
@@ -769,6 +771,7 @@ $("modal2").addEventListener("click", (e) => {
   if (e.target.closest("[data-envio-ya]")){ confirmarEnvio(false); return; }
   if (e.target.closest("[data-envio-prueba]")){ confirmarEnvio(true); return; }
   if (e.target.closest("[data-envio-guardar]") && envioPend){ guardarMensajeMuelle(); return; }
+  if (e.target.closest("[data-envio-restaurar]") && envioPend){ restaurarMensajeMuelle(); return; }
   if (e.target.closest("[data-envio-original]") && envioPend){ $("eAsunto").value = envioPend.asunto0; $("eTexto").value = envioPend.texto0; return; }
   if (e.target.closest("[data-envio-mano]") && envioPend){ const p = envioPend; envioPend = null; cerrarModal2(); enviarAMano(p.id, p.m); }
 });
@@ -794,7 +797,17 @@ async function guardarMensajeMuelle(){
   if (error || data !== "ok"){ console.error(error); $("eErr").textContent = "No se pudo guardar el mensaje (revise el internet)."; return; }
   p.asunto0 = $("eAsunto").value; p.texto0 = $("eTexto").value;
   $("eErr").style.color = "var(--verde)";
-  $("eErr").textContent = `✅ Listo: desde ahora sale este mensaje${p.tipo === "vehiculo" ? " para los vehículos" : ""}, con los datos de cada persona.`;
+  $("eErr").textContent = `✅ Guardado: desde ahora sale este mensaje${p.tipo === "vehiculo" ? " para los vehículos" : ""}, con los datos de cada persona. Puede seguir editándolo y volver a guardar cuando quiera.`;
+}
+// Quita el mensaje guardado y vuelve al corto que trae la app
+async function restaurarMensajeMuelle(){
+  const p = envioPend; if (!p) return;
+  const { data, error } = await sb.rpc("guardar_mensaje_muelle", { p_tipo: p.tipo, p_asunto: "", p_texto: "" });
+  if (error || data !== "restaurado"){ console.error(error); $("eErr").textContent = "No se pudo cambiar (revise el internet)."; return; }
+  const { data: v } = await sb.functions.invoke("enviar-muelle", { body: { accion: "vista", cedula: p.cedula, muelle: p.m, tipo: p.tipo } });
+  if (v && v.texto){ $("eAsunto").value = p.asunto0 = v.asunto; $("eTexto").value = p.texto0 = v.texto; }
+  $("eErr").style.color = "var(--verde)";
+  $("eErr").textContent = "✅ Volvió el mensaje corto. Lo puede editar otra vez cuando quiera.";
 }
 // Modo a mano: baja el PDF y abre Gmail para adjuntarlo
 async function enviarAMano(id, m){
