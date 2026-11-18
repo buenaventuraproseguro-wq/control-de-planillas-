@@ -4,7 +4,7 @@ import nodemailer from "npm:nodemailer@6.9.16";
 import { PDFDocument } from "npm:pdf-lib@1.17.1";
 
 // Envía a un muelle (Agua Dulce, Sociedad…) la cédula, la planilla y el comprobante de pago del mes,
-// cada uno en PDF, desde el correo del equipo (proseguros44@gmail.com) por SMTP de Gmail.
+// o el SOAT y la tecnomecánica del vehículo, cada uno en PDF, desde proseguros44@gmail.com por SMTP de Gmail.
 // Solo se envía cuando una persona del equipo toca «Enviar ahora» en la app (nunca solo).
 // La clave de aplicación de Gmail vive SOLO aquí, en los secretos de Supabase (GMAIL_USER, GMAIL_APP_PASSWORD).
 
@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
   const accion = String(cuerpo.accion || "enviar");
   const cedula = String(cuerpo.cedula || "").replace(/\D/g, "");
   const muelle = String(cuerpo.muelle || "").trim();
+  const esVeh = cuerpo.tipo === "vehiculo"; // SOAT y tecnomecánica del vehículo (por placa)
   if (!cedula || !muelle) return json({ error: "Faltan la cédula o el muelle." }, 400);
 
   const { data: cf } = await admin.from("configuracion").select("valor").eq("clave", "correos_muelles").maybeSingle();
@@ -67,32 +68,42 @@ Deno.serve(async (req) => {
 
   const { data: mes } = await admin.from("months").select("id,name").order("sort_order", { ascending: false }).limit(1).maybeSingle();
   if (!mes) return json({ error: "No encontré el mes actual." }, 500);
-  const { data: c } = await admin.from("clients").select("cedula,nombre,servicios_muelle").eq("month_id", mes.id).eq("cedula", cedula).maybeSingle();
+  const { data: c } = await admin.from("clients").select("cedula,nombre,servicios_muelle,placa").eq("month_id", mes.id).eq("cedula", cedula).maybeSingle();
   if (!c) return json({ error: `La cédula ${cedula} no está en ${mes.name}.` }, 404);
   const iso = mesISO(mes.name);
 
-  // Documentos: cédula (sin mes), planilla y comprobante del mes
-  const pedidos: [string, string, string][] = [["cedula", "", "Cedula"], ["planilla_pagada", iso, "Planilla"], ["comprobante_pago", iso, "Comprobante_de_pago"]];
+  const placa = String(c.placa || "").toUpperCase().replace(/\s+/g, "");
+  if (esVeh && !placa) return json({ error: "Este cliente no tiene placa guardada. Póngala en «🚗 Vehículo»." }, 400);
+  // Documentos. Persona: cédula (sin mes), planilla y comprobante del mes. Vehículo: SOAT y tecnomecánica.
+  const pedidos: [string, string, string][] = esVeh
+    ? [["soat", "", "SOAT"], ["tecnomecanica", "", "Tecnomecanica"]]
+    : [["cedula", "", "Cedula"], ["planilla_pagada", iso, "Planilla"], ["comprobante_pago", iso, "Comprobante_de_pago"]];
   const { data: docs } = await admin.from("documentos").select("tipo,mes,storage_path").eq("cedula", cedula);
   const faltan: string[] = [];
   const rutas: [string, string][] = [];
   for (const [tipo, m, nombre] of pedidos) {
     const d = (docs || []).find((x: any) => x.tipo === tipo && String(x.mes || "") === m);
-    if (!d) faltan.push(nombre.replace(/_/g, " ").replace("Cedula", "cédula").toLowerCase());
+    if (!d) faltan.push(nombre.replace(/_/g, " ").replace("Cedula", "cédula").replace("Tecnomecanica", "tecnomecánica").replace(/^Planilla|^Comprobante/, (x) => x.toLowerCase()));
     else rutas.push([d.storage_path, nombre]);
   }
   const nombre = propio(c.nombre);
   const enrol = c.servicios_muelle && typeof c.servicios_muelle === "object" && "enrolamiento" in c.servicios_muelle;
-  const asunto = `${enrol ? "Enrolamiento" : "Actualización"} ${muelle} · CC ${cedula} · ${nombre}`;
+  const vehDocs = rutas.map(([, n]) => n === "SOAT" ? "SOAT" : "tecnomecánica");
+  const vehQue = vehDocs.length === 2 ? "SOAT y tecnomecánica" : (vehDocs[0] || "SOAT y tecnomecánica");
+  const asunto = esVeh
+    ? `Actualización ${vehQue} · Placa ${placa} · ${muelle} · CC ${cedula}`
+    : `${enrol ? "Enrolamiento" : "Actualización"} ${muelle} · CC ${cedula} · ${nombre}`;
   // Saludo según la hora de Bogotá; mensaje corto y formal
   const hora = Number(new Date().toLocaleString("en-US", { timeZone: "America/Bogota", hour: "numeric", hour12: false })) % 24;
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
-  const texto = `${saludo}.\n\nPor favor ${enrol ? "enrolar" : "actualizar"} a ${nombre}, CC ${cedula}, en ${muelle}. Adjuntamos cédula, planilla de seguridad social de ${mes.name} y comprobante de pago.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`;
+  const texto = esVeh
+    ? `${saludo}.\n\nPor favor actualizar ${vehQue === "SOAT y tecnomecánica" ? "SOAT y tecnomecánica" : vehQue === "SOAT" ? "el SOAT" : "la tecnomecánica"} del vehículo de placa ${placa} (${nombre}, CC ${cedula}) en ${muelle}. Adjuntamos los documentos.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`
+    : `${saludo}.\n\nPor favor ${enrol ? "enrolar" : "actualizar"} a ${nombre}, CC ${cedula}, en ${muelle}. Adjuntamos cédula, planilla de seguridad social de ${mes.name} y comprobante de pago.\n\nMuchas gracias.\n\nPROSEGUROSNET · 311 613 3523`;
 
   if (accion === "vista") {
-    return json({ ok: true, para: destino.para, desde: GMAIL_USER || destino.desde || "", asunto, texto, faltan, adjuntos: rutas.map(([, n]) => `${n}_${cedula}.pdf`), listo: !!(GMAIL_USER && GMAIL_APP_PASSWORD) });
+    return json({ ok: true, para: destino.para, desde: GMAIL_USER || destino.desde || "", asunto, texto, faltan: esVeh && rutas.length ? [] : faltan, aviso: esVeh && rutas.length && faltan.length ? `No hay ${faltan.join(" ni ")} guardado; se envía solo lo que hay.` : "", adjuntos: rutas.map(([, n]) => esVeh ? `${n}_${placa}.pdf` : `${n}_${cedula}.pdf`), listo: !!(GMAIL_USER && GMAIL_APP_PASSWORD) });
   }
-  if (faltan.length) return json({ error: `Falta subir: ${faltan.join(", ")}.` }, 400);
+  if (esVeh ? !rutas.length : faltan.length) return json({ error: `Falta subir: ${faltan.join(", ")}.` }, 400);
   if (!GMAIL_USER || !GMAIL_APP_PASSWORD) return json({ error: "Falta conectar el correo de envío (GMAIL_USER y GMAIL_APP_PASSWORD en Supabase)." }, 500);
 
   try {
@@ -101,7 +112,7 @@ Deno.serve(async (req) => {
       const { data: blob, error } = await admin.storage.from(BUCKET).download(ruta);
       if (error || !blob) return json({ error: `No pude abrir el archivo de ${n.toLowerCase()}.` }, 500);
       const pdf = await aPDF(new Uint8Array(await blob.arrayBuffer()));
-      adjuntos.push({ filename: `${n}_${cedula}.pdf`, content: pdf, contentType: "application/pdf" });
+      adjuntos.push({ filename: esVeh ? `${n}_${placa}.pdf` : `${n}_${cedula}.pdf`, content: pdf, contentType: "application/pdf" });
     }
     const transporte = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD } });
     // «prueba»: el mismo correo, pero a proseguros44 (no al muelle) y sin anotarlo como enviado
@@ -111,7 +122,7 @@ Deno.serve(async (req) => {
     }
     const info = await transporte.sendMail({ from: `PROSEGUROSNET <${GMAIL_USER}>`, to: destino.para, subject: asunto, text: texto, attachments: adjuntos });
     await admin.from("envios_muelle").upsert({
-      month_id: mes.id, cedula, nombre: c.nombre, muelle, correo: destino.para, enviado_at: new Date().toISOString(),
+      month_id: mes.id, cedula, nombre: c.nombre, muelle: esVeh ? `${muelle} · vehículo` : muelle, correo: destino.para, enviado_at: new Date().toISOString(),
       enviado_por: quien.user.id, estado: "enviado", respuesta: null, respuesta_at: null,
     }, { onConflict: "month_id,cedula,muelle" });
     return json({ ok: true, para: destino.para, id: info?.messageId || null });

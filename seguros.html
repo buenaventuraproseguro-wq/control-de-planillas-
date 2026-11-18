@@ -707,15 +707,22 @@ function botonEnviar(c, m){
    (cédula, planilla y comprobante del mes) y lo envía desde proseguros44@gmail.com. Antes se muestra
    todo y la persona toca «Enviar ahora». Si el correo de envío no está conectado, se ofrece el modo a mano. */
 let envioPend = null;
-async function enviarAMuelle(id, m){
+async function enviarAMuelle(id, m, tipo){
   const c = D.clientes.find(x => String(x.id) === String(id)); if (!c || !D.correosMuelles[m]) return;
+  const esVeh = tipo === "vehiculo";
   toast("Preparando el correo…");
-  const { data: v, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: "vista", cedula: String(c.cedula), muelle: m } });
-  if (error || !v || v.error){ console.error(error, v); return enviarAMano(id, m); }
-  envioPend = { id, m, cedula: String(c.cedula) };
+  const { data: v, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: "vista", cedula: String(c.cedula), muelle: m, tipo: esVeh ? "vehiculo" : "persona" } });
+  if (error || !v || v.error){
+    let msg = (v && v.error) || "";
+    try{ if (!msg && error && error.context) msg = (await error.context.json()).error; }catch(e){}
+    console.error(error, v);
+    if (esVeh){ toast(msg || "No se pudo preparar el correo (revise el internet)."); return; }
+    return enviarAMano(id, m);
+  }
+  envioPend = { id, m, cedula: String(c.cedula), tipo: esVeh ? "vehiculo" : "persona" };
   if (edicion) cerrarEditor();
   $("modal2").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="eTit">
-    <div><h2 id="eTit">✉️ Enviar a ${esc(m)}</h2><p class="sub" style="margin:4px 0 0">Revise y toque «Enviar ahora». Sale desde ${esc(v.desde || "el correo del equipo")}.</p></div>
+    <div><h2 id="eTit">✉️ ${esVeh ? "SOAT y tecnomecánica a" : "Enviar a"} ${esc(m)}</h2><p class="sub" style="margin:4px 0 0">Revise y toque «Enviar ahora». Sale desde ${esc(v.desde || "el correo del equipo")}.</p></div>
     <div class="m-fila" style="grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px">
       <b>Para:</b><span>${esc(v.para)}</span>
       <b>Asunto:</b><span>${esc(v.asunto)}</span>
@@ -723,10 +730,11 @@ async function enviarAMuelle(id, m){
     </div>
     <div class="m-fila" style="grid-template-columns:1fr;white-space:pre-wrap;font-size:13.5px;color:var(--suave)">${esc(v.texto)}</div>
     ${v.faltan.length ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)"><b>Falta subir:</b> ${esc(v.faltan.join(", "))}. Súbalo en «📎 Documentos» y vuelva a intentar.</div>` : ""}
+    ${v.aviso ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">${esc(v.aviso)}</div>` : ""}
     ${!v.listo ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">El correo de envío todavía no está conectado. Por ahora use «Abrir en Gmail» y adjunte a mano.</div>` : ""}
     <div class="err" id="eErr"></div>
     <div class="m-acciones">
-      ${v.faltan.length ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos</button>` : `<button type="button" class="btn-sec" data-envio-mano="1" style="margin-right:auto">Abrir en Gmail</button>`}
+      ${v.faltan.length ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos</button>` : esVeh ? `<span style="margin-right:auto"></span>` : `<button type="button" class="btn-sec" data-envio-mano="1" style="margin-right:auto">Abrir en Gmail</button>`}
       <button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button>
       ${!v.faltan.length && v.listo ? `<button type="button" class="btn-sec" id="ePrueba" data-envio-prueba="1" title="Le llega a ${esc(v.desde)}, no al muelle">Probar (enviar a mí)</button>` : ""}
       <button type="button" class="btn-prim" id="eEnviar" data-envio-ya="1" ${v.faltan.length || !v.listo ? "disabled" : ""}>Enviar ahora</button>
@@ -737,7 +745,7 @@ async function enviarAMuelle(id, m){
 async function confirmarEnvio(prueba){
   const p = envioPend; if (!p) return;
   const b = $(prueba ? "ePrueba" : "eEnviar"), txt = b.textContent; b.disabled = true; b.textContent = "Enviando…";
-  const { data: r, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: prueba ? "prueba" : "enviar", cedula: p.cedula, muelle: p.m } });
+  const { data: r, error } = await sb.functions.invoke("enviar-muelle", { body: { accion: prueba ? "prueba" : "enviar", cedula: p.cedula, muelle: p.m, tipo: p.tipo } });
   if (error || !r || r.error){
     let msg = (r && r.error) || "";
     try{ if (!msg && error && error.context) msg = (await error.context.json()).error; }catch(e){}
@@ -747,7 +755,7 @@ async function confirmarEnvio(prueba){
   if (prueba){ b.disabled = false; b.textContent = txt; $("eErr").style.color = "var(--verde)"; $("eErr").textContent = `✅ Prueba enviada a ${r.para}. Revise ese correo; al muelle no se mandó nada.`; return; }
   envioPend = null; cerrarModal2();
   await cargarEnviosMuelle(); render();
-  toast(`✅ Enviado a ${p.m} (${r.para}). Cuando respondan, se marca solo.`);
+  toast(p.tipo === "vehiculo" ? `✅ SOAT y tecnomecánica enviados a ${p.m} (${r.para}).` : `✅ Enviado a ${p.m} (${r.para}). Cuando respondan, se marca solo.`);
 }
 $("modal2").addEventListener("click", (e) => {
   if (e.target.closest("[data-envio-ya]")){ confirmarEnvio(false); return; }
@@ -793,7 +801,7 @@ async function enviarAMano(id, m){
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-enviar-muelle]"); if (!b) return;
-  e.stopPropagation(); enviarAMuelle(b.dataset.enviarId, b.dataset.enviarMuelle);
+  e.stopPropagation(); enviarAMuelle(b.dataset.enviarId, b.dataset.enviarMuelle, b.dataset.enviarTipo);
 }, true);
 
 // Guarda SOLO lo que cambió, sobre lo que hay en la nube en este momento
@@ -1000,6 +1008,7 @@ function abrirVehiculo(id){
       <label class="f">SOAT vence<input class="m-input" id="vSoat" type="date" value="${esc(String(c.venc_soat || "").slice(0, 10))}"></label>
       <label class="f">Tecnomecánica vence<input class="m-input" id="vTec" type="date" value="${esc(String(c.venc_tecno || "").slice(0, 10))}"></label>
     </div>
+    ${Object.keys(D.correosMuelles).length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="font-size:13px;color:var(--suave)">Enviar SOAT y tecnomecánica al muelle:</b>${Object.keys(D.correosMuelles).map(m => `<button type="button" class="btn-sec" data-enviar-muelle="${esc(m)}" data-enviar-id="${esc(c.id)}" data-enviar-tipo="vehiculo" style="height:36px;font-size:13px">✉️ ${esc(m)}</button>`).join("")}${(() => { const e = D.envios.filter(x => String(x.cedula) === String(c.cedula) && /vehículo$/.test(x.muelle)); return e.map(x => `<small style="color:var(--nar-t);font-weight:700">✉️ ${esc(x.muelle.replace(" · vehículo", ""))} ${esc(fechaCorta(String(x.enviado_at).slice(0, 10)))}</small>`).join(" "); })()}</div>` : ""}
     ${VENTA_SOAT_EN_PAUSA ? "" : `<p class="sub" style="margin:0">Si usted le vendió el SOAT, mejor regístrelo con «＋ Registrar SOAT vendido»: así queda la comisión.</p>`}
     <div class="err" id="vErr"></div>
     <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cancelar</button><button type="submit" class="btn-prim" id="vGuardar">Guardar</button></div>
