@@ -719,7 +719,8 @@ async function enviarAMuelle(id, m, tipo){
     if (esVeh){ toast(msg || "No se pudo preparar el correo (revise el internet)."); return; }
     return enviarAMano(id, m);
   }
-  envioPend = { id, m, cedula: String(c.cedula), tipo: esVeh ? "vehiculo" : "persona", asunto0: v.asunto, texto0: v.texto };
+  envioPend = { id, m, cedula: String(c.cedula), tipo: esVeh ? "vehiculo" : "persona", asunto0: v.asunto, texto0: v.texto,
+    nombre: propio(c.nombre), placa: String(c.placa || "").toUpperCase().replace(/\s+/g, "") };
   if (edicion) cerrarEditor();
   $("modal2").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="eTit">
     <div><h2 id="eTit">✉️ ${esVeh ? "SOAT y tecnomecánica a" : "Enviar a"} ${esc(m)}</h2><p class="sub" style="margin:4px 0 0">Revise y toque «Enviar ahora». Sale desde ${esc(v.desde || "el correo del equipo")}.</p></div>
@@ -729,9 +730,12 @@ async function enviarAMuelle(id, m, tipo){
       <b>Adjuntos:</b><span>${v.adjuntos.map(a => "📄 " + esc(a)).join("<br>") || "—"}</span>
     </div>
     <label class="f" style="font-size:13px;font-weight:700;color:var(--suave)">Mensaje (puede cambiarlo antes de enviar)
-      <textarea class="m-input" id="eTexto" rows="8" maxlength="2000" style="height:auto;padding:10px 12px;font-size:14px;line-height:1.45;resize:vertical">${esc(v.texto)}</textarea>
+      <textarea class="m-input" id="eTexto" rows="8" maxlength="2000" style="height:auto;padding:10px 12px;font-family:inherit;font-size:14px;line-height:1.45;resize:vertical">${esc(v.texto)}</textarea>
     </label>
-    <button type="button" class="btn-sec" data-envio-original="1" style="align-self:flex-start;height:32px;font-size:12.5px">↺ Volver al mensaje original</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn-sec" data-envio-guardar="1" style="height:32px;font-size:12.5px" title="Las próximas veces sale este mensaje, con el nombre, la cédula y la placa de cada persona">💾 Dejar este mensaje para siempre</button>
+      <button type="button" class="btn-sec" data-envio-original="1" style="height:32px;font-size:12.5px">↺ Deshacer cambios</button>
+    </div>
     ${v.faltan.length ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)"><b>Falta subir:</b> ${esc(v.faltan.join(", "))}. Súbalo en «📎 Documentos» y vuelva a intentar.</div>` : ""}
     ${v.aviso ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">${esc(v.aviso)}</div>` : ""}
     ${!v.listo ? `<div class="vacio" style="background:var(--nar-f);color:var(--nar-t)">El correo de envío todavía no está conectado. Por ahora use «Abrir en Gmail» y adjunte a mano.</div>` : ""}
@@ -764,9 +768,34 @@ async function confirmarEnvio(prueba){
 $("modal2").addEventListener("click", (e) => {
   if (e.target.closest("[data-envio-ya]")){ confirmarEnvio(false); return; }
   if (e.target.closest("[data-envio-prueba]")){ confirmarEnvio(true); return; }
+  if (e.target.closest("[data-envio-guardar]") && envioPend){ guardarMensajeMuelle(); return; }
   if (e.target.closest("[data-envio-original]") && envioPend){ $("eAsunto").value = envioPend.asunto0; $("eTexto").value = envioPend.texto0; return; }
   if (e.target.closest("[data-envio-mano]") && envioPend){ const p = envioPend; envioPend = null; cerrarModal2(); enviarAMano(p.id, p.m); }
 });
+// Guarda el mensaje editado como el de siempre: cambia los datos de esta persona por marcas
+// ({saludo}, {nombre}, {cedula}, {placa}, {accion}) para que sirva para todos.
+async function guardarMensajeMuelle(){
+  const p = envioPend; if (!p) return;
+  const aPlantilla = (s) => {
+    let x = String(s || "");
+    x = x.replace(/\b(Buenos días|Buenas tardes|Buenas noches|Buen día)\b/gi, "{saludo}");
+    if (p.nombre) x = x.split(p.nombre).join("{nombre}");
+    x = x.split(p.cedula).join("{cedula}");
+    if (p.placa) x = x.split(p.placa).join("{placa}");
+    x = x.replace(/\b(actualizar|enrolar)\b/g, "{accion}").replace(/^(Actualización|Enrolamiento)\b/, "{Accion}");
+    return x;
+  };
+  const asunto = aPlantilla($("eAsunto").value.trim()), texto = aPlantilla($("eTexto").value.trim());
+  if (!asunto || !texto){ $("eErr").textContent = "Escriba el asunto y el mensaje."; return; }
+  if (!texto.includes("{cedula}") && !texto.includes("{nombre}") && !asunto.includes("{cedula}")){
+    if (!confirm("El mensaje no tiene el nombre ni la cédula de la persona: saldría igual para todos. ¿Guardarlo así?")) return;
+  }
+  const { data, error } = await sb.rpc("guardar_mensaje_muelle", { p_tipo: p.tipo, p_asunto: asunto, p_texto: texto });
+  if (error || data !== "ok"){ console.error(error); $("eErr").textContent = "No se pudo guardar el mensaje (revise el internet)."; return; }
+  p.asunto0 = $("eAsunto").value; p.texto0 = $("eTexto").value;
+  $("eErr").style.color = "var(--verde)";
+  $("eErr").textContent = `✅ Listo: desde ahora sale este mensaje${p.tipo === "vehiculo" ? " para los vehículos" : ""}, con los datos de cada persona.`;
+}
 // Modo a mano: baja el PDF y abre Gmail para adjuntarlo
 async function enviarAMano(id, m){
   const c = D.clientes.find(x => String(x.id) === String(id)); const cfg = D.correosMuelles[m];

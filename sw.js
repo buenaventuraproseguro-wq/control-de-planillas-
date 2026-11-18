@@ -3,7 +3,7 @@
 //   si no hay conexión, se usa la copia guardada.
 // - La librería de la base de datos y las fuentes se guardan una vez y se reutilizan.
 // - Los datos (clientes, pagos, documentos) NO pasan por aquí: los maneja la app.
-const VERSION = "prosegurosnet-v1";
+const VERSION = "prosegurosnet-v2";
 const APP = ["./", "./index.html"];
 const LIBRERIAS = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"];
 
@@ -38,15 +38,15 @@ self.addEventListener("fetch", (event) => {
   if (esApp){
     event.respondWith((async () => {
       try{
-        const resp = await fetch(req);
+        const resp = await fetch(req, { cache: "no-store" });
         if (resp && resp.ok){
           const cache = await caches.open(VERSION);
-          cache.put("./index.html", resp.clone());
+          cache.put(url.pathname, resp.clone()); // cada página con su propio nombre
         }
         return resp;
       }catch(e){
         const cache = await caches.open(VERSION);
-        return (await cache.match("./index.html")) || (await cache.match("./")) || Response.error();
+        return (await cache.match(url.pathname)) || (await cache.match("./index.html")) || (await cache.match("./")) || Response.error();
       }
     })());
     return;

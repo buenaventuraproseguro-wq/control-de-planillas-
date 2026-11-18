@@ -90,15 +90,26 @@ Deno.serve(async (req) => {
   const enrol = c.servicios_muelle && typeof c.servicios_muelle === "object" && "enrolamiento" in c.servicios_muelle;
   const vehDocs = rutas.map(([, n]) => n === "SOAT" ? "SOAT" : "tecnomecánica");
   const vehQue = vehDocs.length === 2 ? "SOAT y tecnomecánica" : (vehDocs[0] || "SOAT y tecnomecánica");
-  const asunto = esVeh
+  let asunto = esVeh
     ? `Actualización ${vehQue} · Placa ${placa} · CC ${cedula}`
     : `${enrol ? "Enrolamiento" : "Actualización"} · CC ${cedula} · ${nombre}`;
   // Saludo según la hora de Bogotá; mensaje lo más corto posible (el muelle ya sabe que es para ellos)
   const hora = Number(new Date().toLocaleString("en-US", { timeZone: "America/Bogota", hour: "numeric", hour12: false })) % 24;
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
-  const texto = esVeh
+  let texto = esVeh
     ? `${saludo}, por favor actualizar ${vehQue === "SOAT y tecnomecánica" ? "SOAT y tecnomecánica" : vehQue === "SOAT" ? "el SOAT" : "la tecnomecánica"} del vehículo de placa ${placa}. Adjunto documentos.\n\nGracias.\nPROSEGUROSNET`
     : `${saludo}, por favor ${enrol ? "enrolar" : "actualizar"} a ${nombre}, CC ${cedula}. Adjunto documentos.\n\nGracias.\nPROSEGUROSNET`;
+
+  // Mensaje guardado por el equipo (plantilla): reemplaza {saludo} {nombre} {cedula} {placa} {accion} {documentos}
+  const { data: pl } = await admin.from("configuracion").select("valor").eq("clave", "mensajes_muelles").maybeSingle();
+  const plantilla = pl?.valor?.[esVeh ? "vehiculo" : "persona"];
+  if (plantilla?.texto && plantilla?.asunto) {
+    const llenar = (s: string) => String(s)
+      .replaceAll("{saludo}", saludo).replaceAll("{nombre}", nombre).replaceAll("{cedula}", cedula)
+      .replaceAll("{placa}", placa).replaceAll("{accion}", enrol ? "enrolar" : "actualizar")
+      .replaceAll("{Accion}", enrol ? "Enrolamiento" : "Actualización").replaceAll("{documentos}", vehQue).replaceAll("{mes}", mes.name);
+    asunto = llenar(plantilla.asunto); texto = llenar(plantilla.texto);
+  }
 
   // Si la persona cambió el asunto o el mensaje en la app, se usa el suyo (solo texto; el destinatario no cambia)
   const limpio = (s: unknown, max: number) => String(s ?? "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
