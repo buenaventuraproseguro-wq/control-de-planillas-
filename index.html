@@ -1858,14 +1858,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .cg-izq{ flex:999 1 520px; min-width:0; display:flex; flex-direction:column; gap:10px; }
   .cg-izq h2{ margin:0; font-size:22px; font-weight:800; color:var(--titulo, #13213A); }
   .cg-izq p{ margin:0; font-size:13.5px; color:var(--muted); }
-  .cg-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; }
+  .cg-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px; }
   .main-area footer{ display:none; }
-  .cg-tarjeta{ display:flex; align-items:center; gap:14px; min-height:72px; padding:12px 16px; background:var(--panel); border:1px solid var(--line); border-radius:14px; cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:700; color:var(--titulo, #13213A); }
+  .cg-tarjeta{ display:flex; align-items:center; gap:10px; min-height:52px; padding:8px 12px; font-size:13.5px !important; background:var(--panel); border:1px solid var(--line); border-radius:14px; cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:700; color:var(--titulo, #13213A); }
   .cg-tarjeta:hover{ border-color:#1F3D70; box-shadow:0 4px 14px rgba(16,24,40,.08); }
   .cg-tarjeta .cg-t{ flex:1; display:flex; flex-direction:column; gap:1px; }
   .cg-tarjeta .cg-t small{ font-size:12px; font-weight:500; color:var(--muted); }
   .cg-badge{ background:#C0272D; color:#fff; border-radius:999px; font-size:13px; font-weight:700; padding:2px 9px; }
-  .cg-tarjeta .ico{ width:42px; height:42px; padding:10px; box-sizing:border-box; border-radius:10px; flex-shrink:0; background:#E8EEF9; color:#1F3D70; }
+  .cg-tarjeta .ico{ width:34px; height:34px; padding:8px; box-sizing:border-box; border-radius:10px; flex-shrink:0; background:#E8EEF9; color:#1F3D70; }
   .cg-der{ flex:1 1 300px; background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; align-self:flex-start; }
   .cg-der-h{ display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); font-size:16px; font-weight:800; color:var(--titulo, #13213A); }
   .cg-aviso{ display:flex; align-items:center; gap:10px; width:100%; padding:10px 16px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; cursor:pointer; font:inherit; color:inherit; }
@@ -2140,6 +2140,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <button type="button" class="cg-tarjeta" data-cg="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
         <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes</button>
         <button type="button" class="cg-tarjeta" data-cg="navConsigBtn"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg><span class="cg-t">Consignaciones<small>Mensajes de la cuenta *8222</small></span><span class="cg-badge" id="cgConsigBadge" hidden>0</span></button>
+        <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel SUAPORTE</button>
         <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
       </div>
     </div>
@@ -15613,9 +15614,13 @@ function renderConsignaciones(){
     cont.innerHTML = `<div class="empty">${csTab === "pendiente" ? "No hay consignaciones por revisar. 🎉" : "No hay nada aquí todavía."}</div>`;
     return;
   }
+  const claveMov = (i) => i.valor ? `${i.valor}|${i.fecha}|${i.hora}` : "";
+  const aplicadas = consignaciones.filter(x => x.estado === "aplicada").map(x => ({ x, i: leerMensajeBanco(x.texto) }));
   cont.innerHTML = lista.map(c => {
     const info = leerMensajeBanco(c.texto);
     const otra = esOtraCuenta(info);
+    const igual = c.estado === "pendiente" ? aplicadas.find(a => a.x.id !== c.id && a.i.valor && a.i.valor === info.valor && ((info.fecha && a.i.fecha === info.fecha && a.i.hora === info.hora) || (info.nombre && normalizarTexto(a.i.nombre) === normalizarTexto(info.nombre)))) : null;
+    const rIgual = igual ? records.find(x => String(x["Cédula"]) === String(igual.x.cedula)) : null;
     const cuando = info.fecha ? `${info.fecha}${info.hora ? " " + info.hora : ""}` : new Date(c.recibido_at).toLocaleString("es-CO");
     const quien = info.nombre ? `de <b>${escHtml(info.nombre)}</b>` : info.lugar ? `consignación en ${escHtml(info.lugar)}` : "sin nombre";
     let cuerpo = "";
@@ -15645,7 +15650,10 @@ function renderConsignaciones(){
     return `<div class="cs-card ${otra && !c.relacion ? "otra-cuenta" : ""}" data-cs-id="${c.id}">
       <div class="cs-top"><span class="cs-valor">${info.valor != null ? fmt(info.valor) : "—"}</span>
         <span class="cs-meta">${escHtml(info.banco || "Banco")} · ${quien} · ${escHtml(cuando)}${c.origen === "pegado" ? " · pegado" : c.origen === "correo" ? " · 📧 correo" : ""}</span></div>
-      ${otra
+      ${igual ? `<div class="cs-meta" style="color:#B42318;font-weight:700;">⚠️ Parece repetida: ya se aplicó una igual (${fmt(info.valor)}) a ${escHtml(rIgual ? nombrePropio(rIgual["Nombre del Afiliado"]) : igual.x.cedula)}. Si es el mismo pago, toque «Descartar».</div>` : ""}
+      ${otra && info.lugar && !info.cuenta
+        ? `<div class="cs-meta" style="color:#8A5A0B;">🏪 Consignación en corresponsal (${escHtml(info.lugar)}): Bancolombia no dice a qué cuenta llegó. Revise que sea de los seguros (*${CUENTA_SEGUROS}) antes de aplicarla.</div>`
+        : otra
         ? `<div class="cs-meta" style="color:#8A5A0B;">ℹ️ Llegó por ${escHtml(textoOrigenCuenta(info))}, no a la de los seguros (*${CUENTA_SEGUROS}).${c.relacion ? ` Se tomó porque tiene relación con planillas: <b>${escHtml(c.relacion.replace(/\s*\(llegó a la cuenta \*\d{4}\)$/, ""))}</b>.` : ""}</div>`
         : `<div class="cs-meta" style="color:var(--pago);">🏦 Cuenta de los seguros *${CUENTA_SEGUROS}</div>`}
       <div class="cs-texto">${escHtml(c.texto)}</div>
@@ -16010,17 +16018,15 @@ function datosHoy(){
    Se arma con los MISMOS botones de la barra vieja (escondida): tocar una opción hace clic en su botón,
    así ninguna función se pierde. Lo que no esté en una categoría sale en «Otras opciones». */
 const MENU_CATS = [
-  { nombre: "Consignaciones", directo: "navConsigBtn", sub: "Mensajes de la cuenta *8222", badge: "consigBadge", siempre: true },
-  { nombre: "Clientes", items: [{ id: "navAddBtn" }, { id: "navRecientesBtn" }, { id: "navHistorialBtn" }, { id: "navEditResponsablesBtn" }, { id: "navEstadoCuentaBtn" }, { id: "navSalariosBtn" }, { id: "navRevisionBtn" }] },
+  { nombre: "Clientes", items: [{ id: "navRecientesBtn" }, { id: "navHistorialBtn" }, { id: "navEditResponsablesBtn" }, { id: "navEstadoCuentaBtn" }, { id: "navSalariosBtn" }, { id: "navRevisionBtn" }] },
   { nombre: "Cobros", items: [
-    { accion: "cobrar", texto: "Enviar recordatorios por WhatsApp", sub: "A los que deben este mes" },
     { sel: '#sidebar [data-informe="prosegurosnet"]', texto: "Total a cobrar (PROSEGUROSNET)", valor: "sidebarTotalValue" },
     { sel: '#sidebar [data-informe="conductores"]', texto: "Total Actualización de Conductores", valor: "sidebarTotalConductores" },
     { sel: '#sidebar [data-informe="muelles"]', texto: "Total Muelles otras empresas", valor: "sidebarTotalMuelles" },
     { sel: '#sidebar [data-informe="general"]', texto: "Suma final (todas las empresas)", valor: "sidebarTotalGeneral" },
     { id: "navGananciasBtn", valor: "sidebarTotalGestiones" }, { id: "navCobroExtraBtn" }, { id: "navMensajeBtn" },
     { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
-  { nombre: "Planillas", items: [{ id: "navImportPilaBtn" }, { id: "navPilaBtn" }, { id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
+  { nombre: "Planillas", items: [{ id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }] },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
@@ -16028,7 +16034,8 @@ const MENU_CATS = [
   { nombre: "Muelles y Seguros · app aparte ↗", directo: "navAppSegurosBtn", app: true },
   { nombre: "Contabilidad · app aparte ↗", directo: "navAppContaBtn", app: true },
 ];
-const MENU_NO_SON_OPCIONES = ["navHoyBtn", "navCarteraBtn", "navAyudasBtn", "navEnlacesBtn", "navMenuBtn", "enlacesEditarBtn"];
+// Lo que ya está en la pantalla principal (accesos del Centro de gestión) no se repite en el menú
+const MENU_NO_SON_OPCIONES = ["navHoyBtn", "navCarteraBtn", "navAyudasBtn", "navEnlacesBtn", "navMenuBtn", "enlacesEditarBtn", "navAddBtn", "navConsigBtn", "navImportPilaBtn", "navPilaBtn"];
 let menuCat = null;
 function menuFuente(it){ return it.id ? document.getElementById(it.id) : it.sel ? document.querySelector(it.sel) : null; }
 function menuVisible(el){ return !!el && el.style.display !== "none" && !(el.hasAttribute("data-conta") && !esModoConta()); }
