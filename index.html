@@ -2134,6 +2134,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
           </div>
           <div class="acc-grupo acc-peligro"><span class="acc-t">Retiro</span>
             <button class="btn small" id="retirarBtn">🚪 Retirar</button>
+            <button type="button" class="btn small" id="trasladoBtn" title="Retirarlo de esta empresa (con su planilla hasta la fecha de retiro) y afiliarlo a otra empresa desde el mes siguiente">🔁 Pasar a otra empresa</button>
             <button class="btn small danger" id="retiroSinSoporteBtn" style="display:none;" title="Otra empresa: retirar de una vez aunque no haya soporte">✅ Retirar sin soporte</button>
             <button class="btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
           </div>
@@ -4547,6 +4548,7 @@ async function iniciarAppConSupabase(){
     cargarGuiaEps();
     sincronizarDocumentosLocales().catch(e => console.error(e));
     cargarConsignaciones();
+    cargarTraslados();
     const veniaSinConexion = modoSinConexion;
     modoSinConexion = false;
     guardarEstadoSync();
@@ -7855,7 +7857,11 @@ advanceBtn.addEventListener("click", async () => {
   }
 
   await cargarSoportesRetiro(current);
-  const retirosPendientes = records.filter(retiroSinSoporte);
+  await cargarTraslados();
+  // Traslados a otra empresa: no siguen en su empresa; en el mes nuevo quedan en la otra empresa en AFILIACIÓN
+  const traslPend = trasEmpPendientes(current);
+  const cedTrasl = new Set(traslPend.map(x => String(x.cedula)));
+  const retirosPendientes = records.filter(retiroSinSoporte).filter(r => !cedTrasl.has(String(r["Cédula"])));
   const avisoRet = retirosPendientes.length
     ? `\n\n⚠️ ${retirosPendientes.length} en RETIRO no tienen soporte (planilla o imagen de la novedad) y pasarán a "${next}" en RETIRO para no olvidarlos: ${retirosPendientes.slice(0, 6).map(x => x["Nombre del Afiliado"]).join(", ")}${retirosPendientes.length > 6 ? "…" : ""}.` : "";
   if (unaSola){
@@ -7866,6 +7872,7 @@ advanceBtn.addEventListener("click", async () => {
   }
 
   const continuing = records
+    .filter(r => !cedTrasl.has(String(r["Cédula"])))
     .filter(r => !isRetiro(r))
     // Enrolamiento en muelles: es una sola vez; si ya lo pagó, no pasa al mes siguiente
     // (si además tiene actualización, sigue solo con la actualización)
@@ -7878,7 +7885,8 @@ advanceBtn.addEventListener("click", async () => {
       const x = { ...r, "No. Planilla Pagada": "", "Enviado": false, "Aprobado": false };
       delete x._supabaseId; delete x["_prorrateoTransicion"];
       return x;
-    }));
+    }))
+    .concat(traslPend.map(tr => registroTraslado(tr)).filter(Boolean));
   continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; x["Soporte Enviado"] = ""; ponerCajaMinima(x); normalizarPensionArl(x);
     x["Imagen PlanillaPagada"] = null; x["Imagen ComprobantePago"] = null; }); // la planilla y el comprobante quedan en su mes // el recargo por mora es de cada mes; sin caja va el mínimo de $100
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
@@ -7905,12 +7913,14 @@ advanceBtn.addEventListener("click", async () => {
     }
     if (!(await confirmarApp(`El mes "${next}" ya existe, así que NO se va a reemplazar (se conserva todo lo que tiene). Solo se agregarán los ${faltantes.length} afiliado(s) de ${current} que todavía no están allá: ${faltantes.slice(0, 5).map(x => x["Nombre del Afiliado"]).join(", ")}${faltantes.length > 5 ? "…" : ""}. ¿Continuar?`))) return;
     insertarConservandoLugar(next, faltantes, records);
+    marcarTrasladosAplicados(traslPend.filter(tr => faltantes.some(x => String(x["Cédula"]) === String(tr.cedula))));
     switchToMonth(next);
     showToast(`Se agregaron ${faltantes.length} afiliado(s) a ${next}. Lo que ya tenía ese mes no se tocó.`);
     return;
   }
 
   store.months[next] = ordenarPorNumero(continuing);
+  marcarTrasladosAplicados(traslPend);
   switchToMonth(next);
   showToast(`Se creó ${next} con ${continuing.length} afiliados` + (retiradosCount ? ` (salieron ${retiradosCount} en RETIRO con soporte)` : "") + (retirosPendientes.length ? `; ${retirosPendientes.length} retiro(s) sin soporte siguen en la lista.` : "."));
 });
@@ -8736,6 +8746,7 @@ function showBreakdown(cedula){
 
   activeCedula = cedula;
   actualizarBotonRetiro(r);
+  pintarTraslado(r);
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
   document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
   const ubicacion = r["Dirección Completa"]
@@ -16013,6 +16024,129 @@ function aplicarRetiroProgramado(r, nombreMes){
     r["Estado Trámite"] = "RETIRO";
   }
 }
+
+/* ---------- Pasar a otra empresa (traslado) ----------
+   Este mes: queda con retiro en su empresa en la fecha escogida (la planilla de PROSEGUROSNET sale con RET y los días
+   hasta esa fecha, igual que un retiro normal). Al avanzar de mes: aparece en la empresa nueva en AFILIACIÓN con la
+   fecha de ingreso que se escogió. Tabla «traslados_empresa». */
+let trasladosEmp = [];
+async function cargarTraslados(){
+  if (!sb || !cloudDb) return;
+  try{
+    const { data, error } = await sb.from("traslados_empresa").select("*").eq("estado", "pendiente");
+    if (!error) trasladosEmp = data || [];
+  }catch(e){ console.error(e); }
+}
+const trasEmpPendientes = (mes) => trasladosEmp.filter(x => x.estado === "pendiente" && x.mes_origen === mes);
+const trasEmpDe = (r) => trasladosEmp.find(x => x.estado === "pendiente" && x.mes_origen === store.currentMonth && String(x.cedula) === String(r["Cédula"]));
+function registroTraslado(tr){
+  const r = records.find(x => String(x["Cédula"]) === String(tr.cedula)); if (!r) return null;
+  const nuevo = { ...r,
+    "Empresa": tr.empresa_destino,
+    "Estado Trámite": "AFILIACION",
+    "Fecha de Ingreso": fromInputDate(tr.fecha_ingreso) || "",
+    "Fecha Retiro": "", "Motivo Retiro": "",
+    "Costo Servicio": Number(tr.costo) || COSTO_MENSUAL,
+    "No. Planilla Pagada": "", "Enviado": false, "Aprobado": false,
+    "Observación": `viene de ${tr.empresa_origen || "otra empresa"} (traslado, retiro ${fechaCortaRetiro(tr.fecha_retiro)})`,
+  };
+  delete nuevo._supabaseId; delete nuevo["_prorrateoTransicion"];
+  return nuevo;
+}
+async function marcarTrasladosAplicados(lista){
+  for (const tr of lista || []){
+    try{ await sb.from("traslados_empresa").update({ estado: "aplicado", aplicado_at: new Date().toISOString() }).eq("id", tr.id).eq("estado", "pendiente"); tr.estado = "aplicado"; }catch(e){ console.error(e); }
+  }
+}
+function pintarTraslado(r){
+  const btn = document.getElementById("trasladoBtn"); if (!btn) return;
+  const tr = r && trasEmpDe(r);
+  btn.style.display = !r || esConductorExcluido(r) || (isRetiro(r) && !tr) ? "none" : "";
+  btn.textContent = tr ? `🔁 Pasa a ${nombrePropio(tr.empresa_destino)} el ${fechaCortaRetiro(tr.fecha_ingreso)} · cancelar` : "🔁 Pasar a otra empresa";
+}
+function empresasParaTraslado(r){
+  const vistas = new Map();
+  [...(store.months[store.currentMonth] || []).map(x => x["Empresa"]), ...getEmpresasCreadas(), "PROSEGUROSNET"].forEach(e => {
+    const n = String(e || "").trim(); if (!n || esNombreEmpresaServicio(n)) return;
+    const k = normalizarEmpresa(n); if (k === normalizarEmpresa(r["Empresa"] || "")) return;
+    if (!vistas.has(k)) vistas.set(k, n);
+  });
+  return [...vistas.values()].sort((a, b) => a.localeCompare(b));
+}
+async function abrirTraslado(){
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula)); if (!r) return;
+  const tr = trasEmpDe(r);
+  if (tr){
+    if (!(await confirmarApp(`${nombrePropio(r["Nombre del Afiliado"])} tiene programado pasar a ${nombrePropio(tr.empresa_destino)} el ${fechaCortaRetiro(tr.fecha_ingreso)}.\n\n¿Cancelar el traslado? También se quita el retiro de este mes (si ya subió la planilla del retiro, revíselo).`))) return;
+    const { error } = await sb.from("traslados_empresa").update({ estado: "cancelado" }).eq("id", tr.id);
+    if (error){ showToast("⚠️ No se pudo cancelar (revise el internet)."); return; }
+    tr.estado = "cancelado";
+    if (!isRetiro(r)){ r["Fecha Retiro"] = ""; r["Motivo Retiro"] = ""; r["_ultimaEdicion"] = new Date().toISOString(); saveStore(); }
+    renderList(searchInput.value); showBreakdown(r["Cédula"]); showToast("Traslado cancelado.");
+    return;
+  }
+  const hoy = fechaHoyISO(), [yy, mm] = hoy.split("-").map(Number);
+  const primeroSig = `${mm === 12 ? yy + 1 : yy}-${String(mm === 12 ? 1 : mm + 1).padStart(2, "0")}-01`;
+  const empresas = empresasParaTraslado(r);
+  document.getElementById("informeTitulo").textContent = "🔁 Pasar a otra empresa";
+  document.getElementById("informeSubtitulo").textContent = `${nombrePropio(r["Nombre del Afiliado"])} · CC ${r["Cédula"]} · hoy en ${r["Empresa"] || "—"}`;
+  document.getElementById("informeContenido").innerHTML = `
+    <div style="display:grid;gap:12px;max-width:520px">
+      <label class="field"><span style="font-weight:700">Empresa nueva</span>
+        <input id="trEmpresa" list="trEmpresasLista" placeholder="Escoja o escriba el nombre de la empresa" autocomplete="off" style="min-height:40px">
+        <datalist id="trEmpresasLista">${empresas.map(e => `<option value="${escHtml(e)}">`).join("")}</datalist></label>
+      <label class="field"><span style="font-weight:700">Fecha de retiro de ${escHtml(r["Empresa"] || "la empresa actual")}</span>
+        <input type="date" id="trRetiro" value="${hoy}" style="min-height:40px">
+        <small class="muted">La planilla de ${escHtml(store.currentMonth)} sale con RET y los días hasta esta fecha.</small></label>
+      <label class="field"><span style="font-weight:700">Fecha de afiliación en la empresa nueva</span>
+        <input type="date" id="trIngreso" value="${primeroSig}" style="min-height:40px">
+        <small class="muted">Al avanzar de mes queda en la empresa nueva en AFILIACIÓN con esta fecha de ingreso.</small></label>
+      <label class="field"><span style="font-weight:700">Valor del servicio en la empresa nueva</span>
+        <input id="trCosto" inputmode="numeric" value="${COSTO_MENSUAL}" style="min-height:40px"></label>
+      <div class="err" id="trErr" style="color:#B42318;font-weight:700"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn" data-ay-trcancel="1">Cancelar</button>
+        <button type="button" class="btn primary" id="trGuardar">Guardar traslado</button>
+      </div>
+    </div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+}
+async function guardarTraslado(){
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula)); if (!r) return;
+  const err = (m) => { document.getElementById("trErr").textContent = m; };
+  const destino = document.getElementById("trEmpresa").value.trim();
+  const fRet = document.getElementById("trRetiro").value, fIng = document.getElementById("trIngreso").value;
+  const costo = Number(String(document.getElementById("trCosto").value).replace(/[^0-9]/g, "")) || 0;
+  if (!destino) return err("Escoja o escriba la empresa nueva.");
+  if (normalizarEmpresa(destino) === normalizarEmpresa(r["Empresa"] || "")) return err("La empresa nueva es la misma de ahora.");
+  if (!fRet || !fIng) return err("Escoja las dos fechas.");
+  if (fIng < fRet) return err("La fecha de afiliación no puede ser antes del retiro.");
+  if (indiceMesDeFecha(fRet) !== indiceMes(store.currentMonth)) return err(`La fecha de retiro debe ser de ${store.currentMonth}.`);
+  if (!(indiceMesDeFecha(fIng) > indiceMes(store.currentMonth))) return err("La afiliación en la empresa nueva es desde el mes siguiente: escoja una fecha del próximo mes.");
+  const fila = { cedula: String(r["Cédula"]), nombre: r["Nombre del Afiliado"], empresa_origen: r["Empresa"] || "", empresa_destino: destino,
+    mes_origen: store.currentMonth, fecha_retiro: fRet, fecha_ingreso: fIng, costo: costo || COSTO_MENSUAL };
+  const { data, error } = await sb.from("traslados_empresa").insert(fila).select("*").single();
+  if (error){ console.error(error); return err(error.code === "23505" ? "Ya tiene un traslado programado este mes." : "No se pudo guardar (revise el internet). No se cambió nada."); }
+  trasladosEmp.push(data);
+  // Si es una empresa nueva, queda en la lista de empresas
+  if (!empresasParaTraslado(r).some(e => normalizarEmpresa(e) === normalizarEmpresa(destino)) && !getEmpresasCreadas().some(e => normalizarEmpresa(e) === normalizarEmpresa(destino))) getEmpresasCreadas().push(destino);
+  // Retiro en la empresa actual, igual que «Retirar»
+  r["Fecha Retiro"] = fRet;
+  r["Motivo Retiro"] = `Traslado a ${destino}`;
+  if (esOtraEmpresa(r) && tieneSoporteRetiro(r)) r["Estado Trámite"] = "RETIRO";
+  const obs = `retiro ${fechaCortaRetiro(fRet)}: pasa a ${destino} desde el ${fechaCortaRetiro(fIng)}`;
+  r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${obs}` : obs;
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore();
+  document.getElementById("overlayInforme").classList.remove("show");
+  renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  showToast(`🔁 Listo: en ${store.currentMonth} sale con retiro el ${fechaCortaRetiro(fRet)} en la planilla de ${r["Empresa"]}; al avanzar de mes queda en ${destino} desde el ${fechaCortaRetiro(fIng)}.`);
+}
+document.getElementById("trasladoBtn").addEventListener("click", abrirTraslado);
+document.getElementById("informeContenido").addEventListener("click", (e) => {
+  if (e.target.closest("#trGuardar")) guardarTraslado();
+  if (e.target.closest("[data-ay-trcancel]")) document.getElementById("overlayInforme").classList.remove("show");
+});
 
 function actualizarBotonRetiro(r){
   const btn = document.getElementById("retirarBtn");
