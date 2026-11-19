@@ -40,7 +40,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Avanzar de mes: botón `advanceBtn` + `construirRegistroMesSiguiente`
 - Empresas: `renderListaEmpresasEditar`, `abrirDocsEmpresa` (RUT y Cámara en storage `documentos-clientes/empresa-<nombre>/`)
 - Afiliaciones en trámite: `abrirAfilTramites`, `renderAfilTramites`, `atDeFichas`, `diasHabilesEntre`; tabla `afiliaciones_tramite`; el correo entra con `registrar_afiliacion_correo` (tarea "Correo a la app")
-- Contrato de mandato: `abrirMandato`, `textoMandato`, `pintarBotonMandato`; firmados en storage `documentos-clientes/contratos-mandato/<documento>`
+- Contrato de mandato: `abrirMandato`, `textoMandato`, `pintarBotonMandato`, lista en el menú `abrirListaMandatos`; firmados en storage `documentos-clientes/contratos-mandato/<documento>`
 - Registro de cambios (solo admin): `abrirRegistroCambios`, `renderRegistroCambios`; tabla `registro_cambios`
 - Cierre del mes para el contador (solo admin, solo lee): `abrirCierreContador`, `datosCierreContador`, `descargarCierreContador`
 - Seguros y pólizas: `abrirPolizas`, `renderPolizas`, `mensajePoliza`; tabla `polizas`; la comisión entra en `resumenIngresos`

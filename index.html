@@ -2019,6 +2019,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
     <div class="sidebar-menu-colapsable" id="sidebarMenuColapsable">
       <div class="sidebar-section-title">Consultas</div>
+      <button type="button" class="sidebar-link" id="navMandatoBtn"><span class="sidebar-num"></span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Contratos de mandato</button>
       <button type="button" class="sidebar-link" id="navRecientesBtn"><span class="sidebar-num">8</span><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Trabajados recientemente</button>
       <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">9</span><svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Historial de cliente</button>
       <button type="button" class="sidebar-link" id="navRevisionBtn"><span class="sidebar-num">21</span><svg class="ico" aria-hidden="true"><use href="#i-lupa"/></svg>Revisión de datos</button>
@@ -5944,6 +5945,54 @@ async function mandatoEstado(){
     ${o ? `<button type="button" class="btn small" id="mdVerBtn">Ver</button>` : ""}
     <button type="button" class="btn small ${o ? "" : "primary"}" id="mdSubirBtn">${o ? "Cambiar" : "Subir firmado"}</button></div>`;
 }
+/* ---------- Contratos de mandato desde el menú ----------
+   Lista de clientes del mes con su estado (firmado / falta), buscador y contrato en blanco para un cliente nuevo. */
+let _mdBusca = "";
+async function abrirListaMandatos(){
+  document.getElementById("informeTitulo").textContent = "📄 Contratos de mandato";
+  document.getElementById("informeSubtitulo").textContent = "Escoja el cliente para llenar, imprimir y guardar su contrato firmado. Para uno nuevo, use el contrato en blanco.";
+  document.getElementById("informeContenido").innerHTML = `<div class="empty">Cargando…</div>`;
+  document.getElementById("overlayInforme").classList.add("show");
+  const firmados = await cargarMandatosFirmados();
+  const lista = (records || []).filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO" && !esConductorExcluido(r))
+    .map(r => ({ r, ok: !!mandatoFirmadoDe(r, firmados) }))
+    .sort((a, b) => (a.ok ? 1 : 0) - (b.ok ? 1 : 0) || String(a.r["Nombre del Afiliado"]).localeCompare(String(b.r["Nombre del Afiliado"])));
+  const nOk = lista.filter(x => x.ok).length;
+  document.getElementById("informeContenido").innerHTML = `
+    <div class="ck-kpis" style="margin-bottom:12px">
+      <div class="ck-kpi"><small>Con contrato firmado</small><b style="color:#1E7A46">${nOk}</b><span>guardado en la app</span></div>
+      <div class="ck-kpi"><small>Les falta</small><b style="color:${lista.length - nOk ? "#B42318" : "#1E7A46"}">${lista.length - nOk}</b><span>de ${lista.length} clientes de ${escHtml(store.currentMonth || "")}</span></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input type="search" id="mdBuscar" placeholder="🔎 Buscar por nombre o cédula" value="${escHtml(_mdBusca)}" style="flex:1 1 240px;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line, #D0D5DD)">
+      <button type="button" class="btn primary" data-md-blanco="1">＋ Contrato en blanco (cliente nuevo)</button>
+    </div>
+    <div class="hoy-tabla-caja"><table class="hoy-tabla"><thead><tr><th>Cliente</th><th>Cédula</th><th>Contrato</th><th></th></tr></thead><tbody>
+    ${lista.map(({ r, ok }) => `<tr data-md-fila="${escHtml(normalizarTexto((r["Nombre del Afiliado"] || "") + " " + r["Cédula"]))}">
+      <td><b>${escHtml(nombrePropio(r["Nombre del Afiliado"] || ""))}</b>${r["Responsable / Grupo"] ? `<br><small class="muted">${escHtml(nombrePropio(r["Responsable / Grupo"]))}</small>` : ""}</td>
+      <td>${escHtml(r["Cédula"])}</td>
+      <td>${ok ? '<b style="color:#1E7A46">✅ Firmado</b>' : '<span style="color:#B42318;font-weight:700">Falta</span>'}</td>
+      <td><button type="button" class="btn small ${ok ? "" : "primary"}" data-md-ced="${escHtml(r["Cédula"])}">📄 ${ok ? "Ver" : "Hacer"}</button></td></tr>`).join("")}
+    </tbody></table></div>`;
+  filtrarListaMandatos();
+}
+function filtrarListaMandatos(){
+  const q = normalizarTexto(_mdBusca).split(" ").filter(Boolean);
+  document.querySelectorAll("#informeContenido [data-md-fila]").forEach(tr => { tr.hidden = q.length > 0 && !q.every(w => tr.dataset.mdFila.includes(w)); });
+}
+document.getElementById("informeContenido").addEventListener("input", (e) => {
+  if (e.target.id === "mdBuscar"){ _mdBusca = e.target.value; filtrarListaMandatos(); }
+});
+document.getElementById("informeContenido").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-md-ced]"), n = e.target.closest("[data-md-blanco]");
+  if (!b && !n) return;
+  const r = b ? records.find(x => String(x["Cédula"]) === String(b.dataset.mdCed)) : { "Cédula": "", "Nombre del Afiliado": "", "Costo Servicio": 75000 };
+  if (!r) return;
+  document.getElementById("overlayInforme").classList.remove("show");
+  abrirMandato(r);
+});
+document.getElementById("navMandatoBtn").addEventListener("click", abrirListaMandatos);
+
 function abrirMandato(r){
   mandatoCliente = r;
   const resp = respMandato(r), sel = document.getElementById("mdQuien");
@@ -16088,7 +16137,7 @@ function datosHoy(){
    Se arma con los MISMOS botones de la barra vieja (escondida): tocar una opción hace clic en su botón,
    así ninguna función se pierde. Lo que no esté en una categoría sale en «Otras opciones». */
 const MENU_CATS = [
-  { nombre: "Clientes", items: [{ id: "navRecientesBtn" }, { id: "navHistorialBtn" }, { id: "navEditResponsablesBtn" }, { id: "navEstadoCuentaBtn" }, { id: "navSalariosBtn" }, { id: "navRevisionBtn" }] },
+  { nombre: "Clientes", items: [{ id: "navMandatoBtn", sub: "Hacer, imprimir y guardar el firmado" }, { id: "navRecientesBtn" }, { id: "navHistorialBtn" }, { id: "navEditResponsablesBtn" }, { id: "navEstadoCuentaBtn" }, { id: "navSalariosBtn" }, { id: "navRevisionBtn" }] },
   { nombre: "Cobros", items: [
     { sel: '#sidebar [data-informe="prosegurosnet"]', texto: "Total a cobrar (PROSEGUROSNET)", valor: "sidebarTotalValue" },
     { sel: '#sidebar [data-informe="conductores"]', texto: "Total Actualización de Conductores", valor: "sidebarTotalConductores" },
