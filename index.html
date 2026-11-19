@@ -8268,6 +8268,14 @@ function tagDebeRetiro(r){
     : `<span class="tag-retiro-pend" title="Falta la planilla del retiro: todavía debe pagarse">🚪 Debe planilla</span>`;
 }
 // En la lista de Retiros: empresa y responsable resaltados (en vez de la mora)
+// Clientes de otra empresa: en la lista y en la ficha se ve a qué empresa pertenecen (y si van a pasar a otra)
+function tagOtraEmpresa(r){
+  if (!r || !esOtraEmpresa(r) || esConductorExcluido(r)) return "";
+  return `<span class="tag-empresa-ret" title="Empresa a la que pertenece">🏢 ${escHtml(nombrePropio(String(r["Empresa"] || "").trim()))}</span>`;
+}
+function tagTrasladoEmpresa(r){
+  try{ const tr = r && trasEmpDe(r); return tr ? `<span class="tag-empresa-ret" title="Traslado programado">🔁 pasa a ${escHtml(nombrePropio(tr.empresa_destino))} el ${escHtml(fechaCortaRetiro(tr.fecha_ingreso))}</span>` : ""; }catch(e){ return ""; }
+}
 function tagEmpresaResp(r){
   const emp = String(r["Empresa"] || "").trim() || "Sin empresa";
   const resp = limpiarEspacios(r["Responsable / Grupo"] || "");
@@ -8592,7 +8600,7 @@ function renderList(filterText){
       <div class="name">${(() => {
         const tags = enRetiros
           ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
-          : `${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
+          : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
         return `<span class="nm">${r["Nombre del Afiliado"]}</span>${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
       })()}</div>
       <div class="ced">${r["Cédula"]}</div>
@@ -8748,7 +8756,7 @@ function showBreakdown(cedula){
   actualizarBotonRetiro(r);
   pintarTraslado(r);
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
-  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
+  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
