@@ -8273,6 +8273,16 @@ function tagOtraEmpresa(r){
   if (!r || !esOtraEmpresa(r) || esConductorExcluido(r)) return "";
   return `<span class="tag-empresa-ret" title="Empresa a la que pertenece">🏢 ${escHtml(nombrePropio(String(r["Empresa"] || "").trim()))}</span>`;
 }
+// Ya pasó a otra empresa este mes: su retiro de la empresa anterior se ve en Retiros
+function retiroPorTraslado(r){
+  try{ return !!r && trasladosEmp.some(x => x.estado === "aplicado" && x.mes_origen === store.currentMonth && String(x.cedula) === String(r["Cédula"]) && normalizarEmpresa(x.empresa_destino) === normalizarEmpresa(r["Empresa"] || "")); }catch(e){ return false; }
+}
+function tagRetiroTraslado(r){
+  try{
+    const x = trasladosEmp.find(x => x.estado === "aplicado" && x.mes_origen === store.currentMonth && String(x.cedula) === String(r["Cédula"]) && normalizarEmpresa(x.empresa_destino) === normalizarEmpresa(r["Empresa"] || ""));
+    return x ? `<span class="tag-retiro-pend" title="Retiro de la empresa anterior">🚪 se retiró de ${escHtml(nombrePropio(x.empresa_origen || "PROSEGUROSNET"))}${x.fecha_retiro ? " el " + escHtml(fechaCortaRetiro(x.fecha_retiro)) : ""}${x.planilla_retiro ? " · planilla " + escHtml(x.planilla_retiro) : ""}</span>` : "";
+  }catch(e){ return ""; }
+}
 function tagTrasladoEmpresa(r){
   try{ const tr = r && trasEmpDe(r); return tr ? `<span class="tag-empresa-ret" title="Traslado programado">🔁 pasa a ${escHtml(nombrePropio(tr.empresa_destino))} el ${escHtml(fechaCortaRetiro(tr.fecha_ingreso))}</span>` : ""; }catch(e){ return ""; }
 }
@@ -8481,7 +8491,7 @@ function renderFilterPills(){
     else if (e === "__SERV_MUELLES__") count = records.filter(esServicioMuelles).length;
     else if (e === "__OTRA_EMPRESA__") count = sinConductores.filter(esOtraEmpresa).length;
     else if (e === "__INDEPENDIENTES__") count = sinConductores.filter(esIndependiente).length;
-    else if (e === "RETIRO") count = sinConductores.filter(r => isRetiro(r) || retiroPendientePlanilla(r)).length;
+    else if (e === "RETIRO") count = sinConductores.filter(r => isRetiro(r) || retiroPendientePlanilla(r) || retiroPorTraslado(r)).length;
     else count = sinConductores.filter(r => estadoClass(r["Estado Trámite"]) === estadoClass(e)).length;
     const activo = filtroEstado === e ? "active" : "";
     return `<button type="button" class="filter-pill ${activo}" data-estado="${e}">${etiquetas[e] || e} (${count})</button>`;
@@ -8523,7 +8533,7 @@ function renderList(filterText){
   } else if (estadoClass(filtroEstado) === "RETIRO"){
     // Retiros: también los pendientes de planilla; primero los que todavía deben (sin soporte).
     const debe = r => retiroPendientePlanilla(r) || retiroSinSoporte(r);
-    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => isRetiro(r) || retiroPendientePlanilla(r))
+    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => isRetiro(r) || retiroPendientePlanilla(r) || retiroPorTraslado(r))
       .sort((a, b) => (debe(b) ? 1 : 0) - (debe(a) ? 1 : 0));
   } else if (filtroEstado === "__OTRA_EMPRESA__"){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esOtraEmpresa);
@@ -8599,8 +8609,8 @@ function renderList(filterText){
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="name">${(() => {
         const tags = enRetiros
-          ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}`
-          : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
+          ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}${tagRetiroTraslado(r)}`
+          : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
         return `<span class="nm">${r["Nombre del Afiliado"]}</span>${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
       })()}</div>
       <div class="ced">${r["Cédula"]}</div>
@@ -8754,9 +8764,9 @@ function showBreakdown(cedula){
 
   activeCedula = cedula;
   actualizarBotonRetiro(r);
-  pintarTraslado(r);
+  try{ pintarTraslado(r); }catch(e){}
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
-  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
+  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
@@ -16037,12 +16047,13 @@ function aplicarRetiroProgramado(r, nombreMes){
    Este mes: queda con retiro en su empresa en la fecha escogida (la planilla de PROSEGUROSNET sale con RET y los días
    hasta esa fecha, igual que un retiro normal). Al avanzar de mes: aparece en la empresa nueva en AFILIACIÓN con la
    fecha de ingreso que se escogió. Tabla «traslados_empresa». */
-let trasladosEmp = [];
+var trasladosEmp = []; // "var": la lista puede dibujarse antes de llegar a esta línea
 async function cargarTraslados(){
   if (!sb || !cloudDb) return;
   try{
-    const { data, error } = await sb.from("traslados_empresa").select("*").eq("estado", "pendiente");
-    if (!error) trasladosEmp = data || [];
+    // Pendientes (para avanzar de mes) y aplicados recientes (para mostrar el retiro de la empresa anterior)
+    const { data, error } = await sb.from("traslados_empresa").select("*").in("estado", ["pendiente", "aplicado"]).order("created_at", { ascending: false }).limit(500);
+    if (!error){ trasladosEmp = data || []; try{ renderList(searchInput.value); if (activeCedula) showBreakdown(activeCedula); }catch(e){} }
   }catch(e){ console.error(e); }
 }
 const trasEmpPendientes = (mes) => trasladosEmp.filter(x => x.estado === "pendiente" && x.mes_origen === mes);
