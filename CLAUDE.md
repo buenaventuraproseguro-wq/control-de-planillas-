@@ -51,10 +51,10 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Trigger `a_bloquear_copia_vieja` en `clients`: ignora escrituras con `ultima_edicion` 12 h más vieja que la nube; las anota en `escrituras_bloqueadas`.
 - Trigger `impedir_borrado_masivo_clients`. Trigger `registrar_fecha_pago` (pone/quita `fecha_pago` según el estado).
 - Trigger `z_registro_cambios` en `clients`: anota cada cambio en `registro_cambios` (nunca bloquea el guardado).
-- Respaldo diario 04:00 UTC (pg_cron `respaldo-semanal`, tabla `respaldos`; se guardan 21 días + los lunes).
+- Respaldo diario 04:00 UTC (pg_cron, tabla `respaldos`; los automáticos se guardan 21 días + los lunes). Los manuales (`crear_respaldo('antes de cambio: …')`, origen «manual: …») se guardan los 20 últimos. Hasta el 18-nov la función borraba todo menos los 8 últimos: no hay respaldos anteriores al 17-nov.
 
 ## Pendientes (actualizar al cerrar cada tema)
-- 13 pagos de Noviembre sin número de planilla (se perdió el 12-nov). Consulta: `estado_tramite='PAGO' and no_planilla_pagada=''` en el mes 22.
+- 13 pagos de Noviembre sin número de planilla (se perdió el 12-nov; las planillas sí están en `documentos`). Arreglo: volver a subir esas planillas en «Subir planilla pagada» (lee número y RET). Entre ellos Jarvis Daniel Bedoya (1116724971), que además tenía retiro. Consulta: `estado_tramite='PAGO' and no_planilla_pagada=''` en el mes 22.
 - Revisar a José Adier Velandia, Luis Delio Herrera Gil, Johan Grajales y Sebastián Muriel (cambios del 9 al 12 de nov. que pudieron perderse).
 - Comfenalco Valle: inexactitud por aportes de caja de $100 (planilla 89893112341; plazo de 30 días desde el 9 de nov.), 3 reportados sin afiliación y 8 afiliados sin reportar. Avisos diarios a nestor.fabian.garzon.29@gmail.com.
 - Reactivar envío de planillas cuando Enlace dé la API.
