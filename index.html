@@ -8937,7 +8937,8 @@ function showBreakdown(cedula){
   }
   document.getElementById("bTareasCliente").innerHTML = avisosHtml;
 
-  document.getElementById("deleteBtn").style.display = (esAfiliacion || esConductorBreakdown) ? "inline-flex" : "none";
+  // Eliminar cliente: solo el administrador (21-nov-2026)
+  document.getElementById("deleteBtn").style.display = esAdmin() ? "inline-flex" : "none";
 
   // Enviar planilla y comprobante: cuando ya pagó y tiene teléfono
   const sopBtn = document.getElementById("soporteClienteBtn");
@@ -12502,14 +12503,12 @@ document.getElementById("reciboBtn").addEventListener("click", () => {
 document.getElementById("deleteBtn").addEventListener("click", async () => {
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (!r) return;
+  if (!esAdmin()){ showToast("Solo el administrador puede eliminar clientes."); return; }
   const esConductor = esConductorExcluido(r);
-  if (estadoClass(r["Estado Trámite"]) !== "AFILIACION" && !esConductor){
-    showToast("Solo se puede eliminar directamente un registro de afiliación nueva o de Actualización de Conductores / Muelles.");
-    return;
-  }
-  const tipoTexto = esServicioMuelles(r) ? "actualización de muelles" : esConductor ? "conductor" : "afiliación";
-  if (!(await confirmarApp(`¿Eliminar el registro de ${tipoTexto} de ${r["Nombre del Afiliado"]}? Esta acción no se puede deshacer.`))) return;
-  if (!(await confirmarApp(`Última confirmación: se borrará a ${r["Nombre del Afiliado"]} (cédula ${r["Cédula"]}) por completo. ¿Estás seguro?`))) return;
+  const tipoTexto = esServicioMuelles(r) ? "actualización de muelles" : esConductor ? "conductor" : estadoClass(r["Estado Trámite"]) === "AFILIACION" ? "afiliación" : "cliente";
+  const pagado = /^PAGO/.test(estadoClass(r["Estado Trámite"]));
+  if (!(await confirmarApp(`¿Eliminar a ${r["Nombre del Afiliado"]} (cédula ${r["Cédula"]}) de ${store.currentMonth}?${pagado ? " ⚠️ Este cliente ya figura como PAGO este mes." : ""} Solo se quita de este mes; los meses anteriores no se tocan. Queda anotado en el registro de cambios y en el respaldo diario.`))) return;
+  if (!(await confirmarApp(`Última confirmación: se borrará a ${r["Nombre del Afiliado"]} de ${store.currentMonth}. ¿Está seguro?`))) return;
   records = records.filter(x => String(x["Cédula"]) !== String(activeCedula));
   renumber();
   saveStore();
