@@ -1836,8 +1836,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   header.top.cabecera-ancha .month-select-wrap{ margin-right:6px; }
   .main-area .wrap{ padding-top:14px; }
   .cg-izq .search-panel{ margin:2px 0 4px; }
-  .cg-izq .search-row input{ font-size:17px; min-height:52px; border:2px solid #1F3D70 !important; border-radius:14px !important; }
-  .cg-izq .search-row input::placeholder{ font-size:14px; }
+  .cg-izq .search-row input{ font-size:14px; min-height:40px; border:1.5px solid #1F3D70 !important; border-radius:10px !important; }
+  .cg-izq .search-row input::placeholder{ font-size:13px; }
   .cg-izq .fecha-sistema{ font-size:12.5px; color:var(--muted); }
   .lista-card{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:12px 12px 4px; margin-top:12px; }
   .lista-card .filter-pills{ margin-top:0; }
@@ -1877,6 +1877,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .main-area footer{ display:none; }
   .cg-tarjeta{ display:flex; align-items:center; gap:10px; min-height:52px; padding:8px 12px; font-size:13.5px !important; background:var(--panel); border:1px solid var(--line); border-radius:14px; cursor:pointer; text-align:left; font:inherit; font-size:14px; font-weight:700; color:var(--titulo, #13213A); }
   .cg-tarjeta:hover{ border-color:#1F3D70; box-shadow:0 4px 14px rgba(16,24,40,.08); }
+  .cg-enlace{ background:#1F3D70 !important; color:#fff !important; border-color:#1F3D70 !important; }
+  .cg-enlace .ico{ color:#fff !important; background:rgba(255,255,255,.14) !important; }
+  .cg-enlace small{ color:rgba(255,255,255,.8) !important; font-weight:500; }
   .cg-tarjeta .cg-t{ flex:1; display:flex; flex-direction:column; gap:1px; }
   .cg-tarjeta .cg-t small{ font-size:12px; font-weight:500; color:var(--muted); }
   .cg-badge{ background:#C0272D; color:#fff; border-radius:999px; font-size:13px; font-weight:700; padding:2px 9px; }
@@ -2159,6 +2162,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <button type="button" class="cg-tarjeta" data-cg="navConsigBtn"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg><span class="cg-t">Consignaciones<small>Mensajes de la cuenta *8222</small></span><span class="cg-badge" id="cgConsigBadge" hidden>0</span></button>
         <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel SUAPORTE</button>
         <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
+        <button type="button" class="cg-tarjeta cg-enlace" data-cg="enlace" title="Abre SuAporte (Enlace Operativo) para pagar la planilla"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="cg-t">Pagar en Enlace Operativo<small>SuAporte ↗</small></span></button>
       </div>
     </div>
     <aside class="cg-der" aria-label="Para hoy">
@@ -16472,6 +16476,12 @@ document.getElementById("centroGestion").addEventListener("click", (e) => {
   if (t){
     const id = t.dataset.cg;
     if (id === "cobrar") iniciarOContinuarRecordatorios();
+    else if (id === "enlace"){
+      // Toma el enlace de «Enlaces rápidos» (el que diga Enlace Operativo o SuAporte); si no está, el de SuAporte
+      let url = "https://www.suaporte.com.co/sso/#/login";
+      try{ const x = (enlacesRapidos || []).find(l => /enlace operativo|suaporte/i.test((l.nombre || "") + " " + (l.url || ""))); if (x && x.url) url = x.url; }catch(err){}
+      window.open(url, "_blank", "noopener");
+    }
     else { const el = document.getElementById(id); if (el) el.click(); }
     return;
   }

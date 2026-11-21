@@ -307,3 +307,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 21-nov-2026 · Se deshizo el cambio de diseño «más ordenado» (botón Enlace Operativo, cifras del mes, menú claro): Nestor pidió volver al anterior.
 
 - 21-nov-2026 · Se deshizo también el menú lateral compacto y fijo (1d4eb90): Nestor pidió dejar la barra lateral como estaba. Vuelve el menú de siempre que se abre con ☰.
+
+- 21-nov-2026 · Pantalla principal: botón «Pagar en Enlace Operativo» (abre SuAporte; toma el enlace de «Enlaces rápidos») y buscador de clientes más pequeño. La barra lateral sigue como antes.
