@@ -311,3 +311,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 21-nov-2026 · Pantalla principal: botón «Pagar en Enlace Operativo» (abre SuAporte; toma el enlace de «Enlaces rápidos») y buscador de clientes más pequeño. La barra lateral sigue como antes.
 
 - 21-nov-2026 · Se quitó el cuadro «Para hoy» de la pantalla principal; en su lugar hay una casita arriba, junto al ☰ (`hoyCasitaBtn`), con el número de avisos, que abre «Hoy: lo que toca hacer» (`abrirHoy`).
+
+- 21-nov-2026 · El nombre del usuario sale una sola vez (botón de arriba a la derecha); se ocultó `.cabecera-usuario` («Usuario … / último ingreso»).
