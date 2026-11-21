@@ -1840,6 +1840,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .cg-izq .search-row input::placeholder{ font-size:13px; }
   /* Buscador de cédulas más pequeño y separado de los botones (21-nov) */
   .cg-izq .search-panel{ max-width:440px; width:100%; padding:6px 8px !important; margin-bottom:12px; box-sizing:border-box; }
+  /* Al abrir la ficha de un cliente desde el buscador, usa todo el ancho de la pantalla */
+  .cg-izq .search-panel:has(#breakdown.show){ max-width:none; padding:10px 14px !important; }
+  .cg-izq .search-panel:has(#breakdown.show) .search-row{ max-width:440px; }
   .cg-izq .search-row input{ min-height:36px !important; font-size:13.5px !important; }
   .cg-izq .search-row .btn{ padding:6px 10px; font-size:13px; }
   .cg-izq .fecha-sistema{ font-size:12.5px; color:var(--muted); }

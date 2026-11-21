@@ -317,3 +317,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 21-nov-2026 · Buscador de cédulas de la pantalla principal más pequeño (máx. 440 px de ancho) y separado de los botones.
 
 - 21-nov-2026 · Eliminar cliente: solo el administrador. El botón «Eliminar» de la ficha sale solo al admin y sirve para cualquier cliente (solo lo quita del mes que se está viendo; doble confirmación; avisa si ya está PAGO). En la base, la política de borrado de `clients` pasó de `es_equipo()` a `es_admin()` («admin borra clients»): una copia de otro usuario ya no puede borrar filas de la nube.
+
+- 21-nov-2026 · La ficha del cliente que se abre desde el buscador usa todo el ancho de la pantalla (el buscador sigue pequeño).
