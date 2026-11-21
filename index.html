@@ -1863,6 +1863,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   @media (max-width:760px){ .usuario-txt{ display:none; } .cg-tarjetas{ grid-template-columns:repeat(2, minmax(0, 1fr)); } .cg-tarjeta{ min-height:60px; gap:10px; } .cg-tarjeta .ico{ width:36px; height:36px; padding:8px; } }
   .menu-abrir{ width:44px; height:44px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--titulo, #13213A); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
   .menu-abrir svg{ width:22px; height:22px; }
+  .hoy-casita{ position:relative; margin-left:6px; color:#1F3D70; }
+  .hoy-casita-n{ position:absolute; top:-6px; right:-6px; min-width:20px; height:20px; padding:0 5px; box-sizing:border-box; border-radius:999px; background:#C0272D; color:#fff; font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .hoy-casita-n[hidden]{ display:none; }
+  .modo-conta .hoy-casita{ display:none !important; }
   .cabecera-marca{ display:flex; align-items:center; gap:10px; }
   .cabecera-marca b{ display:block; font-size:18px; font-weight:800; letter-spacing:.02em; color:var(--titulo, #13213A); line-height:1.1; }
   .cabecera-marca small{ display:block; font-size:12px; color:var(--muted); }
@@ -2043,6 +2047,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   <header class="top cabecera-ancha">
     <div class="header-left">
       <button type="button" class="menu-abrir" id="menuAbrirBtn" aria-label="Abrir el menú" aria-controls="sidebar" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <button type="button" class="menu-abrir hoy-casita" id="hoyCasitaBtn" aria-label="Hoy: lo que toca hacer" title="Hoy: lo que toca hacer"><svg class="ico" aria-hidden="true"><use href="#i-casa"/></svg><span class="hoy-casita-n" id="hoyCasitaN" hidden>0</span></button>
       <div class="cabecera-marca"><svg width="30" height="34" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z" fill="#C0272D"/><path d="M20 30 l8 8 l16 -16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>PROSEGUROSNET</b><small id="cabeceraApp">Control de planillas</small></div></div>
       <div class="cabecera-usuario"><span>Usuario <b id="cabeceraUsuario">—</b></span><span id="cabeceraIngreso"></span></div>
       <span class="mes-chip" id="mesChip" title="Mes en el que está trabajando"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg><span id="mesChipTexto">—</span></span>
@@ -2165,7 +2170,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <button type="button" class="cg-tarjeta cg-enlace" data-cg="enlace" title="Abre SuAporte (Enlace Operativo) para pagar la planilla"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="cg-t">Pagar en Enlace Operativo<small>SuAporte ↗</small></span></button>
       </div>
     </div>
-    <aside class="cg-der" aria-label="Para hoy">
+    <aside class="cg-der" aria-label="Para hoy" hidden style="display:none">
       <div class="cg-der-h"><svg class="ico" aria-hidden="true" style="width:22px;height:22px"><use href="#i-casa"/></svg>Para hoy</div>
       <div id="cgAvisos"><div class="cg-vacio">Cargando…</div></div>
       <div class="fecha-sistema cg-fecha" id="fechaSistema" aria-live="polite"></div>
@@ -16403,6 +16408,7 @@ function usarOpcion(o){
   if (o.editarEnlaces){ const b = document.getElementById("enlacesEditarBtn"); if (b) b.click(); return; }
   if (o.el) o.el.click();
 }
+document.getElementById("hoyCasitaBtn").addEventListener("click", () => abrirHoy());
 document.getElementById("menuAbrirBtn").addEventListener("click", () => abrirMenuLateral(!document.body.classList.contains("menu-abierto")));
 document.getElementById("menuCerrarBtn").addEventListener("click", () => abrirMenuLateral(false));
 document.getElementById("menuVelo").addEventListener("click", () => abrirMenuLateral(false));
@@ -16468,6 +16474,7 @@ function renderCentroGestion(){
     ["tareas", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo"],
     ["retiros", "Retiros que deben planilla", d.retiros.length, "Falta subir el retiro"],
   ].filter(f => f[2] > 0);
+  try{ const n = filas.reduce((s, f) => s + f[2], 0) + d.consig.length; const b = document.getElementById("hoyCasitaN"); b.textContent = n > 99 ? "99+" : n; b.hidden = !n; }catch(e){}
   cont.innerHTML = filas.length ? filas.map(([k, t, n, s]) => `<button type="button" class="cg-aviso" data-cg-aviso="${k}"><span>${escHtml(t)}<small>${escHtml(s)}</small></span><b>${n}</b></button>`).join("")
     : `<div class="cg-vacio">✓ Nada pendiente por ahora. ¡Todo al día!</div>`;
 }
