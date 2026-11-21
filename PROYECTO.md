@@ -313,3 +313,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 21-nov-2026 · Se quitó el cuadro «Para hoy» de la pantalla principal; en su lugar hay una casita arriba, junto al ☰ (`hoyCasitaBtn`), con el número de avisos, que abre «Hoy: lo que toca hacer» (`abrirHoy`).
 
 - 21-nov-2026 · El nombre del usuario sale una sola vez (botón de arriba a la derecha); se ocultó `.cabecera-usuario` («Usuario … / último ingreso»).
+
+- 21-nov-2026 · Buscador de cédulas de la pantalla principal más pequeño (máx. 440 px de ancho) y separado de los botones.
