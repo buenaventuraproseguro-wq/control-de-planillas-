@@ -521,13 +521,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .ck-kpi b{ font-size:21px; font-weight:800; color:var(--titulo, #13213A); }
   .ck-kpi span{ font-size:12px; color:var(--muted, #667085); }
   .ck-kpi.bien b{ color:#1E7A46; } .ck-kpi.mal b{ color:#B42318; }
-  /* Contabilidad más clara (21-nov): barra de color arriba, título en mayúscula pequeña, números alineados */
-  .ck-kpi{ position:relative; overflow:hidden; border-radius:10px !important; padding:14px 14px 10px !important; box-shadow:0 1px 2px rgba(16,24,40,.04); }
-  .ck-kpi::before{ content:""; position:absolute; left:0; right:0; top:0; height:3px; background:#0F2042; }
-  .ck-kpi.bien::before{ background:#1E7A46; } .ck-kpi.mal::before{ background:#B42318; }
-  .ck-kpi small{ font-size:10.5px !important; font-weight:700 !important; letter-spacing:.06em; text-transform:uppercase; }
-  .ck-kpi b{ font-variant-numeric:tabular-nums; letter-spacing:-.02em; font-weight:700 !important; }
-  .ck-tabla td, .ck-tabla th{ font-variant-numeric:tabular-nums; }
   .ck-grupo h3{ margin:0 0 6px; font-size:12.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--muted, #667085); }
   .ck-tabla{ background:var(--panel, #fff); border:1px solid var(--line, #E4E7EC); border-radius:14px; overflow:hidden; }
   .ck-fila{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--line, #E4E7EC); font-size:14px; }
@@ -1869,29 +1862,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     .mc-fila{ color:#C9D3E6; } .mc-fila:hover, .mc-fila:focus-visible{ background:#1E2A44; color:#fff; }
     .mc-buscar{ background:#141C2E; border-color:#2A3650; color:#E6ECF5; }
   }
-  /* ===== Más ordenado, con la referencia «Suite PILA» (21-nov-2026) ===== */
-  .menu-cajon{ background:#F3F6FC; }
-  .mc-cab, .mc-buscar-caja{ background:#F3F6FC; }
-  .mc-fila:not(.mc-hoy){ background:transparent; }
-  .mc-titulo{ color:#45464E; font-weight:700; }
-  .mc-ico{ color:#45464E; width:17px; height:17px; }
-  .cabecera-usuario{ display:none !important; } /* su nombre ya está arriba a la derecha: no se repite */
-  .cg-izq .search-row input{ font-size:14px !important; min-height:40px !important; border-width:1.5px !important; border-radius:10px !important; }
-  .cg-izq .search-row input::placeholder{ font-size:13px; }
-  .cg-izq h2{ font-size:20px !important; letter-spacing:-.01em; }
-  .cg-tarjeta{ border-radius:10px !important; min-height:46px !important; font-size:13px !important; font-weight:600 !important; box-shadow:0 1px 2px rgba(16,24,40,.04); }
-  .cg-tarjeta .ico{ width:30px !important; height:30px !important; padding:7px !important; border-radius:8px; }
-  .cg-tarjeta small{ font-weight:500; }
-  .cg-enlace{ background:#0F2042 !important; color:#fff !important; border-color:#0F2042 !important; }
-  .cg-enlace .ico{ background:rgba(255,255,255,.12) !important; color:#fff !important; }
-  .cg-enlace small{ color:rgba(255,255,255,.75) !important; }
-  .cg-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-top:10px; }
-  .cg-kpi{ position:relative; overflow:hidden; display:flex; flex-direction:column; gap:2px; text-align:left; padding:12px 14px 10px; border:1px solid var(--line); border-radius:10px; background:var(--panel); font:inherit; color:var(--titulo, #13213A); cursor:default; box-shadow:0 1px 2px rgba(16,24,40,.04); }
-  .cg-kpi::before{ content:""; position:absolute; left:0; right:0; top:0; height:3px; background:var(--kc, #0F2042); }
-  .cg-kpi[data-cg-aviso]{ cursor:pointer; } .cg-kpi[data-cg-aviso]:hover{ border-color:var(--kc); }
-  .cg-kpi small{ font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
-  .cg-kpi b{ font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
-  .cg-kpi span{ font-size:12px; color:var(--muted); }
   .main-area{ border-top-left-radius:0 !important; }
   .app-shell{ background:var(--bg) !important; }
   .wrap{ max-width:1320px !important; }
@@ -2227,9 +2197,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <button type="button" class="cg-tarjeta" data-cg="navConsigBtn"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg><span class="cg-t">Consignaciones<small>Mensajes de la cuenta *8222</small></span><span class="cg-badge" id="cgConsigBadge" hidden>0</span></button>
         <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel SUAPORTE</button>
         <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
-        <button type="button" class="cg-tarjeta cg-enlace" data-cg="enlace" title="Abre SuAporte (Enlace Operativo) para pagar la planilla"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="cg-t">Pagar en Enlace Operativo<small>SuAporte ↗</small></span></button>
       </div>
-      <div class="cg-kpis" id="cgKpis" aria-label="Resumen del mes"></div>
     </div>
     <aside class="cg-der" aria-label="Para hoy">
       <div class="cg-der-h"><svg class="ico" aria-hidden="true" style="width:22px;height:22px"><use href="#i-casa"/></svg>Para hoy</div>
@@ -16577,35 +16545,14 @@ function renderCentroGestion(){
     ["tareas", "Tareas para hoy o vencidas", d.tareas.length, "Del equipo"],
     ["retiros", "Retiros que deben planilla", d.retiros.length, "Falta subir el retiro"],
   ].filter(f => f[2] > 0);
-  pintarKpisCentro(d);
   cont.innerHTML = filas.length ? filas.map(([k, t, n, s]) => `<button type="button" class="cg-aviso" data-cg-aviso="${k}"><span>${escHtml(t)}<small>${escHtml(s)}</small></span><b>${n}</b></button>`).join("")
     : `<div class="cg-vacio">✓ Nada pendiente por ahora. ¡Todo al día!</div>`;
-}
-// Franja de cifras del mes (como las tarjetas de la referencia: barra de color arriba y número grande)
-function pintarKpisCentro(d){
-  const caja = document.getElementById("cgKpis"); if (!caja) return;
-  const activos = records.filter(r => !esConductorExcluido(r) && !isRetiro(r));
-  const pagados = activos.filter(r => /^PAGO/.test(estadoClass(r["Estado Trámite"])));
-  const porCobrar = d.cobrar.reduce((s, r) => { try{ return s + (Number(totalEsperado(r)) || 0); }catch(e){ return s; } }, 0);
-  const pct = activos.length ? Math.round(pagados.length * 100 / activos.length) : 0;
-  const k = (color, titulo, valor, nota, accion) => `<button type="button" class="cg-kpi" style="--kc:${color}" ${accion ? `data-cg-aviso="${accion}"` : ""}><small>${titulo}</small><b>${valor}</b><span>${nota}</span></button>`;
-  caja.innerHTML =
-    k("#0F2042", "Clientes del mes", activos.length, escHtml(store.currentMonth || "")) +
-    k("#1E7A46", "Pagados", pagados.length, `${pct}% del mes`) +
-    k("#B42318", "Por cobrar", fmt(porCobrar), `${d.cobrar.length} ${d.cobrar.length === 1 ? "cliente" : "clientes"}`, d.cobrar.length ? "pendientes" : "") +
-    k("#006A61", "Consignaciones", d.consig.length, d.consig.length ? "por revisar" : "todo revisado", d.consig.length ? "consig" : "");
 }
 document.getElementById("centroGestion").addEventListener("click", (e) => {
   const t = e.target.closest("[data-cg]");
   if (t){
     const id = t.dataset.cg;
     if (id === "cobrar") iniciarOContinuarRecordatorios();
-    else if (id === "enlace"){
-      // El enlace sale de «Enlaces rápidos» (el que diga Enlace o SuAporte); si no está, el de SuAporte
-      let url = "https://www.suaporte.com.co/sso/#/login";
-      try{ const e = (enlacesRapidos || []).find(x => /enlace operativo|suaporte/i.test((x.nombre || "") + " " + (x.url || ""))); if (e && e.url) url = e.url; }catch(err){}
-      window.open(url, "_blank", "noopener");
-    }
     else { const el = document.getElementById(id); if (el) el.click(); }
     return;
   }
