@@ -24,7 +24,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#ECE8E1; --panel:#FFFFFF; --ink:#181512; --muted:#5A534A; --line:#D9D2C4;
@@ -72,7 +72,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   html{scroll-padding-top: calc(env(safe-area-inset-top,0px) + 8px);}
   body{
     margin:0; background:var(--bg); color:var(--ink);
-    font-family:"Inter", -apple-system, "Segoe UI", sans-serif;
+    font-family:"IBM Plex Sans", "Inter", -apple-system, "Segoe UI", sans-serif;
     font-feature-settings:"cv11","ss01"; -webkit-font-smoothing:antialiased;
     font-weight:500;
     -webkit-font-smoothing:antialiased;
@@ -1824,6 +1824,44 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .mc-item{ padding-left:44px; }
   .mc-vacio{ padding:16px; color:#52607A; font-size:14px; }
   .mc-titulo{ padding:14px 16px 6px; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#6B7891; background:#F7F9FC; border-bottom:1px solid #EEF1F6; }
+  /* ===== Menú lateral compacto (21-nov-2026, como la referencia «Suite PILA»): letra 13px, íconos pequeños,
+     todas las opciones a la vista por grupos. En pantallas anchas queda fijo a la izquierda; ☰ lo esconde. */
+  .menu-cajon{ width:248px; }
+  .mc-cab{ padding:10px 12px; gap:8px; border-bottom:2px solid #C0272D; }
+  .mc-cab svg{ width:22px; height:24px; }
+  .mc-cab b{ font-size:13.5px; letter-spacing:.01em; }
+  .mc-cab small{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; }
+  .mc-cerrar{ width:32px; height:32px; border-radius:8px; }
+  .mc-buscar-caja{ padding:8px 10px; border-bottom:0; }
+  .mc-buscar{ height:32px; font-size:12.5px; border-radius:8px; background:#F4F6FA; border-color:#E3E8F1; }
+  .mc-cuerpo{ padding:2px 0 14px; }
+  .mc-fila{ min-height:32px; padding:5px 10px; margin:1px 8px; width:auto; border:0; border-radius:8px; font-size:13px; font-weight:500; color:#3A4660; gap:10px; line-height:1.25; }
+  .mc-fila:hover, .mc-fila:focus-visible{ background:#EAF0FA; color:#0F2042; }
+  .mc-fila small{ display:none; }
+  .mc-fila.mc-item{ padding-left:10px; }
+  .mc-fila .mc-badge{ font-size:10.5px; padding:0 6px; line-height:16px; }
+  .mc-fila .mc-valor{ font-size:11.5px; font-weight:700; }
+  .mc-ico{ width:16px; height:16px; flex-shrink:0; color:#6B7891; }
+  .mc-fila:hover .mc-ico{ color:#0F2042; }
+  .mc-hoy{ background:#0F2042; color:#fff !important; font-weight:600; margin-top:4px; }
+  .mc-hoy:hover, .mc-hoy:focus-visible{ background:#1F3D70 !important; color:#fff !important; }
+  .mc-hoy svg{ stroke:#fff; }
+  .mc-titulo{ padding:12px 18px 3px; font-size:10.5px; letter-spacing:.07em; color:#8A94A8; background:none; border:0; }
+  .mc-volver{ font-size:12.5px; min-height:32px; }
+  .mc-vacio{ font-size:12.5px; }
+  @media (min-width:1180px){
+    body.app-lista:not(.menu-oculto) .menu-cajon{ transform:none; visibility:visible; box-shadow:1px 0 0 #E3E8F1; z-index:70; transition:none; }
+    body.app-lista:not(.menu-oculto){ padding-left:248px; }
+    body.app-lista:not(.menu-oculto) .menu-velo{ display:none; }
+    body.app-lista:not(.menu-oculto) .mc-cerrar{ display:none; }
+    /* el nombre de la empresa ya está arriba del menú: no se repite en la cabecera */
+    body.app-lista:not(.menu-oculto) .cabecera-marca{ display:none; }
+  }
+  .mc-fila .mc-txt{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  @media (prefers-color-scheme: dark){
+    .mc-fila{ color:#C9D3E6; } .mc-fila:hover, .mc-fila:focus-visible{ background:#1E2A44; color:#fff; }
+    .mc-buscar{ background:#141C2E; border-color:#2A3650; color:#E6ECF5; }
+  }
   .main-area{ border-top-left-radius:0 !important; }
   .app-shell{ background:var(--bg) !important; }
   .wrap{ max-width:1320px !important; }
@@ -12953,6 +12991,8 @@ function mostrarPantallaLogin(){
 async function mostrarAppPrincipal(user){
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("appRoot").style.display = "";
+  document.body.classList.add("app-lista");
+  setTimeout(() => { try{ pintarMenu(); }catch(e){} }, 300);
   currentUserId = user.id;
   currentUserEmail = user.email;
   currentUserRole = "operador";
@@ -16343,8 +16383,13 @@ function menuOtras(){
 }
 const FLECHA = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3D70" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 let MENU_PINTADAS = [];
+function iconoOpcion(o){
+  const u = o && o.el && o.el.querySelector && o.el.querySelector("svg use");
+  const h = u && (u.getAttribute("href") || u.getAttribute("xlink:href"));
+  return h ? `<svg class="mc-ico" aria-hidden="true"><use href="${escHtml(h)}"/></svg>` : `<svg class="mc-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+}
 function filaOpcion(o, i, conCat){
-  return `<button type="button" class="mc-fila mc-item" data-mc-op="${i}"><span class="mc-txt">${escHtml(o.texto)}${conCat || o.sub ? `<small>${escHtml(conCat || o.sub)}</small>` : ""}</span>${o.valor ? `<span class="mc-valor">${escHtml(o.valor)}</span>` : ""}${o.badge ? `<span class="mc-badge">${escHtml(o.badge)}</span>` : ""}</button>`;
+  return `<button type="button" class="mc-fila mc-item" data-mc-op="${i}" title="${escHtml(conCat || o.sub || o.texto)}">${iconoOpcion(o)}<span class="mc-txt">${escHtml(o.texto)}${conCat || o.sub ? `<small>${escHtml(conCat || o.sub)}</small>` : ""}</span>${o.valor ? `<span class="mc-valor">${escHtml(o.valor)}</span>` : ""}${o.badge ? `<span class="mc-badge">${escHtml(o.badge)}</span>` : ""}</button>`;
 }
 function pintarMenu(){
   const cuerpo = document.getElementById("menuCuerpo"); if (!cuerpo) return;
@@ -16363,6 +16408,28 @@ function pintarMenu(){
     return;
   }
   if (menuCat === null){
+    // Todo a la vista, por grupos (como la barra de la referencia): sin tener que entrar a cada categoría
+    let html = `<button type="button" class="mc-fila mc-hoy" data-mc-directo="navHoyBtn"><svg class="mc-ico" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg><span class="mc-txt">Hoy: lo que toca hacer</span></button>`;
+    const apps = [];
+    MENU_CATS.forEach(c => {
+      if (c.directo){
+        const el = document.getElementById(c.directo);
+        if (!c.siempre && !menuVisible(el)) return;
+        const bd = c.badge ? document.getElementById(c.badge) : null, nb = bd && bd.style.display !== "none" && bd.textContent !== "0" ? bd.textContent : "";
+        const fila = `<button type="button" class="mc-fila" data-mc-directo="${escHtml(c.directo)}" title="${escHtml(c.sub || c.nombre)}">${c.app ? `<svg class="mc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>` : iconoOpcion({ el })}<span class="mc-txt">${escHtml(c.nombre)}</span>${nb ? `<span class="mc-badge">${escHtml(nb)}</span>` : ""}</button>`;
+        if (c.app) apps.push(fila); else html += fila;
+        return;
+      }
+      const ops = menuOpciones(c); if (!ops.length) return;
+      html += `<div class="mc-titulo">${escHtml(c.nombre)}</div>` + ops.map(o => { MENU_PINTADAS.push(o); return filaOpcion(o, MENU_PINTADAS.length - 1, ""); }).join("");
+    });
+    const otras = menuOtras();
+    if (otras.length) html += `<div class="mc-titulo">Otras opciones</div>` + otras.map(o => { MENU_PINTADAS.push(o); return filaOpcion(o, MENU_PINTADAS.length - 1, ""); }).join("");
+    if (apps.length) html += `<div class="mc-titulo">Apps aparte</div>` + apps.join("");
+    cuerpo.innerHTML = html;
+    return;
+  }
+  if (menuCat === "viejo"){
     const otras = menuOtras();
     const cats = MENU_CATS.map((c, i) => {
       if (c.directo){
@@ -16385,7 +16452,15 @@ function pintarMenu(){
   cuerpo.innerHTML = `<button type="button" class="mc-fila mc-volver" data-mc-volver="1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>${escHtml(esOtras ? "Otras opciones" : MENU_CATS[menuCat].nombre)}</button>`
     + ops.map((o, i) => filaOpcion(o, i, "")).join("");
 }
+const menuFijoPosible = () => document.body.classList.contains("app-lista") && window.matchMedia("(min-width:1180px)").matches;
 function abrirMenuLateral(on){
+  // En pantalla ancha el menú queda fijo: ☰ lo esconde o lo muestra; escoger una opción no lo cierra
+  if (menuFijoPosible()){
+    if (on === "alternar"){ const oc = document.body.classList.toggle("menu-oculto"); try{ localStorage.setItem("menuOculto", oc ? "1" : ""); }catch(e){} }
+    document.body.classList.remove("menu-abierto"); document.getElementById("menuVelo").hidden = true;
+    pintarMenu(); return;
+  }
+  if (on === "alternar") on = !document.body.classList.contains("menu-abierto");
   document.body.classList.toggle("menu-abierto", !!on);
   document.getElementById("menuVelo").hidden = !on;
   document.getElementById("menuAbrirBtn").setAttribute("aria-expanded", on ? "true" : "false");
@@ -16399,7 +16474,13 @@ function usarOpcion(o){
   if (o.editarEnlaces){ const b = document.getElementById("enlacesEditarBtn"); if (b) b.click(); return; }
   if (o.el) o.el.click();
 }
-document.getElementById("menuAbrirBtn").addEventListener("click", () => abrirMenuLateral(!document.body.classList.contains("menu-abierto")));
+document.getElementById("menuAbrirBtn").addEventListener("click", () => abrirMenuLateral("alternar"));
+try{ if (localStorage.getItem("menuOculto")) document.body.classList.add("menu-oculto"); }catch(e){}
+// Al cargar y al cambiar el tamaño de la ventana, el menú fijo se llena solo
+window.addEventListener("resize", () => { if (menuFijoPosible()) pintarMenu(); });
+setTimeout(() => { try{ if (menuFijoPosible()) pintarMenu(); }catch(e){} }, 600);
+// Mantener al día los avisos (números rojos) del menú fijo
+setInterval(() => { try{ if (menuFijoPosible() && !document.getElementById("menuBuscar").value && document.activeElement !== document.getElementById("menuBuscar")) pintarMenu(); }catch(e){} }, 15000);
 document.getElementById("menuCerrarBtn").addEventListener("click", () => abrirMenuLateral(false));
 document.getElementById("menuVelo").addEventListener("click", () => abrirMenuLateral(false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("menu-abierto")) abrirMenuLateral(false); });
