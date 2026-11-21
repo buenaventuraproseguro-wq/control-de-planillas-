@@ -3,7 +3,7 @@
 //   si no hay conexión, se usa la copia guardada.
 // - La librería de la base de datos y las fuentes se guardan una vez y se reutilizan.
 // - Los datos (clientes, pagos, documentos) NO pasan por aquí: los maneja la app.
-const VERSION = "prosegurosnet-v2";
+const VERSION = "prosegurosnet-v3";
 const APP = ["./", "./index.html"];
 const LIBRERIAS = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"];
 
