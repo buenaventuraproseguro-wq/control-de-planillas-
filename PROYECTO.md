@@ -305,3 +305,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-21 · Menú lateral compacto, tomando como referencia el diseño «Suite PILA» que mandó Nestor: letra 13px, íconos de 16px, filas de 32px, todas las opciones a la vista por grupos (sin entrar a cada categoría), «Hoy» resaltado en azul oscuro. En pantallas de 1180px o más queda fijo a la izquierda (248px) y ☰ lo esconde/muestra (se recuerda); en el celular sigue siendo cajón. El nombre de la empresa no se repite en la cabecera cuando el menú está fijo. Letra de la app: IBM Plex Sans (con Inter de respaldo). Solo pantalla, no toca la base.
 
 - 21-nov-2026 · Se deshizo el cambio de diseño «más ordenado» (botón Enlace Operativo, cifras del mes, menú claro): Nestor pidió volver al anterior.
+
+- 21-nov-2026 · Se deshizo también el menú lateral compacto y fijo (1d4eb90): Nestor pidió dejar la barra lateral como estaba. Vuelve el menú de siempre que se abre con ☰.
