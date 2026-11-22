@@ -321,3 +321,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 21-nov-2026 · La ficha del cliente que se abre desde el buscador usa todo el ancho de la pantalla (el buscador sigue pequeño).
 
 - 21-nov-2026 · Contabilidad: títulos de sección (Ingresos y cobros, Alegra, Gastos…) más grandes y oscuros con raya roja, y botones con nombre en negrilla, borde y ícono más marcados, para identificarlos fácil.
+
+- 2026-11-22 · Días proporcionales se mantienen al marcar PAGO (`vieneDeAfiliacion`, `factorDiasProporcionales(r, mes)`) · Al pasar de DÍAS PROPORCIONALES a PAGO la app volvía a calcular el mes completo (caso Fidel Arturo Rodríguez, 1114059490, ingreso 20-oct: 11 días). Ahora, si el mes anterior estaba en AFILIACIÓN y la fecha de ingreso cae en ese mes, el PAGO sigue con los días proporcionales en la ficha, recibos, contabilidad y comparación con la PILA. Solo cálculo; no toca la base.

@@ -8710,14 +8710,37 @@ function calcProrrateo(record, mesActual){
 // directamente del estado del cliente y el día de su fecha de ingreso, sin depender de ninguna
 // marca interna guardada antes — así funciona aunque el registro venga de una versión anterior
 // de la app o de un respaldo importado.
-function factorDiasProporcionales(r){
-  if (estadoClass(r["Estado Trámite"]) !== "DIAS_PROPORCIONALES") return 1;
+function factorDiasProporcionales(r, mesActual){
+  const ecDp = estadoClass(r["Estado Trámite"]);
+  // Ya pagado (PAGO) en su primer mes de aportes: sigue siendo de días proporcionales.
+  // Antes, al marcarlo PAGO, la app volvía a calcular el mes completo.
+  if ((ecDp === "PAGO" || ecDp === "PAGO_CONDUCTOR") && vieneDeAfiliacion(r, mesActual)){
+    const d = parseInt(String(r["Fecha de Ingreso"] || "").split("/")[0], 10);
+    if (!isNaN(d) && d >= 1 && d <= 30) return Math.max(0, 30 - d + 1) / 30;
+  }
+  if (ecDp !== "DIAS_PROPORCIONALES") return 1;
   if (typeof r["_prorrateoTransicion"] === "number") return r["_prorrateoTransicion"];
   const diaIngreso = parseInt(String(r["Fecha de Ingreso"] || "").split("/")[0], 10);
   if (!isNaN(diaIngreso) && diaIngreso >= 1 && diaIngreso <= 30){
     return Math.max(0, 30 - diaIngreso + 1) / 30;
   }
   return 1;
+}
+
+// El mes anterior (al que se está viendo) estaba en AFILIACIÓN y su fecha de ingreso cae en ese
+// mes anterior: este es su primer mes de aportes (días proporcionales), aunque ya esté en PAGO.
+// Solo lee los meses ya cargados; no cambia nada guardado.
+function vieneDeAfiliacion(r, mesActual){
+  try{
+    const mes = mesActual || store.currentMonth;
+    const ant = previousMonthName(mes);
+    const f = String(r["Fecha de Ingreso"] || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const ma = ant.match(/^(\S+)\s+de\s+(\d{4})$/);
+    if (!f || !ma || (+f[2] - 1) !== MESES.indexOf(ma[1]) || +f[3] !== +ma[2]) return false;
+    const ced = String(r["Cédula"] || "").trim();
+    const previo = (store.months[ant] || []).find(x => String(x["Cédula"] || "").trim() === ced);
+    return !!previo && estadoClass(previo["Estado Trámite"]) === "AFILIACION";
+  }catch(e){ return false; }
 }
 
 // Sigue en AFILIACIÓN pero su fecha de ingreso es de un mes anterior al que se está viendo:
@@ -8747,7 +8770,7 @@ function calcularTotalPagar(r, mesActual){
   const prorr = calcProrrateo(r, mesActual);
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
   const esDiasProp = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES";
-  const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r);
+  const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
   const sinPension = noAportaPension(r);
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("Valor Pensión (AFP)");
@@ -8763,7 +8786,7 @@ function calcularTotalPagar(r, mesActual){
 // SIN el costo del servicio. Es lo que debe coincidir con la planilla PILA.
 function calcularAportesApp(r, mesActual){
   const prorr = calcProrrateo(r, mesActual);
-  const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r);
+  const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
   const sinPension = noAportaPension(r);
   const val = (campo) => Math.round(numOrZero(r[campo]) * factor);
   const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: val("Valor ARL"), caja: val("Valor Caja") };
@@ -8801,7 +8824,7 @@ function showBreakdown(cedula){
 
   // Si este mes no cae la fecha de ingreso pero el estado es DÍAS PROPORCIONALES,
   // se calcula el factor pendiente directamente del día de la fecha de ingreso.
-  const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r);
+  const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, store.currentMonth);
   const tieneTransicion = prorr.factor === 1 && factorAportes < 1;
   const diasAportes = Math.round(factorAportes * 30);
   const esDiasPropSinFecha = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES" && factorAportes === 1;
