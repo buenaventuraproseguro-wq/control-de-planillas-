@@ -9110,15 +9110,36 @@ function showBreakdown(cedula){
     fm.hidden = !r["Muelle"]; }
 
   breakdown.classList.add("show");
+  const esOtroCliente = breakdown.dataset.cedulaAbierta !== String(r["Cédula"]);
   { const acc = breakdown.querySelector(".actions"), mb = document.getElementById("accMasBtn");
-    if (acc && mb && breakdown.dataset.cedulaAbierta !== String(r["Cédula"])){ acc.classList.remove("ver-mas"); mb.textContent = "Más acciones ▾"; mb.setAttribute("aria-expanded", "false"); }
+    if (acc && mb && esOtroCliente){ acc.classList.remove("ver-mas"); mb.textContent = "Más acciones ▾"; mb.setAttribute("aria-expanded", "false"); }
     breakdown.dataset.cedulaAbierta = String(r["Cédula"]); }
   searchInput.value = r["Cédula"];
   renderList("");
-  // La ficha queda arriba, completa, debajo de la barra de arriba
-  breakdown.scrollIntoView({behavior:"smooth", block:"start"});
+  // Al abrir un cliente, la pantalla se acomoda sola: «Centro de gestión», el buscador y la ficha
+  // completos debajo de la barra de arriba. Si la app solo se refresca (sincronizar), no se mueve.
+  if (esOtroCliente) acomodarFichaEnPantalla();
 }
 
+function acomodarFichaEnPantalla(){
+  const bd = document.getElementById("breakdown");
+  const ir = () => {
+    try{
+      const cab = document.querySelector("header.top");
+      const alto = cab && getComputedStyle(cab).position === "sticky" ? cab.getBoundingClientRect().height : 0;
+      const sec = bd.closest(".cg-izq") || bd.closest(".search-panel") || bd;
+      const tit = sec.querySelector("h1, h2") || sec;
+      const yTit = tit.getBoundingClientRect().top + window.scrollY - alto - 8;
+      const yFicha = bd.getBoundingClientRect().top + window.scrollY - alto - 8;
+      const finFicha = bd.getBoundingClientRect().bottom + window.scrollY;
+      // Con el título si todo cabe; si no, la ficha desde su nombre
+      const y = (finFicha - yTit <= window.innerHeight - alto - 8) ? yTit : yFicha;
+      window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    }catch(e){ try{ bd.scrollIntoView({ behavior: "smooth", block: "start" }); }catch(_){} }
+  };
+  requestAnimationFrame(ir);
+  setTimeout(ir, 450); // otra vez cuando ya cargaron los documentos de la ficha
+}
 // Ficha: «Más acciones» muestra u oculta los botones poco usados
 document.getElementById("accMasBtn").addEventListener("click", () => {
   const acc = document.querySelector("#breakdown .actions"), mb = document.getElementById("accMasBtn");
