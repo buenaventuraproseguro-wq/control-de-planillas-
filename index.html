@@ -18588,7 +18588,7 @@ function pilaFila(r, secuencia, opts){
   if (ing) pon(15, "X"); if (ret) pon(16, "X");
   pon(30, 0); pon(31, afp.codigo || null); pon(33, eps.codigo || null); pon(35, tipoI && !conCaja ? null : (ccf || null));
   pon(36, dias); pon(37, dias); pon(38, dias); pon(39, tipoI && !conCaja ? 0 : dias);
-  pon(40, base); pon(41, "F"); pon(42, ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
+  pon(40, base); pon(41, tipoI ? "" : "F"); // SUAPORTE: el tipo cotizante 57 no puede llevar tipo de salario pon(42, ibc); pon(43, ibc); pon(44, ibc); pon(45, ibcCcf);
   pon(46, tAfp); pon(47, cAfp); pon(48, 0); pon(49, 0); pon(50, cAfp); pon(51, 0); pon(52, 0); pon(53, 0);
   pon(54, tEps); pon(55, cEps); pon(56, 0); pon(58, 0); pon(60, 0);
   pon(61, tArl); pon(62, centro || null); pon(63, cArl); pon(64, tipoI && !conCaja ? 0 : tCcf); pon(65, cCcf);
