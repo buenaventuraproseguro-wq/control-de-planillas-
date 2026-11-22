@@ -1871,6 +1871,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   /* Buscador de cédulas más pequeño y separado de los botones (21-nov) */
   .cg-izq .search-panel{ max-width:440px; width:100%; padding:6px 8px !important; margin-bottom:12px; box-sizing:border-box; }
   /* Al abrir la ficha de un cliente desde el buscador, usa todo el ancho de la pantalla */
+  /* Ficha: renglón de muelles (22-nov-2026) */
+  .ficha-muelles{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:8px; padding:6px 10px; border:1px solid var(--line); border-radius:10px; background:var(--panel); font-size:13px; }
+  .ficha-muelles[hidden]{ display:none; }
+  .ficha-muelles .muelle-dots{ display:flex; flex-wrap:wrap; gap:6px; }
+  .ficha-muelles .mf-chip{ width:auto; height:auto; min-height:30px; border-radius:999px; padding:3px 12px; font:inherit; font-size:12.5px; font-weight:700; border:1.5px solid; background:var(--panel); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .ficha-muelles .mf-chip .mf-est{ font-weight:500; font-size:11.5px; opacity:.85; }
+  .ficha-muelles .fm-nov{ color:#B42318; font-weight:700; }
+  .ficha-muelles .fm-nov:empty{ display:none; }
   /* ===== Ficha del cliente compacta (22-nov-2026): todo en una pantalla, lo importante primero =====
      Orden: nombre y estado → valores con el TOTAL resaltado → documentos → acciones (las poco usadas en «Más acciones»). */
   .breakdown{ scroll-margin-top:84px; padding-top:10px !important; margin-top:8px !important; }
@@ -2196,6 +2204,11 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
           <div class="meta" id="bMeta">—</div>
         </div>
       </div>
+      <div class="ficha-muelles" id="fichaMuelles" hidden>
+        <span class="fm-tit" id="fichaMuellesTit"></span>
+        <div class="muelle-dots" id="muelleDotsBreakdown"></div>
+        <span class="fm-nov" id="fichaMuellesNov"></span>
+      </div>
       <div class="cards" id="breakdownCards">
         <div class="card" id="cardCosto"><div class="label">Costo servicio</div><div class="value" id="bCosto">—</div></div>
         <div class="card card-nomina"><div class="label">EPS <span class="card-detalle" id="bEpsNombre"></span></div><div class="value" id="bEps">—</div></div>
@@ -2234,7 +2247,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
             <button class="acc-mas btn small danger" id="deleteBtn" style="display:none;">Eliminar</button>
           </div>
           <button type="button" class="btn small ghost acc-mas-btn" id="accMasBtn" aria-expanded="false">Más acciones ▾</button>
-          <div class="muelle-dots" id="muelleDotsBreakdown"></div>
         </div>
 <div id="bTareasCliente"></div>
     </div>
@@ -8919,18 +8931,10 @@ function showBreakdown(cedula){
 
   document.getElementById("bMeta").innerHTML =
     (r["No."] ? `<b class="meta-resaltado" title="Número en la lista del mes">N.º ${escHtml(r["No."])}</b> · ` : "") +
-    `<button type="button" class="meta-resaltado ced-copiar" data-copiar-cedula="${escHtml(r["Cédula"])}" title="Tocar para copiar la cédula">Cédula ${escHtml(r["Cédula"])} <span aria-hidden="true">📋</span></button> · ${r["Responsable / Grupo"] || "—"} · ${ubicacion}` +
-    (planillaVigente ? ` · Planilla pagada: ${planillaVigente}` : "") +
-    (r["Muelle"] ? ` · Muelle: ${r["Muelle"]}` : "") +
-    (tieneNovedadMuelle ? ` · <b class="meta-resaltado">⚠️ Novedad pendiente en muelle</b>` : "") +
+    `<button type="button" class="meta-resaltado ced-copiar" data-copiar-cedula="${escHtml(r["Cédula"])}" title="Tocar para copiar la cédula">Cédula ${escHtml(r["Cédula"])} <span aria-hidden="true">📋</span></button>` +
+    // Dirección, planilla, teléfonos, ingreso y beneficiarios se ven al Editar el cliente (no en la ficha)
     (tieneRecordatorioMeta ? ` · <b class="meta-resaltado">🔔 Recordatorio</b>` : "") +
-    (r["Teléfono"] ? ` · Tel: ${r["Teléfono"]}` : "") +
-    (r["Teléfono 2"] ? ` · Tel (${r["Nombre Contacto 2"] || "otro contacto"}): ${r["Teléfono 2"]}` : "") +
-    (r["Fecha de Ingreso"] ? ` · Ingreso: ${r["Fecha de Ingreso"]}` : "") +
     (r["Estado AFP"] && r["Estado AFP"] !== "Activo" ? ` · AFP: ${r["Estado AFP"]}` : "") +
-    (Array.isArray(r["Beneficiarios"]) && r["Beneficiarios"].length
-      ? ` · Beneficiarios: ${r["Beneficiarios"].map(b => `${b.nombre} (${b.parentesco})`).join(", ")}`
-      : "") +
     ((() => {
       let texto = "";
       const afilVieja = afiliacionDeMesAnterior(r, store.currentMonth);
@@ -9094,7 +9098,16 @@ function showBreakdown(cedula){
   btnFacturar.onclick = () => crearBorradorAlegra(r);
 
   // Los tres puntos de muelle (S, T, A); solo el asignado al cliente es tocable.
-  document.getElementById("muelleDotsBreakdown").innerHTML = puntosMuelle(r, false);
+  // Muelles: su propio renglón, con un botón por muelle (tocar = aceptado / pendiente)
+  { const fm = document.getElementById("fichaMuelles");
+    const ac = r["AceptadoPorMuelle"] || {};
+    document.getElementById("muelleDotsBreakdown").innerHTML = r["Muelle"] ? MUELLES_NOMBRES.map(nombre => {
+      const info = MUELLE_INFO[nombre], ok = !!ac[nombre];
+      return `<button type="button" class="muelle-id-dot mf-chip ${info.clase} ${ok ? "on" : ""}" data-muelle-nombre="${escHtml(nombre)}" title="Tocar para marcar ${escHtml(nombre)} como ${ok ? "pendiente" : "aceptado"}">${escHtml(nombre)} <span class="mf-est">${ok ? "✓ aceptado" : "pendiente"}</span></button>`;
+    }).join("") : "";
+    document.getElementById("fichaMuellesTit").innerHTML = r["Muelle"] ? `⚓ Muelle${String(r["Muelle"]).trim().toLowerCase() !== "muelle" ? ": <b>" + escHtml(r["Muelle"]) + "</b>" : "s"}` : "";
+    document.getElementById("fichaMuellesNov").innerHTML = tieneNovedadMuelle ? "⚠️ Novedad pendiente" : "";
+    fm.hidden = !r["Muelle"]; }
 
   breakdown.classList.add("show");
   { const acc = breakdown.querySelector(".actions"), mb = document.getElementById("accMasBtn");
@@ -12658,6 +12671,9 @@ document.getElementById("muelleDotsBreakdown").addEventListener("click", (e) => 
   const aceptado = !!r["AceptadoPorMuelle"][nombreMuelle];
   btn.classList.toggle("on", aceptado);
   btn.title = `${nombreMuelle} — ${aceptado ? "Aceptado" : "Pendiente"}`;
+  const est = btn.querySelector(".mf-est"); if (est) est.textContent = aceptado ? "✓ aceptado" : "pendiente";
+  const nov = document.getElementById("fichaMuellesNov");
+  if (nov) nov.textContent = MUELLES_NOMBRES.some(n => !r["AceptadoPorMuelle"][n]) ? "⚠️ Novedad pendiente" : "";
   saveStore();
   showToast(`${nombreMuelle}: ${aceptado ? "Aceptado" : "Pendiente"}`);
   renderList(searchInput.value);
