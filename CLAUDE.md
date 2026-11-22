@@ -45,6 +45,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Cierre del mes para el contador (solo admin, solo lee): `abrirCierreContador`, `datosCierreContador`, `descargarCierreContador`
 - Seguros y pólizas: `abrirPolizas`, `renderPolizas`, `mensajePoliza`; tabla `polizas`; la comisión entra en `resumenIngresos`
 - Venta de SOAT (app Muelles y Seguros): en pausa con `var VENTA_SOAT_EN_PAUSA = true` en `seguros.html`
+- Dinero recibido (💵): el pago NO pasa a PAGO hasta tener planilla y comprobante: `registrarDineroRecibido`, `dineroRecibido`, `aplicarPagosConSoporte`; columna `clients.dinero_recibido`
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
 ## Protecciones en la base de datos

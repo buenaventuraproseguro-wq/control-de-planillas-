@@ -2225,7 +2225,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   <div class="bulk-bar" id="bulkBar" style="display:none;">
     <span id="bulkCount">0 seleccionados</span>
-    <button class="btn small primary" id="bulkMarkPagoBtn">Marcar como PAGO</button>
+    <button class="btn small primary" id="bulkMarkPagoBtn">💵 Dinero recibido</button>
     <button class="btn small ghost" id="bulkClearBtn">Cancelar</button>
   </div>
 
@@ -3525,6 +3525,9 @@ let columnasLugar = (() => { try{ return localStorage.getItem(COLUMNAS_LUGAR_KEY
 // ¿La base ya tiene "recargo_mora"? (archivo recargo_mora.sql)
 const COLUMNAS_RECARGO_KEY = "prosegurosnet_columnas_recargo";
 let columnasRecargo = (() => { try{ return localStorage.getItem(COLUMNAS_RECARGO_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene "dinero_recibido"? (cuándo llegó el dinero; pasa a PAGO con planilla y comprobante)
+const COLUMNAS_DINERO_KEY = "prosegurosnet_columnas_dinero";
+let columnasDinero = (() => { try{ return localStorage.getItem(COLUMNAS_DINERO_KEY) === "1"; }catch(e){ return false; } })();
 // ¿La base ya tiene "ultimo_recordatorio"? (para no enviar el mismo recordatorio dos veces)
 const COLUMNAS_RECORDATORIO_KEY = "prosegurosnet_columnas_recordatorio";
 let columnasRecordatorio = (() => { try{ return localStorage.getItem(COLUMNAS_RECORDATORIO_KEY) === "1"; }catch(e){ return false; } })();
@@ -3574,6 +3577,13 @@ async function detectarColumnasConfirmacion(){
       if (/recargo_mora|column|schema cache/i.test(String(error.message || ""))) columnasRecargo = false;
     } else columnasRecargo = true;
     try{ localStorage.setItem(COLUMNAS_RECARGO_KEY, columnasRecargo ? "1" : "0"); }catch(e){}
+  }catch(e){}
+  try{
+    const { error } = await sb.from("clients").select("dinero_recibido").limit(1);
+    if (error){
+      if (/dinero_recibido|column|schema cache/i.test(String(error.message || ""))) columnasDinero = false;
+    } else columnasDinero = true;
+    try{ localStorage.setItem(COLUMNAS_DINERO_KEY, columnasDinero ? "1" : "0"); }catch(e){}
   }catch(e){}
 }
 function esRecordToDbRow(r, monthId){
@@ -3635,6 +3645,7 @@ function esRecordToDbRow(r, monthId){
     ...(columnasRecargo ? {
       recargo_mora: r["Recargo Mora"] === "" || r["Recargo Mora"] == null ? null : Number(r["Recargo Mora"]),
     } : {}),
+    ...(columnasDinero ? { dinero_recibido: r["Dinero Recibido"] || null } : {}),
   };
 }
 function dbRowToEsRecord(row){
@@ -3675,6 +3686,7 @@ function dbRowToEsRecord(row){
     "Fecha Retiro": row.fecha_retiro || "",
     "Motivo Retiro": row.motivo_retiro || "",
     "Recargo Mora": row.recargo_mora == null ? "" : row.recargo_mora,
+    "Dinero Recibido": row.dinero_recibido || "",
     "Lugar Trabajo": row.lugar_trabajo || "",
     "Último Recordatorio": row.ultimo_recordatorio || "",
     "Soporte Enviado": row.soporte_enviado || "",
@@ -4377,6 +4389,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.motivo_retiro === "" || o.motivo_retiro == null)) delete o.motivo_retiro;
     if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
+    if (o && (o.dinero_recibido === "" || o.dinero_recibido == null)) delete o.dinero_recibido;
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
     ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza","venc_muelles","servicio_muelle"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
     if (o && (o.servicios_muelle == null || (typeof o.servicios_muelle === "object" && !Object.keys(o.servicios_muelle).length))) delete o.servicios_muelle;
@@ -6116,7 +6129,7 @@ const RC_CAMPOS = { estado_tramite: "Estado", no_planilla_pagada: "N.º de plani
   responsable_grupo: "Responsable", telefono: "Teléfono", telefono2: "Teléfono 2", nombre_contacto2: "Contacto 2", correo: "Correo", direccion_completa: "Dirección", fecha_ingreso: "Fecha de ingreso",
   eps: "EPS", valor_eps: "Valor EPS", estado_eps: "Estado EPS", arl: "ARL", arl_nivel: "Nivel ARL", valor_arl: "Valor ARL", estado_arl: "Estado ARL", afp: "Pensión", estado_afp: "Estado pensión",
   valor_pension: "Valor pensión", caja: "Caja", estado_caja: "Estado caja", valor_caja: "Valor caja", observacion: "Observación", recordatorio: "Recordatorio", beneficiarios: "Beneficiarios",
-  aceptado_por_muelle: "Aceptado por muelle", muelle: "Muelle", en_proceso_desde: "En proceso desde", fecha_retiro: "Fecha de retiro", motivo_retiro: "Motivo de retiro", recargo_mora: "Recargo por mora",
+  aceptado_por_muelle: "Aceptado por muelle", muelle: "Muelle", en_proceso_desde: "En proceso desde", fecha_retiro: "Fecha de retiro", motivo_retiro: "Motivo de retiro", recargo_mora: "Recargo por mora", dinero_recibido: "Dinero recibido",
   lugar_trabajo: "Lugar de trabajo", placa: "Placa", venc_licencia: "Vence licencia", venc_soat: "Vence SOAT", venc_tecno: "Vence tecnomecánica", venc_poliza: "Vence póliza", venc_muelles: "Vence muelles",
   venc_por_muelle: "Vencimiento por muelle", servicio_muelle: "Servicio de muelle", servicios_muelle: "Servicios de muelle", fecha_pago: "Fecha de pago", soporte_enviado: "Soporte enviado" };
 const RC_PLATA = new Set(["costo_servicio", "valor_eps", "valor_arl", "valor_pension", "valor_caja", "recargo_mora"]);
@@ -7251,8 +7264,8 @@ function resumenIngresos(mes, fechas){
       res.movimientos.push({ fecha, aprox: false, nombre: `Afiliación: ${nombrePropio(r["Nombre del Afiliado"] || "")}`, ingreso: total, total, pago: true });
       return;
     }
-    if (e === "PAGO" || e === "PAGO_CONDUCTOR"){
-      const f = (fechas || {})[String(r["Cédula"])] || {};
+    if (e === "PAGO" || e === "PAGO_CONDUCTOR" || dineroRecibido(r)){
+      const f = dineroRecibido(r) ? { fecha: (() => { const d = new Date(r["Dinero Recibido"]); return isNaN(d) ? "" : isoDia(d); })(), aprox: false } : ((fechas || {})[String(r["Cédula"])] || {});
       res.pagos++; res.ingreso += ingreso; res.total += total; res.aportes += total - ingreso;
       const l = linea(esEmpresaConductores(r) ? "Conductores" : esServicioMuelles(r) ? "Muelles otras empresas" : "PROSEGUROSNET");
       l.pagos++; l.ingreso += ingreso;
@@ -7912,7 +7925,7 @@ advanceBtn.addEventListener("click", async () => {
       return x;
     }))
     .concat(traslPend.map(tr => registroTraslado(tr)).filter(Boolean));
-  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Último Recordatorio"] = ""; x["Soporte Enviado"] = ""; ponerCajaMinima(x); normalizarPensionArl(x);
+  continuing.forEach(x => { x["Recargo Mora"] = ""; x["Dinero Recibido"] = ""; x["Último Recordatorio"] = ""; x["Soporte Enviado"] = ""; ponerCajaMinima(x); normalizarPensionArl(x);
     x["Imagen PlanillaPagada"] = null; x["Imagen ComprobantePago"] = null; }); // la planilla y el comprobante quedan en su mes // el recargo por mora es de cada mes; sin caja va el mínimo de $100
   // Retiros programados: si la fecha de retiro cae en el mes nuevo (o antes), ese mes queda en RETIRO
   continuing.forEach(x => aplicarRetiroProgramado(x, next));
@@ -8244,6 +8257,7 @@ function estaAtrasado(r){
   // RETIRO de PROSEGUROSNET sin planilla del retiro: todavía debe, sigue en Atrasados.
   const retiroDebe = est === "RETIRO" && !esOtraEmpresa(r) && retiroSinSoporte(r);
   if (est !== "SIN_PAGO" && est !== "DIAS_PROPORCIONALES" && !retiroDebe) return false;
+  if (dineroRecibido(r)) return false; // ya pagó; solo falta la planilla / comprobante
   if (store.currentMonth !== mesActualReal()) return false;
   return new Date().getDate() > 16;
 }
@@ -8264,8 +8278,7 @@ function recargoMoraActivo(){
 function aplicaRecargoMora(r){
   if (!r || esConductorExcluido(r)) return false;
   if (r["Recargo Mora"] !== "" && r["Recargo Mora"] != null) return false; // ya tiene recargo (o el admin lo quitó)
-  const est = estadoClass(r["Estado Trámite"]);
-  return est === "SIN_PAGO" || est === "DIAS_PROPORCIONALES";
+  return porPagarSinDinero(r);
 }
 let _aplicandoRecargos = false;
 function aplicarRecargosMora(){
@@ -8528,6 +8541,7 @@ function renderFilterPills(){
 
 function renderList(filterText){
   try{ aplicarRetirosConSoporte(); }catch(e){}
+  try{ aplicarPagosConSoporte(); }catch(e){}
   aplicarRecargosMora();
   const q = (filterText || "").trim().toLowerCase();
   let filtered = records;
@@ -8635,7 +8649,7 @@ function renderList(filterText){
       <div class="name">${(() => {
         const tags = enRetiros
           ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}${tagRetiroTraslado(r)}`
-          : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
+          : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagDineroRecibido(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
         return `<span class="nm">${r["Nombre del Afiliado"]}</span>${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
       })()}</div>
       <div class="ced">${r["Cédula"]}</div>
@@ -8676,14 +8690,19 @@ document.getElementById("bulkClearBtn").addEventListener("click", () => {
 });
 
 document.getElementById("bulkMarkPagoBtn").addEventListener("click", async () => {
-  if (!(await confirmarApp(`¿Marcar ${seleccionados.size} cliente(s) como PAGO?`))) return;
+  if (!(await confirmarApp(`¿Registrar que ${seleccionados.size} cliente(s) ya pagaron?\n\nPasan a PAGO solo los que ya tengan la planilla y el comprobante subidos. Los demás quedan con «💵 Dinero recibido» (salen en el Excel de SUAPORTE y ya no se les cobra).`))) return;
+  await asegurarDocsPago();
+  let pagos = 0, dinero = 0;
+  const ahora = new Date().toISOString();
   records.forEach(r => {
-    if (seleccionados.has(String(r["Cédula"]))) r["Estado Trámite"] = "PAGO";
+    if (!seleccionados.has(String(r["Cédula"]))) return;
+    if (registrarDineroRecibido(r) === "pago") pagos++; else dinero++;
+    r["_ultimaEdicion"] = ahora;
   });
   seleccionados.clear();
   saveStore();
   renderList(searchInput.value);
-  showToast("Clientes marcados como PAGO.");
+  showToast([pagos && `${pagos} en PAGO`, dinero && `${dinero} con 💵 dinero recibido (falta planilla o comprobante)`].filter(Boolean).join(" · ") || "Listo.");
 });
 
 // Calcula la proporción a cobrar cuando el cliente ingresó a mitad del mes que se está viendo.
@@ -8814,7 +8833,7 @@ function showBreakdown(cedula){
   actualizarBotonRetiro(r);
   try{ pintarTraslado(r); }catch(e){}
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
-  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagConfirmacion(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
+  document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagConfirmacion(r)}${tagDineroRecibido(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
@@ -9625,8 +9644,7 @@ function enviarWhatsapp(r, totalPagar){
   let itemGrupo = null;
   if (grupo){
     const porPagar = (store.months[store.currentMonth] || []).filter(x => {
-      const ec = estadoClass(x["Estado Trámite"]);
-      return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES";
+      return porPagarSinDinero(x);
     });
     const companeros = porPagar.filter(x => x !== r && (claveAgrupacion(x) || {}).k === grupo.k);
     itemGrupo = { grupo: true, responsable: grupo.nombre, clave: grupo.k, clientes: [r, ...companeros] };
@@ -10300,7 +10318,7 @@ function clientesPendientesDelMes(){
   const arr = store.months[store.currentMonth] || [];
   return arr.filter(r => {
     const ec = estadoClass(r["Estado Trámite"]);
-    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && String(r["Teléfono"] || "").trim();
+    return (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && !dineroRecibido(r) && String(r["Teléfono"] || "").trim();
   });
 }
 function actualizarBarraRecordatorios(){
@@ -12770,9 +12788,32 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     const ec = estadoClass(record["Estado Trámite"]);
     const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
     const numeroNuevo = record["No. Planilla Pagada"] && (!original || String(original["No. Planilla Pagada"] || "") !== record["No. Planilla Pagada"] || estadoClass(original["Estado Trámite"]) !== "PAGO");
-    if ((ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && (docImagenesCambiados.PlanillaPagada || numeroNuevo)){
-      record["Estado Trámite"] = esConductorGuardando ? "PAGO CONDUCTOR" : "PAGO";
-      showToast("✅ Con la planilla pagada el cliente quedó en PAGO.");
+    const plaAhora = !!(docImagenesCambiados.PlanillaPagada || numeroNuevo), compAhora = !!docImagenesCambiados.ComprobantePago;
+    const eraPorPagar = original && estadoPorPagar(original);
+    if (esConductorGuardando){
+      if ((ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && plaAhora){
+        record["Estado Trámite"] = "PAGO CONDUCTOR";
+        showToast("✅ Con la planilla pagada el cliente quedó en PAGO.");
+      }
+    } else if ((ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && original && estadoClass(original["Estado Trámite"]) === "PAGO" && !plaAhora && !compAhora){
+      record["Dinero Recibido"] = ""; // se devolvió a por pagar a mano
+    } else if ((ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") || (ec === "PAGO" && eraPorPagar)){
+      // PAGO solo con planilla Y comprobante. Si falta uno, sigue como estaba con «💵 Dinero recibido».
+      await asegurarDocsPago();
+      const prueba = { ...(original || {}), ...record };
+      const quiereMarcar = ec === "PAGO" || plaAhora || compAhora;
+      if (quiereMarcar){
+        if (ec === "PAGO") prueba["Estado Trámite"] = original["Estado Trámite"];
+        const res = registrarDineroRecibido(prueba, { planilla: plaAhora, comprobante: compAhora });
+        record["Estado Trámite"] = prueba["Estado Trámite"];
+        record["Dinero Recibido"] = prueba["Dinero Recibido"] || "";
+        if (res === "pago") showToast("✅ Con la planilla y el comprobante el cliente quedó en PAGO.");
+        else {
+          const falta = [!(plaAhora || tienePlanillaPago(prueba)) && "la planilla pagada", !(compAhora || tieneComprobantePago(prueba)) && "el comprobante de pago"].filter(Boolean).join(" y ");
+          if (original && original["Dinero Recibido"] && dineroRecibido(original)) showToast(`💵 Sigue con dinero recibido: falta ${falta}.`);
+          else await alertApp(`💵 Quedó con «Dinero recibido» (sigue en ${record["Estado Trámite"]}).\n\nPasa a PAGO cuando se suba${falta.includes(" y ") ? "n" : ""} ${falta}. Mientras tanto ya no se le cobra y sale en el Excel de SUAPORTE.`);
+        }
+      }
     }
   }
   // REINGRESO: en la planilla es una afiliación nueva; queda anotado como reingreso
@@ -12905,7 +12946,7 @@ async function ofrecerAgregarAMesesPosteriores(cedula){
     const enEseMes = (store.months[meses[i]] || []).find(x => String(x["Cédula"]) === String(cedula));
     if (enEseMes){ previo = enEseMes; continue; }
     const nuevo = construirRegistroMesSiguiente(previo);
-    nuevo["Imagen PlanillaPagada"] = null; nuevo["Imagen ComprobantePago"] = null; nuevo["No. Planilla Pagada"] = "";
+    nuevo["Imagen PlanillaPagada"] = null; nuevo["Imagen ComprobantePago"] = null; nuevo["No. Planilla Pagada"] = ""; nuevo["Dinero Recibido"] = "";
     insertarConservandoLugar(meses[i], [nuevo], store.months[meses[i - 1]] || []);
     previo = nuevo;
   }
@@ -13869,6 +13910,8 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   btn.disabled = true; btn.textContent = "Aplicando…";
 
   const conRetiro = new Set(Array.from(document.querySelectorAll("#pilaTabla input[data-pila-ret]:checked")).map(c => filas[Number(c.dataset.pilaRet)]));
+  await asegurarDocsPago();
+  let sinComprobante = 0;
   elegidos.forEach(f => {
     if (info.numeroPlanilla) f.r["No. Planilla Pagada"] = info.numeroPlanilla;
     if (f.retiro && conRetiro.has(f) && !esConductorExcluido(f.r)){
@@ -13878,7 +13921,8 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
       const nota = `retiro reportado en la planilla N° ${info.numeroPlanilla || ""}`.trim();
       if (!String(f.r["Observación"] || "").includes(nota)) f.r["Observación"] = f.r["Observación"] ? `${f.r["Observación"]} | ${nota}` : nota;
     } else {
-      f.r["Estado Trámite"] = esConductorExcluido(f.r) ? "PAGO CONDUCTOR" : "PAGO";
+      // PAGO solo con planilla y comprobante; sin comprobante queda «💵 Dinero recibido»
+      if (registrarDineroRecibido(f.r, { planilla: true, comprobante: adjuntarComp }) === "dinero") sinComprobante++;
     }
     f.r["_ultimaEdicion"] = new Date().toISOString();
     if (adjuntar) f.r["Imagen PlanillaPagada"] = null; // la planilla queda en la nube (se ve desde cualquier equipo)
@@ -13931,7 +13975,7 @@ document.getElementById("pilaAplicarBtn").addEventListener("click", async () => 
   btn.disabled = false; btn.textContent = "Aplicar";
   document.getElementById("overlayPila").classList.remove("show");
   pilaEnRevision = null;
-  let msg = `Planilla ${info.numeroPlanilla || ""}: ${elegidos.length} cliente(s) quedaron en PAGO.`;
+  let msg = `Planilla ${info.numeroPlanilla || ""}: ${elegidos.length - sinComprobante} cliente(s) quedaron en PAGO.${sinComprobante ? ` ${sinComprobante} quedaron con 💵 dinero recibido: falta subir el comprobante de pago.` : ""}`;
   if (adjuntar) msg += fallidos ? ` No se pudo guardar la planilla en ${fallidos} (revisa la conexión).` : ` Planilla guardada en ${subidos}.`;
   if (adjuntarComp) msg += compFallidos ? ` No se pudo guardar el comprobante en ${compFallidos} (revisa la conexión).` : ` Comprobante guardado en ${compSubidos}.`;
   pilaLimpiarComprobante();
@@ -14005,7 +14049,8 @@ document.getElementById("importPilaFile").addEventListener("change", (e) => {
       const r = records.find(x => String(x["Cédula"]) === cedula);
       if (r){
         if (planilla) r["No. Planilla Pagada"] = planilla;
-        r["Estado Trámite"] = esConductorExcluido(r) ? "PAGO CONDUCTOR" : "PAGO";
+        registrarDineroRecibido(r, { planilla: true });
+        r["_ultimaEdicion"] = new Date().toISOString();
         actualizados++;
       } else {
         noEncontrados.push(cedula);
@@ -14014,7 +14059,7 @@ document.getElementById("importPilaFile").addEventListener("change", (e) => {
     saveStore();
     renderList(searchInput.value);
     if (actualizados > 0){
-      let msg = `Planilla importada: ${actualizados} cliente(s) marcados como PAGO con su número de planilla.`;
+      let msg = `Planilla importada: ${actualizados} cliente(s) con su número de planilla (pasan a PAGO los que ya tienen el comprobante).`;
       if (noEncontrados.length) msg += ` ${noEncontrados.length} cédula(s) del archivo no están en tu lista de este mes.`;
       showToast(msg);
     } else {
@@ -15777,7 +15822,7 @@ function renderConsignaciones(){
         <div class="cs-sug">${opciones || `<div class="cs-meta">No encontré un cliente que coincida${info.nombre ? "" : " (el mensaje no trae nombre)"}. Elíjalo abajo.</div>`}</div>
         <div class="cs-acciones">
           <input class="cs-otro" list="csClientesLista" placeholder="Otro cliente: escriba nombre o cédula" data-cs-otro="${c.id}">
-          <label style="font-size:12.5px;display:flex;gap:6px;align-items:center;"><input type="checkbox" data-cs-pago="${c.id}"> Marcar también PAGO</label>
+          <label style="font-size:12.5px;display:flex;gap:6px;align-items:center;"><input type="checkbox" data-cs-pago="${c.id}"> Marcar dinero recibido</label>
           <div class="cs-meta" data-cs-estado="${c.id}" style="flex-basis:100%;font-weight:700;"></div>
           <button type="button" class="btn ghost small" data-cs-descartar="${c.id}">Descartar</button>
           <button type="button" class="btn primary small" data-cs-aplicar="${c.id}">✅ Aplicar</button>
@@ -15841,7 +15886,7 @@ function revisarMontoConsig(id){
   const valor = leerMensajeBanco(c.texto).valor, sel = debeDeEleccion(card, id);
   if (!sel){ caja.textContent = ""; return; }
   const e = estadoMonto(valor, sel.debe);
-  if (e.tipo === "completo"){ chk.checked = true; caja.style.color = "#1E7A46"; caja.textContent = `✅ Pago completo de ${sel.quien}: se marcará PAGO.`; }
+  if (e.tipo === "completo"){ chk.checked = true; caja.style.color = "#1E7A46"; caja.textContent = `✅ Pago completo de ${sel.quien}: queda con 💵 dinero recibido (pasa a PAGO cuando se suban planilla y comprobante).`; }
   else if (e.tipo === "parcial"){ chk.checked = false; caja.style.color = "#B42318"; caja.textContent = `⚠️ Es de ${sel.quien}, pero NO es completo: debe ${fmt(sel.debe)}, consignó ${fmt(valor)}, faltan ${fmt(e.falta)}. Se aplica como abono y sigue en cobros.`; }
   else if (e.tipo === "demas"){ chk.checked = true; caja.style.color = "#8A5A0B"; caja.textContent = `💡 ${sel.quien} pagó ${fmt(e.sobra)} de más (debe ${fmt(sel.debe)}). Revise si incluye otro mes u otra persona.`; }
   else { caja.textContent = ""; }
@@ -15865,7 +15910,8 @@ async function aplicarConsignacion(id){
   const info = leerMensajeBanco(c.texto);
   const em = estadoMonto(info.valor, totalEsperado(r));
   const marca = card.querySelector("[data-cs-pago]").checked;
-  if (marca && em.tipo === "parcial" && !(await confirmarApp(`${nombrePropio(r["Nombre del Afiliado"] || "")} debe ${fmt(totalEsperado(r))} y consignó ${fmt(info.valor)}: faltan ${fmt(em.falta)}.\n\n¿Marcarlo PAGO de todas formas? (Si no, quite «Marcar también PAGO» y aplíquelo como abono.)`))) return;
+  if (marca && em.tipo === "parcial" && !(await confirmarApp(`${nombrePropio(r["Nombre del Afiliado"] || "")} debe ${fmt(totalEsperado(r))} y consignó ${fmt(info.valor)}: faltan ${fmt(em.falta)}.\n\n¿Marcarlo como pagado de todas formas? (Si no, quite «Marcar dinero recibido» y aplíquelo como abono.)`))) return;
+  if (marca) await asegurarDocsPago();
   const cambio = { estado: "aplicada", cedula: String(r["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || info.lugar || null,
     banco: info.banco || null, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
   const { error } = await sb.from("consignaciones").update(cambio).eq("id", id);
@@ -15874,7 +15920,7 @@ async function aplicarConsignacion(id){
   // Nota en el cliente y, si se pidió, estado PAGO
   const nota = `${em.tipo === "parcial" ? "abonó" : "consignó"} ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}${info.banco ? " (" + info.banco.toLowerCase() + ")" : ""}${em.tipo === "parcial" ? ", faltan " + fmt(em.falta) : ""}`;
   r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${nota}` : nota;
-  if (card.querySelector("[data-cs-pago]").checked) r["Estado Trámite"] = esConductorExcluido(r) ? "PAGO CONDUCTOR" : "PAGO";
+  if (card.querySelector("[data-cs-pago]").checked) registrarDineroRecibido(r);
   r["_ultimaEdicion"] = new Date().toISOString();
   saveStore();
   actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
@@ -15885,9 +15931,10 @@ async function aplicarConsignacionGrupo(c, card, k){
   if (!g){ showToast("Ese grupo ya no tiene valores pendientes."); return; }
   const info = leerMensajeBanco(c.texto);
   const marcarPago = card.querySelector("[data-cs-pago]").checked;
+  if (marcarPago) await asegurarDocsPago();
   const emG = estadoMonto(info.valor, g.total);
-  const avisoG = emG.tipo === "parcial" ? `\n\n⚠️ No es completo: deben ${fmt(g.total)}, consignaron ${fmt(info.valor)}, faltan ${fmt(emG.falta)}.${marcarPago ? " Aun así quedarían TODOS en PAGO." : " Quedan en cobros."}` : "";
-  if (!(await confirmarApp(`¿Aplicar ${fmt(info.valor)} a los ${g.deben.length} afiliados de ${nombrePropio(g.nombre)}?${marcarPago ? " Todos quedan en PAGO." : ""}${avisoG}`))) return;
+  const avisoG = emG.tipo === "parcial" ? `\n\n⚠️ No es completo: deben ${fmt(g.total)}, consignaron ${fmt(info.valor)}, faltan ${fmt(emG.falta)}.${marcarPago ? " Aun así quedarían TODOS como pagados." : " Quedan en cobros."}` : "";
+  if (!(await confirmarApp(`¿Aplicar ${fmt(info.valor)} a los ${g.deben.length} afiliados de ${nombrePropio(g.nombre)}?${marcarPago ? " Todos quedan con «💵 Dinero recibido» (pasan a PAGO cuando se suban planilla y comprobante)." : ""}${avisoG}`))) return;
   const primero = g.deben[0];
   const cambio = { estado: "aplicada", cedula: String(primero["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || info.lugar || null,
     banco: info.banco || null, relacion: `Pago del grupo ${g.nombre}: ${g.deben.length} afiliados`, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
@@ -15899,7 +15946,7 @@ async function aplicarConsignacionGrupo(c, card, k){
   const nota = `pagó en grupo (${nombrePropio(g.nombre)}) ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}`;
   g.deben.forEach(r => {
     r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${nota}` : nota;
-    if (marcarPago && !isRetiro(r)) r["Estado Trámite"] = esConductorExcluido(r) ? "PAGO CONDUCTOR" : "PAGO";
+    if (marcarPago && !isRetiro(r)) registrarDineroRecibido(r);
     r["_ultimaEdicion"] = ahora;
   });
   saveStore();
@@ -15993,29 +16040,30 @@ function retiroProgramado(r){
 //  · PROSEGUROSNET: la planilla del retiro (número de planilla o archivo de planilla/comprobante).
 //  · Otra empresa: imagen o planilla de la novedad de retiro.
 // Mientras no lo tenga, pasa al mes siguiente (sigue en RETIRO) para recordar que falta.
-let soportesRetiroNube = { mes: null, cedulas: new Set() };
+let soportesRetiroNube = { mes: null, cedulas: new Set(), planilla: new Set(), comprobante: new Set() };
 function inicioDeMes(nombre){
   const i = indiceMes(nombre); if (i == null) return null;
   return new Date(Math.floor(i / 12), i % 12, 1);
 }
 async function cargarSoportesRetiro(mes){
-  const res = new Set();
-  if (!cloudDb || !navigator.onLine){ soportesRetiroNube = { mes, cedulas: res }; return res; }
+  const res = new Set(), pla = new Set(), comp = new Set();
+  if (!cloudDb || !navigator.onLine){ soportesRetiroNube = { mes, cedulas: res, planilla: pla, comprobante: comp }; return res; }
   const ini = inicioDeMes(mes);
   try{
     const mesVer = mesISODe(mes);
     let { data, error } = await sb.from("documentos").select("cedula,tipo,uploaded_at,mes").in("tipo", ["planilla_pagada", "comprobante_pago"]);
     if (error) ({ data } = await sb.from("documentos").select("cedula,tipo,uploaded_at").in("tipo", ["planilla_pagada", "comprobante_pago"]));
     // Del mes que se está viendo (por la columna "mes"; si no existe, por la fecha en que se subió)
-    (data || []).forEach(d => { if (d.mes != null ? d.mes === mesVer : (!ini || !d.uploaded_at || new Date(d.uploaded_at) >= ini)) res.add(String(d.cedula).trim()); });
+    (data || []).forEach(d => { if (d.mes != null ? d.mes === mesVer : (!ini || !d.uploaded_at || new Date(d.uploaded_at) >= ini)){
+      const c = String(d.cedula).trim(); res.add(c); (d.tipo === "comprobante_pago" ? comp : pla).add(c); } });
   }catch(e){}
-  soportesRetiroNube = { mes, cedulas: res };
+  soportesRetiroNube = { mes, cedulas: res, planilla: pla, comprobante: comp };
   return res;
 }
 let _cargandoSoportes = false;
 function asegurarSoportesRetiro(){
   if (_cargandoSoportes || !cloudDb || soportesRetiroNube.mes === store.currentMonth) return;
-  if (!records.some(r => isRetiro(r) || retiroPendientePlanilla(r))) return;
+  if (!records.some(r => isRetiro(r) || retiroPendientePlanilla(r) || dineroRecibido(r))) return;
   _cargandoSoportes = true;
   cargarSoportesRetiro(store.currentMonth).finally(() => { _cargandoSoportes = false; if (typeof renderList === "function") renderList(searchInput.value); });
 }
@@ -16029,6 +16077,49 @@ function tieneSoporteRetiro(r){
 }
 // PROSEGUROSNET: el botón Retirar NO marca RETIRO. Deja el retiro "pendiente de planilla" y el
 // estado cambia a RETIRO solo cuando se sube la planilla o el soporte. Otra empresa sí se marca directo.
+/* ---- Dinero recibido ----
+   Cuando el cliente paga, NO pasa a PAGO: queda en SIN PAGO / DÍAS PROPORCIONALES con la etiqueta
+   «💵 Dinero recibido» (ya no se le cobra, no lleva mora y sale en el Excel de SUAPORTE).
+   Pasa a PAGO solo cuando estén subidos la planilla pagada Y el comprobante de pago.
+   Conductores y muelles (solo servicio, sin planilla) siguen pasando a PAGO como antes. */
+function estadoPorPagar(r){ const ec = estadoClass(r && r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
+function dineroRecibido(r){ return !!(r && r["Dinero Recibido"]) && estadoPorPagar(r); }
+// Debe todavía este mes (SIN PAGO / DÍAS PROPORCIONALES y sin el dinero recibido)
+function porPagarSinDinero(r){ return estadoPorPagar(r) && !dineroRecibido(r); }
+function tagDineroRecibido(r){
+  if (!dineroRecibido(r)) return "";
+  const pla = tienePlanillaPago(r), comp = tieneComprobantePago(r);
+  const falta = [!pla && "planilla", !comp && "comprobante"].filter(Boolean).join(" y ");
+  return `<span class="tag-consig" title="Ya pagó. Pasa a PAGO cuando se suban la planilla y el comprobante.">💵 Dinero recibido${falta ? ` · falta ${falta}` : ""}</span>`;
+}
+function _docNube(tipo, r){ return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube[tipo] && soportesRetiroNube[tipo].has(String(r["Cédula"]).trim()); }
+function tienePlanillaPago(r){ return !!String(r["No. Planilla Pagada"] || "").trim() || !!r["Imagen PlanillaPagada"] || _docNube("planilla", r); }
+function tieneComprobantePago(r){ return !!r["Imagen ComprobantePago"] || _docNube("comprobante", r); }
+async function asegurarDocsPago(){
+  if (cloudDb && soportesRetiroNube.mes !== store.currentMonth){ try{ await cargarSoportesRetiro(store.currentMonth); }catch(e){} }
+}
+// Llegó el dinero: PAGO si ya están planilla y comprobante; si no, queda marcado «💵 Dinero recibido».
+// extra = { planilla: true, comprobante: true } cuando se están subiendo en este momento.
+function registrarDineroRecibido(r, extra){
+  extra = extra || {};
+  if (esConductorExcluido(r)){ r["Estado Trámite"] = "PAGO CONDUCTOR"; return "pago"; }
+  if ((extra.planilla || tienePlanillaPago(r)) && (extra.comprobante || tieneComprobantePago(r))){
+    r["Estado Trámite"] = "PAGO"; return "pago";
+  }
+  if (!estadoPorPagar(r)) r["Estado Trámite"] = "SIN PAGO";
+  if (!r["Dinero Recibido"]) r["Dinero Recibido"] = new Date().toISOString();
+  return "dinero";
+}
+// Los que tienen el dinero recibido y ya subieron planilla y comprobante pasan solos a PAGO
+function aplicarPagosConSoporte(){
+  if (soloLectura || soportesRetiroNube.mes !== store.currentMonth) return;
+  const listos = records.filter(r => dineroRecibido(r) && !esConductorExcluido(r) && tienePlanillaPago(r) && tieneComprobantePago(r));
+  if (!listos.length) return;
+  const ahora = new Date().toISOString();
+  listos.forEach(r => { r["Estado Trámite"] = "PAGO"; r["_ultimaEdicion"] = ahora; });
+  saveStore();
+  showToast(`✅ ${listos.length === 1 ? listos[0]["Nombre del Afiliado"] + " pasó" : listos.length + " clientes pasaron"} a PAGO: ya tiene${listos.length === 1 ? "" : "n"} planilla y comprobante.`);
+}
 function retiroPendientePlanilla(r){
   return !!r && !isRetiro(r) && !!r["Fecha Retiro"] && !retiroProgramado(r) && !esOtraEmpresa(r) && !esConductorExcluido(r);
 }
@@ -16321,7 +16412,7 @@ function retiroQueDebe(r){ return retiroPendientePlanilla(r) || (isRetiro(r) && 
 function datosHoy(){
   const activos = records.filter(r => !esConductorExcluido(r));
   return {
-    cobrar: activos.filter(r => { const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }),
+    cobrar: activos.filter(porPagarSinDinero),
     atrasados: records.filter(estaAtrasado),
     retiros: activos.filter(retiroQueDebe),
     soportes: activos.filter(r => isRetiro(r) && esOtraEmpresa(r) && retiroSinSoporte(r)),
@@ -16993,7 +17084,7 @@ function mostrarHoySiToca(){
 /* ---------- 2. Estado de cuenta por responsable / empresa ---------- */
 function debeEsteMes(r){
   const ec = estadoClass(r["Estado Trámite"]);
-  return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES" || retiroQueDebe(r);
+  return ((ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && !dineroRecibido(r)) || retiroQueDebe(r);
 }
 function gruposEstadoCuenta(){
   const m = new Map();
@@ -17234,7 +17325,7 @@ function historialAtrasos(){
     x.meses++;
     // Mes en curso: solo cuenta como "no pagó" si ya pasó el día 16 (atrasado).
     const enCurso = mes === mesActualReal();
-    const noPago = (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && (!enCurso || new Date().getDate() > 16);
+    const noPago = (ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES") && !r["Dinero Recibido"] && (!enCurso || new Date().getDate() > 16);
     if (noPago) x.sinPagar++;
     if (numOrZero(r["Recargo Mora"]) > 0) x.mora++;
     if (noPago || numOrZero(r["Recargo Mora"]) > 0) x.atrasos++; // un mes atrasado cuenta una sola vez
@@ -18262,8 +18353,8 @@ function pilaTienePlanilla(r){
 function abonadoConsig(r){
   try{ return (consignaciones || []).filter(c => c.estado === "aplicada" && String(c.cedula) === String(r["Cédula"]) && c.mes === store.currentMonth).reduce((s, c) => s + (Number(c.valor) || 0), 0); }catch(e){ return 0; }
 }
-function pilaListo(r){ return (estadoClass(r["Estado Trámite"]) === "PAGO" && !pilaTienePlanilla(r)) || retiroQueDebe(r); }
-function pilaPendiente(r){ const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
+function pilaListo(r){ return ((estadoClass(r["Estado Trámite"]) === "PAGO" || dineroRecibido(r)) && !pilaTienePlanilla(r)) || retiroQueDebe(r); }
+function pilaPendiente(r){ return porPagarSinDinero(r); }
 function pilaCandidatos(){
   // Los independientes no van en la planilla de PROSEGUROSNET: cada uno paga con su propia planilla
   // (aportante = su cédula, su IBC y su ARL, que puede ser Positiva)
@@ -18542,7 +18633,7 @@ async function abrirGenerarPila(){
       ${["eps","afp","ccf"].map(t => `<div class="pila-cod-grupo"><b>${t.toUpperCase()}</b>${Object.entries(pilaCodigos[t]).map(([k, c]) => `<label>${escHtml(k)} <input type="text" value="${escHtml(c)}" data-pila-cod="${t}|${escHtml(k)}" placeholder="código"></label>`).join("")}</div>`).join("")}
       <button type="button" class="btn small" id="pilaGuardarCod">Guardar códigos</button>
     </details>
-    <p class="ay-txt"><b>Cómo se usa:</b> cuando un cliente le paga, márquelo <b>PAGO</b> (con ✅ en Consignaciones o editándolo). Queda en "listos" hasta que suba la planilla pagada en <b>14 · Subir planilla pagada</b>; ahí sale de esta lista. Puede generar el Excel las veces que quiera con los que van pagando.</p>
+    <p class="ay-txt"><b>Cómo se usa:</b> cuando un cliente le paga, márquelo como pagado (con ✅ en Consignaciones, editándolo o con la selección): queda con <b>💵 Dinero recibido</b> y en "listos". Pasa a <b>PAGO</b> solo cuando se suben la planilla pagada y el comprobante (<b>14 · Subir planilla pagada</b>); con la planilla sale de esta lista. Puede generar el Excel las veces que quiera con los que van pagando.</p>
     <p class="ay-txt">El nombre va como <b>APELLIDO APELLIDO NOMBRE NOMBRE</b> y SUAPORTE lo compara con la cédula. Si quedó al revés toque <b>⇄</b>; para escribirlo parte por parte toque <b>✏️</b>. El cambio queda guardado en el cliente. Los valores se calculan sobre 1 salario mínimo (${fmt(PILA_SALARIO)}) y se redondean a la centena, como en SUAPORTE; SUAPORTE los vuelve a validar al cargar.</p>`;
   abrirGenerarPila._filas = filas;
   ayAbrir("overlayGenPila");
