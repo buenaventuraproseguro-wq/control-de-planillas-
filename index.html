@@ -1522,6 +1522,18 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       --gold:#F2803F; --gold-deep:#C2410C; --gold-bg:#FFF1E7; --sb1:#182A48; --sb2:#13213A; --sb3:#0E1A2E; }
   }
 
+  /* ===== Fondo más oscuro (22-nov-2026): las tarjetas y la lista blancas resaltan más ===== */
+  @media not all and (prefers-color-scheme: dark){
+    :root[data-tema="naranja"]{ --bg:#DCE1E8; --line:#D5DBE3; }
+    :root[data-tema="azul"]{ --bg:#DCE3EC; }
+    :root[data-tema="verde"]{ --bg:#E0DBD1; }
+    :root[data-tema="rojo"]{ --bg:#E2E2E5; }
+    :root[data-tema="dorado"]{ --bg:#E8E2D7; }
+    :root[data-tema="minimal"]{ --bg:#DEDED9; }
+    body{ background:var(--bg); }
+    .cg-tarjeta, .list-panel, .panel, .card{ box-shadow:0 1px 3px rgba(16,24,40,.08); }
+  }
+
   /* ===== Menú lateral: la sección donde está trabajando se ilumina ===== */
   .sidebar{ overflow-x:hidden; }
   a.sidebar-link{ text-decoration:none; }
