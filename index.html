@@ -1871,6 +1871,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   /* Buscador de cédulas más pequeño y separado de los botones (21-nov) */
   .cg-izq .search-panel{ max-width:440px; width:100%; padding:6px 8px !important; margin-bottom:12px; box-sizing:border-box; }
   /* Al abrir la ficha de un cliente desde el buscador, usa todo el ancho de la pantalla */
+  /* Botón de WhatsApp de la ficha: verde lleno, letra blanca y un ícono de mensaje (22-nov-2026) */
+  .breakdown .btn.wa-solido{ background:#25D366 !important; border-color:#25D366 !important; color:#FFFFFF !important; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+  .breakdown .btn.wa-solido:hover{ background:#1EBE5A !important; border-color:#1EBE5A !important; }
+  .breakdown .btn.wa-solido .wa-ico{ width:17px; height:17px; flex-shrink:0; }
   /* Ficha resaltada (22-nov-2026): marco de color y sombra para enfocar la vista en el cliente */
   .breakdown.show{ border:2px solid var(--gold, #F2803F) !important; border-radius:16px; padding:12px 16px 14px !important; margin-top:12px !important;
     background:var(--panel); box-shadow:0 0 0 4px rgba(242,128,63,.14), 0 10px 28px rgba(16,24,40,.14); }
@@ -2235,7 +2239,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
             <button class="acc-mas btn small ghost" id="portalBtn">🔐 Acceso al portal</button>
           </div>
           <div class="acc-grupo"><span class="acc-t">Enviar al cliente</span>
-            <button class="btn small whatsapp" id="whatsappBtn" style="display:none;">WhatsApp</button>
+            <button class="btn small whatsapp wa-solido" id="whatsappBtn" style="display:none;" title="Enviar mensaje por WhatsApp"><svg class="wa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H10l-4.5 3.5V17.5H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="8" cy="11" r="1.3" fill="currentColor"/><circle cx="12" cy="11" r="1.3" fill="currentColor"/><circle cx="16" cy="11" r="1.3" fill="currentColor"/></svg>WhatsApp</button>
             <button type="button" class="btn small whatsapp" id="soporteClienteBtn" style="display:none;">📤 Enviar planilla y comprobante</button>
             <button type="button" class="btn small whatsapp" id="qrEnviarBtn" title="Envía solo la imagen del QR por WhatsApp">📲 Enviar QR al cliente</button>
             <button class="btn small whatsapp" id="compartirReciboBtn">📤 Compartir recibo</button>
