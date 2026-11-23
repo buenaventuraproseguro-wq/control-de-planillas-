@@ -347,3 +347,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-22 · Consignaciones: botón «⚡ Aplicarlas todas» para las seguras (cuenta *8222, mismo nombre de 2+ palabras, valor exacto, un solo cliente posible, sin grupo, no repetida, cliente aún sin pagar). Pide confirmación con la lista y deja «💵 Dinero recibido». `consignacionesSeguras`, `aplicarConsignacionesSeguras`.
 - 2026-11-22 · Ficha: la ARL se muestra limpia («SURA · act. 4923 · Nivel IV») con `arlCorta`; el texto guardado no cambia (sale al pasar el mouse).
 - 2026-11-22 · «📲 Pedir la firma por WhatsApp» solo aparece si el cliente está en afiliación (o reingreso / sin iniciar) o tiene traslado de EPS pendiente, y solo en las EPS cuyo formulario lleva firma (no Comfenalco). En clientes antiguos ya no sale.
+- 2026-11-23 · firmar.html: el pie muestra el WhatsApp de la empresa (311 613 3523), no el celular personal.
