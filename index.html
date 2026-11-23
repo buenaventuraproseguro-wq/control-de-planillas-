@@ -1896,6 +1896,11 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .fm-firma-caja[hidden]{ display:none; }
   .fm-firma-tit{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; font-size:13px; }
   #formFirmaLienzo{ display:block; width:100%; height:auto; aspect-ratio:900/260; background:#fff; border:1.5px dashed #9AA5B4; border-radius:8px; touch-action:none; cursor:crosshair; }
+  .cs-seguras{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin:8px 0; padding:8px 10px; border-radius:10px; background:#E8F5EE; border:1px solid #B7DFC6; font-size:13px; }
+  .cs-seguras[hidden]{ display:none; }
+  .fm-remota{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; font-size:12.5px; }
+  .fm-remota:empty{ display:none; }
+  .fm-remota .fr-txt{ flex:1 1 220px; }
   .fm-firma-ok{ display:flex; gap:8px; align-items:flex-start; font-size:12.5px; margin-top:6px; }
   .fm-marca.fm-firma{ transform:none; border:2px dashed #C2410C; background:rgba(242,128,63,.12); color:#C2410C; font-size:11px !important; display:flex; align-items:center; justify-content:center; }
   .guia-archivo .form-estado{ display:block; font-size:11.5px; font-weight:600; margin-top:2px; }
@@ -2789,6 +2794,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <button type="button" data-cs-tab="aplicada">Aplicadas</button>
       <button type="button" data-cs-tab="descartada">Descartadas</button>
     </div>
+    <div class="cs-seguras" id="csSeguras" hidden></div>
     <div class="cs-pegar">
       <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">📋 Pegar un mensaje del banco</div>
       <textarea id="csPegarTexto" placeholder="Bancolombia: Recibiste una transferencia por $211,280 de ..."></textarea>
@@ -3460,6 +3466,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="fm-firma-caja" id="formFirmaCaja" hidden>
       <div class="fm-firma-tit"><b>✍️ Firma del afiliado con el dedo</b><button type="button" class="btn small ghost" id="formFirmaBorrar">Borrar</button></div>
       <canvas id="formFirmaLienzo" width="900" height="260"></canvas>
+      <div class="fm-remota" id="formFirmaRemota"></div>
       <label class="fm-firma-ok"><input type="checkbox" id="formFirmaConsent"> El afiliado está presente y firma él mismo en esta pantalla (si no firma aquí, el formulario sale sin firma para firmarlo a mano).</label>
     </div>
     <div class="modal-actions"><button type="button" class="btn ghost" id="formLlenarCancelBtn">Cancelar</button><button type="button" class="btn primary" id="formLlenarOkBtn">⬇️ Descargar formulario lleno</button></div>
@@ -9039,7 +9046,9 @@ function showBreakdown(cedula){
   document.getElementById("bArl").textContent = fmt(valAportes("Valor ARL"));
   const ROMANOS_NIVEL = { "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V" };
   const nivelTexto = r["ARL Nivel"] ? ` · Nivel ${ROMANOS_NIVEL[r["ARL Nivel"]] || r["ARL Nivel"]}` : "";
-  document.getElementById("bArlNombre").textContent = (r["ARL (Riesgo/Código)"] || "") + nivelTexto + (r["Lugar Trabajo"] ? ` · 📍 ${r["Lugar Trabajo"]}` : "");
+  { const el = document.getElementById("bArlNombre");
+    el.textContent = [arlCorta(r["ARL (Riesgo/Código)"]), nivelTexto.replace(/^ · /, ""), r["Lugar Trabajo"] ? `📍 ${r["Lugar Trabajo"]}` : ""].filter(Boolean).join(" · ");
+    el.title = r["ARL (Riesgo/Código)"] ? `Como está escrito: ${r["ARL (Riesgo/Código)"]}` : ""; }
   document.getElementById("bAfpNombre").textContent = r["AFP"] || "";
   document.getElementById("bCajaNombre").textContent = r["Caja de Compensación"] || "";
   document.getElementById("bTotal").textContent = fmt(valorPension) +
@@ -9651,10 +9660,10 @@ let formLlenar = null;
 // Lienzo para que el afiliado firme con el dedo (o el mouse)
 const firmaPad = (() => {
   const c = document.getElementById("formFirmaLienzo"), ctx = c.getContext("2d");
-  let dibujando = false, hay = false, ult = null;
+  let dibujando = false, hay = false, ult = null, remota = false;
   const pos = (e) => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
-  const limpiar = () => { ctx.clearRect(0, 0, c.width, c.height); hay = false; };
-  c.addEventListener("pointerdown", (e) => { e.preventDefault(); c.setPointerCapture(e.pointerId); dibujando = true; ult = pos(e); });
+  const limpiar = () => { ctx.clearRect(0, 0, c.width, c.height); hay = false; remota = false; };
+  c.addEventListener("pointerdown", (e) => { e.preventDefault(); if (remota) limpiar(); c.setPointerCapture(e.pointerId); dibujando = true; ult = pos(e); });
   c.addEventListener("pointermove", (e) => { if (!dibujando) return; e.preventDefault(); const p = pos(e);
     ctx.strokeStyle = "#0D1A4F"; ctx.lineWidth = 6.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath(); ctx.moveTo(ult[0], ult[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); ult = p; hay = true; });
@@ -9672,8 +9681,75 @@ const firmaPad = (() => {
     const blob = await new Promise(r => o.toBlob(r, "image/png"));
     return { bytes: await blob.arrayBuffer(), w: o.width, h: o.height };
   }
-  return { limpiar, png, hay: () => hay };
+  // Firma que el cliente hizo en su celular (enlace por WhatsApp): se pone en el recuadro
+  async function ponerImagen(dataUrl){
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    ctx.clearRect(0, 0, c.width, c.height);
+    const esc = Math.min(c.width / img.width, c.height / img.height);
+    ctx.drawImage(img, (c.width - img.width * esc) / 2, (c.height - img.height * esc) / 2, img.width * esc, img.height * esc);
+    hay = true; remota = true;
+  }
+  return { limpiar, png, ponerImagen, hay: () => hay, remota: () => remota };
 })();
+/* -- Firma a distancia: el cliente firma en su celular con un enlace que le llega por WhatsApp -- */
+const URL_FIRMAR = "https://buenaventuraproseguro-wq.github.io/control-de-planillas-/firmar.html";
+function fechaHoraCorta(iso){ try{ return new Date(iso).toLocaleString("es-CO", { timeZone: "America/Bogota", day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" }); }catch(e){ return ""; } }
+async function revisarFirmaRemota(silencioso){
+  const st = formLlenar, cajaR = document.getElementById("formFirmaRemota");
+  if (!st || !cajaR) return;
+  const r = records.find(x => String(x["Cédula"]) === st.cedula); if (!r) return;
+  const botonPedir = `<button type="button" class="btn small" data-fr-pedir>📲 Pedir la firma por WhatsApp</button>`;
+  if (!cloudDb || !sb){ cajaR.innerHTML = ""; return; }
+  let filas = [];
+  try{
+    const { data, error } = await sb.from("firmas_remotas").select("id, token, eps, firma, creado_at, vence_at, firmado_at").eq("cedula", st.cedula).order("creado_at", { ascending: false }).limit(5);
+    if (error) throw error; filas = data || [];
+  }catch(e){ cajaR.innerHTML = `<span class="fr-txt">¿No está el cliente? ${botonPedir}</span>`; return; }
+  if (formLlenar !== st) return;
+  const mismaEps = x => normalizarTexto(x.eps) === normalizarTexto(st.eps);
+  const firmada = filas.find(x => x.firmado_at && x.firma && mismaEps(x)) || filas.find(x => x.firmado_at && x.firma);
+  const pendiente = filas.find(x => !x.firmado_at && new Date(x.vence_at) > new Date() && mismaEps(x));
+  if (firmada && !firmaPad.hay()){
+    await firmaPad.ponerImagen(firmada.firma);
+    cajaR.innerHTML = `<span class="fr-txt">✅ <b>El cliente firmó desde su celular</b> (${escHtml(fechaHoraCorta(firmada.firmado_at))}). Ya está puesta en el recuadro.</span>`;
+  } else if (firmada && firmaPad.remota()){
+    cajaR.innerHTML = `<span class="fr-txt">✅ <b>El cliente firmó desde su celular</b> (${escHtml(fechaHoraCorta(firmada.firmado_at))}).</span>`;
+  } else if (pendiente){
+    cajaR.innerHTML = `<span class="fr-txt">⏳ Se le pidió la firma por WhatsApp el ${escHtml(fechaHoraCorta(pendiente.creado_at))}; todavía no firma.</span>
+      <button type="button" class="btn small ghost" data-fr-revisar>🔄 Revisar</button><button type="button" class="btn small ghost" data-fr-reenviar="${escHtml(pendiente.token)}">Reenviar</button>`;
+    // Mientras la ventana siga abierta, se revisa sola cada 10 segundos
+    clearTimeout(st._frTimer);
+    st._frTimer = setTimeout(() => { if (formLlenar === st && document.getElementById("overlayFormLlenar").classList.contains("show")) revisarFirmaRemota(true); }, 10000);
+  } else {
+    cajaR.innerHTML = `<span class="fr-txt">¿El cliente no está aquí?</span>${botonPedir}`;
+  }
+  if (!silencioso && !firmada && !pendiente) showToast("El cliente todavía no ha firmado.");
+}
+function mensajeFirmaRemota(r, eps, token){
+  const nombre = nombrePropio((pilaNombreDe(r) || [])[2] || String(r["Nombre del Afiliado"] || "").split(" ")[0] || "");
+  return `Hola ${nombre}, le saluda PROSEGUROSNET. Para su afiliación a la EPS ${eps} necesitamos su firma en el formulario. Fírmelo con el dedo en este enlace (es seguro y solo tarda un minuto):\n\n${URL_FIRMAR}?t=${token}\n\nEl enlace vence en 7 días. ¡Gracias!`;
+}
+async function pedirFirmaRemota(tokenExistente){
+  const st = formLlenar; if (!st) return;
+  const r = records.find(x => String(x["Cédula"]) === st.cedula); if (!r) return;
+  const tel = String(r["Teléfono"] || "").replace(/\D/g, "");
+  if (tel.length < 10){ showToast("⚠️ El cliente no tiene un celular de 10 números. Agréguelo en «Editar»."); return; }
+  let token = tokenExistente;
+  if (!token){
+    const primerNombre = (pilaNombreDe(r) || [])[2] || String(r["Nombre del Afiliado"] || "").split(" ").slice(-2)[0] || "";
+    const { data, error } = await sb.from("firmas_remotas").insert({ cedula: st.cedula, nombre: String(primerNombre).toLowerCase(), eps: st.eps }).select("token").single();
+    if (error || !data){ showToast("No se pudo crear el enlace: " + ((error && error.message) || "error")); return; }
+    token = data.token;
+  }
+  abrirWhatsappConMensaje(tel, mensajeFirmaRemota(r, st.eps, token));
+  showToast("📲 Mensaje listo en WhatsApp. Cuando el cliente firme, la firma aparece aquí sola.");
+  revisarFirmaRemota(true);
+}
+document.getElementById("formFirmaRemota").addEventListener("click", (e) => {
+  if (e.target.closest("[data-fr-pedir]")) pedirFirmaRemota();
+  const re = e.target.closest("[data-fr-reenviar]"); if (re) pedirFirmaRemota(re.dataset.frReenviar);
+  if (e.target.closest("[data-fr-revisar]")) revisarFirmaRemota(false);
+});
 async function abrirFormularioCliente(cedula){
   const r = records.find(x => String(x["Cédula"]) === String(cedula));
   if (!r) return;
@@ -9692,6 +9768,8 @@ async function abrirFormularioCliente(cedula){
   const radicado = fechaHoyISO();
   const v = datosFormulario(r, radicado);
   formLlenar = { cedula: String(r["Cédula"]), archivo: f.archivo, eps: f.guia.eps, campos: visibles };
+  document.getElementById("formFirmaRemota").innerHTML = "";
+  if (llevaFirma) revisarFirmaRemota(true);
   document.getElementById("formLlenarFirma").textContent = f.archivo.firmaAMano
     ? `✍️ ${f.guia.eps} exige la firma del afiliado a mano.` : `✍️ La firma la pone el afiliado (a mano o firmando él mismo en su celular).`;
   document.getElementById("formLlenarTitulo").textContent = `📝 Formulario ${f.guia.eps} · ${nombrePropio(r["Nombre del Afiliado"] || "")}`;
@@ -9740,7 +9818,8 @@ async function descargarFormularioLleno(){
     else v[k] = /correo/.test(k) ? val.toLowerCase() : val.toUpperCase();
   });
   if (firmaPad.hay() && !document.getElementById("formFirmaCaja").hidden){
-    if (!document.getElementById("formFirmaConsent").checked){ showToast("⚠️ Marque que el afiliado está presente y firma él mismo (o borre la firma)."); return; }
+    // La firma hecha en el celular del cliente ya trae su autorización; la de esta pantalla pide la casilla
+    if (!firmaPad.remota() && !document.getElementById("formFirmaConsent").checked){ showToast("⚠️ Marque que el afiliado está presente y firma él mismo (o borre la firma)."); return; }
     v.__firma = await firmaPad.png();
   }
   // La firma de Nestor (aportante) solo va en los clientes de PROSEGUROSNET
@@ -16357,6 +16436,15 @@ function leerMensajeBanco(texto){
   const l = t.match(/corresponsal\s+(.+?)\s+en\s+([A-ZÁÉÍÓÚÑ][^,]+),/i); if (l) r.lugar = `${l[1]} (${l[2]})`;
   return r;
 }
+// ARL para mostrar: el nombre (siempre SURA, salvo Positiva) y el código de actividad, sin «cd», ceros ni notas.
+// Solo cambia cómo se ve; lo guardado no se toca (el texto original sale al pasar el dedo o el mouse).
+function arlCorta(txt){
+  const t = String(txt || "").toLowerCase();
+  if (!t.trim()) return "";
+  const grupos = t.match(/\d{4,}/g) || [];
+  const act = grupos.length ? grupos[grupos.length - 1].replace(/^0+/, "") : "";
+  return (/positiva/.test(t) ? "POSITIVA" : "SURA") + (act.length >= 4 ? ` · act. ${act}` : "");
+}
 // ¿Llegó a la cuenta de los seguros (Bancolombia *8222)? Lo demás (Nequi, Davivienda, otra cuenta)
 // solo se guarda en la base si tiene relación exacta con un cliente de planillas.
 function esCuentaSeguros(info){ return info.cuenta === CUENTA_SEGUROS; }
@@ -16490,6 +16578,61 @@ function renderConsignaciones(){
     </div>`;
   }).join("") + `<datalist id="csClientesLista">${records.map(r => `<option value="${escHtml(r["Cédula"])} · ${escHtml(r["Nombre del Afiliado"])}">`).join("")}</datalist>`;
   if (csTab === "pendiente") revisarMontosConsig();
+  pintarConsigSeguras();
+}
+/* ---------- Consignaciones seguras: se aplican de una vez ----------
+   Solo las que no tienen duda: llegaron a la cuenta *8222, el nombre del que consigna coincide con UN cliente
+   (2 palabras o más), el valor es exactamente lo que debe y no se parece a otra ya aplicada. Usted confirma antes. */
+function consignacionesSeguras(){
+  if (!Array.isArray(consignaciones)) return [];
+  const aplicadas = consignaciones.filter(x => x.estado === "aplicada").map(x => ({ x, i: leerMensajeBanco(x.texto) }));
+  const usadas = new Set();
+  return consignaciones.filter(c => c.estado === "pendiente").map(c => {
+    const info = leerMensajeBanco(c.texto);
+    if (!esCuentaSeguros(info) || !info.valor || !info.nombre) return null;
+    const repetida = aplicadas.some(a => a.i.valor === info.valor && ((info.fecha && a.i.fecha === info.fecha && a.i.hora === info.hora) || normalizarTexto(a.i.nombre) === normalizarTexto(info.nombre)));
+    if (repetida) return null;
+    const sug = sugerirClientes(info);
+    const top = sug[0];
+    if (!top || !top.motivos.includes("mismo nombre") || !top.motivos.includes("mismo valor")) return null;
+    if (sug[1] && sug[1].puntos >= 60) return null;            // dos clientes parecidos: mejor revisarla a mano
+    if (sugerirGrupos(info).length) return null;              // podría ser el pago de un grupo
+    if (estadoMonto(info.valor, totalEsperado(top.r)).tipo !== "completo") return null;
+    if (dineroRecibido(top.r) || estadoClass(top.r["Estado Trámite"]) === "PAGO") return null; // ya está pagado
+    const ced = String(top.r["Cédula"]);
+    if (usadas.has(ced)) return null; usadas.add(ced);
+    return { c, info, r: top.r };
+  }).filter(Boolean);
+}
+function pintarConsigSeguras(){
+  const caja = document.getElementById("csSeguras"); if (!caja) return;
+  const lista = csTab === "pendiente" && cloudDb ? consignacionesSeguras() : [];
+  caja.hidden = !lista.length;
+  caja.innerHTML = lista.length ? `<div><b>⚡ ${lista.length} consignaci${lista.length === 1 ? "ón segura" : "ones seguras"}</b>: mismo nombre, valor exacto y cuenta *${CUENTA_SEGUROS}.</div>
+    <button type="button" class="btn primary small" id="csSegurasBtn">Aplicarlas todas</button>` : "";
+}
+async function aplicarConsignacionesSeguras(){
+  const lista = consignacionesSeguras();
+  if (!lista.length){ showToast("No hay consignaciones seguras por aplicar."); return; }
+  const detalle = lista.map(x => `• ${fmt(x.info.valor)} de ${x.info.nombre} → ${nombrePropio(x.r["Nombre del Afiliado"] || "")}`).join("\n");
+  if (!(await confirmarApp(`¿Aplicar estas ${lista.length} consignaciones?\n\n${detalle}\n\nCada cliente queda con «💵 Dinero recibido» (pasa a PAGO cuando se suban planilla y comprobante).`))) return;
+  await asegurarDocsPago();
+  let ok = 0;
+  for (const { c, info, r } of lista){
+    const cambio = { estado: "aplicada", cedula: String(r["Cédula"]), mes: store.currentMonth, valor: info.valor, nombre: info.nombre || null,
+      banco: info.banco || null, aplicado_por: currentUserId, aplicado_at: new Date().toISOString() };
+    const { error } = await sb.from("consignaciones").update(cambio).eq("id", c.id).eq("estado", "pendiente");
+    if (error){ console.error(error); continue; }
+    Object.assign(c, cambio);
+    const nota = `consignó ${fmt(info.valor)}${info.fecha ? " el " + info.fecha.slice(0, 5) : ""}${info.banco ? " (" + info.banco.toLowerCase() + ")" : ""}`;
+    r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${nota}` : nota;
+    registrarDineroRecibido(r);
+    r["_ultimaEdicion"] = new Date().toISOString();
+    ok++;
+  }
+  saveStore();
+  actualizarBadgeConsig(); renderConsignaciones(); renderList(searchInput.value);
+  showToast(ok === lista.length ? `✅ ${ok} consignaciones aplicadas.` : `⚠️ Se aplicaron ${ok} de ${lista.length}. Revise las demás a mano.`);
 }
 
 /* ---------- ¿El pago es completo? ----------
@@ -16619,6 +16762,7 @@ document.getElementById("overlayConsig").addEventListener("click", (e) => {
   if (e.target.id === "overlayConsig"){ limpiarClaveConsig(); e.target.classList.remove("show"); return; }
   const tab = e.target.closest("[data-cs-tab]");
   if (tab){ csTab = tab.dataset.csTab; renderConsignaciones(); return; }
+  if (e.target.closest("#csSegurasBtn")){ aplicarConsignacionesSeguras(); return; }
   const a = e.target.closest("[data-cs-aplicar]"); if (a){ aplicarConsignacion(a.dataset.csAplicar); return; }
   const d = e.target.closest("[data-cs-descartar]"); if (d){
     confirmarApp("¿Seguro que quiere descartar esta consignación? Pasa a la pestaña \"Descartadas\" (de ahí se puede volver a revisar).").then(ok => { if (ok) cambiarEstadoConsignacion(d.dataset.csDescartar, "descartada"); });

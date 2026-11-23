@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex">
+<title>Firma · PROSEGUROSNET</title>
+<style>
+  :root{ --navy:#0D1A4F; --rojo:#C8102E; --verde:#1E7A46; --gris:#5B6475; --linea:#D5DBE5; --fondo:#EEF1F6; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--fondo); color:#1B2333; }
+  header{ background:#fff; border-bottom:3px solid var(--rojo); padding:12px 16px; display:flex; align-items:center; gap:10px; }
+  header b{ color:var(--navy); font-size:17px; letter-spacing:.3px; }
+  main{ max-width:560px; margin:0 auto; padding:16px; }
+  .caja{ background:#fff; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  h1{ font-size:20px; margin:0 0 6px; color:var(--navy); }
+  p{ line-height:1.45; margin:8px 0; }
+  .sub{ color:var(--gris); font-size:14px; }
+  canvas{ display:block; width:100%; height:auto; aspect-ratio:900/320; background:#fff; border:2px dashed #9AA5B4; border-radius:10px; touch-action:none; margin-top:10px; }
+  .fila{ display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:13px; color:var(--gris); }
+  button{ font:inherit; border:0; border-radius:10px; padding:12px 16px; cursor:pointer; }
+  .borrar{ background:#fff; border:1px solid var(--linea); color:var(--navy); padding:6px 12px; font-size:13px; }
+  .enviar{ width:100%; margin-top:14px; background:var(--verde); color:#fff; font-weight:700; font-size:17px; }
+  .enviar:disabled{ opacity:.5; }
+  label.ok{ display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:14px; line-height:1.4; }
+  label.ok input{ width:22px; height:22px; flex:0 0 auto; margin-top:1px; }
+  .aviso{ margin-top:10px; color:var(--rojo); font-weight:600; font-size:14px; }
+  .listo{ text-align:center; font-size:17px; }
+  .listo .ico{ font-size:52px; }
+  footer{ text-align:center; color:var(--gris); font-size:12px; margin:18px 0; }
+</style>
+</head>
+<body>
+<header><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path fill="#C8102E" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5z"/><path fill="#fff" d="m10.5 15.6-3.6-3.6 1.4-1.4 2.2 2.2 5.2-5.2 1.4 1.4z"/></svg><b>PROSEGUROSNET</b></header>
+<main>
+  <div class="caja" id="contenido"><p class="sub">Cargando…</p></div>
+  <footer>PROSEGUROSNET · Buenaventura · Tel. 320 735 4856<br>Sus datos se tratan según nuestra política: prosnet.co/privacidad</footer>
+</main>
+<script>
+const SUPABASE_URL = "https://jjygarfwdmhzspqonvql.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s";
+const token = new URLSearchParams(location.search).get("t") || "";
+const caja = document.getElementById("contenido");
+const esc = s => String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+async function rpc(fn, body){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error("sin conexión");
+  return r.json();
+}
+function mensaje(ico, titulo, texto){ caja.innerHTML = `<div class="listo"><div class="ico">${ico}</div><h1>${titulo}</h1><p class="sub">${texto}</p></div>`; }
+const MOTIVOS = {
+  no_existe: ["⚠️", "Enlace no válido", "Este enlace no existe. Pida uno nuevo a PROSEGUROSNET."],
+  ya_firmado: ["✅", "Ya firmó", "Su firma ya nos llegó. No tiene que hacer nada más. ¡Gracias!"],
+  vencido: ["⏰", "Enlace vencido", "Este enlace ya venció (dura 7 días). Pida uno nuevo a PROSEGUROSNET."],
+};
+async function iniciar(){
+  let info;
+  try{ info = await rpc("firma_remota_info", { p_token: token }); }catch(e){ mensaje("📶", "Sin conexión", "No se pudo cargar. Revise su internet y vuelva a abrir el enlace."); return; }
+  if (!info.ok) return mensaje(...MOTIVOS.no_existe);
+  if (info.firmado) return mensaje(...MOTIVOS.ya_firmado);
+  if (info.vencido) return mensaje(...MOTIVOS.vencido);
+  caja.innerHTML = `<h1>Hola${info.nombre ? " " + esc(info.nombre) : ""} 👋</h1>
+    <p>Para su afiliación a la EPS <b>${esc(info.eps || "")}</b> necesitamos su firma en el formulario.</p>
+    <p class="sub">Firme con el dedo dentro del recuadro, igual a como firma en su cédula. Si queda mal, toque «Borrar».</p>
+    <canvas id="lienzo" width="900" height="320"></canvas>
+    <div class="fila"><span>✍️ Firme aquí</span><button type="button" class="borrar" id="borrar">Borrar</button></div>
+    <label class="ok"><input type="checkbox" id="acepto"> Soy el titular, esta es mi firma y autorizo a PROSEGUROSNET a ponerla en mi formulario de afiliación a la EPS ${esc(info.eps || "")}.</label>
+    <div class="aviso" id="aviso" hidden></div>
+    <button type="button" class="enviar" id="enviar">Enviar mi firma</button>`;
+  const c = document.getElementById("lienzo"), ctx = c.getContext("2d");
+  let dibujando = false, hay = false, ult = null;
+  const pos = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  c.addEventListener("pointerdown", e => { e.preventDefault(); c.setPointerCapture(e.pointerId); dibujando = true; ult = pos(e); });
+  c.addEventListener("pointermove", e => { if (!dibujando) return; e.preventDefault(); const p = pos(e);
+    ctx.strokeStyle = "#0D1A4F"; ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(ult[0], ult[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); ult = p; hay = true; });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => c.addEventListener(t, () => { dibujando = false; }));
+  document.getElementById("borrar").onclick = () => { ctx.clearRect(0, 0, c.width, c.height); hay = false; };
+  const aviso = document.getElementById("aviso"), btn = document.getElementById("enviar");
+  btn.onclick = async () => {
+    if (!hay){ aviso.textContent = "Primero firme en el recuadro."; aviso.hidden = false; return; }
+    if (!document.getElementById("acepto").checked){ aviso.textContent = "Marque la casilla de autorización."; aviso.hidden = false; return; }
+    aviso.hidden = true; btn.disabled = true; btn.textContent = "Enviando…";
+    try{
+      const res = await rpc("firma_remota_guardar", { p_token: token, p_firma: c.toDataURL("image/png"), p_aparato: navigator.userAgent });
+      if (res.ok) return mensaje("✅", "¡Listo, gracias!", "Su firma llegó a PROSEGUROSNET. Ya puede cerrar esta página.");
+      if (MOTIVOS[res.motivo]) return mensaje(...MOTIVOS[res.motivo]);
+      throw new Error(res.motivo || "error");
+    }catch(e){ aviso.textContent = "No se pudo enviar. Revise su internet e intente de nuevo."; aviso.hidden = false; btn.disabled = false; btn.textContent = "Enviar mi firma"; }
+  };
+}
+iniciar();
+</script>
+</body>
+</html>
