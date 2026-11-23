@@ -9486,7 +9486,7 @@ const CAMPOS_FORM_EPS = [
   ["emp_direccion", "Dirección"], ["emp_municipio", "Municipio"], ["emp_departamento", "Departamento"],
   ["emp_telefono", "Teléfono"], ["emp_correo", "Correo"], ["emp_representante", "Representante legal"], ["emp_actividad", "Actividad económica"],
   ["g", "Otros"],
-  ["x", "Marca X (siempre)"], ["texto", "Texto fijo (lo escribe usted)"], ["firma", "Firma del afiliado (recuadro)"],
+  ["x", "Marca X (siempre)"], ["texto", "Texto fijo (lo escribe usted)"], ["firma", "Firma del afiliado (recuadro)"], ["firma_aportante", "Firma de Nestor como aportante (recuadro)"],
 ];
 const NOMBRE_CAMPO_FORM = Object.fromEntries(CAMPOS_FORM_EPS.filter(([k]) => k !== "g"));
 // Datos que la app no tenía: se piden al llenar y quedan guardados en el cliente ("Datos Extra")
@@ -9604,6 +9604,10 @@ async function pdfFormularioLleno(archivo, valores){
   const fuente = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
   const campos = (archivo.plantilla && archivo.plantilla.campos) || [];
   const firmaImg = valores.__firma ? await doc.embedPng(valores.__firma.bytes) : null;
+  let firmaApo = null;
+  if (valores.__aportante && campos.some(c => c.campo === "firma_aportante")){
+    try{ firmaApo = await doc.embedPng(await bytesPagina({ enc: "formularios/firma-aportante.bin" })); }catch(e){ console.error("No se pudo poner la firma del aportante:", e); }
+  }
   for (let n = 0; n < archivo.partes.length; n++){
     const bytes = await bytesPagina(archivo.partes[n]);
     const img = await doc.embedJpg(bytes);
@@ -9611,11 +9615,12 @@ async function pdfFormularioLleno(archivo, valores){
     const page = doc.addPage([W, H]);
     page.drawImage(img, { x: 0, y: 0, width: W, height: H });
     campos.filter(c => c.pag === n).forEach(c => {
-      if (c.campo === "firma"){
-        if (!firmaImg || archivo.firmaAMano) return;
-        const bw = (c.w || 0.25) * W, bh = (c.h || 0.03) * H, k = Math.min(bw / firmaImg.width, bh / firmaImg.height);
-        const w = firmaImg.width * k, h = firmaImg.height * k;
-        page.drawImage(firmaImg, { x: c.x * W + (bw - w) / 2, y: H * (1 - c.y) - bh + (bh - h) / 2, width: w, height: h });
+      if (c.campo === "firma" || c.campo === "firma_aportante"){
+        const img = c.campo === "firma" ? (archivo.firmaAMano ? null : firmaImg) : firmaApo;
+        if (!img) return;
+        const bw = (c.w || 0.25) * W, bh = (c.h || 0.03) * H, k = Math.min(bw / img.width, bh / img.height);
+        const w = img.width * k, h = img.height * k;
+        page.drawImage(img, { x: c.x * W + (bw - w) / 2, y: H * (1 - c.y) - bh + (bh - h) / 2, width: w, height: h });
         return;
       }
       let t = c.campo === "texto" ? String(c.texto || "") : String(valores[c.campo] || "");
@@ -9644,7 +9649,7 @@ const firmaPad = (() => {
   const limpiar = () => { ctx.clearRect(0, 0, c.width, c.height); hay = false; };
   c.addEventListener("pointerdown", (e) => { e.preventDefault(); c.setPointerCapture(e.pointerId); dibujando = true; ult = pos(e); });
   c.addEventListener("pointermove", (e) => { if (!dibujando) return; e.preventDefault(); const p = pos(e);
-    ctx.strokeStyle = "#0D1A4F"; ctx.lineWidth = 4.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#0D1A4F"; ctx.lineWidth = 6.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath(); ctx.moveTo(ult[0], ult[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); ult = p; hay = true; });
   ["pointerup", "pointercancel", "pointerleave"].forEach(t => c.addEventListener(t, () => { dibujando = false; }));
   document.getElementById("formFirmaBorrar").addEventListener("click", limpiar);
@@ -9671,7 +9676,7 @@ async function abrirFormularioCliente(cedula){
   if (!f){ showToast(`La EPS «${r["EPS"] || "sin EPS"}» no tiene formulario en la guía.`); return; }
   if (!f.listo){ await alertApp(`📝 ${f.guia.eps} pide formulario, pero todavía no tiene marcados los campos.\n\nEl administrador lo hace una sola vez en «Guía de afiliaciones por EPS» → ${f.guia.eps} → «✏️ Marcar campos».`); return; }
   await cargarFormEmpresas();
-  const usados = [...new Set(f.archivo.plantilla.campos.map(c => c.campo))].filter(k => k !== "x" && k !== "texto" && k !== "firma");
+  const usados = [...new Set(f.archivo.plantilla.campos.map(c => c.campo))].filter(k => k !== "x" && k !== "texto" && k !== "firma" && k !== "firma_aportante");
   const llevaFirma = !f.archivo.firmaAMano && f.archivo.plantilla.campos.some(c => c.campo === "firma");
   firmaPad.limpiar(); document.getElementById("formFirmaConsent").checked = false;
   document.getElementById("formFirmaCaja").hidden = !llevaFirma;
@@ -9731,6 +9736,8 @@ async function descargarFormularioLleno(){
     if (!document.getElementById("formFirmaConsent").checked){ showToast("⚠️ Marque que el afiliado está presente y firma él mismo (o borre la firma)."); return; }
     v.__firma = await firmaPad.png();
   }
+  // La firma de Nestor (aportante) solo va en los clientes de PROSEGUROSNET
+  v.__aportante = claveEmpresaForm(r) === "prosegurosnet";
   const btn = document.getElementById("formLlenarOkBtn"); btn.disabled = true; btn.textContent = "Armando el PDF…";
   try{
     const blob = await pdfFormularioLleno(st.archivo, v);
@@ -9791,7 +9798,7 @@ function pintarMarcar(){
   document.getElementById("formMarcarNext").disabled = st.pag >= a.partes.length - 1;
   const hoja = document.getElementById("formMarcarHoja");
   hoja.innerHTML = `<div class="fm-pagina"><img src="${escHtml(st.urls[st.pag] || "")}" alt="" draggable="false">` + st.campos.map((c, n) => c.pag !== st.pag ? "" :
-    c.campo === "firma" ? `<span class="fm-marca fm-firma${n === st.sel ? " sel" : ""}" data-fm-n="${n}" style="left:${(c.x * 100).toFixed(2)}%;top:${(c.y * 100).toFixed(2)}%;width:${((c.w || 0.25) * 100).toFixed(2)}%;height:${((c.h || 0.03) * 100).toFixed(2)}%">Firma</span>` :
+    (c.campo === "firma" || c.campo === "firma_aportante") ? `<span class="fm-marca fm-firma${n === st.sel ? " sel" : ""}" data-fm-n="${n}" style="left:${(c.x * 100).toFixed(2)}%;top:${(c.y * 100).toFixed(2)}%;width:${((c.w || 0.25) * 100).toFixed(2)}%;height:${((c.h || 0.03) * 100).toFixed(2)}%">${c.campo === "firma" ? "Firma afiliado" : "Firma Nestor"}</span>` :
     `<span class="fm-marca${n === st.sel ? " sel" : ""}" data-fm-n="${n}" style="left:${(c.x * 100).toFixed(2)}%;top:${(c.y * 100).toFixed(2)}%;font-size:calc(var(--h, 1000px) * ${(c.t || 0.0125).toFixed(4)})">${escHtml(c.campo === "texto" ? (c.texto || "texto") : c.campo === "x" ? "X" : (NOMBRE_CAMPO_FORM[c.campo] || c.campo))}</span>`).join("") + `</div>`;
   const im = hoja.querySelector("img");
   const alto = () => hoja.style.setProperty("--h", (im.clientHeight || 1000) + "px");
@@ -9814,7 +9821,7 @@ document.getElementById("formMarcarHoja").addEventListener("click", (e) => {
   const campo = document.getElementById("formMarcarCampo").value;
   const c = { campo, pag: st.pag, x, y, t: Number(document.getElementById("formMarcarTam").value) || 0.0125 };
   if (campo === "texto"){ const t = prompt("Texto fijo que va en este lugar:"); if (!t) return; c.texto = t.toUpperCase(); }
-  if (campo === "firma"){ c.w = 0.28; c.h = 0.03; c.y = Math.max(0, y - 0.015); }
+  if (campo === "firma" || campo === "firma_aportante"){ c.w = 0.3; c.h = 0.035; c.y = Math.max(0, y - 0.0175); }
   st.campos.push(c); st.sel = st.campos.length - 1; pintarMarcar();
 });
 // Arrastrar una marca para moverla
@@ -9839,8 +9846,8 @@ document.getElementById("overlayFormMarcar").addEventListener("keydown", (e) => 
 });
 document.getElementById("formMarcarPrev").addEventListener("click", () => { formMarcar.pag--; formMarcar.sel = -1; pintarMarcar(); });
 document.getElementById("formMarcarNext").addEventListener("click", () => { formMarcar.pag++; formMarcar.sel = -1; pintarMarcar(); });
-document.getElementById("formMarcarMenos").addEventListener("click", () => { const s = formMarcar.campos[formMarcar.sel]; if (!s) return; if (s.campo === "firma"){ s.w *= 0.9; s.h *= 0.9; } else s.t = Math.max(0.006, (s.t || 0.0125) - 0.0015); pintarMarcar(); });
-document.getElementById("formMarcarMas").addEventListener("click", () => { const s = formMarcar.campos[formMarcar.sel]; if (!s) return; if (s.campo === "firma"){ s.w *= 1.1; s.h *= 1.1; } else s.t = Math.min(0.04, (s.t || 0.0125) + 0.0015); pintarMarcar(); });
+document.getElementById("formMarcarMenos").addEventListener("click", () => { const s = formMarcar.campos[formMarcar.sel]; if (!s) return; if (s.campo === "firma" || s.campo === "firma_aportante"){ s.w *= 0.9; s.h *= 0.9; } else s.t = Math.max(0.006, (s.t || 0.0125) - 0.0015); pintarMarcar(); });
+document.getElementById("formMarcarMas").addEventListener("click", () => { const s = formMarcar.campos[formMarcar.sel]; if (!s) return; if (s.campo === "firma" || s.campo === "firma_aportante"){ s.w *= 1.1; s.h *= 1.1; } else s.t = Math.min(0.04, (s.t || 0.0125) + 0.0015); pintarMarcar(); });
 document.getElementById("formMarcarBorrar").addEventListener("click", () => { formMarcar.campos.splice(formMarcar.sel, 1); formMarcar.sel = -1; pintarMarcar(); });
 document.getElementById("formMarcarCerrar").addEventListener("click", () => { document.getElementById("overlayFormMarcar").classList.remove("show"); formMarcar = null; });
 document.getElementById("formMarcarPrueba").addEventListener("click", async () => {
