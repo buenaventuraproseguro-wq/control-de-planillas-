@@ -9770,6 +9770,8 @@ function pintarBotonFormEps(r){
   const b = document.getElementById("formEpsBtn"); if (!b) return;
   const f = r && !esConductorExcluido(r) ? archivoFormularioDeEps(r["EPS"]) : null;
   b.style.display = f ? "" : "none";
+  // A la vista solo mientras está en afiliación; después queda guardado en «Más acciones»
+  b.classList.toggle("acc-mas", !(r && ["AFILIACION", "REINGRESO", "SIN_INICIAR"].includes(estadoClass(r["Estado Trámite"]))));
   b.textContent = f ? (f.listo ? `📝 Formulario ${f.guia.eps}` : `📝 Formulario ${f.guia.eps} (sin marcar)`) : "";
 }
 // Al guardar un cliente nuevo o cambiarle la EPS: si la EPS pide formulario, se ofrece de una vez
