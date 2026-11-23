@@ -9689,6 +9689,7 @@ async function abrirFormularioCliente(cedula){
     const falta = !val;
     const control = k === "sexo" ? `<select id="fl_${k}"><option value=""></option><option value="M" ${val === "M" ? "selected" : ""}>M (hombre)</option><option value="F" ${val === "F" ? "selected" : ""}>F (mujer)</option></select>`
       : k === "estado_civil" ? `<select id="fl_${k}">${["", "SOLTERO(A)", "CASADO(A)", "UNIÓN LIBRE", "SEPARADO(A)", "VIUDO(A)"].map(o => `<option ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`
+      : k === "fecha_nac" ? `<input id="fl_${k}" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" data-fecha-texto="1" autocomplete="off" value="${escHtml(val ? val.split("-").reverse().join("/") : "")}">`
       : `<input id="fl_${k}" type="${esFecha ? "date" : "text"}" ${k === "salario" ? 'inputmode="numeric"' : ""} value="${escHtml(val || "")}">`;
     return `<div class="field${falta ? " falta" : ""}"><label for="fl_${k}">${escHtml(NOMBRE_CAMPO_FORM[k] || k)}${CAMPOS_EXTRA_CLIENTE.includes(k) ? " · se guarda en el cliente" : CAMPOS_EXTRA_EMPRESA.includes(k) ? " · se guarda en la empresa" : ""}</label>${control}</div>`;
   }).join("");
@@ -9697,7 +9698,15 @@ async function abrirFormularioCliente(cedula){
 async function descargarFormularioLleno(){
   const st = formLlenar; if (!st) return;
   const r = records.find(x => String(x["Cédula"]) === st.cedula); if (!r) return;
-  const lee = (k) => { const el = document.getElementById("fl_" + k); return el ? el.value.trim() : ""; };
+  // La fecha de nacimiento se escribe rápido como DD/MM/AAAA; aquí se pasa a AAAA-MM-DD como las demás
+  const lee = (k) => { const el = document.getElementById("fl_" + k); if (!el) return ""; const t = el.value.trim();
+    if (el.dataset.fechaTexto){ const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : ""; }
+    return t; };
+  { const fn = document.getElementById("fl_fecha_nac");
+    if (fn && fn.value.trim()){
+      const m = fn.value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/), hoy = new Date().getFullYear();
+      if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || +m[3] < 1900 || +m[3] > hoy){ showToast("⚠️ Revise la fecha de nacimiento: escríbala como DD/MM/AAAA (ej.: 14/05/1990)."); fn.focus(); return; }
+    } }
   // Guarda en el cliente los datos nuevos (solo agrega o cambia esos campos)
   const ex = { ...(r["Datos Extra"] || {}) }; let cambioCliente = false;
   CAMPOS_EXTRA_CLIENTE.forEach(k => { if (!st.campos.includes(k)) return; let val = lee(k); if (k === "salario") val = val.replace(/\D/g, "");
@@ -9733,6 +9742,13 @@ async function descargarFormularioLleno(){
   }finally{ btn.disabled = false; btn.textContent = "⬇️ Descargar formulario lleno"; }
 }
 document.getElementById("formLlenarOkBtn").addEventListener("click", descargarFormularioLleno);
+// Fecha de nacimiento: solo números; las barras se ponen solas (14051990 → 14/05/1990)
+document.getElementById("formLlenarCampos").addEventListener("input", (e) => {
+  const el = e.target; if (!el.dataset || !el.dataset.fechaTexto) return;
+  if (e.inputType && e.inputType.startsWith("delete")) return;
+  const d = el.value.replace(/\D/g, "").slice(0, 8);
+  el.value = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
+});
 document.getElementById("formLlenarCancelBtn").addEventListener("click", () => document.getElementById("overlayFormLlenar").classList.remove("show"));
 document.getElementById("formEpsBtn").addEventListener("click", () => { if (activeCedula) abrirFormularioCliente(activeCedula); });
 // Botón en la ficha: solo si la EPS del cliente pide formulario en la guía
