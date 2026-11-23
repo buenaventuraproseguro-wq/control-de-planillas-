@@ -960,6 +960,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .field.span2{ grid-column:span 2; }
   @media (max-width:560px){ .field.span2{ grid-column:span 1; } }
   .field label{ font-size:11.5px; font-weight:600; color:var(--muted); }
+  .nac-fila{ display:flex; gap:6px; }
+  .nac-fila input{ flex:1 1 auto; min-width:0; }
+  .nac-fila select{ flex:0 0 118px; }
   .field-num{
     display:inline-flex; align-items:center; justify-content:center;
     width:14px; height:14px; border-radius:50%; background:var(--navy); color:#fff;
@@ -2363,6 +2366,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <div id="reingresoAviso" class="reingreso-aviso" hidden></div>
       </div>
       <div class="field"><label><span class="field-num">2</span>Nombre del afiliado *</label><input id="fNombre" type="text"></div>
+      <div class="field"><label for="fFechaNac">Fecha de nacimiento · Sexo <small>(se leen de la cédula)</small></label>
+        <div class="nac-fila"><input id="fFechaNac" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" data-fecha-texto="1" autocomplete="off"><select id="fSexo" aria-label="Sexo"><option value="">Sexo</option><option value="M">M (hombre)</option><option value="F">F (mujer)</option></select></div>
+      </div>
 
       <div class="field campo-nomina"><label><span class="field-num">3</span>Responsable / Grupo</label>
         <input id="fResp" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="respSugLista" placeholder="Toque para ver los responsables">
@@ -9751,8 +9757,8 @@ async function descargarFormularioLleno(){
 }
 document.getElementById("formLlenarOkBtn").addEventListener("click", descargarFormularioLleno);
 // Fecha de nacimiento: solo números; las barras se ponen solas (14051990 → 14/05/1990)
-document.getElementById("formLlenarCampos").addEventListener("input", (e) => {
-  const el = e.target; if (!el.dataset || !el.dataset.fechaTexto) return;
+document.addEventListener("input", (e) => {
+  const el = e.target; if (!el || !el.dataset || !el.dataset.fechaTexto) return;
   if (e.inputType && e.inputType.startsWith("delete")) return;
   const d = el.value.replace(/\D/g, "").slice(0, 8);
   el.value = d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
@@ -11733,6 +11739,9 @@ function openModal(record){
   renderListaEps();
 
   getField("Nombre").value = record ? record["Nombre del Afiliado"] || "" : "";
+  { const ex = (record && record["Datos Extra"]) || {};
+    getField("FechaNac").value = fechaNacValida(ex.fecha_nac) || "";
+    getField("Sexo").value = /^[MF]$/.test(String(ex.sexo || "").toUpperCase()) ? String(ex.sexo).toUpperCase() : ""; }
   getField("Cedula").value = record ? record["Cédula"] || "" : "";
   getField("Resp").value = record ? record["Responsable / Grupo"] || "" : "";
   getField("Estado").value = record ? (record["Estado Trámite"] || "PAGO") : "AFILIACION";
@@ -13315,6 +13324,10 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     }
   }
 
+  // Fecha de nacimiento (opcional): si se escribió, debe ser una fecha real
+  if (getField("FechaNac").value.trim() && !fechaNacValida(getField("FechaNac").value)){
+    showToast("⚠️ Revise la fecha de nacimiento: escríbala como DD/MM/AAAA (ej.: 14/05/1990)."); getField("FechaNac").focus(); return;
+  }
   const record = {
     "_ultimaEdicion": new Date().toISOString(),
     "Responsable / Grupo": (() => { const v = limpiarEspacios(getField("Resp").value); const sug = sugerirResponsable(v); return ((sug && sug.exacto) ? sug.valor : v).toLowerCase(); })(),
@@ -13369,6 +13382,16 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     "Vence Por Muelle": venceMuellesDe("#venceMuellesGrid"),
     ...(esServicioMuelles({ "Empresa": getField("Empresa").value }) ? { "Servicios Muelle": leerServicios("#fServicios").sv } : {}),
   };
+  // Fecha de nacimiento y sexo van en "Datos Extra" (los usan los formularios de EPS). Solo se agrega o cambia; vacío no borra.
+  {
+    const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
+    const exAntes = (original && original["Datos Extra"]) || {};
+    const fn = fechaNacValida(getField("FechaNac").value), sx = getField("Sexo").value;
+    const ex = { ...exAntes };
+    if (fn) ex.fecha_nac = fn;
+    if (sx) ex.sexo = sx;
+    if (ex.fecha_nac !== exAntes.fecha_nac || ex.sexo !== exAntes.sexo) record["Datos Extra"] = ex;
+  }
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
     const original = editingCedula ? records.find(x => String(x["Cédula"]) === String(editingCedula)) : null;
@@ -13582,6 +13605,11 @@ function propagarAMesesPosteriores(cedula, cambios, fechaCambio){
         const base = sinCurso(cambiosMes["Servicios Muelle"]), propio = mesArr[j]["Servicios Muelle"] || {};
         if (Object.keys(base).length) cambiosMes["Servicios Muelle"] = { ...base, ...("curso" in propio ? { curso: propio.curso, _cursoTipo: propio._cursoTipo } : {}) };
         else delete cambiosMes["Servicios Muelle"];
+      }
+      if (cambiosMes["Datos Extra"]){
+        // De los datos extra solo pasan la fecha de nacimiento y el sexo; lo demás de cada mes se respeta
+        const { fecha_nac, sexo } = cambiosMes["Datos Extra"];
+        cambiosMes["Datos Extra"] = { ...(mesArr[j]["Datos Extra"] || {}), ...(fecha_nac ? { fecha_nac } : {}), ...(sexo ? { sexo } : {}) };
       }
       mesArr[j] = { ...mesArr[j], ...cambiosMes };
       if (fechaCambio) delete mesArr[j]["_prorrateoTransicion"];
@@ -18071,11 +18099,56 @@ function palabrasDeNombre(l){
     return true;
   }).join(" ");
 }
+// "14/05/1990" (también con - . o espacios) → "14/05/1990" si es una fecha de nacimiento real; si no, ""
+function fechaNacValida(t){
+  const m = String(t || "").trim().match(/^(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{4})$/); if (!m) return "";
+  const d = +m[1], mo = +m[2], a = +m[3], f = new Date(a, mo - 1, d);
+  if (f.getFullYear() !== a || f.getMonth() !== mo - 1 || f.getDate() !== d || a < 1900 || f > new Date()) return "";
+  return `${String(d).padStart(2, "0")}/${String(mo).padStart(2, "0")}/${a}`;
+}
+const MESES_CEDULA = { ENE: 1, JAN: 1, FEB: 2, MAR: 3, ABR: 4, APR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, AUG: 8, SEP: 9, SEPT: 9, OCT: 10, NOV: 11, DIC: 12, DEC: 12 };
+// Fecha de nacimiento y sexo de la cédula: de la parte de atrás con <<< (cédula digital) o de lo impreso
+// (cédula amarilla atrás: "FECHA DE NACIMIENTO 15-MAR-1985" … "1.70 O+ M / ESTATURA G.S.RH SEXO").
+function nacimientoYSexoDeCedula(texto){
+  const res = { fechaNac: "", sexo: "", pistaNac: false };
+  const T = String(texto || "").toUpperCase();
+  const anioHoy = new Date().getFullYear();
+  res.pistaNac = /NACIM|BIRTH|ESTATURA|<</.test(T);
+  // Cédula digital, atrás (2.ª línea): AAMMDD + dígito + sexo + vencimiento + dígito + COL
+  for (const l of T.split(/\n+/).map(x => x.replace(/\s/g, ""))){
+    const m = l.match(/(\d{2})(\d{2})(\d{2})\d([MF<])\d{7}COL/);
+    if (!m) continue;
+    const a = 2000 + (+m[1]) <= anioHoy - 14 ? 2000 + (+m[1]) : 1900 + (+m[1]);
+    const f = fechaNacValida(`${m[3]}/${m[2]}/${a}`);
+    if (f){ res.fechaNac = f; if (m[4] !== "<") res.sexo = m[4]; break; }
+  }
+  // Fechas impresas: la de nacimiento siempre es la más antigua (la expedición es 18 años después o más)
+  if (!res.fechaNac && /NACIM|BIRTH|EXPEDICI|ESTATURA/.test(T)){
+    const fechas = [];
+    for (const m of T.matchAll(/(?:^|[^\d])(\d{1,2})[\s\-.\/]{0,2}(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEPT?|OCT|NOV|DIC|JAN|APR|AUG|DEC)[A-Z]*[\s\-.\/]{0,2}((?:19|20)\d{2})(?!\d)/g))
+      fechas.push(fechaNacValida(`${m[1]}/${MESES_CEDULA[m[2]]}/${m[3]}`));
+    for (const m of T.matchAll(/(?:^|[^\d])(\d{1,2})[\/\-.](\d{1,2})[\/\-.]((?:19|20)\d{2})(?!\d)/g)) fechas.push(fechaNacValida(`${m[1]}/${m[2]}/${m[3]}`));
+    for (const m of T.matchAll(/(?:^|[^\d])((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?!\d)/g)) fechas.push(fechaNacValida(`${m[3]}/${m[2]}/${m[1]}`));
+    const orden = f => f.split("/").reverse().join("");
+    const buenas = fechas.filter(Boolean).filter(f => { const a = +f.slice(6); return a <= anioHoy - 14 && a >= anioHoy - 110; }).sort((x, y) => orden(x) < orden(y) ? -1 : 1);
+    if (buenas.length) res.fechaNac = buenas[0];
+  }
+  // Sexo impreso: una M o una F sola, en la línea de la etiqueta SEXO o en la de al lado
+  if (!res.sexo){
+    const lineas = T.split(/\n+/).map(l => l.trim());
+    const suelta = l => { const m = String(l || "").match(/(?:^|[\s:.\/|])([MF])(?=[\s.|]*$|\s)/); return m ? m[1] : ""; };
+    for (let i = 0; i < lineas.length && !res.sexo; i++){
+      if (!/SEXO|\bSEX\b/.test(lineas[i])) continue;
+      res.sexo = suelta(lineas[i].replace(/^.*?\bSEXO?\b(\s*\/\s*SEX\b)?/, " ")) || suelta(lineas[i - 1]) || suelta(lineas[i + 1]);
+    }
+  }
+  return res;
+}
 // Saca número y nombre del texto leído (cédula amarilla, cédula digital y la parte de atrás con <<<)
 function datosDeTextoCedula(texto){
   const lineas = String(texto || "").split(/\n+/).map(l => l.replace(/[^\wÁÉÍÓÚÑÜáéíóúñü.<\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
   // completo = se leyeron apellidos Y nombres. "sugerida" = número dudoso que hay que mirar en la foto.
-  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false, tipo: clasificarDocumento(texto) };
+  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false, tipo: clasificarDocumento(texto), ...nacimientoYSexoDeCedula(texto) };
   // Partes: [apellido1, apellido2, nombre1, nombre2]; el nombre queda APELLIDOS + NOMBRES como en la app
   const ponPartes = (aps, nos) => {
     aps = aps.filter(Boolean); nos = nos.filter(Boolean);
@@ -18147,7 +18220,7 @@ async function leerCedulaConOcr(fuente){
   const leer = async (f) => { const { data } = await T.recognize(f, "spa"); return datosDeTextoCedula(data && data.text); };
   const uno = await leer(fuente);
   if (uno.tipo && uno.tipo !== "cedula") return uno; // no es una cédula: no se sigue leyendo
-  if (uno.cedula && uno.completo) return uno;
+  if (uno.cedula && uno.completo && (uno.fechaNac || !uno.pistaNac)) return uno;
   let dos = null;
   try{ dos = await leer(await fotoMejoradaParaLeer(fuente)); }catch(e){ return uno; }
   const res = { ...uno };
@@ -18155,6 +18228,8 @@ async function leerCedulaConOcr(fuente){
   if (!res.completo && (dos.completo || !res.nombre)){
     ["nombre", "partes", "apellidos", "nombres", "completo", "mrz"].forEach(k => { res[k] = dos[k]; });
   }
+  if (!res.fechaNac) res.fechaNac = dos.fechaNac;
+  if (!res.sexo) res.sexo = dos.sexo;
   return res;
 }
 // Muestra lo leído en recuadros que se pueden corregir. No pega nada hasta que la cédula sea válida
@@ -18166,6 +18241,7 @@ function mostrarRevisionCedula(caja, d, alUsar, alCerrar){
     <label class="ocr-campo">Cédula <input type="text" inputmode="numeric" data-ocr-ced class="${dudoso ? "campo-error" : ""}" value="${escHtml(d.cedula || d.sugerida || "")}"></label>
     <label class="ocr-campo">Apellidos <input type="text" data-ocr-ap class="${faltaAp ? "campo-error" : ""}" value="${escHtml(d.apellidos || "")}"></label>
     <label class="ocr-campo">Nombres <input type="text" data-ocr-no-txt class="${faltaNo ? "campo-error" : ""}" value="${escHtml(d.nombres || "")}"></label>
+    ${(d.fechaNac || d.sexo) && caja.closest("#overlay") ? `<div><small>También leí: ${[d.fechaNac && `nacimiento <b>${escHtml(d.fechaNac)}</b>`, d.sexo && `sexo <b>${escHtml(d.sexo)}</b>`].filter(Boolean).join(" · ")}</small></div>` : ""}
     <div class="ocr-alerta" data-ocr-error ${dudoso ? "" : "hidden"}>${dudoso ? (d.sugerida ? "No estoy seguro de este número." : "No pude leer el número.") : ""}</div>
     <div class="ocr-acc"><button type="button" class="btn small primary" data-ocr-usar>Usar estos datos</button><button type="button" class="btn small ghost" data-ocr-no>No</button></div>`;
   const q = sel => caja.querySelector(sel);
@@ -18195,6 +18271,28 @@ async function guardarPartesNombre(cedula, partes){
   pilaNombres[String(cedula).trim()] = partes;
   if (cloudDb) try{ await sb.from("configuracion").upsert({ clave: "nombres_pila", valor: pilaNombres, updated_by: currentUserId }); }catch(e){}
 }
+// Pone en el formulario la fecha de nacimiento y el sexo leídos. Lo que ya estaba distinto no se cambia sin preguntar.
+function lineaNacSexoCedula(d){
+  const ff = document.getElementById("fFechaNac"), fs = document.getElementById("fSexo");
+  const nada = { html: "", alPintar(){} };
+  if (!ff || !fs || (!d.fechaNac && !d.sexo)) return nada;
+  const puestos = [], distintos = [];
+  if (d.fechaNac){
+    if (!ff.value.trim()){ ff.value = d.fechaNac; puestos.push(`la fecha de nacimiento <b>${escHtml(d.fechaNac)}</b>`); }
+    else if (fechaNacValida(ff.value) !== d.fechaNac) distintos.push({ el: ff, que: "fecha de nacimiento", app: ff.value, ced: d.fechaNac });
+  }
+  if (d.sexo){
+    if (!fs.value){ fs.value = d.sexo; puestos.push(`el sexo <b>${d.sexo === "M" ? "M (hombre)" : "F (mujer)"}</b>`); }
+    else if (fs.value !== d.sexo) distintos.push({ el: fs, que: "sexo", app: fs.value, ced: d.sexo });
+  }
+  const partes = [];
+  if (puestos.length) partes.push(`✅ Puse ${puestos.join(" y ")} como está en la cédula.`);
+  if (distintos.length) partes.push(`✏️ En la cédula leí ${distintos.map(x => `${x.que} <b>${escHtml(x.ced)}</b> (en la app: ${escHtml(x.app)})`).join(" y ")}. <button type="button" class="btn small ghost" data-ocr-nac>Usar lo de la cédula</button>`);
+  return { html: partes.join("<br>"), alPintar(caja){
+    const b = caja.querySelector("[data-ocr-nac]");
+    if (b) b.onclick = () => { distintos.forEach(x => { x.el.value = x.ced; }); b.replaceWith(Object.assign(document.createElement("span"), { textContent: " (cambiado)" })); };
+  } };
+}
 async function leerCedulaDeImagen(fuente){
   const caja = document.querySelector('.doc-upload[data-doc="Cedula"]');
   if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
@@ -18204,6 +18302,12 @@ async function leerCedulaDeImagen(fuente){
   try{
     const d = await leerCedulaConOcr(fuente);
     if (d.tipo && d.tipo !== "cedula"){ ponerAvisoCasillaEquivocada(aviso, "Cedula", d.tipo); return; }
+    if (!d.cedula && !d.sugerida && !d.nombre && (d.fechaNac || d.sexo)){
+      // Solo la parte de atrás (sin nombre ni número): se ponen la fecha de nacimiento y el sexo
+      const ln = lineaNacSexoCedula(d);
+      aviso.innerHTML = `<div>${ln.html || "✅ La fecha de nacimiento y el sexo ya estaban iguales a la cédula."}</div><small>Los cambios quedan al tocar <b>Guardar</b>.</small>`;
+      ln.alPintar(aviso); return;
+    }
     if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Revise el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
     const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
     const cedApp = String(editingCedula || fc.value || "").replace(/\D/g, "");
@@ -18236,7 +18340,10 @@ async function leerCedulaDeImagen(fuente){
       if (cedOtra) lineas.push(`⚠️ <b>El número no coincide:</b> en la foto leí <b>${escHtml(d.cedula)}</b> y el cliente está con <b>${escHtml(cedApp)}</b>. Mírelo en la foto: si el error está en la app, avíseme y lo cambiamos en todos los meses; si es que la foto se leyó mal, no haga nada.`);
       else if (d.cedula || d.sugerida === cedApp) lineas.push(`✅ El número de cédula coincide.`);
       else lineas.push(`⚠️ No pude leer bien el número en la foto. Dejé el de la app.`);
+      const ln = lineaNacSexoCedula(d);
+      if (ln.html) lineas.push(ln.html);
       aviso.innerHTML = `<div>${lineas.join("<br>")}</div><small>Los cambios quedan al tocar <b>Guardar</b>.</small>`;
+      ln.alPintar(aviso);
       const btnN = aviso.querySelector("[data-ocr-nombre]");
       if (btnN) btnN.onclick = () => { ponNombre(d.nombre); guardarPartesNombre(editingCedula, d.partes); btnN.parentElement.innerHTML = "✅ Nombre corregido. Toque Guardar."; };
       const btnD = aviso.querySelector("[data-ocr-deshacer]");
@@ -18251,7 +18358,8 @@ async function leerCedulaDeImagen(fuente){
       if (!fc.readOnly && !fc.disabled){ fc.value = v.cedula; fc.dispatchEvent(new Event("input", { bubbles: true })); fc.dispatchEvent(new Event("change", { bubbles: true })); }
       ponNombre(v.nombre);
       guardarPartesNombre(fc.value, v.partes);
-      aviso.remove(); showToast("✅ Datos de la cédula puestos. Revíselos.");
+      lineaNacSexoCedula(d);
+      aviso.remove(); showToast(`✅ Datos de la cédula puestos${d.fechaNac || d.sexo ? " (también nacimiento y sexo)" : ""}. Revíselos.`);
     }, () => aviso.remove());
   }catch(e){
     aviso.innerHTML = `No se pudo leer la foto (${escHtml(e.message || "error")}).`;

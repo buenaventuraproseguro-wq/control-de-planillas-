@@ -46,6 +46,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Seguros y pólizas: `abrirPolizas`, `renderPolizas`, `mensajePoliza`; tabla `polizas`; la comisión entra en `resumenIngresos`
 - Venta de SOAT (app Muelles y Seguros): en pausa con `var VENTA_SOAT_EN_PAUSA = true` en `seguros.html`
 - Dinero recibido (💵): el pago NO pasa a PAGO hasta tener planilla y comprobante: `registrarDineroRecibido`, `dineroRecibido`, `aplicarPagosConSoporte`; columna `clients.dinero_recibido`
+- Lectura de la cédula (foto): `leerCedulaDeImagen`, `datosDeTextoCedula`; fecha de nacimiento y sexo: `nacimientoYSexoDeCedula` → campos `fFechaNac`/`fSexo` (en `datos_extra`)
 - Formularios de EPS llenos: guía → «✏️ Marcar campos» (`abrirMarcarFormulario`), ficha «📝 Formulario» (`abrirFormularioCliente`, `pdfFormularioLleno`); datos extra en `clients.datos_extra`, empresas en configuracion `formulario_empresas`
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
