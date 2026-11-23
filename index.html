@@ -3444,6 +3444,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <h2 id="formLlenarTitulo">📝 Formulario de EPS</h2>
     <div class="modal-sub">Revise los datos. Lo que está en amarillo falta: escríbalo una vez y queda guardado para la próxima. La firma la pone el afiliado a mano en el formulario descargado.</div>
     <div class="form-grid" id="formLlenarCampos"></div>
+    <div class="fm-ayuda" id="formLlenarFirma" style="margin-top:8px;"></div>
     <div class="modal-actions"><button type="button" class="btn ghost" id="formLlenarCancelBtn">Cancelar</button><button type="button" class="btn primary" id="formLlenarOkBtn">⬇️ Descargar formulario lleno</button></div>
   </div>
 </div>
@@ -9344,8 +9345,10 @@ function htmlArchivosGuia(x){
       <label style="grid-column:1 / -1; display:flex; gap:6px; align-items:center; font-weight:500; text-transform:none; letter-spacing:0; color:var(--ink);"><input type="checkbox" data-guia-subir-original> Guardar también el PDF original (si el formulario se llena en el computador)</label>
       <div style="grid-column:1 / -1; display:flex; justify-content:flex-end;"><button type="button" class="btn small primary" data-guia-subir-btn="${x._i}">⬆️ Subir archivo</button></div>
     </div>` : "";
-  if (!archivos.length && !esAdmin()) return `<div class="guia-archivos"><h4>📎 Formularios y documentos</h4><span class="sin-dato">Esta EPS todavía no tiene archivos.</span></div>`;
-  return `<div class="guia-archivos"><h4>📎 Formularios y documentos</h4>${lista || `<div class="sin-dato" style="margin-bottom:6px;">Todavía no hay archivos. Súbalos aquí para que el equipo los descargue.</div>`}${subir}</div>`;
+  const fb = (() => { const k = normalizarTexto(x.eps).replace(/\beps\b/g, "").replace(/\(.*?\)/g, "").trim(); return /caja/.test(normalizarTexto(x.eps)) ? null : formBase.find(f => (f.claves || []).some(c => { const n = normalizarTexto(c); return k && (k === n || k.startsWith(n) || n.startsWith(k)); })); })();
+  const bloqueBase = fb ? `<div class="guia-archivo"><div class="nom">📝 ${escHtml(fb.nombre)}<span class="form-estado">✅ La app lo llena sola al agregar un cliente de esta EPS (botón «📝 Formulario» en la ficha)${fb.firma_a_mano ? " · firma a mano" : ""}</span></div>${esAdmin() ? `<div class="btns"><button type="button" class="btn small" data-guia-marcar-base="${escHtml(fb.id)}">✏️ Ajustar campos</button></div>` : ""}</div>` : "";
+  if (!archivos.length && !esAdmin()) return `<div class="guia-archivos"><h4>📎 Formularios y documentos</h4>${bloqueBase || `<span class="sin-dato">Esta EPS todavía no tiene archivos.</span>`}</div>`;
+  return `<div class="guia-archivos"><h4>📎 Formularios y documentos</h4>${bloqueBase}${lista || `<div class="sin-dato" style="margin-bottom:6px;">Todavía no hay archivos. Súbalos aquí para que el equipo los descargue.</div>`}${subir}</div>`;
 }
 async function pdfAPaginasJpg(file){
   const pdfjs = await cargarLectorPDF();
@@ -9459,14 +9462,14 @@ const CAMPOS_FORM_EPS = [
   ["nombre_completo", "Nombre completo"], ["primer_apellido", "Primer apellido"], ["segundo_apellido", "Segundo apellido"],
   ["primer_nombre", "Primer nombre"], ["segundo_nombre", "Segundo nombre"], ["nombres", "Nombres (los dos)"],
   ["tipo_doc", "Tipo de documento (CC)"], ["cedula", "Número de cédula"],
-  ["fecha_nac", "Fecha de nacimiento"], ["fecha_nac_d", "Nacimiento: día"], ["fecha_nac_m", "Nacimiento: mes"], ["fecha_nac_a", "Nacimiento: año"],
+  ["fecha_nac", "Fecha de nacimiento"], ["fecha_nac_num", "Nacimiento en casillas (DDMMAAAA)"], ["fecha_nac_d", "Nacimiento: día"], ["fecha_nac_m", "Nacimiento: mes"], ["fecha_nac_a", "Nacimiento: año"],
   ["sexo", "Sexo (M o F)"], ["x_sexo_m", "X si es hombre"], ["x_sexo_f", "X si es mujer"], ["estado_civil", "Estado civil"],
   ["direccion", "Dirección"], ["barrio", "Barrio"], ["municipio", "Municipio"], ["departamento", "Departamento"],
   ["telefono", "Teléfono"], ["correo", "Correo"], ["cargo", "Cargo u oficio"], ["salario", "Salario"],
   ["eps", "EPS"], ["afp", "Fondo de pensiones"], ["arl", "ARL"], ["caja", "Caja de compensación"],
   ["g", "Fechas"],
-  ["fecha_ingreso", "Fecha de inicio de labores"], ["fecha_ingreso_d", "Inicio labores: día"], ["fecha_ingreso_m", "Inicio labores: mes"], ["fecha_ingreso_a", "Inicio labores: año"],
-  ["fecha_radicado", "Fecha de radicado"], ["fecha_radicado_d", "Radicado: día"], ["fecha_radicado_m", "Radicado: mes"], ["fecha_radicado_a", "Radicado: año"],
+  ["fecha_ingreso", "Fecha de inicio de labores"], ["fecha_ingreso_num", "Inicio labores en casillas (DDMMAAAA)"], ["fecha_ingreso_d", "Inicio labores: día"], ["fecha_ingreso_m", "Inicio labores: mes"], ["fecha_ingreso_a", "Inicio labores: año"],
+  ["fecha_radicado", "Fecha de radicado"], ["fecha_radicado_num", "Radicado en casillas (DDMMAAAA)"], ["fecha_radicado_d", "Radicado: día"], ["fecha_radicado_m", "Radicado: mes"], ["fecha_radicado_a", "Radicado: año"],
   ["g", "Empresa (empleador)"],
   ["emp_nombre", "Nombre o razón social"], ["emp_tipo_doc", "Tipo de documento (NIT o CC)"], ["emp_doc", "NIT o cédula"],
   ["emp_direccion", "Dirección"], ["emp_municipio", "Municipio"], ["emp_departamento", "Departamento"],
@@ -9479,13 +9482,45 @@ const NOMBRE_CAMPO_FORM = Object.fromEntries(CAMPOS_FORM_EPS.filter(([k]) => k !
 const CAMPOS_EXTRA_CLIENTE = ["fecha_nac", "sexo", "estado_civil", "cargo", "salario", "barrio"];
 // Datos de la empresa que no están en la app: se guardan en configuracion → "formulario_empresas"
 const CAMPOS_EXTRA_EMPRESA = ["emp_direccion", "emp_municipio", "emp_departamento", "emp_telefono", "emp_correo", "emp_representante", "emp_actividad"];
-const DATOS_PROSEGUROSNET = { emp_nombre: "NESTOR FABIAN GARZON TORRES (PROSEGUROSNET)", emp_tipo_doc: "NIT", emp_doc: "1.112.904.783-6",
-  emp_direccion: "KM 15 VÍA CALI, EDS PRIMAX", emp_municipio: "BUENAVENTURA", emp_departamento: "VALLE DEL CAUCA", emp_telefono: "3116133523", emp_representante: "NESTOR FABIAN GARZON TORRES" };
+// Como los llena Nestor en sus formularios (aportante: su cédula)
+const DATOS_PROSEGUROSNET = { emp_nombre: "NESTOR FABIAN GARZON TORRES", emp_tipo_doc: "CC", emp_doc: "1112904783",
+  emp_direccion: "KM 13 37 1", emp_municipio: "BUENAVENTURA", emp_departamento: "VALLE DEL CAUCA", emp_telefono: "3207354856", emp_correo: "buenaventuraproseguro@gmail.com", emp_representante: "NESTOR FABIAN GARZON TORRES" };
+// Formularios ya montados (carpeta formularios/: páginas cifradas; la clave está en la base, solo la ve el equipo)
+let formBase = [], formAjustes = {}, _formClave = null, _formBaseCargado = null;
+function cargarFormulariosBase(){
+  return _formBaseCargado || (_formBaseCargado = (async () => {
+    try{ const r = await fetch("formularios/formularios_eps.json", { cache: "no-cache" }); if (r.ok) formBase = (await r.json()).formularios || []; }catch(e){ console.error(e); }
+    if (sb){ try{
+      const { data } = await sb.from("configuracion").select("clave, valor").in("clave", ["formularios_eps_clave", "formularios_eps_ajustes"]);
+      (data || []).forEach(x => { if (x.clave === "formularios_eps_clave") _formClave = x.valor && x.valor.k; if (x.clave === "formularios_eps_ajustes" && x.valor) formAjustes = x.valor; });
+    }catch(e){ console.error(e); } }
+    try{ if (activeCedula) pintarBotonFormEps(records.find(x => String(x["Cédula"]) === String(activeCedula))); }catch(e){}
+  })());
+}
+async function bytesPagina(parte){
+  if (parte.enc){
+    if (!_formClave) await cargarFormulariosBase();
+    if (!_formClave) throw new Error("no se pudo leer la clave de los formularios (revise la conexión)");
+    const cifrado = new Uint8Array(await (await fetch(parte.enc)).arrayBuffer());
+    const clave = await crypto.subtle.importKey("raw", Uint8Array.from(atob(_formClave), c => c.charCodeAt(0)), "AES-GCM", false, ["decrypt"]);
+    return await crypto.subtle.decrypt({ name: "AES-GCM", iv: cifrado.slice(0, 12) }, clave, cifrado.slice(12));
+  }
+  return await (await fetch(await urlParteGuia(parte))).arrayBuffer();
+}
+async function urlVerPagina(parte){
+  if (parte.enc) return URL.createObjectURL(new Blob([await bytesPagina(parte)], { type: "image/jpeg" }));
+  return await urlParteGuia(parte);
+}
+function formBaseComoArchivo(f){
+  return { nombre: f.nombre, tipo: "formulario", partes: f.paginas.map(u => ({ enc: u })), plantilla: { campos: formAjustes[f.id] || f.campos }, builtin: f.id, firmaAMano: !!f.firma_a_mano };
+}
 let formEmpresas = {}; // empresa → datos que se escribieron a mano
 
 function archivoFormularioDeEps(nombreEps){
   const k = normalizarTexto(nombreEps).replace(/\beps\b/g, "").trim();
   if (!k) return null;
+  const fb = formBase.find(f => (f.claves || []).some(c => { const n = normalizarTexto(c); return k === n || k.startsWith(n) || n.startsWith(k); }));
+  if (fb) return { guia: { eps: fb.eps }, archivo: formBaseComoArchivo(fb), listo: true };
   const g = guiaEps.find(x => { const n = normalizarTexto(x.eps).replace(/\beps\b/g, "").replace(/\(.*?\)/g, "").trim(); return n && !/caja/.test(normalizarTexto(x.eps)) && (n === k || n.startsWith(k) || k.startsWith(n)); });
   if (!g) return null;
   const a = (g.archivos || []).find(a => a.tipo === "formulario" && a.plantilla && (a.plantilla.campos || []).length)
@@ -9523,7 +9558,7 @@ function datosFormulario(r, fechaRadicado){
   return {
     nombre_completo: String(r["Nombre del Afiliado"] || "").toUpperCase(), primer_apellido: ap1, segundo_apellido: ap2, primer_nombre: n1, segundo_nombre: n2,
     nombres: [n1, n2].filter(Boolean).join(" "), tipo_doc: "CC", cedula: String(r["Cédula"] || ""),
-    fecha_nac: nd ? `${nd}/${nm}/${na}` : "", fecha_nac_d: nd, fecha_nac_m: nm, fecha_nac_a: na,
+    fecha_nac: nd ? `${nd}/${nm}/${na}` : "", fecha_nac_num: nd ? nd + nm + na : "", fecha_nac_d: nd, fecha_nac_m: nm, fecha_nac_a: na,
     sexo, x_sexo_m: sexo === "M" ? "X" : "", x_sexo_f: sexo === "F" ? "X" : "", estado_civil: String(ex.estado_civil || "").toUpperCase(),
     direccion: String(r["Dirección Completa"] || "").toUpperCase(), barrio: String(ex.barrio || "").toUpperCase(),
     municipio: (lugar ? lugar.split("(")[0].trim() : "BUENAVENTURA").toUpperCase(), departamento: lugar && /\((.+)\)/.test(lugar) ? lugar.match(/\((.+)\)/)[1].toUpperCase() : "VALLE DEL CAUCA",
@@ -9531,8 +9566,8 @@ function datosFormulario(r, fechaRadicado){
     salario: ex.salario ? fmt(numOrZero(ex.salario)) : "", eps: String(r["EPS"] || "").toUpperCase(), afp: String(r["AFP"] || "").toUpperCase(),
     arl: /sura/i.test(r["ARL (Riesgo/Código)"] || "") || !r["ARL (Riesgo/Código)"] ? "SURA" : String(r["ARL (Riesgo/Código)"]).toUpperCase(),
     caja: String(r["Caja de Compensación"] || "").toUpperCase(),
-    fecha_ingreso: id ? `${id}/${im}/${ia}` : "", fecha_ingreso_d: id, fecha_ingreso_m: im, fecha_ingreso_a: ia,
-    fecha_radicado: rd ? `${rd}/${rm}/${ra}` : "", fecha_radicado_d: rd, fecha_radicado_m: rm, fecha_radicado_a: ra,
+    fecha_ingreso: id ? `${id}/${im}/${ia}` : "", fecha_ingreso_num: id ? id + im + ia : "", fecha_ingreso_d: id, fecha_ingreso_m: im, fecha_ingreso_a: ia,
+    fecha_radicado: rd ? `${rd}/${rm}/${ra}` : "", fecha_radicado_num: rd ? rd + rm + ra : "", fecha_radicado_d: rd, fecha_radicado_m: rm, fecha_radicado_a: ra,
     ...Object.fromEntries(Object.entries(emp).map(([k, v]) => [k, String(v || "")])),
     x: "X",
   };
@@ -9558,7 +9593,7 @@ async function pdfFormularioLleno(archivo, valores){
   const fuente = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
   const campos = (archivo.plantilla && archivo.plantilla.campos) || [];
   for (let n = 0; n < archivo.partes.length; n++){
-    const bytes = await (await fetch(await urlParteGuia(archivo.partes[n]))).arrayBuffer();
+    const bytes = await bytesPagina(archivo.partes[n]);
     const img = await doc.embedJpg(bytes);
     const W = 612, H = W * img.height / img.width;
     const page = doc.addPage([W, H]);
@@ -9568,7 +9603,9 @@ async function pdfFormularioLleno(archivo, valores){
       if (!t) return;
       t = t.replace(/[^\x20-\x7E -ÿ]/g, "");
       const size = (c.t || 0.0125) * H;
-      page.drawText(t, { x: c.x * W, y: H * (1 - c.y) - size * 0.35, size, font: fuente, color: PDFLib.rgb(0.05, 0.1, 0.45) });
+      const color = PDFLib.rgb(0.05, 0.1, 0.45), yb = H * (1 - c.y) - size * 0.35;
+      if (c.esp) [...t].forEach((ch, i) => page.drawText(ch, { x: c.x * W + i * c.esp * W, y: yb, size, font: fuente, color }));
+      else page.drawText(t, { x: c.x * W, y: yb, size, font: fuente, color });
     });
   }
   return new Blob([await doc.save()], { type: "application/pdf" });
@@ -9583,6 +9620,7 @@ let formLlenar = null;
 async function abrirFormularioCliente(cedula){
   const r = records.find(x => String(x["Cédula"]) === String(cedula));
   if (!r) return;
+  await cargarFormulariosBase();
   if (!guiaEps.some(g => (g.archivos || []).length)) await cargarGuiaEps();
   const f = archivoFormularioDeEps(r["EPS"]);
   if (!f){ showToast(`La EPS «${r["EPS"] || "sin EPS"}» no tiene formulario en la guía.`); return; }
@@ -9590,10 +9628,12 @@ async function abrirFormularioCliente(cedula){
   await cargarFormEmpresas();
   const usados = [...new Set(f.archivo.plantilla.campos.map(c => c.campo))].filter(k => k !== "x" && k !== "texto");
   // las fechas por partes se editan con la fecha completa
-  const visibles = [...new Set(usados.map(k => /^x_sexo_/.test(k) ? "sexo" : /^fecha_.+_(d|m|a)$/.test(k) ? k.replace(/_(d|m|a)$/, "") : k))];
+  const visibles = [...new Set(usados.map(k => /^x_sexo_/.test(k) ? "sexo" : /^fecha_.+_(d|m|a|num)$/.test(k) ? k.replace(/_(d|m|a|num)$/, "") : k))];
   const radicado = fechaHoyISO();
   const v = datosFormulario(r, radicado);
   formLlenar = { cedula: String(r["Cédula"]), archivo: f.archivo, eps: f.guia.eps, campos: visibles };
+  document.getElementById("formLlenarFirma").textContent = f.archivo.firmaAMano
+    ? `✍️ ${f.guia.eps} exige la firma del afiliado a mano.` : `✍️ La firma la pone el afiliado (a mano o firmando él mismo en su celular).`;
   document.getElementById("formLlenarTitulo").textContent = `📝 Formulario ${f.guia.eps} · ${nombrePropio(r["Nombre del Afiliado"] || "")}`;
   document.getElementById("formLlenarCampos").innerHTML = visibles.map(k => {
     const esFecha = /^fecha_/.test(k);
@@ -9625,15 +9665,15 @@ async function descargarFormularioLleno(){
   // lo que se escribió en pantalla manda (también fechas de inicio)
   st.campos.forEach(k => {
     const val = lee(k); if (!val) return;
-    if (/^fecha_/.test(k)){ const [a, m, d] = val.split("-"); if (a){ v[k] = `${d}/${m}/${a}`; v[k + "_d"] = d; v[k + "_m"] = m; v[k + "_a"] = a; } }
+    if (/^fecha_/.test(k)){ const [a, m, d] = val.split("-"); if (a){ v[k] = `${d}/${m}/${a}`; v[k + "_num"] = d + m + a; v[k + "_d"] = d; v[k + "_m"] = m; v[k + "_a"] = a; } }
     else if (k === "sexo"){ v.sexo = val; v.x_sexo_m = val === "M" ? "X" : ""; v.x_sexo_f = val === "F" ? "X" : ""; }
     else if (k === "salario"){ v.salario = fmt(Number(val.replace(/\D/g, "")) || 0); }
-    else v[k] = val.toUpperCase();
+    else v[k] = /correo/.test(k) ? val.toLowerCase() : val.toUpperCase();
   });
   const btn = document.getElementById("formLlenarOkBtn"); btn.disabled = true; btn.textContent = "Armando el PDF…";
   try{
     const blob = await pdfFormularioLleno(st.archivo, v);
-    descargarBlob(blob, `Formulario ${st.eps} - ${String(r["Nombre del Afiliado"] || "").toUpperCase()} - CC ${st.cedula}.pdf`);
+    descargarBlob(blob, `Formulario ${st.eps.replace(/[()]/g, "")} - ${String(r["Nombre del Afiliado"] || "").toUpperCase()} - CC ${st.cedula}.pdf`);
     document.getElementById("overlayFormLlenar").classList.remove("show");
     showToast(`✅ Formulario de ${st.eps} descargado. Falta la firma del afiliado (a mano).`);
   }catch(e){
@@ -9652,6 +9692,7 @@ function pintarBotonFormEps(r){
 }
 // Al guardar un cliente nuevo o cambiarle la EPS: si la EPS pide formulario, se ofrece de una vez
 async function ofrecerFormularioEps(r){
+  await cargarFormulariosBase();
   const f = archivoFormularioDeEps(r["EPS"]);
   if (!f) return;
   if (!f.listo){ showToast(`📝 ${f.guia.eps} pide formulario: falta marcar sus campos en la guía.`); return; }
@@ -9660,21 +9701,23 @@ async function ofrecerFormularioEps(r){
 
 /* -- Marcar los campos de un formulario (administrador, una sola vez por formulario) -- */
 let formMarcar = null; // { i, k, pag, campos, sel, campoNuevo }
-async function abrirMarcarFormulario(i, k){
+async function abrirMarcarFormulario(i, k, builtinId){
   if (!esAdmin()) return;
-  const a = guiaEps[i] && guiaEps[i].archivos[k]; if (!a) return;
-  formMarcar = { i, k, pag: 0, campos: JSON.parse(JSON.stringify((a.plantilla && a.plantilla.campos) || [])), sel: -1, urls: [] };
-  document.getElementById("formMarcarTitulo").textContent = `✏️ Marcar campos · ${guiaEps[i].eps} · ${a.nombre}`;
+  let a, titulo;
+  if (builtinId){ await cargarFormulariosBase(); const fb = formBase.find(f => f.id === builtinId); if (!fb) return; a = formBaseComoArchivo(fb); titulo = fb.eps; }
+  else { a = guiaEps[i] && guiaEps[i].archivos[k]; if (!a) return; titulo = guiaEps[i].eps; }
+  formMarcar = { i, k, builtinId, arch: a, titulo, pag: 0, campos: JSON.parse(JSON.stringify((a.plantilla && a.plantilla.campos) || [])), sel: -1, urls: [] };
+  document.getElementById("formMarcarTitulo").textContent = `✏️ Marcar campos · ${titulo} · ${a.nombre}`;
   document.getElementById("formMarcarCampo").innerHTML = (() => { let h = "", abierto = false;
     CAMPOS_FORM_EPS.forEach(([c, t]) => { if (c === "g"){ h += (abierto ? "</optgroup>" : "") + `<optgroup label="${escHtml(t)}">`; abierto = true; } else h += `<option value="${c}">${escHtml(t)}</option>`; });
     return h + (abierto ? "</optgroup>" : ""); })();
   const ov = document.getElementById("overlayFormMarcar"); ov.classList.add("show"); ov.focus();
-  try{ formMarcar.urls = await Promise.all(a.partes.map(urlParteGuia)); }catch(e){ showToast("No se pudieron abrir las páginas: " + (e.message || e)); }
+  try{ formMarcar.urls = await Promise.all(a.partes.map(urlVerPagina)); }catch(e){ showToast("No se pudieron abrir las páginas: " + (e.message || e)); }
   pintarMarcar();
 }
 function pintarMarcar(){
   const st = formMarcar; if (!st) return;
-  const a = guiaEps[st.i].archivos[st.k];
+  const a = st.arch;
   document.getElementById("formMarcarPag").textContent = `Página ${st.pag + 1} de ${a.partes.length}`;
   document.getElementById("formMarcarPrev").disabled = st.pag === 0;
   document.getElementById("formMarcarNext").disabled = st.pag >= a.partes.length - 1;
@@ -9732,14 +9775,21 @@ document.getElementById("formMarcarBorrar").addEventListener("click", () => { fo
 document.getElementById("formMarcarCerrar").addEventListener("click", () => { document.getElementById("overlayFormMarcar").classList.remove("show"); formMarcar = null; });
 document.getElementById("formMarcarPrueba").addEventListener("click", async () => {
   const st = formMarcar; if (!st) return;
-  const a = { ...guiaEps[st.i].archivos[st.k], plantilla: { campos: st.campos } };
-  const ejemplo = Object.fromEntries(Object.keys(NOMBRE_CAMPO_FORM).map(k => [k, k === "x" ? "X" : /_d$/.test(k) ? "22" : /_m$/.test(k) ? "11" : /_a$/.test(k) ? "2026" : /^fecha/.test(k) ? "22/11/2026" : (NOMBRE_CAMPO_FORM[k] || k).toUpperCase()]));
+  const a = { ...st.arch, plantilla: { campos: st.campos } };
+  const ejemplo = Object.fromEntries(Object.keys(NOMBRE_CAMPO_FORM).map(k => [k, k === "x" ? "X" : /^x_/.test(k) ? "X" : /_num$/.test(k) ? "22112026" : /_d$/.test(k) ? "22" : /_m$/.test(k) ? "11" : /_a$/.test(k) ? "2026" : /^fecha/.test(k) ? "22/11/2026" : (NOMBRE_CAMPO_FORM[k] || k).toUpperCase()]));
   try{ descargarBlob(await pdfFormularioLleno(a, ejemplo), "Prueba formulario.pdf"); }catch(e){ showToast("No se pudo armar la prueba: " + (e.message || e)); }
 });
 document.getElementById("formMarcarGuardar").addEventListener("click", async () => {
   const st = formMarcar; if (!st) return;
+  const campos = st.campos.map(c => ({ ...c, x: +c.x.toFixed(4), y: +c.y.toFixed(4), t: +(c.t || 0.0125).toFixed(4) }));
+  if (st.builtinId){
+    formAjustes = { ...formAjustes, [st.builtinId]: campos };
+    let ok = true; try{ const { error } = await sb.from("configuracion").upsert({ clave: "formularios_eps_ajustes", valor: formAjustes, updated_by: currentUserId }); if (error) throw error; }catch(e){ ok = false; console.error(e); }
+    showToast(ok ? `✅ Ajustes del formulario de ${st.titulo} guardados para todo el equipo.` : "No se pudieron guardar los ajustes.");
+    document.getElementById("overlayFormMarcar").classList.remove("show"); formMarcar = null; renderGuiaEps(); return;
+  }
   const a = guiaEps[st.i].archivos[st.k];
-  a.plantilla = { campos: st.campos.map(c => ({ ...c, x: +c.x.toFixed(4), y: +c.y.toFixed(4), t: +(c.t || 0.0125).toFixed(4) })), fecha: fechaHoyISO() };
+  a.plantilla = { campos, fecha: fechaHoyISO() };
   if (a.tipo !== "formulario") a.tipo = "formulario";
   const ok = await guardarGuiaEps();
   renderGuiaEps(); abrirEpsGuia(st.i);
@@ -9782,6 +9832,7 @@ function renderGuiaEps(){
 }
 async function abrirGuiaEps(){
   guiaEditando = null;
+  cargarFormulariosBase().then(() => { if (guiaEditando === null) renderGuiaEps(); });
   document.getElementById("guiaBuscar").value = "";
   renderGuiaEps();
   document.getElementById("overlayGuiaEps").classList.add("show");
@@ -9805,6 +9856,8 @@ document.getElementById("guiaAgregarBtn").addEventListener("click", () => {
 document.getElementById("guiaLista").addEventListener("click", async (e) => {
   const dsc = e.target.closest("[data-guia-descargar]");
   if (dsc){ e.preventDefault(); const [i, k, n] = dsc.dataset.guiaDescargar.split("|"); descargarArchivoGuia(Number(i), Number(k), n); return; }
+  const mb = e.target.closest("[data-guia-marcar-base]");
+  if (mb){ e.preventDefault(); abrirMarcarFormulario(null, null, mb.dataset.guiaMarcarBase); return; }
   const mc = e.target.closest("[data-guia-marcar]");
   if (mc){ e.preventDefault(); const [i, k] = mc.dataset.guiaMarcar.split("|").map(Number); abrirMarcarFormulario(i, k); return; }
   const ba = e.target.closest("[data-guia-borrar-archivo]");
@@ -13519,6 +13572,7 @@ function mostrarPantallaLogin(){
   document.getElementById("appRoot").style.display = "none";
 }
 async function mostrarAppPrincipal(user){
+  setTimeout(() => { try{ cargarFormulariosBase(); }catch(e){} }, 1500);
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("appRoot").style.display = "";
   currentUserId = user.id;
