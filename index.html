@@ -9769,7 +9769,9 @@ async function abrirFormularioCliente(cedula){
   const v = datosFormulario(r, radicado);
   formLlenar = { cedula: String(r["Cédula"]), archivo: f.archivo, eps: f.guia.eps, campos: visibles };
   document.getElementById("formFirmaRemota").innerHTML = "";
-  if (llevaFirma) revisarFirmaRemota(true);
+  // Pedir la firma por WhatsApp: solo en afiliación (o reingreso / sin iniciar) o con traslado de EPS pendiente
+  const enAfiliacion = ["AFILIACION", "REINGRESO", "SIN_INICIAR"].includes(estadoClass(r["Estado Trámite"])) || !!trasladoPendienteDe(r["Cédula"]);
+  if (llevaFirma && enAfiliacion) revisarFirmaRemota(true);
   document.getElementById("formLlenarFirma").textContent = f.archivo.firmaAMano
     ? `✍️ ${f.guia.eps} exige la firma del afiliado a mano.` : `✍️ La firma la pone el afiliado (a mano o firmando él mismo en su celular).`;
   document.getElementById("formLlenarTitulo").textContent = `📝 Formulario ${f.guia.eps} · ${nombrePropio(r["Nombre del Afiliado"] || "")}`;
