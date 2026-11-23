@@ -9575,7 +9575,8 @@ function datosFormulario(r, fechaRadicado){
     municipio: (lugar ? lugar.split("(")[0].trim() : "BUENAVENTURA").toUpperCase(), departamento: lugar && /\((.+)\)/.test(lugar) ? lugar.match(/\((.+)\)/)[1].toUpperCase() : "VALLE DEL CAUCA",
     telefono: String(r["Teléfono"] || ""), correo: String(r["Correo"] || "").toLowerCase(), cargo: String(ex.cargo || "").toUpperCase(),
     salario: ex.salario ? fmt(numOrZero(ex.salario)) : "", eps: String(r["EPS"] || "").toUpperCase(), afp: String(r["AFP"] || "").toUpperCase(),
-    arl: /sura/i.test(r["ARL (Riesgo/Código)"] || "") || !r["ARL (Riesgo/Código)"] ? "SURA" : String(r["ARL (Riesgo/Código)"]).toUpperCase(),
+    // En los formularios la ARL va por nombre: PROSEGUROSNET trabaja con SURA (en la ficha a veces está el código, ej. «005 5493»)
+    arl: /positiva/i.test(r["ARL (Riesgo/Código)"] || "") ? "POSITIVA" : "SURA",
     caja: String(r["Caja de Compensación"] || "").toUpperCase(),
     fecha_ingreso: id ? `${id}/${im}/${ia}` : "", fecha_ingreso_num: id ? id + im + ia : "", fecha_ingreso_d: id, fecha_ingreso_m: im, fecha_ingreso_a: ia,
     fecha_radicado: rd ? `${rd}/${rm}/${ra}` : "", fecha_radicado_num: rd ? rd + rm + ra : "", fecha_radicado_d: rd, fecha_radicado_m: rm, fecha_radicado_a: ra,
