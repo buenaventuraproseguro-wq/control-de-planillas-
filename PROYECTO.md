@@ -348,3 +348,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-22 · Ficha: la ARL se muestra limpia («SURA · act. 4923 · Nivel IV») con `arlCorta`; el texto guardado no cambia (sale al pasar el mouse).
 - 2026-11-22 · «📲 Pedir la firma por WhatsApp» solo aparece si el cliente está en afiliación (o reingreso / sin iniciar) o tiene traslado de EPS pendiente, y solo en las EPS cuyo formulario lleva firma (no Comfenalco). En clientes antiguos ya no sale.
 - 2026-11-23 · firmar.html: el pie muestra el WhatsApp de la empresa (311 613 3523), no el celular personal.
+- 2026-11-23 · ARL: la actividad corta 0161 (apoyo a la agricultura, riesgo 4) se reconoce como 4016101. Jhon Edinson Rojas (1113618899) quedó en la base como «sura 4 cd 003 ac 4016101» (centro 3, como en sus planillas de Sura); antes decía solo «0161» y la app lo iba a mandar al centro 41 sin actividad.

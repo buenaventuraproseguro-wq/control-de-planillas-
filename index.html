@@ -19241,12 +19241,13 @@ const PILA_ACTIVIDAD_CLASE = { 1: "1651101", 4: "4492301" };
 // La ARL (Sura) da una actividad corta de 4 dígitos; en la planilla va la de 7 dígitos del Decreto 768 de 2022.
 // Equivalencias confirmadas con planillas pagadas y con SUAPORTE: "riesgo|actividad corta" → código de 7 dígitos.
 const PILA_ACTIVIDAD_CORTA = {
-  "1|6511": "1651101", "4|4923": "4492301", "5|5521": "5521001", "5|4220": "5422001", "5|5493": "5493001",
+  "1|6511": "1651101", "4|4923": "4492301", "4|0161": "4016101", "5|5521": "5521001", "5|4220": "5422001", "5|5493": "5493001",
 };
 const PILA_ACTIVIDAD_NOMBRE = {
   "1651101": "Seguros generales (oficina)", "4492301": "Transporte de carga por carretera",
   "5521001": "Almacenamiento y depósito", "5422001": "Construcción de proyectos de servicio público",
   "5493001": "Transporte por tuberías; explotación de gasolineras",
+  "4016101": "Actividades de apoyo a la agricultura",
 };
 function pilaActividad(texto, clase, centro){
   const t = String(texto || "");
@@ -19258,6 +19259,8 @@ function pilaActividad(texto, clase, centro){
   // 2) Actividad corta de 4 dígitos (la que trae el certificado de Sura)
   const cortas = (t.match(/(?:^|\D)([1-9]\d{3})(?!\d)/g) || []).map(x => x.replace(/\D/g, ""));
   for (const c of cortas){ const k = PILA_ACTIVIDAD_CORTA[`${clase}|${c}`]; if (k) return k; }
+  // corta que empieza en 0 y está en la tabla (ej. "0161", apoyo a la agricultura)
+  for (const c of (t.match(/(?:^|\D)(0\d{3})(?!\d)/g) || []).map(x => x.replace(/\D/g, ""))){ const k = PILA_ACTIVIDAD_CORTA[`${clase}|${c}`]; if (k) return k; }
   if (cortas.length || /(?:^|\D)0\d{3}(?!\d)/.test(t.replace(/c(?:d|odigo|g)\s*[o0]*\d{1,3}/gi, ""))) return ""; // trae una actividad que no conozco: mejor vacía (SUAPORTE la corrige) que equivocada
   // 3) Por riesgo y centro de trabajo, como en las planillas ya pagadas
   return PILA_ACTIVIDAD[`${clase}|${Number(centro) || 0}`] || PILA_ACTIVIDAD_CLASE[clase] || "";
