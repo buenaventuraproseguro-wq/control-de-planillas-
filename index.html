@@ -1875,6 +1875,21 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .breakdown .btn.wa-solido{ background:#FFFFFF !important; border:1.5px solid #25D366 !important; color:#128C3E !important; font-weight:700; display:inline-flex; align-items:center; gap:7px; padding-left:6px; }
   .breakdown .btn.wa-solido:hover{ background:#EAFBF0 !important; }
   .breakdown .btn.wa-solido .wa-ico{ width:22px; height:22px; flex-shrink:0; border-radius:6px; }
+  /* Formularios de EPS (22-nov-2026) */
+  .fm-modal{ max-width:1000px !important; width:96vw; }
+  .fm-barra{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px; }
+  .fm-barra label{ display:flex; gap:6px; align-items:center; font-size:13px; font-weight:600; }
+  .fm-barra select{ max-width:260px; }
+  .fm-pags{ margin-left:auto; display:flex; gap:6px; align-items:center; font-size:13px; }
+  .fm-ayuda{ font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .fm-hoja{ position:relative; border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:68vh; background:#fff; cursor:crosshair; user-select:none; }
+  .fm-pagina{ position:relative; }
+  .fm-hoja img{ display:block; width:100%; height:auto; }
+  .fm-marca{ position:absolute; transform:translateY(-50%); white-space:nowrap; line-height:1; color:#0D1A73; background:rgba(255,214,0,.55); border:1px dashed #B58900; border-radius:3px; padding:0 2px; cursor:move; touch-action:none; }
+  .fm-marca.sel{ background:rgba(242,128,63,.75); border-style:solid; border-color:#C2410C; color:#fff; }
+  .fm-cuenta{ margin-right:auto; font-size:12.5px; color:var(--muted); align-self:center; }
+  #formLlenarCampos .field.falta input, #formLlenarCampos .field.falta select{ background:#FFF6CC; border-color:#E0B400; }
+  .guia-archivo .form-estado{ display:block; font-size:11.5px; font-weight:600; margin-top:2px; }
   /* Ficha resaltada (22-nov-2026): marco de color y sombra para enfocar la vista en el cliente */
   .breakdown.show{ border:2px solid var(--gold, #F2803F) !important; border-radius:16px; padding:12px 16px 14px !important; margin-top:12px !important;
     background:var(--panel); box-shadow:0 0 0 4px rgba(242,128,63,.14), 0 10px 28px rgba(16,24,40,.14); }
@@ -2230,6 +2245,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
               <div class="actions">
           <div class="acc-grupo"><span class="acc-t">Cliente</span>
             <button class="btn small primary" id="editBtn">Editar</button>
+            <button type="button" class="btn small" id="formEpsBtn" style="display:none;" title="Descarga el formulario de afiliación de la EPS lleno con los datos del cliente"></button>
             <button class="acc-mas btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
             <button type="button" class="acc-mas btn small" id="salarioClienteBtn" hidden title="Salario con el que cotiza: con él se calculan salud, pensión, ARL y caja">💰 Salario</button>
             <button type="button" class="acc-mas btn small" id="presuncionClienteBtn">📊 Presunción de costos</button>
@@ -3423,6 +3439,30 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 </div>
 
 <!-- Modal para configurar el mensaje de recordatorio de cobro -->
+<div class="overlay" id="overlayFormLlenar">
+  <div class="modal" style="max-width:640px;">
+    <h2 id="formLlenarTitulo">📝 Formulario de EPS</h2>
+    <div class="modal-sub">Revise los datos. Lo que está en amarillo falta: escríbalo una vez y queda guardado para la próxima. La firma la pone el afiliado a mano en el formulario descargado.</div>
+    <div class="form-grid" id="formLlenarCampos"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="formLlenarCancelBtn">Cancelar</button><button type="button" class="btn primary" id="formLlenarOkBtn">⬇️ Descargar formulario lleno</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayFormMarcar" tabindex="-1">
+  <div class="modal fm-modal">
+    <h2 id="formMarcarTitulo">✏️ Marcar campos</h2>
+    <div class="fm-barra">
+      <label>Dato <select id="formMarcarCampo"></select></label>
+      <label>Tamaño <select id="formMarcarTam"><option value="0.0095">Pequeño</option><option value="0.0125" selected>Normal</option><option value="0.016">Grande</option></select></label>
+      <button type="button" class="btn small ghost" id="formMarcarMenos" title="Letra más pequeña">A−</button>
+      <button type="button" class="btn small ghost" id="formMarcarMas" title="Letra más grande">A+</button>
+      <button type="button" class="btn small ghost danger" id="formMarcarBorrar">🗑️ Quitar</button>
+      <span class="fm-pags"><button type="button" class="btn small ghost" id="formMarcarPrev">◀</button><span id="formMarcarPag"></span><button type="button" class="btn small ghost" id="formMarcarNext">▶</button></span>
+    </div>
+    <div class="fm-ayuda" id="formMarcarSel"></div>
+    <div class="fm-hoja" id="formMarcarHoja"></div>
+    <div class="modal-actions"><span id="formMarcarCuenta" class="fm-cuenta"></span><button type="button" class="btn ghost" id="formMarcarCerrar">Cerrar sin guardar</button><button type="button" class="btn" id="formMarcarPrueba">🧪 Descargar prueba</button><button type="button" class="btn primary" id="formMarcarGuardar">Guardar campos</button></div>
+  </div>
+</div>
 <div class="overlay" id="overlayGuiaEps">
   <div class="modal" style="max-width:820px;">
     <h2>📘 Guía de afiliaciones por EPS</h2>
@@ -3608,6 +3648,9 @@ let columnasLugar = (() => { try{ return localStorage.getItem(COLUMNAS_LUGAR_KEY
 // ¿La base ya tiene "recargo_mora"? (archivo recargo_mora.sql)
 const COLUMNAS_RECARGO_KEY = "prosegurosnet_columnas_recargo";
 let columnasRecargo = (() => { try{ return localStorage.getItem(COLUMNAS_RECARGO_KEY) === "1"; }catch(e){ return false; } })();
+// ¿La base ya tiene "datos_extra"? (fecha de nacimiento, sexo, cargo… para los formularios de EPS)
+const COLUMNAS_EXTRA_KEY = "prosegurosnet_columnas_extra";
+let columnasExtra = (() => { try{ return localStorage.getItem(COLUMNAS_EXTRA_KEY) === "1"; }catch(e){ return false; } })();
 // ¿La base ya tiene "dinero_recibido"? (cuándo llegó el dinero; pasa a PAGO con planilla y comprobante)
 const COLUMNAS_DINERO_KEY = "prosegurosnet_columnas_dinero";
 let columnasDinero = (() => { try{ return localStorage.getItem(COLUMNAS_DINERO_KEY) === "1"; }catch(e){ return false; } })();
@@ -3667,6 +3710,13 @@ async function detectarColumnasConfirmacion(){
       if (/dinero_recibido|column|schema cache/i.test(String(error.message || ""))) columnasDinero = false;
     } else columnasDinero = true;
     try{ localStorage.setItem(COLUMNAS_DINERO_KEY, columnasDinero ? "1" : "0"); }catch(e){}
+  }catch(e){}
+  try{
+    const { error } = await sb.from("clients").select("datos_extra").limit(1);
+    if (error){
+      if (/datos_extra|column|schema cache/i.test(String(error.message || ""))) columnasExtra = false;
+    } else columnasExtra = true;
+    try{ localStorage.setItem(COLUMNAS_EXTRA_KEY, columnasExtra ? "1" : "0"); }catch(e){}
   }catch(e){}
 }
 function esRecordToDbRow(r, monthId){
@@ -3729,6 +3779,7 @@ function esRecordToDbRow(r, monthId){
       recargo_mora: r["Recargo Mora"] === "" || r["Recargo Mora"] == null ? null : Number(r["Recargo Mora"]),
     } : {}),
     ...(columnasDinero ? { dinero_recibido: r["Dinero Recibido"] || null } : {}),
+    ...(columnasExtra ? { datos_extra: r["Datos Extra"] && typeof r["Datos Extra"] === "object" && Object.keys(r["Datos Extra"]).length ? r["Datos Extra"] : null } : {}),
   };
 }
 function dbRowToEsRecord(row){
@@ -3770,6 +3821,7 @@ function dbRowToEsRecord(row){
     "Motivo Retiro": row.motivo_retiro || "",
     "Recargo Mora": row.recargo_mora == null ? "" : row.recargo_mora,
     "Dinero Recibido": row.dinero_recibido || "",
+    "Datos Extra": row.datos_extra && typeof row.datos_extra === "object" ? row.datos_extra : {},
     "Lugar Trabajo": row.lugar_trabajo || "",
     "Último Recordatorio": row.ultimo_recordatorio || "",
     "Soporte Enviado": row.soporte_enviado || "",
@@ -4473,6 +4525,7 @@ function firmaClienteCanonica(texto){
     if (o && (o.lugar_trabajo === "" || o.lugar_trabajo == null)) delete o.lugar_trabajo;
     if (o && o.recargo_mora == null) delete o.recargo_mora;
     if (o && (o.dinero_recibido === "" || o.dinero_recibido == null)) delete o.dinero_recibido;
+    if (o && (o.datos_extra == null || (typeof o.datos_extra === "object" && !Object.keys(o.datos_extra).length))) delete o.datos_extra;
     if (o && (o.ultimo_recordatorio === "" || o.ultimo_recordatorio == null)) delete o.ultimo_recordatorio;
     ["placa","venc_licencia","venc_soat","venc_tecno","venc_poliza","venc_muelles","servicio_muelle"].forEach(k => { if (o && (o[k] === "" || o[k] == null)) delete o[k]; });
     if (o && (o.servicios_muelle == null || (typeof o.servicios_muelle === "object" && !Object.keys(o.servicios_muelle).length))) delete o.servicios_muelle;
@@ -6212,7 +6265,7 @@ const RC_CAMPOS = { estado_tramite: "Estado", no_planilla_pagada: "N.º de plani
   responsable_grupo: "Responsable", telefono: "Teléfono", telefono2: "Teléfono 2", nombre_contacto2: "Contacto 2", correo: "Correo", direccion_completa: "Dirección", fecha_ingreso: "Fecha de ingreso",
   eps: "EPS", valor_eps: "Valor EPS", estado_eps: "Estado EPS", arl: "ARL", arl_nivel: "Nivel ARL", valor_arl: "Valor ARL", estado_arl: "Estado ARL", afp: "Pensión", estado_afp: "Estado pensión",
   valor_pension: "Valor pensión", caja: "Caja", estado_caja: "Estado caja", valor_caja: "Valor caja", observacion: "Observación", recordatorio: "Recordatorio", beneficiarios: "Beneficiarios",
-  aceptado_por_muelle: "Aceptado por muelle", muelle: "Muelle", en_proceso_desde: "En proceso desde", fecha_retiro: "Fecha de retiro", motivo_retiro: "Motivo de retiro", recargo_mora: "Recargo por mora", dinero_recibido: "Dinero recibido",
+  aceptado_por_muelle: "Aceptado por muelle", muelle: "Muelle", en_proceso_desde: "En proceso desde", fecha_retiro: "Fecha de retiro", motivo_retiro: "Motivo de retiro", recargo_mora: "Recargo por mora", dinero_recibido: "Dinero recibido", datos_extra: "Datos para formularios",
   lugar_trabajo: "Lugar de trabajo", placa: "Placa", venc_licencia: "Vence licencia", venc_soat: "Vence SOAT", venc_tecno: "Vence tecnomecánica", venc_poliza: "Vence póliza", venc_muelles: "Vence muelles",
   venc_por_muelle: "Vencimiento por muelle", servicio_muelle: "Servicio de muelle", servicios_muelle: "Servicios de muelle", fecha_pago: "Fecha de pago", soporte_enviado: "Soporte enviado" };
 const RC_PLATA = new Set(["costo_servicio", "valor_eps", "valor_arl", "valor_pension", "valor_caja", "recargo_mora"]);
@@ -9107,6 +9160,7 @@ function showBreakdown(cedula){
   btnFacturar.onclick = () => crearBorradorAlegra(r);
 
   // Los tres puntos de muelle (S, T, A); solo el asignado al cliente es tocable.
+  try{ pintarBotonFormEps(r); }catch(e){}
   // Muelles: su propio renglón, con un botón por muelle (tocar = aceptado / pendiente)
   { const fm = document.getElementById("fichaMuelles");
     const ac = r["AceptadoPorMuelle"] || {};
@@ -9274,10 +9328,11 @@ function htmlArchivosGuia(x){
   const archivos = x.archivos || [];
   const lista = archivos.map((a, k) => `
     <div class="guia-archivo">
-      <div class="nom">📄 ${escHtml(a.nombre)}<small>${escHtml(TIPOS_ARCHIVO_GUIA[a.tipo] || "Documento")} · ${a.partes.length > 1 ? a.partes.length + " páginas" : "1 página"}${a.peso ? " · " + tamanoLegible(a.peso) : ""}${a.original ? " · con PDF original" : ""}</small></div>
+      <div class="nom">📄 ${escHtml(a.nombre)}<small>${escHtml(TIPOS_ARCHIVO_GUIA[a.tipo] || "Documento")} · ${a.partes.length > 1 ? a.partes.length + " páginas" : "1 página"}${a.peso ? " · " + tamanoLegible(a.peso) : ""}${a.original ? " · con PDF original" : ""}</small>${a.tipo === "formulario" ? `<span class="form-estado">${a.plantilla && (a.plantilla.campos || []).length ? `✅ La app lo llena sola (${a.plantilla.campos.length} datos marcados)` : "⚠️ Falta marcar los campos para que la app lo llene"}</span>` : ""}</div>
       <div class="btns">
         ${a.partes.map((pt, n) => `<button type="button" class="btn small" data-guia-descargar="${x._i}|${k}|${n}">⬇️ ${a.partes.length > 1 ? "Pág. " + (n + 1) : "Descargar"}</button>`).join("")}
         ${a.original ? `<button type="button" class="btn small ghost" data-guia-descargar="${x._i}|${k}|orig">⬇️ PDF original</button>` : ""}
+        ${esAdmin() && a.tipo === "formulario" ? `<button type="button" class="btn small" data-guia-marcar="${x._i}|${k}">✏️ Marcar campos</button>` : ""}
         ${esAdmin() ? `<button type="button" class="btn small ghost danger" data-guia-borrar-archivo="${x._i}|${k}" title="Borrar">🗑️</button>` : ""}
       </div>
     </div>`).join("");
@@ -9394,6 +9449,305 @@ async function borrarArchivoGuia(i, k){
   if (await guardarGuiaEps()) showToast("Archivo borrado.");
 }
 
+/* ---- Formularios de EPS llenos por la app (22-nov-2026) ----
+   Cada formulario de la guía (tipo «Formulario de afiliación») puede tener una PLANTILLA: dónde va cada dato
+   en cada página (posición en % de la hoja). El administrador la marca una sola vez tocando sobre la hoja.
+   Después, para cualquier cliente de esa EPS, la app arma el PDF con los datos del cliente y de la empresa.
+   La firma NO se pega: el afiliado firma a mano (o en su celular) en el formulario descargado. */
+const CAMPOS_FORM_EPS = [
+  ["g", "Cliente"],
+  ["nombre_completo", "Nombre completo"], ["primer_apellido", "Primer apellido"], ["segundo_apellido", "Segundo apellido"],
+  ["primer_nombre", "Primer nombre"], ["segundo_nombre", "Segundo nombre"], ["nombres", "Nombres (los dos)"],
+  ["tipo_doc", "Tipo de documento (CC)"], ["cedula", "Número de cédula"],
+  ["fecha_nac", "Fecha de nacimiento"], ["fecha_nac_d", "Nacimiento: día"], ["fecha_nac_m", "Nacimiento: mes"], ["fecha_nac_a", "Nacimiento: año"],
+  ["sexo", "Sexo (M o F)"], ["x_sexo_m", "X si es hombre"], ["x_sexo_f", "X si es mujer"], ["estado_civil", "Estado civil"],
+  ["direccion", "Dirección"], ["barrio", "Barrio"], ["municipio", "Municipio"], ["departamento", "Departamento"],
+  ["telefono", "Teléfono"], ["correo", "Correo"], ["cargo", "Cargo u oficio"], ["salario", "Salario"],
+  ["eps", "EPS"], ["afp", "Fondo de pensiones"], ["arl", "ARL"], ["caja", "Caja de compensación"],
+  ["g", "Fechas"],
+  ["fecha_ingreso", "Fecha de inicio de labores"], ["fecha_ingreso_d", "Inicio labores: día"], ["fecha_ingreso_m", "Inicio labores: mes"], ["fecha_ingreso_a", "Inicio labores: año"],
+  ["fecha_radicado", "Fecha de radicado"], ["fecha_radicado_d", "Radicado: día"], ["fecha_radicado_m", "Radicado: mes"], ["fecha_radicado_a", "Radicado: año"],
+  ["g", "Empresa (empleador)"],
+  ["emp_nombre", "Nombre o razón social"], ["emp_tipo_doc", "Tipo de documento (NIT o CC)"], ["emp_doc", "NIT o cédula"],
+  ["emp_direccion", "Dirección"], ["emp_municipio", "Municipio"], ["emp_departamento", "Departamento"],
+  ["emp_telefono", "Teléfono"], ["emp_correo", "Correo"], ["emp_representante", "Representante legal"], ["emp_actividad", "Actividad económica"],
+  ["g", "Otros"],
+  ["x", "Marca X (siempre)"], ["texto", "Texto fijo (lo escribe usted)"],
+];
+const NOMBRE_CAMPO_FORM = Object.fromEntries(CAMPOS_FORM_EPS.filter(([k]) => k !== "g"));
+// Datos que la app no tenía: se piden al llenar y quedan guardados en el cliente ("Datos Extra")
+const CAMPOS_EXTRA_CLIENTE = ["fecha_nac", "sexo", "estado_civil", "cargo", "salario", "barrio"];
+// Datos de la empresa que no están en la app: se guardan en configuracion → "formulario_empresas"
+const CAMPOS_EXTRA_EMPRESA = ["emp_direccion", "emp_municipio", "emp_departamento", "emp_telefono", "emp_correo", "emp_representante", "emp_actividad"];
+const DATOS_PROSEGUROSNET = { emp_nombre: "NESTOR FABIAN GARZON TORRES (PROSEGUROSNET)", emp_tipo_doc: "NIT", emp_doc: "1.112.904.783-6",
+  emp_direccion: "KM 15 VÍA CALI, EDS PRIMAX", emp_municipio: "BUENAVENTURA", emp_departamento: "VALLE DEL CAUCA", emp_telefono: "3116133523", emp_representante: "NESTOR FABIAN GARZON TORRES" };
+let formEmpresas = {}; // empresa → datos que se escribieron a mano
+
+function archivoFormularioDeEps(nombreEps){
+  const k = normalizarTexto(nombreEps).replace(/\beps\b/g, "").trim();
+  if (!k) return null;
+  const g = guiaEps.find(x => { const n = normalizarTexto(x.eps).replace(/\beps\b/g, "").replace(/\(.*?\)/g, "").trim(); return n && !/caja/.test(normalizarTexto(x.eps)) && (n === k || n.startsWith(k) || k.startsWith(n)); });
+  if (!g) return null;
+  const a = (g.archivos || []).find(a => a.tipo === "formulario" && a.plantilla && (a.plantilla.campos || []).length)
+    || (g.archivos || []).find(a => a.tipo === "formulario");
+  return a ? { guia: g, archivo: a, listo: !!(a.plantilla && (a.plantilla.campos || []).length) } : null;
+}
+function partesFecha(f){ // dd/mm/aaaa o aaaa-mm-dd → [d, m, a]
+  let m = String(f || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (m) return [m[1].padStart(2, "0"), m[2].padStart(2, "0"), m[3]];
+  m = String(f || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return [m[3], m[2], m[1]];
+  return ["", "", ""];
+}
+function claveEmpresaForm(r){ const e = String(r["Empresa"] || "").trim(); return e && normalizarTexto(e) !== "prosegurosnet" ? normalizarTexto(e) : "prosegurosnet"; }
+async function cargarFormEmpresas(){
+  if (!sb) return;
+  try{
+    const { data } = await sb.from("configuracion").select("valor").eq("clave", "formulario_empresas").maybeSingle();
+    if (data && data.valor && typeof data.valor === "object") formEmpresas = data.valor;
+    const ae = await sb.from("configuracion").select("valor").eq("clave", "pila_aportantes_empresas").maybeSingle();
+    if (ae.data && ae.data.valor && typeof ae.data.valor === "object") pilaAportantes = { ...ae.data.valor, ...pilaAportantes };
+  }catch(e){ console.error(e); }
+}
+function datosFormulario(r, fechaRadicado){
+  const [ap1, ap2, n1, n2] = pilaNombreDe(r);
+  const ex = r["Datos Extra"] || {};
+  const [nd, nm, na] = partesFecha(ex.fecha_nac);
+  const [id, im, ia] = partesFecha(r["Fecha de Ingreso"]);
+  const [rd, rm, ra] = partesFecha(fechaRadicado);
+  const lugar = String(r["Lugar Trabajo"] || "").trim();
+  const sexo = String(ex.sexo || "").toUpperCase().slice(0, 1);
+  const kEmp = claveEmpresaForm(r);
+  const ap = kEmp === "prosegurosnet" ? null : (Object.entries(pilaAportantes || {}).find(([k]) => normalizarTexto(k) === kEmp) || [])[1];
+  const empBase = kEmp === "prosegurosnet" ? DATOS_PROSEGUROSNET
+    : { emp_nombre: String(r["Empresa"] || "").toUpperCase(), emp_tipo_doc: ap && ap.cedula ? (String(ap.cedula).replace(/\D/g, "").length >= 9 && /-/.test(ap.cedula) ? "NIT" : "CC") : "", emp_doc: ap ? String(ap.cedula || "") : "", emp_representante: ap ? String(ap.nombre || "").toUpperCase() : "" };
+  const emp = { ...empBase, ...(formEmpresas[kEmp] || {}) };
+  return {
+    nombre_completo: String(r["Nombre del Afiliado"] || "").toUpperCase(), primer_apellido: ap1, segundo_apellido: ap2, primer_nombre: n1, segundo_nombre: n2,
+    nombres: [n1, n2].filter(Boolean).join(" "), tipo_doc: "CC", cedula: String(r["Cédula"] || ""),
+    fecha_nac: nd ? `${nd}/${nm}/${na}` : "", fecha_nac_d: nd, fecha_nac_m: nm, fecha_nac_a: na,
+    sexo, x_sexo_m: sexo === "M" ? "X" : "", x_sexo_f: sexo === "F" ? "X" : "", estado_civil: String(ex.estado_civil || "").toUpperCase(),
+    direccion: String(r["Dirección Completa"] || "").toUpperCase(), barrio: String(ex.barrio || "").toUpperCase(),
+    municipio: (lugar ? lugar.split("(")[0].trim() : "BUENAVENTURA").toUpperCase(), departamento: lugar && /\((.+)\)/.test(lugar) ? lugar.match(/\((.+)\)/)[1].toUpperCase() : "VALLE DEL CAUCA",
+    telefono: String(r["Teléfono"] || ""), correo: String(r["Correo"] || "").toLowerCase(), cargo: String(ex.cargo || "").toUpperCase(),
+    salario: ex.salario ? fmt(numOrZero(ex.salario)) : "", eps: String(r["EPS"] || "").toUpperCase(), afp: String(r["AFP"] || "").toUpperCase(),
+    arl: /sura/i.test(r["ARL (Riesgo/Código)"] || "") || !r["ARL (Riesgo/Código)"] ? "SURA" : String(r["ARL (Riesgo/Código)"]).toUpperCase(),
+    caja: String(r["Caja de Compensación"] || "").toUpperCase(),
+    fecha_ingreso: id ? `${id}/${im}/${ia}` : "", fecha_ingreso_d: id, fecha_ingreso_m: im, fecha_ingreso_a: ia,
+    fecha_radicado: rd ? `${rd}/${rm}/${ra}` : "", fecha_radicado_d: rd, fecha_radicado_m: rm, fecha_radicado_a: ra,
+    ...Object.fromEntries(Object.entries(emp).map(([k, v]) => [k, String(v || "")])),
+    x: "X",
+  };
+}
+let _pdfLibCargando = null;
+function cargarPdfLib(){
+  if (window.PDFLib) return Promise.resolve(window.PDFLib);
+  return _pdfLibCargando || (_pdfLibCargando = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
+    s.onload = () => res(window.PDFLib); s.onerror = () => { _pdfLibCargando = null; rej(new Error("sin conexión")); };
+    document.head.appendChild(s);
+  }));
+}
+async function urlParteGuia(parte){
+  const { data, error } = await sb.storage.from("guia-eps").createSignedUrl(parte.path, 600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+// Arma el PDF: cada página es la imagen del formulario y encima van los datos
+async function pdfFormularioLleno(archivo, valores){
+  const PDFLib = await cargarPdfLib();
+  const doc = await PDFLib.PDFDocument.create();
+  const fuente = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const campos = (archivo.plantilla && archivo.plantilla.campos) || [];
+  for (let n = 0; n < archivo.partes.length; n++){
+    const bytes = await (await fetch(await urlParteGuia(archivo.partes[n]))).arrayBuffer();
+    const img = await doc.embedJpg(bytes);
+    const W = 612, H = W * img.height / img.width;
+    const page = doc.addPage([W, H]);
+    page.drawImage(img, { x: 0, y: 0, width: W, height: H });
+    campos.filter(c => c.pag === n).forEach(c => {
+      let t = c.campo === "texto" ? String(c.texto || "") : String(valores[c.campo] || "");
+      if (!t) return;
+      t = t.replace(/[^\x20-\x7E -ÿ]/g, "");
+      const size = (c.t || 0.0125) * H;
+      page.drawText(t, { x: c.x * W, y: H * (1 - c.y) - size * 0.35, size, font: fuente, color: PDFLib.rgb(0.05, 0.1, 0.45) });
+    });
+  }
+  return new Blob([await doc.save()], { type: "application/pdf" });
+}
+function descargarBlob(blob, nombre){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+
+/* -- Llenar el formulario de un cliente: se revisan los datos, se completan los que faltan y se descarga -- */
+let formLlenar = null;
+async function abrirFormularioCliente(cedula){
+  const r = records.find(x => String(x["Cédula"]) === String(cedula));
+  if (!r) return;
+  if (!guiaEps.some(g => (g.archivos || []).length)) await cargarGuiaEps();
+  const f = archivoFormularioDeEps(r["EPS"]);
+  if (!f){ showToast(`La EPS «${r["EPS"] || "sin EPS"}» no tiene formulario en la guía.`); return; }
+  if (!f.listo){ await alertApp(`📝 ${f.guia.eps} pide formulario, pero todavía no tiene marcados los campos.\n\nEl administrador lo hace una sola vez en «Guía de afiliaciones por EPS» → ${f.guia.eps} → «✏️ Marcar campos».`); return; }
+  await cargarFormEmpresas();
+  const usados = [...new Set(f.archivo.plantilla.campos.map(c => c.campo))].filter(k => k !== "x" && k !== "texto");
+  // las fechas por partes se editan con la fecha completa
+  const visibles = [...new Set(usados.map(k => /^x_sexo_/.test(k) ? "sexo" : /^fecha_.+_(d|m|a)$/.test(k) ? k.replace(/_(d|m|a)$/, "") : k))];
+  const radicado = fechaHoyISO();
+  const v = datosFormulario(r, radicado);
+  formLlenar = { cedula: String(r["Cédula"]), archivo: f.archivo, eps: f.guia.eps, campos: visibles };
+  document.getElementById("formLlenarTitulo").textContent = `📝 Formulario ${f.guia.eps} · ${nombrePropio(r["Nombre del Afiliado"] || "")}`;
+  document.getElementById("formLlenarCampos").innerHTML = visibles.map(k => {
+    const esFecha = /^fecha_/.test(k);
+    const val = esFecha ? (k === "fecha_radicado" ? radicado : (() => { const [d, m, a] = partesFecha(k === "fecha_nac" ? (r["Datos Extra"] || {}).fecha_nac : r["Fecha de Ingreso"]); return a ? `${a}-${m}-${d}` : ""; })()) : (k === "salario" ? String((r["Datos Extra"] || {}).salario || "") : v[k]);
+    const falta = !val;
+    const control = k === "sexo" ? `<select id="fl_${k}"><option value=""></option><option value="M" ${val === "M" ? "selected" : ""}>M (hombre)</option><option value="F" ${val === "F" ? "selected" : ""}>F (mujer)</option></select>`
+      : k === "estado_civil" ? `<select id="fl_${k}">${["", "SOLTERO(A)", "CASADO(A)", "UNIÓN LIBRE", "SEPARADO(A)", "VIUDO(A)"].map(o => `<option ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`
+      : `<input id="fl_${k}" type="${esFecha ? "date" : "text"}" ${k === "salario" ? 'inputmode="numeric"' : ""} value="${escHtml(val || "")}">`;
+    return `<div class="field${falta ? " falta" : ""}"><label for="fl_${k}">${escHtml(NOMBRE_CAMPO_FORM[k] || k)}${CAMPOS_EXTRA_CLIENTE.includes(k) ? " · se guarda en el cliente" : CAMPOS_EXTRA_EMPRESA.includes(k) ? " · se guarda en la empresa" : ""}</label>${control}</div>`;
+  }).join("");
+  document.getElementById("overlayFormLlenar").classList.add("show");
+}
+async function descargarFormularioLleno(){
+  const st = formLlenar; if (!st) return;
+  const r = records.find(x => String(x["Cédula"]) === st.cedula); if (!r) return;
+  const lee = (k) => { const el = document.getElementById("fl_" + k); return el ? el.value.trim() : ""; };
+  // Guarda en el cliente los datos nuevos (solo agrega o cambia esos campos)
+  const ex = { ...(r["Datos Extra"] || {}) }; let cambioCliente = false;
+  CAMPOS_EXTRA_CLIENTE.forEach(k => { if (!st.campos.includes(k)) return; let val = lee(k); if (k === "salario") val = val.replace(/\D/g, "");
+    if (k === "fecha_nac" && val){ const [a, m, d] = val.split("-"); val = `${d}/${m}/${a}`; }
+    if (val && ex[k] !== val){ ex[k] = val; cambioCliente = true; } });
+  if (cambioCliente){ r["Datos Extra"] = ex; r["_ultimaEdicion"] = new Date().toISOString(); saveStore(); }
+  const kEmp = claveEmpresaForm(r); let cambioEmp = false;
+  const emp = { ...(formEmpresas[kEmp] || {}) };
+  CAMPOS_EXTRA_EMPRESA.forEach(k => { if (!st.campos.includes(k)) return; const val = lee(k); if (val && emp[k] !== val){ emp[k] = val; cambioEmp = true; } });
+  if (cambioEmp){ formEmpresas[kEmp] = emp; try{ await sb.from("configuracion").upsert({ clave: "formulario_empresas", valor: formEmpresas, updated_by: currentUserId }); }catch(e){ console.error(e); } }
+  const fr = lee("fecha_radicado") || fechaHoyISO();
+  const v = datosFormulario(r, fr);
+  // lo que se escribió en pantalla manda (también fechas de inicio)
+  st.campos.forEach(k => {
+    const val = lee(k); if (!val) return;
+    if (/^fecha_/.test(k)){ const [a, m, d] = val.split("-"); if (a){ v[k] = `${d}/${m}/${a}`; v[k + "_d"] = d; v[k + "_m"] = m; v[k + "_a"] = a; } }
+    else if (k === "sexo"){ v.sexo = val; v.x_sexo_m = val === "M" ? "X" : ""; v.x_sexo_f = val === "F" ? "X" : ""; }
+    else if (k === "salario"){ v.salario = fmt(Number(val.replace(/\D/g, "")) || 0); }
+    else v[k] = val.toUpperCase();
+  });
+  const btn = document.getElementById("formLlenarOkBtn"); btn.disabled = true; btn.textContent = "Armando el PDF…";
+  try{
+    const blob = await pdfFormularioLleno(st.archivo, v);
+    descargarBlob(blob, `Formulario ${st.eps} - ${String(r["Nombre del Afiliado"] || "").toUpperCase()} - CC ${st.cedula}.pdf`);
+    document.getElementById("overlayFormLlenar").classList.remove("show");
+    showToast(`✅ Formulario de ${st.eps} descargado. Falta la firma del afiliado (a mano).`);
+  }catch(e){
+    console.error(e); showToast("No se pudo armar el formulario: " + (e.message || e));
+  }finally{ btn.disabled = false; btn.textContent = "⬇️ Descargar formulario lleno"; }
+}
+document.getElementById("formLlenarOkBtn").addEventListener("click", descargarFormularioLleno);
+document.getElementById("formLlenarCancelBtn").addEventListener("click", () => document.getElementById("overlayFormLlenar").classList.remove("show"));
+document.getElementById("formEpsBtn").addEventListener("click", () => { if (activeCedula) abrirFormularioCliente(activeCedula); });
+// Botón en la ficha: solo si la EPS del cliente pide formulario en la guía
+function pintarBotonFormEps(r){
+  const b = document.getElementById("formEpsBtn"); if (!b) return;
+  const f = r && !esConductorExcluido(r) ? archivoFormularioDeEps(r["EPS"]) : null;
+  b.style.display = f ? "" : "none";
+  b.textContent = f ? (f.listo ? `📝 Formulario ${f.guia.eps}` : `📝 Formulario ${f.guia.eps} (sin marcar)`) : "";
+}
+// Al guardar un cliente nuevo o cambiarle la EPS: si la EPS pide formulario, se ofrece de una vez
+async function ofrecerFormularioEps(r){
+  const f = archivoFormularioDeEps(r["EPS"]);
+  if (!f) return;
+  if (!f.listo){ showToast(`📝 ${f.guia.eps} pide formulario: falta marcar sus campos en la guía.`); return; }
+  if (await confirmarApp(`📝 ${f.guia.eps} pide formulario de afiliación.\n\n¿Descargarlo ya lleno con los datos de ${nombrePropio(r["Nombre del Afiliado"] || "")}?`)) abrirFormularioCliente(r["Cédula"]);
+}
+
+/* -- Marcar los campos de un formulario (administrador, una sola vez por formulario) -- */
+let formMarcar = null; // { i, k, pag, campos, sel, campoNuevo }
+async function abrirMarcarFormulario(i, k){
+  if (!esAdmin()) return;
+  const a = guiaEps[i] && guiaEps[i].archivos[k]; if (!a) return;
+  formMarcar = { i, k, pag: 0, campos: JSON.parse(JSON.stringify((a.plantilla && a.plantilla.campos) || [])), sel: -1, urls: [] };
+  document.getElementById("formMarcarTitulo").textContent = `✏️ Marcar campos · ${guiaEps[i].eps} · ${a.nombre}`;
+  document.getElementById("formMarcarCampo").innerHTML = (() => { let h = "", abierto = false;
+    CAMPOS_FORM_EPS.forEach(([c, t]) => { if (c === "g"){ h += (abierto ? "</optgroup>" : "") + `<optgroup label="${escHtml(t)}">`; abierto = true; } else h += `<option value="${c}">${escHtml(t)}</option>`; });
+    return h + (abierto ? "</optgroup>" : ""); })();
+  const ov = document.getElementById("overlayFormMarcar"); ov.classList.add("show"); ov.focus();
+  try{ formMarcar.urls = await Promise.all(a.partes.map(urlParteGuia)); }catch(e){ showToast("No se pudieron abrir las páginas: " + (e.message || e)); }
+  pintarMarcar();
+}
+function pintarMarcar(){
+  const st = formMarcar; if (!st) return;
+  const a = guiaEps[st.i].archivos[st.k];
+  document.getElementById("formMarcarPag").textContent = `Página ${st.pag + 1} de ${a.partes.length}`;
+  document.getElementById("formMarcarPrev").disabled = st.pag === 0;
+  document.getElementById("formMarcarNext").disabled = st.pag >= a.partes.length - 1;
+  const hoja = document.getElementById("formMarcarHoja");
+  hoja.innerHTML = `<div class="fm-pagina"><img src="${escHtml(st.urls[st.pag] || "")}" alt="" draggable="false">` + st.campos.map((c, n) => c.pag !== st.pag ? "" :
+    `<span class="fm-marca${n === st.sel ? " sel" : ""}" data-fm-n="${n}" style="left:${(c.x * 100).toFixed(2)}%;top:${(c.y * 100).toFixed(2)}%;font-size:calc(var(--h, 1000px) * ${(c.t || 0.0125).toFixed(4)})">${escHtml(c.campo === "texto" ? (c.texto || "texto") : c.campo === "x" ? "X" : (NOMBRE_CAMPO_FORM[c.campo] || c.campo))}</span>`).join("") + `</div>`;
+  const im = hoja.querySelector("img");
+  const alto = () => hoja.style.setProperty("--h", (im.clientHeight || 1000) + "px");
+  if (im.complete) alto(); else im.onload = alto;
+  const s = st.campos[st.sel];
+  document.getElementById("formMarcarSel").innerHTML = s ? `Seleccionado: <b>${escHtml(NOMBRE_CAMPO_FORM[s.campo] || s.campo)}</b> · arrástrelo para moverlo (o use las flechas del teclado)`
+    : `Escoja el dato y toque en la hoja el punto donde empieza a escribirse (a la mitad de la línea).`;
+  ["formMarcarMenos", "formMarcarMas", "formMarcarBorrar"].forEach(id => document.getElementById(id).disabled = !s);
+  document.getElementById("formMarcarCuenta").textContent = `${st.campos.length} dato(s) marcados`;
+}
+document.getElementById("formMarcarHoja").addEventListener("click", (e) => {
+  const st = formMarcar; if (!st) return;
+  if (st.arrastro){ st.arrastro = false; return; }
+  const m = e.target.closest("[data-fm-n]");
+  if (m){ st.sel = Number(m.dataset.fmN); pintarMarcar(); return; }
+  const img = e.currentTarget.querySelector("img"); if (!img) return;
+  const rc = img.getBoundingClientRect();
+  const x = (e.clientX - rc.left) / rc.width, y = (e.clientY - rc.top) / rc.height;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return;
+  const campo = document.getElementById("formMarcarCampo").value;
+  const c = { campo, pag: st.pag, x, y, t: Number(document.getElementById("formMarcarTam").value) || 0.0125 };
+  if (campo === "texto"){ const t = prompt("Texto fijo que va en este lugar:"); if (!t) return; c.texto = t.toUpperCase(); }
+  st.campos.push(c); st.sel = st.campos.length - 1; pintarMarcar();
+});
+// Arrastrar una marca para moverla
+document.getElementById("formMarcarHoja").addEventListener("pointerdown", (e) => {
+  const st = formMarcar; const m = e.target.closest("[data-fm-n]"); if (!st || !m) return;
+  e.preventDefault(); st.sel = Number(m.dataset.fmN);
+  const img = e.currentTarget.querySelector("img"), rc = img.getBoundingClientRect(), c = st.campos[st.sel];
+  const x0 = e.clientX, y0 = e.clientY, cx = c.x, cy = c.y; let movio = false;
+  const mover = (ev) => { const dx = (ev.clientX - x0) / rc.width, dy = (ev.clientY - y0) / rc.height;
+    if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > 3) movio = true;
+    c.x = Math.min(1, Math.max(0, cx + dx)); c.y = Math.min(1, Math.max(0, cy + dy));
+    m.style.left = (c.x * 100) + "%"; m.style.top = (c.y * 100) + "%"; };
+  const fin = () => { window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", fin); st.arrastro = movio; pintarMarcar(); };
+  window.addEventListener("pointermove", mover); window.addEventListener("pointerup", fin);
+});
+document.getElementById("overlayFormMarcar").addEventListener("keydown", (e) => {
+  const st = formMarcar; if (!st) return; const s = st.campos[st.sel]; if (!s) return;
+  const paso = e.shiftKey ? 0.01 : 0.002;
+  const mov = { ArrowLeft: [-paso, 0], ArrowRight: [paso, 0], ArrowUp: [0, -paso], ArrowDown: [0, paso] }[e.key];
+  if (mov){ e.preventDefault(); s.x = Math.min(1, Math.max(0, s.x + mov[0])); s.y = Math.min(1, Math.max(0, s.y + mov[1])); pintarMarcar(); }
+  if (e.key === "Delete" || e.key === "Backspace"){ if (document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return; e.preventDefault(); st.campos.splice(st.sel, 1); st.sel = -1; pintarMarcar(); }
+});
+document.getElementById("formMarcarPrev").addEventListener("click", () => { formMarcar.pag--; formMarcar.sel = -1; pintarMarcar(); });
+document.getElementById("formMarcarNext").addEventListener("click", () => { formMarcar.pag++; formMarcar.sel = -1; pintarMarcar(); });
+document.getElementById("formMarcarMenos").addEventListener("click", () => { const s = formMarcar.campos[formMarcar.sel]; if (s){ s.t = Math.max(0.006, (s.t || 0.0125) - 0.0015); pintarMarcar(); } });
+document.getElementById("formMarcarMas").addEventListener("click", () => { const s = formMarcar.campos[formMarcar.sel]; if (s){ s.t = Math.min(0.04, (s.t || 0.0125) + 0.0015); pintarMarcar(); } });
+document.getElementById("formMarcarBorrar").addEventListener("click", () => { formMarcar.campos.splice(formMarcar.sel, 1); formMarcar.sel = -1; pintarMarcar(); });
+document.getElementById("formMarcarCerrar").addEventListener("click", () => { document.getElementById("overlayFormMarcar").classList.remove("show"); formMarcar = null; });
+document.getElementById("formMarcarPrueba").addEventListener("click", async () => {
+  const st = formMarcar; if (!st) return;
+  const a = { ...guiaEps[st.i].archivos[st.k], plantilla: { campos: st.campos } };
+  const ejemplo = Object.fromEntries(Object.keys(NOMBRE_CAMPO_FORM).map(k => [k, k === "x" ? "X" : /_d$/.test(k) ? "22" : /_m$/.test(k) ? "11" : /_a$/.test(k) ? "2026" : /^fecha/.test(k) ? "22/11/2026" : (NOMBRE_CAMPO_FORM[k] || k).toUpperCase()]));
+  try{ descargarBlob(await pdfFormularioLleno(a, ejemplo), "Prueba formulario.pdf"); }catch(e){ showToast("No se pudo armar la prueba: " + (e.message || e)); }
+});
+document.getElementById("formMarcarGuardar").addEventListener("click", async () => {
+  const st = formMarcar; if (!st) return;
+  const a = guiaEps[st.i].archivos[st.k];
+  a.plantilla = { campos: st.campos.map(c => ({ ...c, x: +c.x.toFixed(4), y: +c.y.toFixed(4), t: +(c.t || 0.0125).toFixed(4) })), fecha: fechaHoyISO() };
+  if (a.tipo !== "formulario") a.tipo = "formulario";
+  const ok = await guardarGuiaEps();
+  renderGuiaEps(); abrirEpsGuia(st.i);
+  try{ if (activeCedula) pintarBotonFormEps(records.find(x => String(x["Cédula"]) === String(activeCedula))); }catch(e){}
+  showToast(ok ? `✅ Campos guardados (${st.campos.length}). Ya se puede llenar este formulario para los clientes de ${guiaEps[st.i].eps}.` : "No se pudo guardar para todo el equipo.");
+  document.getElementById("overlayFormMarcar").classList.remove("show"); formMarcar = null;
+});
+
 function renderGuiaEps(){
   const q = normalizarTexto(document.getElementById("guiaBuscar").value);
   const lista = guiaEps.map((x, i) => ({ ...x, _i: i })).filter(x => !q || normalizarTexto(x.eps).includes(q))
@@ -9451,6 +9805,8 @@ document.getElementById("guiaAgregarBtn").addEventListener("click", () => {
 document.getElementById("guiaLista").addEventListener("click", async (e) => {
   const dsc = e.target.closest("[data-guia-descargar]");
   if (dsc){ e.preventDefault(); const [i, k, n] = dsc.dataset.guiaDescargar.split("|"); descargarArchivoGuia(Number(i), Number(k), n); return; }
+  const mc = e.target.closest("[data-guia-marcar]");
+  if (mc){ e.preventDefault(); const [i, k] = mc.dataset.guiaMarcar.split("|").map(Number); abrirMarcarFormulario(i, k); return; }
   const ba = e.target.closest("[data-guia-borrar-archivo]");
   if (ba){ e.preventDefault(); const [i, k] = ba.dataset.guiaBorrarArchivo.split("|").map(Number); borrarArchivoGuia(i, k); return; }
   const sub = e.target.closest("[data-guia-subir-btn]");
@@ -12807,6 +13163,7 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     document.getElementById("fTrasladoEps").focus();
     return;
   }
+  const editingCedulaAlGuardar = editingCedula;
   const epsAntesDelCambio = editingCedula ? ((records.find(x => String(x["Cédula"]) === String(editingCedula)) || {})["EPS"] || "") : "";
   if (!(await confirmarQuitarTrasladoFormulario(editingCedula))) return;
 
@@ -12992,6 +13349,9 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   renderList(searchInput.value);
   showBreakdown(cedula);
   verificarGuardadoEnNube(cedula, store.currentMonth);
+  // Cliente nuevo o EPS cambiada: si esa EPS pide formulario, se ofrece descargarlo lleno
+  { const esNuevo = !editingCedulaAlGuardar; const epsCambio = epsAntesDelCambio && normalizarTexto(epsAntesDelCambio) !== normalizarTexto(record["EPS"]);
+    if ((esNuevo || epsCambio) && !esConductorGuardando){ const rr = records.find(x => String(x["Cédula"]) === String(cedula)); if (rr) setTimeout(() => ofrecerFormularioEps(rr), 600); } }
 });
 
 // Después de guardar un cliente se comprueba que el cambio sí llegó a la base compartida.
