@@ -2050,6 +2050,23 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .cg-ver{ display:block; width:100%; padding:10px 16px; border:0; background:transparent; font:inherit; font-size:13px; font-weight:700; color:#1F3D70; cursor:pointer; text-align:right; }
   @media (prefers-color-scheme: dark){ .cg-aviso b{ background:#3A1917; color:#FFB4A8; } .cg-ver{ color:#9DB6E8; } .cg-tarjeta:hover{ border-color:#9DB6E8; } }
   @media (max-width:760px){ .cabecera-usuario{ display:none; } header.top{ padding:8px 10px; } .cg-tarjetas{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; } .cg-tarjeta{ min-height:52px; padding:8px 10px; font-size:13px; } .cg-izq h2{ font-size:19px; } }
+  /* Centro de gestión: botones más pequeños y más separados para distinguir cada uno (24-nov, pedido de Nestor) */
+  .breakdown .actions{ gap:10px 14px !important; margin-top:14px; }
+  .breakdown .actions .btn.small{ padding:4px 10px; font-size:12px; min-height:30px; border-radius:8px; }
+  .breakdown .btn.wa-solido{ gap:5px; padding-left:5px; }
+  .breakdown .btn.wa-solido .wa-ico{ width:18px; height:18px; border-radius:5px; }
+  .cg-izq .cg-tarjetas{ grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-top:4px; }
+  .cg-izq .cg-tarjeta{ min-height:42px; padding:6px 10px; gap:8px; font-size:12.5px !important; border-radius:12px; line-height:1.2; }
+  .cg-izq .cg-tarjeta .ico{ width:28px; height:28px; padding:6px; border-radius:8px; }
+  .cg-izq .cg-tarjeta .cg-t small{ font-size:11px; }
+  .cg-izq .cg-badge{ font-size:11.5px; padding:1px 7px; }
+  @media (pointer:coarse){ .breakdown .actions .btn.small{ min-height:34px; } }
+  @media (max-width:760px){
+    .breakdown .actions{ gap:10px !important; }
+    .breakdown .actions .btn{ flex:0 1 auto; }
+    .cg-izq .cg-tarjetas{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .cg-izq .cg-tarjeta{ min-height:44px; padding:6px 9px; font-size:12.5px !important; }
+  }
 </style>
 </head>
 <body>

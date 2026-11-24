@@ -361,3 +361,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-24 · Enlace directo a la consulta oficial del RUAF (https://ruaf.sispro.gov.co/Filtro.aspx) en «Agregar cliente», junto a la captura del RUAF. · Por qué: Nestor lo pidió en vez de la consulta pagada de Verifik.
 
 - 2026-11-24 · RUAF en Agregar cliente: solo dos botones («📋 Subir RUAF» y «🔗 Abrir RUAF»), sin texto de explicación. · Por qué: Nestor lo quiere más simple.
+- 2026-11-24 · Centro de gestión: botones de la ficha (Editar, WhatsApp, Enviar planilla, QR, recibo…) y tarjetas de abajo (Agregar cliente, Cobrar el mes, Consignaciones, Excel SUAPORTE, Subir planilla, Enlace) más pequeños y con más espacio entre ellos (bloque CSS al final del primer <style>). · Por qué: Nestor pidió distinguir mejor cada botón. Solo diseño.
