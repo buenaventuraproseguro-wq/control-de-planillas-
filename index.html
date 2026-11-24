@@ -629,6 +629,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .ruaf-fila.igual{ opacity:.65; }
   .ruaf-valor{ word-break:break-word; }
   .ruaf-hecho{ font-weight:600; color:var(--pago); }
+  .ruaf-linea{ display:flex; flex-direction:column; gap:4px; border-top:1px solid var(--line); padding-top:6px; }
+  .ruaf-linea-fila{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .ruaf-linea-fila input{ flex:1 1 170px; min-width:0; }
+  .ruaf-linea-fila select{ flex:0 0 auto; }
   @media (prefers-color-scheme: dark){ .ruaf-amarillo, .ruaf-fila.dudoso{ background:#3a3010; color:#f3dc8a; border-color:#8a7426; } }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
@@ -2396,6 +2400,15 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <label for="ruafArchivo" class="ruaf-titulo">📋 Subir captura del RUAF y llenar los datos</label>
         <small>Con el RUAF se verifican la cédula, el nombre, el sexo, la EPS y la pensión, y la app le dice si es afiliación nueva o si ya tiene EPS. La foto de la cédula (abajo, en documentos) solo se usa para la fecha de nacimiento. Usted revisa antes de guardar.</small>
         <input id="ruafArchivo" type="file" accept="image/*,application/pdf">
+        <div class="ruaf-linea">
+          <span class="ruaf-sub">🔎 O consultarlo en línea con la cédula <small>(Verifik, tiene costo)</small></span>
+          <div class="ruaf-linea-fila">
+            <select id="ruafTipoDoc" aria-label="Tipo de documento"><option value="CC">CC</option><option value="CE">CE</option><option value="PA">PA</option><option value="PE">PE</option></select>
+            <input id="ruafFechaExp" type="text" inputmode="numeric" maxlength="10" placeholder="Fecha de expedición DD/MM/AAAA" data-fecha-texto="1" autocomplete="off" aria-label="Fecha de expedición de la cédula">
+            <button type="button" class="btn small" id="ruafConsultarBtn" disabled>Consultar RUAF</button>
+          </div>
+          <small id="ruafLineaEstado">Usa la cédula escrita abajo (campo 1) y la fecha de expedición que sale en la cédula.</small>
+        </div>
         <div id="ruafPanel" class="ruaf-panel" hidden></div>
       </div>
       <div class="field">
@@ -12189,6 +12202,7 @@ async function closeModal(skipConfirm){
 const beneficiariosSection = document.getElementById("beneficiariosSection");
 const beneficiariosList = document.getElementById("beneficiariosList");
 document.getElementById("ruafArchivo").addEventListener("change", (e) => { const f = (e.target.files || [])[0]; e.target.value = ""; ruafSubir(f); });
+document.getElementById("ruafConsultarBtn").addEventListener("click", () => ruafConsultarEnLinea());
 document.getElementById("fEps").addEventListener("change", () => { try{ ruafRevisarCambioEps(); }catch(e){} });
 const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn");
 
@@ -18908,6 +18922,8 @@ function ruafReiniciar(){
   const a = document.getElementById("ruafAvisoTraslado"); if (a) a.remove();
   // Solo al agregar un cliente nuevo (afiliación); al editar no aparece
   const caja = document.querySelector(".ruaf-caja"); if (caja) caja.style.display = editingCedula ? "none" : "";
+  const fe = document.getElementById("ruafFechaExp"); if (fe) fe.value = "";
+  if (!editingCedula) ruafRevisarLinea();
 }
 const ruafActivo = (e) => /ACTIV/i.test(String(e || "")) && !/INACTIV/i.test(String(e || ""));
 function ruafReducir(src, max, calidad){
@@ -18941,6 +18957,85 @@ async function ruafSubir(file){
   d.imagen = await ruafReducir(dataUrl, 1400, 0.8);
   ruafUltimo = d;
   ruafMostrar(d);
+}
+/* ---- 🔎 RUAF en línea (Verifik) ----
+   La consulta pasa por la función «consultar-ruaf» de Supabase, donde vive la clave de Verifik (nunca en la app).
+   Sin clave la función responde «no activo» y el botón queda apagado. No guarda nada: llena el mismo panel que la captura. */
+let ruafLineaActiva = null; // null = no se ha preguntado; true/false = respuesta de la función
+async function ruafLlamarFuncion(cuerpo){
+  const { data: sesion } = await sb.auth.getSession();
+  const token = sesion && sesion.session ? sesion.session.access_token : null;
+  if (!token) throw new Error("No hay sesión activa.");
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/consultar-ruaf`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(cuerpo),
+  });
+  const r = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(r.error || "No se pudo hacer la consulta.");
+  return r;
+}
+function ruafPintarLinea(){
+  const b = document.getElementById("ruafConsultarBtn"), e = document.getElementById("ruafLineaEstado");
+  if (!b || !e) return;
+  if (ruafLineaActiva){ b.disabled = false; b.textContent = "Consultar RUAF"; e.textContent = "Usa la cédula escrita abajo (campo 1) y la fecha de expedición que sale en la cédula. Cada consulta se cobra, aunque la fecha esté mal."; }
+  else { b.disabled = true; b.textContent = "Consultar RUAF (aún no activo)"; e.textContent = ruafLineaActiva === false ? "⏸️ Aún no está activo: falta la cuenta de Verifik. Mientras tanto use la captura." : "Revisando si la consulta en línea está activa…"; }
+}
+async function ruafRevisarLinea(){
+  if (ruafLineaActiva !== null){ ruafPintarLinea(); return; }
+  ruafPintarLinea();
+  try{ const r = await ruafLlamarFuncion({ accion: "estado" }); ruafLineaActiva = !!r.activo; }
+  catch(e){ ruafLineaActiva = false; }
+  ruafPintarLinea();
+}
+// Convierte la respuesta de Verifik en lo mismo que sale de leer la captura (datosDeRuaf)
+function ruafDeVerifik(v, cedulaEscrita){
+  v = v || {};
+  const ip = v["informaciónPersonal"] || v.informacionPersonal || v.personalInformation || {};
+  const lista = (x, k) => Array.isArray(x) ? x : (x && Array.isArray(x[k]) ? x[k] : []);
+  const fecha = (t) => { const s = String(t || "").trim(); return ruafFecha(/^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s) || s; };
+  const elegirActiva = (arr, kEstado) => arr.find(x => ruafActivo(x[kEstado])) || arr[0] || null;
+  const may = (t) => String(t || "").replace(/\s+/g, " ").trim().toUpperCase();
+  const res = { esRuaf: true, enLinea: true, cedula: "", tipoDoc: "", partes: null, nombresDudosos: false, sexo: "", salud: null, pension: null, arl: null, caja: null, secciones: [], confianza: 100, imagen: null };
+  res.cedula = String(ip.documentoIdentidad || ip.numeroDocumento || cedulaEscrita || "").replace(/\D/g, "") || String(cedulaEscrita || "");
+  const partes = [ip.primerApellido, ip.segundoApellido, ip.primerNombre, ip.segundoNombre].map(may);
+  if (partes[0] && partes[2]) res.partes = partes;
+  const sx = may(ip.sexo).charAt(0); if (sx === "M" || sx === "F") res.sexo = sx;
+  const e = v.eps || v.salud || null;
+  if (e && (e.eps || e.estadoAfiliacion)){
+    res.salud = { fila: "", fecha: fecha(e.fechaAfiliacion), estado: may(e.estadoAfiliacion), eps: ruafNombreEps(e.eps), regimen: may(e.regimen), tipo: may(e.tipoAfiliado), municipio: may(String(e.departamentoMunicipio || "").replace(/^.*->\s*/, "")), filas: 1, epsTexto: may(e.eps) };
+  }
+  const pens = lista(v.ap || v.pensiones, "pensiones"), p = elegirActiva(pens, "estadoPensional");
+  if (p) res.pension = { fila: "", fecha: fecha(p.fechaAfiliacionPensional), estado: may(p.estadoPensional), fondo: ruafEntidad(p.administradoraPensional, RUAF_AFP), regimen: /AHORRO/i.test(p.regimenPensional) ? "AHORRO INDIVIDUAL" : /PRIMA/i.test(p.regimenPensional) ? "PRIMA MEDIA" : "" };
+  const arls = lista(v.arl, "riesgos"), a = elegirActiva(arls, "estado");
+  if (a) res.arl = { fila: "", fecha: fecha(a.fecha || a.fechaAfiliacion), estado: may(a.estado || a.estadoAfiliacion), arl: ruafEntidad(a.administradora, RUAF_ARL) || may(a.administradora) };
+  const cajas = lista(v.cajaCompensacion, "cajas"), c = elegirActiva(cajas, "estado");
+  if (c) res.caja = { fila: "", fecha: fecha(c.fecha || c.fechaAfiliacion), estado: may(c.estado || c.estadoAfiliacion), caja: may(c.administradora || c.caja || c.nombre || c.cajaCompensacion) };
+  return res;
+}
+async function ruafConsultarEnLinea(){
+  const panel = document.getElementById("ruafPanel");
+  const ced = String(document.getElementById("fCedula").value || "").replace(/\D/g, "");
+  const fe = String(document.getElementById("ruafFechaExp").value || "").trim();
+  const tipo = document.getElementById("ruafTipoDoc").value || "CC";
+  panel.hidden = false;
+  if (!ced){ panel.innerHTML = `<div class="ruaf-amarillo">Escriba primero la cédula en el campo 1.</div>`; return; }
+  const fx = ruafFecha(fe);
+  if (!fx){ panel.innerHTML = `<div class="ruaf-amarillo">Escriba la <b>fecha de expedición</b> de la cédula como DD/MM/AAAA. Si está mal, la consulta igual se cobra.</div>`; return; }
+  const ya = (records || []).find(r => String(r["Cédula"]) === ced);
+  if (ya){ panel.innerHTML = `<div class="ruaf-rojo">⚠️ <b>Esta cédula ya existe en la app:</b> ${escHtml(nombrePropio(ya["Nombre del Afiliado"] || ""))} · CC ${escHtml(ced)}. No hice la consulta para no cobrarla. Abra el cliente que ya está.</div>`; return; }
+  if (!(await confirmarApp(`Consultar el RUAF de la cédula ${ced} (expedida el ${fx}) en Verifik. Esta consulta tiene costo. ¿Seguir?`))) return;
+  const b = document.getElementById("ruafConsultarBtn"); b.disabled = true;
+  panel.innerHTML = `<div>🔎 Consultando el RUAF en línea… (puede tardar hasta un minuto)</div>`;
+  try{
+    const r = await ruafLlamarFuncion({ cedula: ced, tipo, fechaExpedicion: fx });
+    if (r.apagado){ ruafLineaActiva = false; ruafPintarLinea(); panel.innerHTML = `<div class="ruaf-amarillo">${escHtml(r.error || "La consulta en línea aún no está activa.")} Use la captura.</div>`; return; }
+    const d = ruafDeVerifik(r.datos, ced);
+    ruafUltimo = d;
+    ruafMostrar(d);
+  } catch(e){
+    panel.innerHTML = `<div class="ruaf-rojo">${escHtml(e.message || "No se pudo hacer la consulta.")}</div>`;
+  } finally { ruafPintarLinea(); }
 }
 function ruafPropuestas(d){
   const out = [];
@@ -18992,13 +19087,14 @@ function ruafMostrar(d){
   } else if (d.secciones.length || d.esRuaf){
     av.push(`<div class="ruaf-amarillo">❔ No encontré la parte de <b>afiliación a salud</b> en la captura. Si no tiene EPS es afiliación nueva; si sí tiene, pida la captura completa.</div>`);
   }
-  if (s && s.eps === "" ) av.push(`<div class="ruaf-amarillo">🟡 Leí la afiliación a salud pero no reconocí el nombre de la EPS. Escríbala a mano.</div>`);
+  if (s && s.eps === "" ) av.push(`<div class="ruaf-amarillo">🟡 ${s.epsTexto ? `El RUAF dice «${escHtml(s.epsTexto)}» pero no reconocí esa EPS en la lista.` : "Leí la afiliación a salud pero no reconocí el nombre de la EPS."} Escríbala a mano.</div>`);
   // ARL y caja de otra empresa: solo informan
   if (d.arl && ruafActivo(d.arl.estado)) av.push(`<div class="ruaf-amarillo">🦺 <b>Tiene ARL activa${d.arl.arl ? " en " + escHtml(d.arl.arl) : ""}</b>${d.arl.fecha ? " desde " + escHtml(d.arl.fecha) : ""}. Puede estar trabajando con otra empresa: pregúntele.</div>`);
   if (d.caja && ruafActivo(d.caja.estado)) av.push(`<div class="ruaf-amarillo">👪 <b>Tiene caja de compensación activa</b>${d.caja.caja ? ": " + escHtml(d.caja.caja) : ""}${d.caja.fecha ? " desde " + escHtml(d.caja.fecha) : ""}.</div>`);
   // Lectura mala: borrosa, cortada o pequeña
   const malo = !d.cedula || problemaCedula(d.cedula) || !d.partes || (d.confianza && d.confianza < 60);
-  if (malo) av.push(`<div class="ruaf-rojo">📷 <b>La captura no se leyó bien</b>${!d.cedula ? " (no encontré la cédula)" : !d.partes ? " (no encontré el nombre)" : ""}. Puede estar borrosa, cortada o muy pequeña: compare con la imagen o pida otra captura de pantalla.</div>`);
+  if (malo && d.enLinea) av.push(`<div class="ruaf-amarillo">🟡 El RUAF en línea no trajo ${!d.partes ? "el nombre completo" : "la cédula"}. Revise esos datos a mano.</div>`);
+  else if (malo) av.push(`<div class="ruaf-rojo">📷 <b>La captura no se leyó bien</b>${!d.cedula ? " (no encontré la cédula)" : !d.partes ? " (no encontré el nombre)" : ""}. Puede estar borrosa, cortada o muy pequeña: compare con la imagen o pida otra captura de pantalla.</div>`);
   if (d.nombresDudosos) av.push(`<div class="ruaf-amarillo">🟡 Revise el nombre: no estoy seguro de cuál es nombre y cuál apellido.</div>`);
   const filas = lista.map((x, i) => `<label class="ruaf-fila${x.dudoso ? " dudoso" : ""}${x.mismo ? " igual" : ""}">
       <input type="checkbox" data-ruaf-i="${i}" ${x.marcado ? "checked" : ""} ${x.mismo ? "disabled" : ""}>
@@ -19008,7 +19104,7 @@ function ruafMostrar(d){
   panel.innerHTML = `${av.join("")}
     ${filas ? `<div class="ruaf-sub">✍️ Datos para el formulario <small>(lo que ya estaba distinto viene sin marcar)</small></div>${filas}` : ""}
     <div class="ocr-acc"><button type="button" class="btn small primary" id="ruafPoner">Poner en el formulario</button><button type="button" class="btn small ghost" id="ruafCerrar">Cerrar</button></div>
-    <small>Compare con la captura antes de usarlos.${casillaEps ? " La captura queda en la casilla «EPS» de los documentos." : ""} Nada se guarda hasta tocar <b>Guardar</b>.</small>`;
+    <small>${d.enLinea ? "Datos traídos del RUAF en línea (Verifik). La fecha de nacimiento y el lugar siguen saliendo de la foto de la cédula." : `Compare con la captura antes de usarlos.${casillaEps ? " La captura queda en la casilla «EPS» de los documentos." : ""}`} Nada se guarda hasta tocar <b>Guardar</b>.</small>`;
   document.getElementById("ruafCerrar").onclick = () => { const p = document.getElementById("ruafPanel"); p.innerHTML = ""; p.hidden = true; };
   document.getElementById("ruafPoner").onclick = () => ruafPoner();
 }

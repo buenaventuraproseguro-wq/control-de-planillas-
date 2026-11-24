@@ -50,6 +50,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Formularios de EPS llenos: guía → «✏️ Marcar campos» (`abrirMarcarFormulario`), ficha «📝 Formulario» (`abrirFormularioCliente`, `pdfFormularioLleno`); datos extra en `clients.datos_extra`, empresas en configuracion `formulario_empresas`
 - Incapacidades: barra lateral `navIncapBtn` (registrar y llenar) y ficha `incFichaBtn` (solo consulta): `abrirIncapacidades(cedula?)`, `INC_TIPOS` (tipos y documentos), tabla `incapacidades` (+ `documentos` jsonb), archivos en `documentos-clientes/incapacidades/<id>/`
 - Datos de la empresa (solo admin): `abrirDatosEmpresa`, `aplicarDatosEmpresa`, `EMPRESA` / `EMPRESA_DEFECTO`; configuracion `datos_empresa` (marca, aportante, contacto, precios, sucursal PILA). La cuenta *8222 no se cambia ahí.
+- RUAF en línea (Verifik): botón «Consultar RUAF» en Agregar cliente (`ruafConsultarEnLinea`, `ruafDeVerifik`, `ruafRevisarLinea`) → función `consultar-ruaf` (GET api.verifik.co/v2/co/afiliaciones, pide fecha de expedición). Apagado mientras no exista el secreto `VERIFIK_TOKEN` en Supabase. No guarda nada; llena el mismo panel que la captura.
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
 ## Protecciones en la base de datos
