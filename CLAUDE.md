@@ -57,6 +57,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Trigger `a_bloquear_copia_vieja` en `clients`: ignora escrituras con `ultima_edicion` 12 h más vieja que la nube; las anota en `escrituras_bloqueadas`.
 - Trigger `impedir_borrado_masivo_clients`. Trigger `registrar_fecha_pago` (pone/quita `fecha_pago` según el estado).
 - Trigger `z_registro_cambios` en `clients`: anota cada cambio en `registro_cambios` (nunca bloquea el guardado).
+- Correo de recordatorios 7:00 a. m. Colombia, lunes a sábado (pg_cron `recordatorios-diarios` → `enviar_recordatorios_diarios()` → función `recordatorios-diarios`, desde proseguros44 a `recordatorios_config.para`). Solo lee: sin pagar, deben, pagos sin planilla y fechas límite de la tabla `recordatorios_fijos` (agregar ahí nuevos plazos; `activo=false` para quitarlos). Prueba: `select enviar_recordatorios_diarios(true)`. No usa Claude.
 - Respaldo diario 04:00 UTC (pg_cron, tabla `respaldos`; los automáticos se guardan 21 días + los lunes). Los manuales (`crear_respaldo('antes de cambio: …')`, origen «manual: …») se guardan los 20 últimos. Hasta el 18-nov la función borraba todo menos los 8 últimos: no hay respaldos anteriores al 17-nov.
 
 ## Pendientes (actualizar al cerrar cada tema)
