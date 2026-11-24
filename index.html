@@ -616,6 +616,29 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .fecha-sistema .fs-paso.pendiente{ color:var(--retiro); font-weight:600; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .tag-reingreso{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--afiliacion-bg); color:var(--afiliacion); vertical-align:middle; }
   .ocr-alerta{ color:var(--retiro); font-weight:600; }
+  .asis-caja{ border:1.5px dashed var(--accent); background:var(--accent-bg); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:6px; }
+  .asis-caja .asis-titulo{ font-weight:700; font-size:14px; }
+  .asis-panel{ display:flex; flex-direction:column; gap:6px; font-size:13px; background:var(--bg, #fff); border-radius:8px; padding:8px; }
+  .asis-panel ul{ margin:4px 0 0 18px; padding:0; }
+  .asis-rojo, .asis-amarillo, .asis-verde{ border-radius:8px; padding:7px 9px; line-height:1.4; }
+  .asis-rojo{ background:var(--retiro-bg); border:1px solid var(--retiro); }
+  .asis-amarillo{ background:#FFF4D6; border:1px solid #E5C25A; color:#5c4300; }
+  .asis-verde{ background:var(--pago-bg); border:1px solid var(--pago); }
+  .asis-sub{ font-weight:700; margin-top:4px; }
+  .asis-fila{ display:grid; grid-template-columns:22px minmax(110px, 34%) 1fr; gap:6px; align-items:start; padding:4px 2px; border-bottom:1px solid var(--line); }
+  .asis-fila.dudoso{ background:#FFF4D6; color:#5c4300; }
+  .asis-fila.igual{ opacity:.65; }
+  .asis-fila small{ opacity:.8; }
+  .asis-valor{ word-break:break-word; }
+  .asis-docs{ display:flex; flex-wrap:wrap; gap:6px; }
+  .asis-doc{ border:1px solid var(--line); border-radius:12px; padding:2px 8px; font-size:12px; }
+  .asis-doc.malo{ border-color:var(--retiro); background:var(--retiro-bg); }
+  .asis-extras{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:6px; }
+  .asis-extra{ display:flex; flex-direction:column; gap:2px; font-size:12.5px; }
+  .asis-extra.falta input, .asis-extra.falta select{ border-color:var(--retiro); background:var(--retiro-bg); }
+  .asis-acc{ display:flex; gap:8px; flex-wrap:wrap; }
+  .asis-hecho{ font-weight:600; color:var(--pago); }
+  @media (prefers-color-scheme: dark){ .asis-amarillo, .asis-fila.dudoso{ background:#3a3010; color:#f3dc8a; border-color:#8a7426; } }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
   .tag-resp-ret{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent); }
@@ -2378,6 +2401,12 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <h2 id="modalTitle">Agregar cliente</h2>
     <div class="modal-sub">Los campos de valores aceptan solo números (sin puntos ni signos $). El valor de Pensión ya viene precargado con el valor legal sobre 1 salario mínimo — edítalo solo si el caso es especial (prorrateado, independiente, etc.). Al editar un cliente existente, los cambios se aplican también a los meses siguientes (menos el estado y el costo del mes, que son propios de cada uno). Las fotos se guardan en este dispositivo; si subes muchas, exporta respaldos seguido para no perderlas.</div>
     <div class="form-grid">
+      <div class="field span2 asis-caja" id="asisCaja">
+        <label for="asisArchivos" class="asis-titulo">🤖 Asistente: subir todos los documentos y llenar con IA</label>
+        <small>Cédula (por delante y por detrás), RUAF, certificados de EPS, ARL, pensión y caja, formularios a mano y registros civiles. Fotos o PDF, hasta 12. Nada se guarda sin que usted lo revise.</small>
+        <input id="asisArchivos" type="file" accept="image/*,application/pdf" multiple>
+        <div id="asisPanel" class="asis-panel" hidden></div>
+      </div>
       <div class="field">
         <label><span class="field-num">1</span>Cédula *</label>
         <input id="fCedula" type="text" inputmode="numeric">
@@ -12020,6 +12049,7 @@ function fromInputDate(yyyymmdd){
 
 function openModal(record){
   editingCedula = record ? record["Cédula"] : null;
+  try{ asisReiniciar(); }catch(e){}
   ocultarAvisoReingreso(); _reingresoCedula = "";
   cargarResponsablesCreados();
   { const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
@@ -12161,6 +12191,7 @@ async function closeModal(skipConfirm){
 /* ---- Beneficiarios (sección plegable dentro del modal) ---- */
 const beneficiariosSection = document.getElementById("beneficiariosSection");
 const beneficiariosList = document.getElementById("beneficiariosList");
+document.getElementById("asisArchivos").addEventListener("change", (e) => { const fs = Array.from(e.target.files || []); e.target.value = ""; asisSubir(fs); });
 const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn");
 
 // Comprime una imagen antes de guardarla (máx. 1000px de lado, calidad 0.72) para no llenar
@@ -13680,7 +13711,10 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     const ex = { ...exAntes };
     if (fn) ex.fecha_nac = fn;
     if (sx) ex.sexo = sx;
-    if (ex.fecha_nac !== exAntes.fecha_nac || ex.sexo !== exAntes.sexo) record["Datos Extra"] = ex;
+    // Estado civil, barrio, cargo y salario que pidió el asistente para el formulario de la EPS (solo si faltaban)
+    let extraNuevo = false;
+    try{ Object.entries(asisExtrasParaGuardar()).forEach(([k, v]) => { if (v && !ex[k]){ ex[k] = v; extraNuevo = true; } }); }catch(e){}
+    if (extraNuevo || ex.fecha_nac !== exAntes.fecha_nac || ex.sexo !== exAntes.sexo) record["Datos Extra"] = ex;
   }
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
@@ -18690,6 +18724,332 @@ function lineaNacSexoCedula(d){
     if (b) b.onclick = () => { distintos.forEach(x => { x.el.value = x.ced; }); b.replaceWith(Object.assign(document.createElement("span"), { textContent: " (cambiado)" })); };
   } };
 }
+/* ---- 🤖 Asistente de afiliación (IA) ----
+   En «Agregar cliente» (o editar) el equipo sube de una vez todos los documentos del cliente: cédula, RUAF,
+   certificados de EPS/ARL/pensión/caja, formularios a mano y registros civiles. La función «leer-documentos»
+   (Supabase, con la clave de la IA guardada allá) los lee y devuelve los datos. Aquí se muestran para revisar:
+   nada se pone en el formulario sin tocar «Poner en el formulario», y nada se guarda sin tocar «Guardar».
+   Lo que ya estaba escrito distinto no se cambia salvo que la persona lo marque. */
+let asisEstado = null;      // { imagenes:[{nombre,data,guardar}], datos }
+let asisExtras = {};        // estado civil, barrio, cargo, salario (van a "Datos Extra" al guardar, solo si faltan)
+const ASIS_MAX = 12;
+function asisReiniciar(){
+  asisEstado = null; asisExtras = {};
+  const p = document.getElementById("asisPanel"); if (p){ p.innerHTML = ""; p.hidden = true; }
+  const f = document.getElementById("asisArchivos"); if (f) f.value = "";
+}
+function asisExtrasParaGuardar(){ return { ...asisExtras }; }
+// Foto o PDF → imagen JPEG reducida (lado mayor ≤ max)
+async function asisAImagen(file, max, calidad){
+  let src;
+  if (esPdfArchivo(file)){
+    const img = await convertirPdfAImagen(file, { siempre: true, ancho: 1600 });
+    if (!img) return null;
+    src = img.dataUrl;
+  } else if (/^image\//.test(file.type || "")){
+    src = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(file); });
+    if (!src) return null;
+  } else return null;
+  return await asisReducir(src, max, calidad);
+}
+function asisReducir(src, max, calidad){
+  return new Promise((res) => {
+    const im = new Image();
+    im.onload = () => {
+      let w = im.width, h = im.height;
+      const esc = Math.min(1, max / Math.max(w, h));
+      w = Math.round(w * esc); h = Math.round(h * esc);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); x.drawImage(im, 0, 0, w, h);
+      res(c.toDataURL("image/jpeg", calidad));
+    };
+    im.onerror = () => res(null);
+    im.src = src;
+  });
+}
+// Varias imágenes en una sola (una debajo de otra): ej. cédula por delante y por detrás
+function asisUnir(datas){
+  if (datas.length === 1) return Promise.resolve(datas[0]);
+  return Promise.all(datas.map(d => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = d; })))
+    .then(ims => {
+      ims = ims.filter(Boolean);
+      const w = Math.max(...ims.map(i => i.width)), h = ims.reduce((s, i) => s + i.height + 10, 0);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, w, h);
+      let y = 0; ims.forEach(i => { x.drawImage(i, 0, y); y += i.height + 10; });
+      return c.toDataURL("image/jpeg", 0.8);
+    });
+}
+async function asisLlamarIA(imagenes){
+  const { data: sesion } = await sb.auth.getSession();
+  const token = sesion && sesion.session ? sesion.session.access_token : null;
+  if (!token) throw new Error("No hay sesión activa. Vuelva a entrar a la app.");
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/leer-documentos`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ imagenes: imagenes.map(i => ({ nombre: i.nombre, data: i.data })) }),
+  });
+  const r = await resp.json().catch(() => ({}));
+  if (!resp.ok){
+    const e = new Error(r.mensaje || r.error || "No se pudo leer los documentos.");
+    e.codigo = r.error; throw e;
+  }
+  return r.datos;
+}
+async function asisSubir(files){
+  const panel = document.getElementById("asisPanel");
+  files = Array.from(files || []);
+  if (!files.length) return;
+  if (files.length > ASIS_MAX){ showToast(`Máximo ${ASIS_MAX} archivos a la vez. Tomé los primeros ${ASIS_MAX}.`); files = files.slice(0, ASIS_MAX); }
+  panel.hidden = false;
+  panel.innerHTML = `<div class="asis-cargando">🔎 Preparando ${files.length} documento${files.length === 1 ? "" : "s"}…</div>`;
+  const imagenes = [], malos = [];
+  for (const f of files){
+    const data = await asisAImagen(f, 1600, 0.85);
+    if (data) imagenes.push({ nombre: f.name, data, guardar: await asisReducir(data, 1400, 0.8) });
+    else malos.push(f.name);
+  }
+  if (!imagenes.length){ panel.innerHTML = `<div class="ocr-alerta">No pude abrir esos archivos. Suba fotos o PDF (sin clave, máximo ${MAX_PAGINAS_PDF_A_IMAGEN} páginas).</div>`; return; }
+  panel.innerHTML = `<div class="asis-cargando">🤖 Leyendo ${imagenes.length} documento${imagenes.length === 1 ? "" : "s"} con la IA… (puede tardar hasta un minuto)</div>`;
+  let datos;
+  try{ datos = await asisLlamarIA(imagenes); }
+  catch(e){
+    const sinClave = e.codigo === "sin_clave" || e.codigo === "sin_saldo";
+    panel.innerHTML = `<div class="ocr-alerta">⚠️ ${escHtml(e.message)}</div>${sinClave ? "" : `<div class="asis-acc"><button type="button" class="btn small" id="asisReintentar">Intentar de nuevo</button></div>`}
+      <small>Mientras tanto puede subir los documentos uno por uno en «Fotos de documentos», como siempre.</small>`;
+    const b = document.getElementById("asisReintentar"); if (b) b.onclick = () => asisSubir(files);
+    return;
+  }
+  asisEstado = { imagenes, datos, malos };
+  await asisMostrar();
+}
+const ASIS_AFP = ["PORVENIR", "COLPENSIONES", "PROTECCION", "COLFONDOS", "SKANDIA"];
+function asisNombreEps(n){
+  const t = normalizarTexto(n || "").replace(/\beps\b/g, "").trim();
+  if (!t) return "";
+  const x = EPS_COLOMBIA.find(([, k]) => t === k) || EPS_COLOMBIA.find(([, k]) => t.includes(k));
+  return x ? x[0] : String(n || "").toUpperCase().trim();
+}
+function asisNombreAfp(n){
+  const t = normalizarTexto(n || "");
+  return ASIS_AFP.find(a => t.includes(normalizarTexto(a))) || String(n || "").toUpperCase().trim();
+}
+const asisActivo = (e) => /activ/i.test(String(e || "")) && !/inactiv/i.test(String(e || ""));
+const asisNoCotiza = (e) => /no\s*cotiz/i.test(String(e || ""));
+// Lista de lo que se propone poner en cada campo del formulario
+function asisPropuestas(d){
+  const p = d.persona || {}, out = [];
+  const add = (id, etiqueta, valor, opc = {}) => {
+    valor = String(valor == null ? "" : valor).trim();
+    if (!valor) return;
+    const el = document.getElementById(id); if (!el) return;
+    const actual = String(el.value || "").trim();
+    const mismo = normalizarTexto(actual) === normalizarTexto(valor) || (opc.mismo && opc.mismo(actual, valor));
+    out.push({ id, etiqueta, valor, actual, mismo, mostrar: opc.mostrar || valor, sugerencia: !!opc.sugerencia,
+      marcado: !mismo && (!actual || opc.sugerencia), dudoso: !!opc.dudoso });
+  };
+  const dudas = (d.dudas || []).map(x => normalizarTexto(x.campo + " " + x.motivo)).join(" | ");
+  const dudoso = (...claves) => claves.some(k => dudas.includes(k));
+  const ced = String(p.cedula || "").replace(/\D/g, "");
+  add("fCedula", "Cédula", ced, { dudoso: dudoso("cedula") });
+  const ap = [p.primer_apellido, p.segundo_apellido].filter(Boolean).join(" "), no = [p.primer_nombre, p.segundo_nombre].filter(Boolean).join(" ");
+  if (ap && no) add("fNombre", "Nombre", `${ap} ${no}`.toLowerCase(), { mostrar: `${ap} ${no}`.toUpperCase(), dudoso: dudoso("nombre", "apellido") });
+  const fn = fechaNacValida(p.fecha_nacimiento);
+  add("fFechaNac", "Fecha de nacimiento", fn, { mismo: (a, v) => fechaNacValida(a) === v, dudoso: dudoso("nacimiento") });
+  add("fSexo", "Sexo", p.sexo, { mostrar: p.sexo === "M" ? "M (hombre)" : "F (mujer)", dudoso: dudoso("sexo") });
+  add("fDireccion", "Dirección", String(p.direccion || "").toUpperCase(), { dudoso: dudoso("direccion") });
+  add("fTelefono", "Teléfono", String(p.telefono || "").replace(/[^\d+]/g, ""), { dudoso: dudoso("telefono") });
+  add("fCorreo", "Correo", String(p.correo || "").toLowerCase(), { dudoso: dudoso("correo") });
+  // EPS: la de hoy (RUAF) o la del formulario. Si pide otra EPS distinta a la activa, es traslado.
+  const act = d.eps_actual || {}, sol = d.eps_solicitada || {};
+  const epsAct = asisNombreEps(act.nombre), epsSol = asisNombreEps(sol.nombre);
+  const activa = !!epsAct && asisActivo(act.estado);
+  const traslado = activa && epsSol && normalizarTexto(epsSol) !== normalizarTexto(epsAct);
+  add("fEps", "EPS", activa ? epsAct : (epsSol || epsAct), { dudoso: dudoso("eps") });
+  if (traslado){
+    add("fTraslado", "🔁 Pide traslado de EPS", "si", { mostrar: "Sí", sugerencia: true, mismo: () => document.getElementById("fTraslado").checked });
+    add("fTrasladoEps", "EPS a la que se traslada", epsSol);
+  }
+  if (epsAct || epsSol) add("fEstadoEps", "Estado EPS", activa && !traslado ? "aceptado" : "en proceso", { mostrar: activa && !traslado ? "Aceptado" : "En proceso", sugerencia: true });
+  // Pensión
+  const pe = d.pension || {};
+  if (pe.fondo){
+    add("fAfp", "Fondo de pensión", asisNombreAfp(pe.fondo), { dudoso: dudoso("pension", "fondo") });
+    add("fEstadoAfp", "Estado pensión", asisActivo(pe.estado) ? "Activo" : "En Proceso", { mostrar: asisActivo(pe.estado) ? "Activo, cotizando" : "Afiliación en proceso", sugerencia: true });
+  }
+  // ARL
+  const arl = d.arl || {};
+  if (arl.nivel_riesgo) add("fArlNivel", "Nivel de riesgo ARL", arl.nivel_riesgo, { mostrar: ["", "I", "II", "III", "IV", "V"][+arl.nivel_riesgo] || arl.nivel_riesgo, dudoso: dudoso("riesgo", "arl") });
+  if (arl.nombre && !String(document.getElementById("fArl").value || "").trim()) add("fArl", "ARL", `${normalizarTexto(arl.nombre)}${arl.nivel_riesgo ? " " + arl.nivel_riesgo : ""}`, { mostrar: String(arl.nombre).toUpperCase() });
+  if (arl.nombre) add("fEstadoArl", "Estado ARL", asisActivo(arl.estado) ? "aceptado" : "en proceso", { mostrar: asisActivo(arl.estado) ? "Aceptado" : "En proceso", sugerencia: true });
+  // Caja
+  const cj = d.caja || {};
+  if (cj.nombre){
+    add("fCaja", "Caja de compensación", String(cj.nombre).toUpperCase(), { dudoso: dudoso("caja") });
+    add("fEstadoCaja", "Estado caja", asisActivo(cj.estado) ? "Activo" : "En Proceso", { mostrar: asisActivo(cj.estado) ? "Activo" : "En proceso", sugerencia: true });
+  }
+  return { lista: out, epsAct, epsSol, activa, traslado, act };
+}
+// Qué casilla de «Fotos de documentos» le toca a cada documento
+const ASIS_CASILLA = { cedula: "Cedula", certificado_eps: "Eps", ruaf: "Eps", formulario_eps: "Eps", certificado_pension: "Afp", certificado_caja: "Caja", certificado_arl: "Arl" };
+const ASIS_TIPO_TXT = { cedula: "Cédula", ruaf: "RUAF / ADRES", certificado_eps: "Certificado EPS", certificado_arl: "Certificado ARL", certificado_pension: "Certificado pensión",
+  certificado_caja: "Certificado caja", formulario_eps: "Formulario EPS", registro_civil: "Registro civil", otro: "Otro documento" };
+async function asisMostrar(){
+  const panel = document.getElementById("asisPanel");
+  const { datos: d, imagenes, malos } = asisEstado;
+  const pr = asisPropuestas(d);
+  asisEstado.pr = pr;
+  const docs = d.documentos || [];
+  const ilegibles = docs.filter(x => !x.legible);
+  const avisos = [];
+  // 1. Cédula repetida
+  const ced = String((d.persona || {}).cedula || "").replace(/\D/g, "");
+  if (ced && !editingCedula){
+    const ya = (records || []).find(r => String(r["Cédula"]) === ced);
+    if (ya) avisos.push(`<div class="asis-rojo">⚠️ <b>Esta cédula ya existe en la app:</b> ${escHtml(nombrePropio(ya["Nombre del Afiliado"] || ""))} (${escHtml(ya["Estado Trámite"] || "")}). No cree otro cliente: cierre esto y abra el que ya está.</div>`);
+  } else if (ced && editingCedula && ced !== String(editingCedula)){
+    avisos.push(`<div class="asis-rojo">⚠️ <b>Estos documentos son de otra cédula</b> (${escHtml(ced)}), no de este cliente (${escHtml(editingCedula)}). Revíselos antes de usarlos.</div>`);
+  }
+  // 2. Afiliación nueva o traslado (con el RUAF)
+  const hayRuaf = docs.some(x => x.tipo === "ruaf" || x.tipo === "certificado_eps");
+  const act = pr.act || {};
+  const detAct = [act.regimen, act.tipo_afiliado, act.fecha_afiliacion && `desde ${act.fecha_afiliacion}`, act.municipio].filter(Boolean).map(escHtml).join(" · ");
+  if (pr.traslado) avisos.push(`<div class="asis-amarillo">🔁 <b>Es un TRASLADO de EPS:</b> hoy está en <b>${escHtml(pr.epsAct)}</b> (${detAct}) y el formulario pide <b>${escHtml(pr.epsSol)}</b>.</div>`);
+  else if (pr.activa) avisos.push(`<div class="asis-verde">✅ <b>Ya tiene EPS activa:</b> ${escHtml(pr.epsAct)} (${detAct}). No es traslado: se afilia con la misma EPS.${/subsid/i.test(act.regimen || "") ? " <b>Está en régimen subsidiado:</b> al cotizar pasa a contributivo en la misma EPS." : ""}</div>`);
+  else if (hayRuaf) avisos.push(`<div class="asis-verde">🆕 <b>Afiliación nueva:</b> ${pr.epsAct ? `en el RUAF sale ${escHtml(pr.epsAct)} pero ${escHtml(act.estado || "no activa")}` : "no tiene EPS activa en el RUAF"}.</div>`);
+  else avisos.push(`<div class="asis-amarillo">❔ No llegó el RUAF: no sé si es afiliación nueva o traslado. <a href="https://www.adres.gov.co/consulte-su-eps" target="_blank" rel="noopener">Consultar en ADRES ↗</a> y súbalo.</div>`);
+  // 3. Fotos borrosas o cortadas
+  if (ilegibles.length || malos.length) avisos.push(`<div class="asis-rojo">📷 <b>Pida otra vez:</b><ul>${ilegibles.map(x => `<li>${escHtml(ASIS_TIPO_TXT[x.tipo] || "Documento")} (${escHtml((imagenes[x.indice] || {}).nombre || "")}): ${escHtml(x.problema || "no se lee bien")}</li>`).join("")}${malos.map(n => `<li>${escHtml(n)}: no se pudo abrir</li>`).join("")}</ul></div>`);
+  // 4. Dudas de la IA
+  const dudas = (d.dudas || []).filter(x => x.campo || x.motivo);
+  if (dudas.length) avisos.push(`<div class="asis-amarillo">🟡 <b>Revise en la foto:</b><ul>${dudas.map(x => `<li><b>${escHtml(x.campo)}</b>: ${escHtml(x.motivo)}</li>`).join("")}</ul></div>`);
+
+  const filas = pr.lista.map((x, i) => `<label class="asis-fila${x.dudoso ? " dudoso" : ""}${x.mismo ? " igual" : ""}">
+      <input type="checkbox" data-asis-i="${i}" ${x.marcado ? "checked" : ""} ${x.mismo ? "disabled" : ""}>
+      <span class="asis-campo">${escHtml(x.etiqueta)}</span>
+      <span class="asis-valor"><b>${escHtml(x.mostrar)}</b>${x.mismo ? ` <small>✅ ya está igual</small>` : x.actual ? ` <small>en la app: ${escHtml(x.id === "fNombre" ? x.actual.toUpperCase() : x.actual)}</small>` : ""}</span>
+    </label>`).join("");
+  const bens = (d.beneficiarios || []).filter(b => b.nombre);
+  const benHtml = bens.length ? `<div class="asis-sub">👪 Beneficiarios encontrados</div>${bens.map((b, i) => `<label class="asis-fila"><input type="checkbox" data-asis-ben="${i}" checked>
+      <span class="asis-campo">${escHtml(b.parentesco)}</span><span class="asis-valor"><b>${escHtml(String(b.nombre).toUpperCase())}</b> <small>${escHtml(b.documento || "sin documento")}${b.fecha_nacimiento ? " · nació " + escHtml(b.fecha_nacimiento) : ""}</small></span></label>`).join("")}` : "";
+  const docsHtml = `<div class="asis-sub">📎 Documentos leídos</div><div class="asis-docs">${imagenes.map((im, i) => {
+      const x = docs.find(z => z.indice === i) || {};
+      const casilla = ASIS_CASILLA[x.tipo];
+      return `<span class="asis-doc${x.legible === false ? " malo" : ""}" title="${escHtml(x.descripcion || "")}">${escHtml(ASIS_TIPO_TXT[x.tipo] || "¿?")}${casilla ? ` → casilla ${escHtml(casilla === "Afp" ? "Fondo de pensión" : casilla === "Eps" ? "EPS" : casilla === "Arl" ? "ARL" : casilla === "Cedula" ? "Cédula" : casilla)}` : ""}</span>`;
+    }).join("")}</div>`;
+  panel.innerHTML = `${avisos.join("")}
+    <div class="asis-sub">✍️ Datos para el formulario <small>(marque lo que quiere poner; lo que ya estaba distinto viene sin marcar)</small></div>
+    ${filas || "<div><small>No encontré datos nuevos.</small></div>"}
+    ${benHtml}
+    <div id="asisFormEps"></div>
+    ${docsHtml}
+    <div class="asis-acc"><button type="button" class="btn small primary" id="asisPoner">Poner en el formulario</button><button type="button" class="btn small ghost" id="asisCerrar">Cerrar</button></div>
+    <small>Después de poner los datos, revíselos y toque <b>Guardar</b>. Los documentos se guardan en sus casillas solo si estaban vacías.</small>`;
+  document.getElementById("asisCerrar").onclick = () => asisReiniciar();
+  document.getElementById("asisPoner").onclick = () => asisPoner();
+  await asisPintarFormEps();
+}
+// Si la EPS pide formulario propio: qué datos le faltan para llenarlo
+const ASIS_EXTRA_TXT = { estado_civil: "Estado civil", barrio: "Barrio", cargo: "Cargo", salario: "Salario" };
+async function asisPintarFormEps(){
+  const caja = document.getElementById("asisFormEps"); if (!caja || !asisEstado) return;
+  const pr = asisEstado.pr, d = asisEstado.datos;
+  const eps = pr.traslado ? pr.epsSol : (pr.epsAct && pr.activa ? pr.epsAct : (pr.epsSol || pr.epsAct)) || document.getElementById("fEps").value;
+  if (!eps){ caja.innerHTML = ""; return; }
+  try{ await cargarFormulariosBase(); if (!guiaEps.some(g => (g.archivos || []).length)) await cargarGuiaEps(); }catch(e){}
+  const f = archivoFormularioDeEps(eps);
+  if (!f){ caja.innerHTML = `<div class="asis-sub">📝 ${escHtml(eps)} no tiene formulario propio en la guía.</div>`; return; }
+  if (!f.listo){ caja.innerHTML = `<div class="asis-amarillo">📝 ${escHtml(f.guia.eps)} pide formulario, pero todavía no tiene marcados los campos (Guía de afiliaciones por EPS → ✏️ Marcar campos).</div>`; return; }
+  const usados = new Set(f.archivo.plantilla.campos.map(c => c.campo));
+  const pide = Object.keys(ASIS_EXTRA_TXT).filter(k => usados.has(k));
+  const orig = editingCedula ? (records || []).find(x => String(x["Cédula"]) === String(editingCedula)) : null;
+  const yaEx = (orig && orig["Datos Extra"]) || {};
+  const p = d.persona || {};
+  const leido = { estado_civil: p.estado_civil, barrio: String(p.barrio || "").toUpperCase(), cargo: String(p.cargo || "").toUpperCase(), salario: String(p.salario || "").replace(/\D/g, "") };
+  const faltaNac = usados.has("fecha_nac") || [...usados].some(k => /^fecha_nac/.test(k));
+  const faltaSexo = usados.has("sexo") || [...usados].some(k => /^x_sexo_/.test(k));
+  const inputs = pide.map(k => {
+    const v = asisExtras[k] || yaEx[k] || leido[k] || "";
+    const control = k === "estado_civil"
+      ? `<select data-asis-extra="${k}">${["", "SOLTERO(A)", "CASADO(A)", "UNIÓN LIBRE", "SEPARADO(A)", "VIUDO(A)"].map(o => `<option ${o === v ? "selected" : ""}>${o}</option>`).join("")}</select>`
+      : `<input type="text" data-asis-extra="${k}" ${k === "salario" ? 'inputmode="numeric"' : ""} value="${escHtml(v)}">`;
+    return `<label class="asis-extra${v ? "" : " falta"}">${ASIS_EXTRA_TXT[k]}${yaEx[k] ? " <small>(ya estaba)</small>" : ""} ${control}</label>`;
+  }).join("");
+  const otros = [faltaNac && "fecha de nacimiento", faltaSexo && "sexo"].filter(Boolean);
+  caja.innerHTML = `<div class="asis-sub">📝 ${escHtml(f.guia.eps)} pide su propio formulario</div>
+    ${inputs ? `<div class="asis-extras">${inputs}</div>` : ""}
+    <small>${otros.length ? `También usa ${otros.join(" y ")} (arriba). ` : ""}Después de <b>Guardar</b>, en la ficha toque <b>📝 Formulario</b> y sale lleno.</small>`;
+  caja.querySelectorAll("[data-asis-extra]").forEach(el => {
+    const k = el.dataset.asisExtra;
+    if (el.value && !yaEx[k]) asisExtras[k] = el.value;
+    el.addEventListener("input", () => { const v = el.value.trim(); if (v) asisExtras[k] = k === "salario" ? v.replace(/\D/g, "") : v; else delete asisExtras[k]; el.closest(".asis-extra").classList.toggle("falta", !v); });
+    el.addEventListener("change", () => el.dispatchEvent(new Event("input")));
+  });
+}
+async function asisPoner(){
+  if (!asisEstado) return;
+  const { pr, datos: d, imagenes } = asisEstado;
+  const panel = document.getElementById("asisPanel");
+  const puestos = [];
+  panel.querySelectorAll("[data-asis-i]").forEach(chk => {
+    if (!chk.checked || chk.disabled) return;
+    const x = pr.lista[+chk.dataset.asisI]; const el = document.getElementById(x.id); if (!el) return;
+    if (x.id === "fTraslado"){ el.checked = true; document.getElementById("trasladoCampos").style.display = "grid"; el.dispatchEvent(new Event("change", { bubbles: true })); }
+    else {
+      el.value = x.valor;
+      el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    puestos.push(x.etiqueta);
+  });
+  // Nombre por partes (para la PILA y los formularios), como lo hace la lectura de la cédula
+  const p = d.persona || {}, ced = document.getElementById("fCedula").value.replace(/\D/g, "");
+  if (ced && p.primer_apellido && p.primer_nombre && normalizarTexto(document.getElementById("fNombre").value) === normalizarTexto([p.primer_apellido, p.segundo_apellido, p.primer_nombre, p.segundo_nombre].filter(Boolean).join(" ")))
+    guardarPartesNombre(ced, [p.primer_apellido, p.segundo_apellido || "", p.primer_nombre, p.segundo_nombre || ""].map(s => String(s).toUpperCase()));
+  // Beneficiarios (se agregan; los que ya están con el mismo documento no se repiten)
+  const lista = document.getElementById("beneficiariosList");
+  const yaDocs = new Set([...lista.querySelectorAll(".ben-cedula")].map(i => i.value.replace(/\D/g, "")).filter(Boolean));
+  const bens = (d.beneficiarios || []).filter(b => b.nombre);
+  let nBen = 0;
+  panel.querySelectorAll("[data-asis-ben]").forEach(chk => {
+    if (!chk.checked) return;
+    const b = bens[+chk.dataset.asisBen]; const doc = String(b.documento || "").replace(/\D/g, "");
+    if (doc && yaDocs.has(doc)) return;
+    const img = b.fuente >= 0 && imagenes[b.fuente] ? imagenes[b.fuente].guardar : null;
+    lista.appendChild(crearFilaBeneficiario({ nombre: String(b.nombre).toUpperCase(), cedula: doc || String(b.documento || ""), parentesco: b.parentesco, imagen: img }));
+    nBen++;
+  });
+  if (nBen) document.getElementById("beneficiariosSection").style.display = "block";
+  // Documentos a sus casillas (solo las vacías); varias páginas del mismo tipo se unen en una imagen
+  const porCasilla = {};
+  (d.documentos || []).forEach(x => {
+    const c = ASIS_CASILLA[x.tipo]; if (!c || !imagenes[x.indice]) return;
+    (porCasilla[c] = porCasilla[c] || []).push({ tipo: x.tipo, data: imagenes[x.indice].guardar });
+  });
+  // En la casilla EPS va primero el certificado, luego el RUAF y luego el formulario
+  const orden = { certificado_eps: 0, ruaf: 1, formulario_eps: 2 };
+  const casillas = [];
+  for (const [c, arr] of Object.entries(porCasilla)){
+    if (docImagenes[c]) continue;
+    const box = document.querySelector(`.doc-upload[data-doc="${c}"]`); if (!box) continue;
+    arr.sort((a, b) => (orden[a.tipo] ?? 0) - (orden[b.tipo] ?? 0));
+    const data = await asisUnir(arr.map(a => a.data));
+    if (!data) continue;
+    docImagenes[c] = data; docImagenesCambiados[c] = true; delete docHuellaOrigen[c];
+    mostrarDocPreview(box, data);
+    try{ revisarDocumentoRepetido(c, box); }catch(e){}
+    casillas.push((box.querySelector(".doc-label") || {}).textContent || c);
+  }
+  try{ mostrarCodigoEps(); mostrarActividadArl(); mostrarCodigoAfp(); }catch(e){}
+  const partes = [];
+  if (puestos.length) partes.push(`${puestos.length} dato${puestos.length === 1 ? "" : "s"}`);
+  if (nBen) partes.push(`${nBen} beneficiario${nBen === 1 ? "" : "s"}`);
+  if (casillas.length) partes.push(`documentos en: ${casillas.join(", ")}`);
+  const resumen = partes.length ? `✅ Puse ${partes.join(" · ")}.` : "No había nada nuevo que poner.";
+  const btn = document.getElementById("asisPoner");
+  if (btn) btn.replaceWith(Object.assign(document.createElement("span"), { className: "asis-hecho", textContent: resumen + " Revise y toque Guardar." }));
+  showToast(resumen + " Revise y toque Guardar.");
+}
+
 async function leerCedulaDeImagen(fuente){
   const caja = document.querySelector('.doc-upload[data-doc="Cedula"]');
   if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
