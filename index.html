@@ -1090,6 +1090,15 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .rc-acc select{ flex:1 1 180px; }
   .rc-ok{ color:var(--pago, #15803d); font-size:13px; font-weight:600; margin-top:6px; }
   .inc-fila{ padding:10px 2px; border-bottom:1px solid var(--line); }
+  .inc-docs{ border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:var(--bg); }
+  .inc-docs-tit{ font-weight:700; font-size:13px; margin-bottom:6px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .inc-doc{ display:flex; align-items:center; gap:8px; padding:5px 0; border-top:1px dashed var(--line); font-size:13px; }
+  .inc-doc:first-of-type{ border-top:0; }
+  .inc-doc .inc-doc-n{ flex:1; }
+  .inc-doc small{ display:block; color:var(--muted); font-size:11.5px; }
+  .inc-doc.ok .inc-doc-n::before{ content:"✅ "; } .inc-doc:not(.ok) .inc-doc-n::before{ content:"⬜ "; }
+  .inc-sep{ font-weight:700; margin-top:6px; padding-top:8px; border-top:1px solid var(--line); }
+  .inc-check label{ display:flex; gap:8px; align-items:center; font-weight:600; margin-top:22px; }
   .inc-abrir{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
   .inc-soporte{ margin-top:8px; }
   #incSoporteCaja[hidden]{ display:none; }
@@ -2027,7 +2036,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-casa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></symbol><symbol id="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol><symbol id="i-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol><symbol id="i-escudo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-paleta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/><circle cx="17" cy="11" r="1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-salud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></symbol><symbol id="i-casa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></symbol><symbol id="i-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol><symbol id="i-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol><symbol id="i-escudo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol><symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-contacto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></symbol><symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol><symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol><symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></symbol><symbol id="i-barco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l2.5 5h13L21 15H3z"/><path d="M6 15V9h12v6M12 9V4M9 6h6"/></symbol><symbol id="i-ancla" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 10h8"/></symbol><symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-historial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 8v4l3 2"/></symbol><symbol id="i-libro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23"/><path d="M20 18v3H6.5"/></symbol><symbol id="i-bajar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol><symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9.5l5-5 5 5M5 20h14"/></symbol><symbol id="i-grafico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol><symbol id="i-bandeja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2.5-8h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></symbol><symbol id="i-carpeta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol><symbol id="i-monedas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7"/><path d="M9.5 16.3c.9.4 2 .7 3.5.7 3 0 5.5-1.1 5.5-2.5v-4c0-1-1.3-1.9-3.3-2.3"/></symbol><symbol id="i-mensaje" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></symbol><symbol id="i-recibo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol><symbol id="i-enlace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-paleta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/><circle cx="17" cy="11" r="1"/></symbol><symbol id="i-ajustes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol></svg>
 
 <div class="pin-lock" id="loginScreen" style="display:none;">
   <div class="pin-lock-box">
@@ -2121,6 +2130,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <button type="button" class="sidebar-link" id="navImportPilaBtn"><span class="sidebar-num">14</span><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Subir planilla pagada (planilla + comprobante)</button>
     <input type="file" id="importPilaFile" class="hidden-file" accept=".pdf,application/pdf,image/*,.csv,text/csv" multiple>
     <button type="button" class="sidebar-link" id="navPilaBtn"><span class="sidebar-num">14.1</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel para SUAPORTE</button>
+    <button type="button" class="sidebar-link" id="navIncapBtn"><svg class="ico" aria-hidden="true"><use href="#i-salud"/></svg>Incapacidades <span class="sidebar-badge" id="incapBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navAfilTramiteBtn"><svg class="ico" aria-hidden="true"><use href="#i-reloj"/></svg>Afiliaciones en trámite <span class="sidebar-badge" id="afilBadge" style="display:none;">0</span></button>
     <button type="button" class="sidebar-link" id="navSolConBtn"><svg class="ico" aria-hidden="true"><use href="#i-bandeja"/></svg>Documentos recibidos (web) <span class="sidebar-badge" id="solConBadge" style="display:none;">0</span></button>
 
@@ -2262,6 +2272,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
               <div class="actions">
           <div class="acc-grupo"><span class="acc-t">Cliente</span>
             <button class="btn small primary" id="editBtn">Editar</button>
+            <button type="button" class="btn small" id="incFichaBtn" title="Ver las incapacidades de este cliente">🩺 Incapacidades</button>
             <button type="button" class="btn small" id="formEpsBtn" style="display:none;" title="Descarga el formulario de afiliación de la EPS lleno con los datos del cliente"></button>
             <button class="acc-mas btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
             <button type="button" class="acc-mas btn small" id="salarioClienteBtn" hidden title="Salario con el que cotiza: con él se calculan salud, pensión, ARL y caja">💰 Salario</button>
@@ -2686,17 +2697,27 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <!-- Muelles de independientes que pagan su seguridad social por otras empresas (solo servicio) -->
 <div class="overlay" id="overlayIncap">
   <div class="modal" style="max-width:620px;">
-    <h2>🩺 Pagos de incapacidades</h2>
-    <div class="modal-sub">Registre la plata que entra y lo que se le paga a la persona. Solo la comisión cuenta como ingreso.</div>
+    <h2>🩺 Incapacidades</h2>
+    <div class="modal-sub">Datos de la incapacidad, documentos que pide la EPS o la ARL, y el pago a la persona. Del dinero solo la comisión cuenta como ingreso.</div>
     <div class="ing-tarjetas" id="incTarjetas"></div>
     <div class="modal-actions" style="justify-content:flex-start;margin:0 0 10px;"><button type="button" class="btn primary" id="incNuevaBtn">➕ Registrar incapacidad</button></div>
     <form id="incForm" hidden autocomplete="off">
       <div class="form-grid">
         <div class="field"><label for="incCedula">Cédula *</label><input id="incCedula" inputmode="numeric" maxlength="12"></div>
         <div class="field"><label for="incNombre">Nombre *</label><input id="incNombre" maxlength="120"></div>
+        <div class="field"><label for="incTipo">Tipo</label><select id="incTipo"></select></div>
         <div class="field"><label for="incEntidad">Entidad que paga</label><input id="incEntidad" maxlength="80" placeholder="EPS o ARL"></div>
         <div class="field"><label for="incDesde">Incapacidad desde</label><input id="incDesde" type="date"></div>
         <div class="field"><label for="incHasta">Incapacidad hasta</label><input id="incHasta" type="date"></div>
+        <div class="field"><label for="incDias">Días</label><input id="incDias" type="number" min="0" max="999" inputmode="numeric" placeholder="Se calculan con las fechas"></div>
+        <div class="field"><label for="incNumero">N.º del certificado</label><input id="incNumero" maxlength="40"></div>
+        <div class="field"><label for="incDiag">Diagnóstico (código o descripción)</label><input id="incDiag" maxlength="120" placeholder="Ej.: A09 o gastroenteritis"></div>
+        <div class="field inc-check"><label><input type="checkbox" id="incProrroga"> Es prórroga de otra incapacidad</label></div>
+        <div class="field"><label for="incEstadoTram">Trámite ante la entidad</label><select id="incEstadoTram"><option>Por radicar</option><option>Radicada</option><option>Aprobada</option><option>Rechazada</option><option>Pagada por la entidad</option></select></div>
+        <div class="field"><label for="incRadicado">N.º de radicado</label><input id="incRadicado" maxlength="40"></div>
+        <div class="field"><label for="incFechaRad">Fecha de radicado</label><input id="incFechaRad" type="date"></div>
+        <div class="field span2" style="grid-column:1/-1;"><div class="inc-docs" id="incDocs"></div><input type="file" id="incDocFile" accept="image/*,application/pdf" hidden></div>
+        <div class="field span2 inc-sep" style="grid-column:1/-1;">💰 Pago a la persona</div>
         <div class="field"><label for="incRecibido">Dinero que entra</label><input id="incRecibido" type="number" min="0" step="1" inputmode="numeric"></div>
         <div class="field"><label for="incFechaRecibido">Fecha en que entró</label><input id="incFechaRecibido" type="date"></div>
         <div class="field"><label for="incPagado">Pago a la persona</label><input id="incPagado" type="number" min="0" step="1" inputmode="numeric"></div>
@@ -5288,9 +5309,86 @@ function renderFaltanFactura(lista){
   </details>` : `<div class="faltan-caja">✅ Están los datos para facturar a responsables y clientes.</div>`;
 }
 function claveValidaResp(r){ return !!normResp(r["Responsable / Grupo"]); }
-// Pagos de incapacidades. La plata que entra es de la persona: el ingreso es solo la comisión.
+// Incapacidades: datos, documentos que pide la EPS o la ARL, y el pago. La plata que entra es de la persona: el ingreso es solo la comisión.
 let incapacidades = [];
 let incEditando = null;
+let incId = null, incDocs = {}, incDocSubiendo = null;
+// Documentos que suelen pedir. Cada EPS o ARL puede pedir algo más: para eso está «Otro documento».
+const INC_CED = ["cedula", "Copia de la cédula"], INC_PLA = ["planilla", "Planilla PILA pagada del mes"], INC_BAN = ["bancaria", "Certificación bancaria"];
+const INC_CERT = ["certificado", "Certificado de incapacidad"], INC_HIS = ["historia", "Historia clínica o epicrisis"];
+// Todas las incapacidades y licencias pagas en Colombia, con quién paga y los documentos que suelen pedir.
+const INC_TIPOS = {
+  general: { grupo: "EPS", nombre: "Incapacidad por enfermedad general", ent: "eps", docs: [INC_CERT, ["historia", "Historia clínica o epicrisis", "Obligatoria si son más de 2 días u hospitalización"], INC_CED, INC_PLA, INC_BAN, ["solicitud", "Formato de solicitud de la EPS", "Solo si la EPS lo pide"]] },
+  maternidad: { grupo: "EPS", nombre: "Licencia de maternidad", ent: "eps", docs: [["certificado", "Certificado de la licencia de maternidad"], ["registro", "Registro civil del bebé"], ["nacido_vivo", "Certificado de nacido vivo"], ["historia", "Epicrisis o historia clínica del parto", "Si fue parto prematuro o múltiple, que lo diga"], INC_CED, INC_PLA, INC_BAN] },
+  adopcion: { grupo: "EPS", nombre: "Licencia de maternidad por adopción", ent: "eps", docs: [["entrega", "Acta de entrega del menor (ICBF)"], ["adopcion", "Sentencia o resolución de adopción"], ["registro", "Registro civil del menor"], INC_CED, INC_PLA, INC_BAN] },
+  paternidad: { grupo: "EPS", nombre: "Licencia de paternidad", ent: "eps", docs: [["registro", "Registro civil del bebé"], ["nacido_vivo", "Certificado de nacido vivo"], ["cedula", "Copia de la cédula del padre"], INC_PLA, INC_BAN] },
+  parental_compartida: { grupo: "EPS", nombre: "Licencia parental compartida", ent: "eps", docs: [["acuerdo", "Acuerdo firmado por los padres y el empleador"], ["certificado", "Certificado de la licencia de maternidad"], ["registro", "Registro civil del bebé"], INC_CED, INC_PLA, INC_BAN] },
+  parental_flexible: { grupo: "EPS", nombre: "Licencia parental flexible de tiempo parcial", ent: "eps", docs: [["acuerdo", "Acuerdo con el empleador (fechas y horario)"], ["certificado", "Certificado de la licencia"], ["registro", "Registro civil del bebé"], INC_CED, INC_PLA, INC_BAN] },
+  aborto: { grupo: "EPS", nombre: "Licencia por aborto o parto no viable", ent: "eps", docs: [["certificado", "Certificado médico (con las semanas de gestación)"], INC_HIS, INC_CED, INC_PLA, INC_BAN] },
+  accidente: { grupo: "ARL", nombre: "Incapacidad por accidente de trabajo", ent: "arl", docs: [["furat", "FURAT (reporte del accidente)", "Se reporta a la ARL dentro de los 2 días hábiles siguientes"], INC_CERT, INC_HIS, INC_CED, INC_PLA, INC_BAN, ["investigacion", "Investigación del accidente", "Si el accidente fue grave"]] },
+  enf_laboral: { grupo: "ARL", nombre: "Incapacidad por enfermedad laboral", ent: "arl", docs: [["furel", "FUREL (reporte de la enfermedad)"], ["calificacion", "Calificación de origen laboral"], INC_CERT, INC_HIS, INC_CED, INC_PLA, INC_BAN] },
+  mas180: { grupo: "Fondo de pensiones", nombre: "Incapacidad de más de 180 días (día 181 a 540)", ent: "afp", docs: [["rehabilitacion", "Concepto de rehabilitación de la EPS", "La EPS lo emite antes del día 120"], ["certificados", "Certificados de incapacidad continuos (prórrogas)"], INC_HIS, ["solicitud", "Solicitud del fondo de pensiones"], INC_CED, INC_BAN] },
+  mas540: { grupo: "EPS", nombre: "Incapacidad de más de 540 días", ent: "eps", docs: [["certificados", "Certificados de incapacidad continuos (prórrogas)"], ["calificacion", "Calificación de pérdida de capacidad laboral"], INC_HIS, ["rehabilitacion", "Concepto de rehabilitación"], INC_CED, INC_BAN] },
+  luto: { grupo: "Empleador (no se cobra a la EPS)", nombre: "Licencia por luto", ent: "empleador", docs: [["defuncion", "Registro civil de defunción"], ["parentesco", "Prueba del parentesco (registro civil)"]] },
+  calamidad: { grupo: "Empleador (no se cobra a la EPS)", nombre: "Licencia por calamidad doméstica", ent: "empleador", docs: [["soporte", "Soporte de la calamidad"]] },
+  votacion: { grupo: "Empleador (no se cobra a la EPS)", nombre: "Permiso por votación o jurado de votación", ent: "empleador", docs: [["certificado", "Certificado electoral o de jurado"]] },
+  sindical: { grupo: "Empleador (no se cobra a la EPS)", nombre: "Permiso sindical", ent: "empleador", docs: [["soporte", "Comunicación del sindicato"]] },
+};
+const INC_ENT_TXT = { eps: "la EPS", arl: "la ARL", afp: "el fondo de pensiones", empleador: "el empleador" };
+const INC_OTRO = ["otro", "Otro documento que pida la entidad"];
+function tipoIncap(i){ return INC_TIPOS[i && i.tipo] ? i.tipo : "general"; }
+function docsIncapDe(tipo){ return [...INC_TIPOS[tipo].docs, INC_OTRO]; }
+function faltanDocsIncap(i){ return INC_TIPOS[tipoIncap(i)].docs.filter(([k]) => !((i.documentos || {})[k])).length; }
+// Badge: incapacidades sin terminar (sin radicar o con documentos pendientes, y sin pagar)
+function incapPendientes(){ return incapacidades.filter(i => !i.fecha_pago && ((i.estado_tramite || "Por radicar") === "Por radicar" || faltanDocsIncap(i) > 0)).length; }
+function pintarBadgeIncap(){
+  const n = incapPendientes();
+  const b = document.getElementById("incapBadge"); if (b){ b.textContent = n; b.style.display = n ? "" : "none"; }
+}
+function diasEntre(desde, hasta){
+  if (!desde || !hasta || hasta < desde) return "";
+  return Math.round((new Date(hasta + "T12:00:00") - new Date(desde + "T12:00:00")) / 86400000) + 1;
+}
+function pintarDocsIncap(){
+  const tipo = document.getElementById("incTipo").value || "general";
+  const lista = docsIncapDe(tipo);
+  const hechos = INC_TIPOS[tipo].docs.filter(([k]) => incDocs[k]).length;
+  document.getElementById("incDocs").innerHTML = `<div class="inc-docs-tit"><span>📎 Documentos para ${INC_ENT_TXT[INC_TIPOS[tipo].ent]}</span><span>${hechos} de ${INC_TIPOS[tipo].docs.length}</span></div>` +
+    lista.map(([k, n, nota]) => { const d = incDocs[k];
+      return `<div class="inc-doc ${d ? "ok" : ""}"><span class="inc-doc-n">${escHtml(n)}${nota ? `<small>${escHtml(nota)}</small>` : ""}${d ? `<small>${escHtml(d.nombre || "")}</small>` : ""}</span>
+        ${d ? `<button type="button" class="btn small ghost" data-inc-ver="${k}">Ver</button>` : ""}${incConsulta ? "" : `<button type="button" class="btn small" data-inc-subir="${k}">${d ? "Cambiar" : "Subir"}</button>`}</div>`; }).filter((x, j) => !incConsulta || incDocs[lista[j][0]] || j < lista.length - 1).join("");
+}
+function sugerirEntidadIncap(){
+  const ent = document.getElementById("incEntidad"); if (ent.value.trim()) return;
+  const c = document.getElementById("incCedula").value.replace(/\D/g, ""); if (!c) return;
+  const r = records.find(x => String(x["Cédula"]) === c); if (!r) return;
+  const t = INC_TIPOS[document.getElementById("incTipo").value].ent;
+  ent.value = t === "arl" ? (/positiva/i.test(r["ARL (Riesgo/Código)"] || "") ? "POSITIVA" : "SURA") : t === "afp" ? String(r["AFP"] || "").toUpperCase() : t === "empleador" ? String(r["Empresa"] || EMPRESA.marca).toUpperCase() : String(r["EPS"] || "").toUpperCase();
+}
+// Barra lateral: se registran y se llenan. Botón de la ficha: solo se consultan las del cliente.
+let incConsulta = null; // cédula del cliente cuando se abre solo para consultar
+async function abrirIncapacidades(cedulaConsulta){
+  incConsulta = typeof cedulaConsulta === "string" ? cedulaConsulta : null;
+  await cargarIncapacidades();
+  cerrarFormIncap();
+  const ov = document.getElementById("overlayIncap");
+  ov.classList.toggle("inc-consulta", !!incConsulta);
+  document.getElementById("incTarjetas").hidden = !!incConsulta;
+  document.getElementById("incNuevaBtn").parentElement.hidden = !!incConsulta;
+  const r = incConsulta ? records.find(x => String(x["Cédula"]) === incConsulta) : null;
+  ov.querySelector("h2").textContent = incConsulta ? `🩺 Incapacidades · ${nombrePropio((r && r["Nombre del Afiliado"]) || incConsulta)}` : "🩺 Incapacidades";
+  renderIncapacidades();
+  ov.classList.add("show");
+}
+function incapacidadesDe(cedula){ return incapacidades.filter(i => String(i.cedula) === String(cedula)); }
+function pintarBotonIncapFicha(r){
+  const b = document.getElementById("incFichaBtn"); if (!b || !r) return;
+  const lista = incapacidadesDe(r["Cédula"]), abiertas = lista.filter(i => !i.fecha_pago).length;
+  b.textContent = lista.length ? `🩺 Incapacidades (${lista.length})` : "🩺 Incapacidades";
+  // A la vista solo si tiene alguna; si no, queda en «Más acciones»
+  b.classList.toggle("acc-mas", !lista.length);
+  b.title = abiertas ? `${abiertas} sin terminar` : "Ver las incapacidades de este cliente";
+}
 function estadoIncap(i){
   if (i.fecha_pago) return "Pagada";
   return numOrZero(i.valor_recibido) > 0 ? "Por pagar" : "Por recibir";
@@ -5302,6 +5400,8 @@ async function cargarIncapacidades(){
     const { data, error } = await sb.from("incapacidades").select("*");
     if (error) throw error;
     incapacidades = data || [];
+    pintarBadgeIncap();
+    try{ if (activeCedula) pintarBotonIncapFicha(records.find(x => String(x["Cédula"]) === String(activeCedula))); }catch(e){}
   }catch(e){ console.error("No se pudieron cargar las incapacidades:", e); }
 }
 function renderIncapacidades(){
@@ -5317,15 +5417,16 @@ function renderIncapacidades(){
     <div class="ing-tarjeta"><small>Entró este mes</small><b>${fmt(entro)}</b></div>
     <div class="ing-tarjeta"><small>Pagado este mes</small><b>${fmt(salio)}</b></div>`;
   const orden = { "Por pagar": 0, "Por recibir": 1, "Pagada": 2 };
-  const lista = [...incapacidades].sort((a, b) => orden[estadoIncap(a)] - orden[estadoIncap(b)] || String(b.created_at).localeCompare(String(a.created_at)));
+  const lista = [...(incConsulta ? incapacidadesDe(incConsulta) : incapacidades)].sort((a, b) => orden[estadoIncap(a)] - orden[estadoIncap(b)] || String(b.created_at).localeCompare(String(a.created_at)));
   document.getElementById("incLista").innerHTML = lista.map(i => {
     const e = estadoIncap(i);
     return `<div class="inc-fila"><button type="button" class="inc-abrir" data-inc="${escHtml(i.id)}">
-      <span class="bm-info"><b>${escHtml(nombrePropio(i.nombre))}</b><small>${escHtml(i.cedula)}${i.entidad ? ` · ${escHtml(i.entidad)}` : ""}${i.desde ? ` · ${fechaCorta(i.desde)}${i.hasta ? ` a ${fechaCorta(i.hasta)}` : ""}` : ""}</small>
+      <span class="bm-info"><b>${escHtml(nombrePropio(i.nombre))}</b><small>${escHtml(i.cedula)}${i.entidad ? ` · ${escHtml(i.entidad)}` : ""}${i.desde ? ` · ${fechaCorta(i.desde)}${i.hasta ? ` a ${fechaCorta(i.hasta)}` : ""}` : ""}${i.dias ? ` · ${i.dias} día${i.dias === 1 ? "" : "s"}` : ""}</small>
+      <small>${escHtml(INC_TIPOS[tipoIncap(i)].nombre)} · Trámite: <b>${escHtml(i.estado_tramite || "Por radicar")}</b> · Documentos ${INC_TIPOS[tipoIncap(i)].docs.length - faltanDocsIncap(i)} de ${INC_TIPOS[tipoIncap(i)].docs.length}</small>
       <small>Entró ${fmt(i.valor_recibido)} · Pagado ${fmt(i.valor_pagado)} · Comisión ${fmt(comisionIncap(i))}</small></span>
       <span class="ms-servicio ${e === "Pagada" ? "actualizacion" : "curso"}">${e}</span>
     </button>${i.fecha_pago ? `<button type="button" class="btn small inc-soporte" data-soporte="${escHtml(i.id)}">📤 Generar soporte de pago</button>` : ""}</div>`;
-  }).join("") || `<div class="empty">Todavía no hay incapacidades registradas.</div>`;
+  }).join("") || `<div class="empty">${incConsulta ? "Este cliente no tiene incapacidades registradas. Se registran en la barra lateral → «Incapacidades»." : "Todavía no hay incapacidades registradas."}</div>`;
 }
 function actualizarComisionIncap(){
   const r = numOrZero(document.getElementById("incRecibido").value), p = numOrZero(document.getElementById("incPagado").value);
@@ -5337,6 +5438,18 @@ function abrirFormIncap(i){
   const pon = (id, x) => { document.getElementById(id).value = x ?? ""; };
   pon("incCedula", v.cedula); pon("incNombre", v.nombre); pon("incEntidad", v.entidad); pon("incDesde", v.desde); pon("incHasta", v.hasta);
   pon("incRecibido", v.valor_recibido || ""); pon("incFechaRecibido", v.fecha_recibido); pon("incPagado", v.valor_pagado || ""); pon("incFechaPago", v.fecha_pago); pon("incNota", v.nota);
+  const sel = document.getElementById("incTipo");
+  if (!sel.options.length){
+    const grupos = [...new Set(Object.values(INC_TIPOS).map(t => t.grupo))];
+    sel.innerHTML = grupos.map(g => `<optgroup label="Paga: ${escHtml(g)}">${Object.entries(INC_TIPOS).filter(([, t]) => t.grupo === g).map(([k, t]) => `<option value="${k}">${escHtml(t.nombre)}</option>`).join("")}</optgroup>`).join("");
+  }
+  sel.value = tipoIncap(v);
+  pon("incDias", v.dias || ""); pon("incNumero", v.numero); pon("incDiag", v.diagnostico); pon("incRadicado", v.radicado); pon("incFechaRad", v.fecha_radicado);
+  document.getElementById("incProrroga").checked = !!v.prorroga;
+  document.getElementById("incEstadoTram").value = v.estado_tramite || "Por radicar";
+  incId = i ? i.id : (crypto.randomUUID ? crypto.randomUUID() : null);
+  incDocs = { ...((i && i.documentos) || {}) };
+  pintarDocsIncap();
   document.getElementById("incBorrarBtn").hidden = !(i && esAdmin());
   // El contador indicó (10 nov. 2026) que la gestión de cobro de incapacidades no se factura
   const facturable = false;
@@ -5345,15 +5458,52 @@ function abrirFormIncap(i){
   document.getElementById("incSoporteCaja").hidden = !(i && i.fecha_pago);
   document.getElementById("incFacturaEstado").textContent = i && i.alegra_id ? "🧾 La comisión ya tiene factura en Alegra. El contador la revisa allá." : "";
   document.getElementById("incForm").hidden = false;
+  document.querySelectorAll("#incForm input, #incForm select").forEach(el => { if (el.id !== "incDocFile") el.disabled = !!incConsulta; });
+  document.querySelector('#incForm button[type="submit"]').hidden = !!incConsulta;
+  if (incConsulta) document.getElementById("incBorrarBtn").hidden = true;
   actualizarComisionIncap();
   document.getElementById("incCedula").focus();
 }
-function cerrarFormIncap(){ incEditando = null; document.getElementById("incForm").hidden = true; }
-document.getElementById("msIncapBtn").addEventListener("click", async () => {
-  await cargarIncapacidades();
-  cerrarFormIncap();
-  renderIncapacidades();
-  document.getElementById("overlayIncap").classList.add("show");
+function cerrarFormIncap(){ incEditando = null; incId = null; incDocs = {}; document.getElementById("incForm").hidden = true; }
+document.getElementById("msIncapBtn").addEventListener("click", () => abrirIncapacidades());
+document.getElementById("navIncapBtn").addEventListener("click", () => abrirIncapacidades());
+document.getElementById("incFichaBtn").addEventListener("click", () => { if (activeCedula) abrirIncapacidades(String(activeCedula)); });
+document.getElementById("incTipo").addEventListener("change", () => { document.getElementById("incEntidad").value = ""; sugerirEntidadIncap(); pintarDocsIncap(); });
+["incDesde", "incHasta"].forEach(id => document.getElementById(id).addEventListener("change", () => {
+  const d = diasEntre(document.getElementById("incDesde").value, document.getElementById("incHasta").value);
+  if (d) document.getElementById("incDias").value = d;
+}));
+document.getElementById("incDocs").addEventListener("click", async (e) => {
+  const ver = e.target.closest("[data-inc-ver]"), subir = e.target.closest("[data-inc-subir]");
+  if (ver){
+    const d = incDocs[ver.dataset.incVer]; if (!d) return;
+    const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(d.path, 600);
+    if (error || !data){ alertApp("No se pudo abrir el documento: " + (error ? error.message : "")); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  } else if (subir){
+    if (!navigator.onLine || !sb){ alertApp("Sin internet: se necesita conexión para subir el documento."); return; }
+    if (!incId){ alertApp("Este navegador no permite subir el documento antes de guardar. Guarde la incapacidad y vuelva a abrirla."); return; }
+    incDocSubiendo = subir.dataset.incSubir;
+    const inp = document.getElementById("incDocFile"); inp.value = ""; inp.click();
+  }
+});
+document.getElementById("incDocFile").addEventListener("change", async (e) => {
+  const archivo = e.target.files && e.target.files[0], k = incDocSubiendo;
+  if (!archivo || !k || !incId) return;
+  if (archivo.size > 15 * 1024 * 1024){ alertApp("El archivo pesa más de 15 MB. Súbalo más liviano (una foto o un PDF en calidad normal)."); return; }
+  const ext = (archivo.name.match(/\.([a-z0-9]{2,5})$/i) || [, archivo.type === "application/pdf" ? "pdf" : "jpg"])[1].toLowerCase();
+  const path = `incapacidades/${incId}/${k}-${Date.now()}.${ext}`;
+  showToast("Subiendo el documento…");
+  const { error } = await sb.storage.from("documentos-clientes").upload(path, archivo, { upsert: false, contentType: archivo.type || "application/octet-stream" });
+  if (error){ alertApp("No se pudo subir el documento: " + error.message); return; }
+  incDocs[k] = { path, nombre: archivo.name, subido: new Date().toISOString() };
+  // Si la incapacidad ya existe, el documento queda guardado de una vez (solo se agrega)
+  if (incEditando){
+    const { error: e2 } = await sb.from("incapacidades").update({ documentos: incDocs, updated_at: new Date().toISOString() }).eq("id", incEditando.id);
+    if (!e2){ incEditando.documentos = { ...incDocs }; renderIncapacidades(); pintarBadgeIncap(); }
+  }
+  pintarDocsIncap();
+  showToast(incEditando ? "✅ Documento guardado." : "✅ Documento listo. Toque «Guardar» para terminar.");
 });
 document.getElementById("incCerrarBtn").addEventListener("click", () => document.getElementById("overlayIncap").classList.remove("show"));
 document.getElementById("incNuevaBtn").addEventListener("click", () => abrirFormIncap(null));
@@ -5363,11 +5513,11 @@ document.getElementById("incPagado").addEventListener("input", actualizarComisio
 document.getElementById("incCedula").addEventListener("change", (e) => {
   const c = e.target.value.replace(/\D/g, ""), nom = document.getElementById("incNombre");
   e.target.value = c;
-  if (nom.value.trim()) return;
-  for (const m of Object.values(store.months || {})){
+  if (!nom.value.trim()) for (const m of Object.values(store.months || {})){
     const r = (m || []).find(x => String(x["Cédula"]) === c);
     if (r){ nom.value = nombrePropio(r["Nombre del Afiliado"] || ""); break; }
   }
+  sugerirEntidadIncap();
 });
 document.getElementById("incLista").addEventListener("click", (e) => {
   const s = e.target.closest("[data-soporte]");
@@ -5379,13 +5529,17 @@ document.getElementById("incForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const v = id => document.getElementById(id).value.trim();
   const fila = { cedula: v("incCedula").replace(/\D/g, ""), nombre: limpiarEspacios(v("incNombre")).toLowerCase(), entidad: v("incEntidad") || null, desde: v("incDesde") || null, hasta: v("incHasta") || null,
-    valor_recibido: Math.round(numOrZero(v("incRecibido"))), fecha_recibido: v("incFechaRecibido") || null, valor_pagado: Math.round(numOrZero(v("incPagado"))), fecha_pago: v("incFechaPago") || null, nota: v("incNota") || null, updated_at: new Date().toISOString() };
+    valor_recibido: Math.round(numOrZero(v("incRecibido"))), fecha_recibido: v("incFechaRecibido") || null, valor_pagado: Math.round(numOrZero(v("incPagado"))), fecha_pago: v("incFechaPago") || null, nota: v("incNota") || null, updated_at: new Date().toISOString(),
+    tipo: v("incTipo") || "general", dias: Math.round(numOrZero(v("incDias"))) || null, numero: v("incNumero") || null, diagnostico: v("incDiag") || null, prorroga: document.getElementById("incProrroga").checked,
+    estado_tramite: v("incEstadoTram") || "Por radicar", radicado: v("incRadicado") || null, fecha_radicado: v("incFechaRad") || null, documentos: { ...incDocs } };
+  if (!incEditando && incId) fila.id = incId;
   const error = validarIncap(fila);
   if (error){ showToast("⚠️ " + error); return; }
   const r = incEditando ? await sb.from("incapacidades").update(fila).eq("id", incEditando.id) : await sb.from("incapacidades").insert(fila);
   if (r.error){ await alertApp("No se pudo guardar: " + r.error.message); return; }
   await cargarIncapacidades();
   cerrarFormIncap(); renderIncapacidades(); renderMonthTotal();
+  try{ if (activeCedula) pintarBotonIncapFicha(records.find(x => String(x["Cédula"]) === String(activeCedula))); }catch(e){}
   showToast("✅ Incapacidad guardada.");
 });
 // Soporte de la incapacidad: lo que entró, la comisión y lo que recibió la persona. No es factura.
@@ -9240,6 +9394,7 @@ function showBreakdown(cedula){
 
   // Los tres puntos de muelle (S, T, A); solo el asignado al cliente es tocable.
   try{ pintarBotonFormEps(r); }catch(e){}
+  try{ pintarBotonIncapFicha(r); }catch(e){}
   // Muelles: su propio renglón, con un botón por muelle (tocar = aceptado / pendiente)
   { const fm = document.getElementById("fichaMuelles");
     const ac = r["AceptadoPorMuelle"] || {};
@@ -13842,6 +13997,7 @@ async function mostrarAppPrincipal(user){
   cargarResponsablesCreados(); // teléfonos y cédulas de los responsables (los mensajes van a ellos)
   setTimeout(revisarPasoACliente, 600); // viene de Muelles y Seguros: «Pasar a cliente de planillas»
   cargarCodigosPila(); // trae también los salarios (bases) de otras empresas e independientes
+  cargarIncapacidades(); // para el aviso de incapacidades sin terminar
   cargarDatosEmpresa().then(() => { try{ renderList(searchInput.value); if (activeCedula) showBreakdown(activeCedula); }catch(e){} });
   cargarGastos();
   cargarCRM();
@@ -17278,7 +17434,7 @@ const MENU_CATS = [
     { id: "navGananciasBtn", valor: "sidebarTotalGestiones" }, { id: "navCobroExtraBtn" }, { id: "navMensajeBtn" },
     { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
   { nombre: "Planillas", items: [{ id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
-  { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
+  { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navIncapBtn", badge: "incapBadge", sub: "Datos, documentos para EPS o ARL y pago" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }] },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
   { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navDatosEmpresaBtn", sub: "Nombre, aportante, contacto y precios" }, { id: "navTemaBtn" }] },

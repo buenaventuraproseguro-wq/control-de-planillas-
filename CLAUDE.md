@@ -48,6 +48,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Dinero recibido (💵): el pago NO pasa a PAGO hasta tener planilla y comprobante: `registrarDineroRecibido`, `dineroRecibido`, `aplicarPagosConSoporte`; columna `clients.dinero_recibido`
 - Lectura de la cédula (foto): `leerCedulaDeImagen`, `datosDeTextoCedula`; fecha de nacimiento y sexo: `nacimientoYSexoDeCedula` → campos `fFechaNac`/`fSexo` (en `datos_extra`)
 - Formularios de EPS llenos: guía → «✏️ Marcar campos» (`abrirMarcarFormulario`), ficha «📝 Formulario» (`abrirFormularioCliente`, `pdfFormularioLleno`); datos extra en `clients.datos_extra`, empresas en configuracion `formulario_empresas`
+- Incapacidades: barra lateral `navIncapBtn` (registrar y llenar) y ficha `incFichaBtn` (solo consulta): `abrirIncapacidades(cedula?)`, `INC_TIPOS` (tipos y documentos), tabla `incapacidades` (+ `documentos` jsonb), archivos en `documentos-clientes/incapacidades/<id>/`
 - Datos de la empresa (solo admin): `abrirDatosEmpresa`, `aplicarDatosEmpresa`, `EMPRESA` / `EMPRESA_DEFECTO`; configuracion `datos_empresa` (marca, aportante, contacto, precios, sucursal PILA). La cuenta *8222 no se cambia ahí.
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
 
