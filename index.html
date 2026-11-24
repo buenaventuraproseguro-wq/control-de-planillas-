@@ -2394,7 +2394,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="form-grid">
       <div class="field span2 campo-nomina ruaf-caja">
         <label for="ruafArchivo" class="ruaf-titulo">📋 Subir captura del RUAF y llenar los datos</label>
-        <small>La app lee la captura (cédula, nombre, sexo, EPS, pensión) y le dice si es afiliación nueva o si ya tiene EPS. Usted revisa antes de guardar.</small>
+        <small>Con el RUAF se verifican la cédula, el nombre, el sexo, la EPS y la pensión, y la app le dice si es afiliación nueva o si ya tiene EPS. La foto de la cédula (abajo, en documentos) solo se usa para la fecha de nacimiento. Usted revisa antes de guardar.</small>
         <input id="ruafArchivo" type="file" accept="image/*,application/pdf">
         <div id="ruafPanel" class="ruaf-panel" hidden></div>
       </div>
@@ -2405,7 +2405,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <div id="reingresoAviso" class="reingreso-aviso" hidden></div>
       </div>
       <div class="field"><label><span class="field-num">2</span>Nombre del afiliado *</label><input id="fNombre" type="text"></div>
-      <div class="field"><label for="fFechaNac">Fecha de nacimiento · Sexo <small>(se leen de la cédula)</small></label>
+      <div class="field"><label for="fFechaNac">Fecha de nacimiento · Sexo <small>(la fecha sale de la foto de la cédula o a mano; el sexo, del RUAF)</small></label>
         <div class="nac-fila"><input id="fFechaNac" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" data-fecha-texto="1" autocomplete="off"><select id="fSexo" aria-label="Sexo"><option value="">Sexo</option><option value="M">M (hombre)</option><option value="F">F (mujer)</option></select></div>
       </div>
 
@@ -19010,6 +19010,23 @@ async function leerCedulaDeImagen(fuente){
   try{
     const d = await leerCedulaConOcr(fuente);
     if (d.tipo && d.tipo !== "cedula"){ ponerAvisoCasillaEquivocada(aviso, "Cedula", d.tipo); return; }
+    // Cliente nuevo: la cédula, el nombre y el sexo salen del RUAF. De la foto de la cédula solo se toma la fecha de nacimiento
+    // (y el sexo si todavía no está), para que no se mezclen datos de dos lecturas.
+    if (!editingCedula){
+      const ff = document.getElementById("fFechaNac"), fs = document.getElementById("fSexo");
+      const lineas = [];
+      const fn = d.fechaNac && fechaNacValida(d.fechaNac);
+      if (fn && !ff.value.trim()){ ff.value = fn; lineas.push(`✅ Puse la fecha de nacimiento <b>${escHtml(fn)}</b>.`); }
+      else if (fn && fechaNacValida(ff.value) !== fn) lineas.push(`⚠️ En la foto leí la fecha de nacimiento <b>${escHtml(fn)}</b> y en el formulario está <b>${escHtml(ff.value)}</b>. Revise cuál es la buena.`);
+      else if (fn) lineas.push(`✅ La fecha de nacimiento ya estaba igual (${escHtml(fn)}).`);
+      else lineas.push(`📷 No pude leer la fecha de nacimiento (está en la parte de atrás de la cédula). Escríbala a mano o suba una foto más clara.`);
+      if (d.sexo && !fs.value){ fs.value = d.sexo; lineas.push(`✅ Puse el sexo <b>${d.sexo}</b>.`); }
+      const cedForm = String(document.getElementById("fCedula").value || "").replace(/\D/g, "");
+      if (d.cedula && cedForm && d.cedula !== cedForm) lineas.push(`⚠️ <b>El número de esta cédula (${escHtml(d.cedula)}) no es el del formulario (${escHtml(cedForm)}).</b> Revise que sea de la misma persona.`);
+      if (!cedForm) lineas.push(`<small>La cédula, el nombre y el sexo se llenan con la captura del RUAF (arriba).</small>`);
+      aviso.innerHTML = `<div>${lineas.join("<br>")}</div>`;
+      return;
+    }
     if (!d.cedula && !d.sugerida && !d.nombre && (d.fechaNac || d.sexo)){
       // Solo la parte de atrás (sin nombre ni número): se ponen la fecha de nacimiento y el sexo
       const ln = lineaNacSexoCedula(d);
