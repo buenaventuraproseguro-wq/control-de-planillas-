@@ -961,6 +961,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   @media (max-width:560px){ .field.span2{ grid-column:span 1; } }
   .field label{ font-size:11.5px; font-weight:600; color:var(--muted); }
   .nac-fila{ display:flex; gap:6px; }
+  .de-tit{ font-size:13px; margin:14px 0 6px; color:var(--navy); }
+  .de-nota{ margin-top:12px; font-size:12px; color:var(--muted); }
   .nac-fila input{ flex:1 1 auto; min-width:0; }
   .nac-fila select{ flex:0 0 118px; }
   .field-num{
@@ -2161,6 +2163,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <button type="button" class="sidebar-link" id="navExportCsvBtn"><span class="sidebar-num">13</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Exportar cobro del mes</button>
       <button type="button" class="sidebar-link" id="navRespaldosBtn"><span class="sidebar-num">23</span><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Respaldos automáticos</button>
       <div class="sidebar-section-title">Ajustes</div>
+      <button type="button" class="sidebar-link" id="navDatosEmpresaBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-escudo"/></svg>Datos de la empresa</button>
       <button type="button" class="sidebar-link" id="navTemaBtn"><span class="sidebar-num">18</span><svg class="ico" aria-hidden="true"><use href="#i-paleta"/></svg>Colores de la página</button>
     </div>
   </nav>
@@ -2869,6 +2872,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="modal-sub" id="haSub"></div>
     <div id="haCuerpo" class="ay-cuerpo"></div>
     <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn ghost" data-ay-cerrar>Cerrar</button></div>
+  </div>
+</div>
+<div class="overlay" id="overlayDatosEmpresa">
+  <div class="modal" style="max-width:720px;">
+    <h2>🏢 Datos de la empresa</h2>
+    <div class="modal-sub">Lo que la app usa en formularios de EPS, contrato de mandato, planilla de SUAPORTE y cobros. Si deja una casilla vacía, se usa el dato de siempre. Los cambios quedan para todo el equipo.</div>
+    <div id="deCampos"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="deCancelarBtn">Cancelar</button><button type="button" class="btn primary" id="deGuardarBtn">Guardar</button></div>
   </div>
 </div>
 <div class="overlay" id="overlayRespaldos">
@@ -4791,8 +4802,48 @@ function mesDeFechaISO(fechaISO){
 const PENSION_DEFAULT = 280200; // valor de AFP a precargar en "Agregar cliente"
 const EPS_DEFAULT = 70100; // valor EPS estándar de empleado (dependiente)
 const EPS_INDEPENDIENTE_DEFAULT = 218863; // valor EPS para independiente (paga ambos aportes, 2026)
-const COSTO_AFILIACION = 149000; // costo de una afiliación nueva (modificable)
-const COSTO_MENSUAL = 75000;     // comisión por pago de planilla los meses siguientes (modificable)
+/* ---------- Datos de la empresa (pantalla «🏢 Datos de la empresa», solo admin) ----------
+   Lo que antes estaba fijo en el código. Se guarda en configuracion → "datos_empresa".
+   Los valores de aquí son los de PROSEGUROSNET: si la base no tiene nada, la app trabaja igual que siempre. */
+const EMPRESA_DEFECTO = {
+  marca: "PROSEGUROSNET", aportante_nombre: "NESTOR FABIAN GARZON TORRES", aportante_tipo_doc: "CC", aportante_doc: "1112904783",
+  direccion_formularios: "KM 13 37 1", oficina: "Km 15 vía Cali, EDS Primax", municipio: "BUENAVENTURA", departamento: "VALLE DEL CAUCA",
+  telefono_aportante: "3207354856", whatsapp: "311 613 3523", correo: "buenaventuraproseguro@gmail.com", web: "prosnet.co",
+  costo_afiliacion: 149000, costo_mensual: 75000, recargo_mora: 5000, dia_limite_recargo: 21, caja_minima: 100,
+  pila_sucursal_codigo: "02", pila_sucursal_nombre: "EMPLEADOS", pila_arl: "14-11",
+};
+const EMPRESA_NUMEROS = ["costo_afiliacion", "costo_mensual", "recargo_mora", "dia_limite_recargo", "caja_minima"];
+let EMPRESA = { ...EMPRESA_DEFECTO };
+async function cargarDatosEmpresa(){
+  if (!cloudDb || !sb) return;
+  try{
+    const { data } = await sb.from("configuracion").select("valor").eq("clave", "datos_empresa").maybeSingle();
+    if (data && data.valor && typeof data.valor === "object") aplicarDatosEmpresa(data.valor);
+  }catch(e){ console.error(e); }
+}
+// "VALLE DEL CAUCA" → "Valle del Cauca"
+function lugarPropio(t){ return nombrePropio(t).replace(/(?!^)\b(Del|De|La|Las|Los|Y)\b/g, m => m.toLowerCase()); }
+// Toma lo guardado y lo pone donde la app lo usa. Un dato vacío o raro se queda con el de siempre.
+function aplicarDatosEmpresa(v){
+  const e = { ...EMPRESA_DEFECTO };
+  Object.keys(EMPRESA_DEFECTO).forEach(k => {
+    const x = v && v[k];
+    if (EMPRESA_NUMEROS.includes(k)){ const n = Number(x); if (Number.isFinite(n) && n > 0) e[k] = Math.round(n); }
+    else if (typeof x === "string" && x.trim()) e[k] = x.trim();
+  });
+  if (e.dia_limite_recargo > 28) e.dia_limite_recargo = EMPRESA_DEFECTO.dia_limite_recargo;
+  EMPRESA = e;
+  COSTO_AFILIACION = e.costo_afiliacion; COSTO_MENSUAL = e.costo_mensual;
+  RECARGO_MORA_VALOR = e.recargo_mora; DIA_LIMITE_RECARGO = e.dia_limite_recargo; CAJA_MINIMA = e.caja_minima;
+  const docPuntos = String(e.aportante_doc).replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  Object.assign(MANDATARIO, { nombre: e.aportante_nombre, doc: docPuntos, marca: e.marca, direccion: `${e.oficina}, ${lugarPropio(e.municipio)} (${lugarPropio(e.departamento)})`, telefono: e.whatsapp, correo: e.correo });
+  Object.assign(DATOS_PROSEGUROSNET, { emp_nombre: e.aportante_nombre.toUpperCase(), emp_tipo_doc: e.aportante_tipo_doc, emp_doc: String(e.aportante_doc).replace(/\D/g, ""),
+    emp_direccion: e.direccion_formularios.toUpperCase(), emp_municipio: e.municipio.toUpperCase(), emp_departamento: e.departamento.toUpperCase(),
+    emp_telefono: String(e.telefono_aportante).replace(/\D/g, ""), emp_correo: e.correo.toLowerCase(), emp_representante: e.aportante_nombre.toUpperCase() });
+  CEDULAS_APORTANTE.splice(0, CEDULAS_APORTANTE.length, String(e.aportante_doc).replace(/\D/g, ""));
+}
+let COSTO_AFILIACION = 149000; // costo de una afiliación nueva (se cambia en «Datos de la empresa»)
+let COSTO_MENSUAL = 75000;     // comisión por pago de planilla los meses siguientes (se cambia en «Datos de la empresa»)
 const COSTO_ESPECIAL_DESDE = 150000; // un servicio mayor a esto en un mes normal es un cobro especial de una sola vez
 
 const fmt = (n) => {
@@ -8304,6 +8355,7 @@ function renderMonthTotal(){
   document.getElementById("navAppContaBtn").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("tituloContaApp").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("navCambiosBtn").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navDatosEmpresaBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("cambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navRecibosCaja").style.display = esAdmin() ? "" : "none";
   document.getElementById("navCierreContador").style.display = esAdmin() ? "" : "none";
@@ -8365,7 +8417,7 @@ function tagConfirmacion(r){
 // Paga caja si tiene valor de caja o la caja está Activa / En proceso. Sin retirados ni clientes solo de servicio.
 // Sin caja de compensación se cobra y se paga el aporte mínimo de $100 a Comfenalco Valle (no puede ir en 0).
 // Ese $100 NO cuenta como "tener caja".
-const CAJA_MINIMA = 100;
+let CAJA_MINIMA = 100; // se cambia en «Datos de la empresa»
 function tieneCaja(r){
   if (!r || esConductorExcluido(r)) return false;
   if (estadoClass(r["Estado Trámite"]) === "RETIRO") return false;
@@ -8431,8 +8483,8 @@ function mesActualReal(){
 /* ---- Recargo por mora ----
    Después del día 21 del mes, a cada cliente que siga en SIN PAGO o DÍAS PROPORCIONALES se le suman $5.000.
    Queda guardado en el cliente (aunque pague después) y solo el administrador lo puede quitar. */
-const RECARGO_MORA_VALOR = 5000;
-const DIA_LIMITE_RECARGO = 21;
+let RECARGO_MORA_VALOR = 5000; // se cambian en «Datos de la empresa»
+let DIA_LIMITE_RECARGO = 21;
 function recargoMoraActivo(){
   return store.currentMonth === mesActualReal() && new Date().getDate() > DIA_LIMITE_RECARGO;
 }
@@ -13790,6 +13842,7 @@ async function mostrarAppPrincipal(user){
   cargarResponsablesCreados(); // teléfonos y cédulas de los responsables (los mensajes van a ellos)
   setTimeout(revisarPasoACliente, 600); // viene de Muelles y Seguros: «Pasar a cliente de planillas»
   cargarCodigosPila(); // trae también los salarios (bases) de otras empresas e independientes
+  cargarDatosEmpresa().then(() => { try{ renderList(searchInput.value); if (activeCedula) showBreakdown(activeCedula); }catch(e){} });
   cargarGastos();
   cargarCRM();
   if (esAdmin()) borrarArchivosPlanillaIndividual();
@@ -17228,7 +17281,7 @@ const MENU_CATS = [
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }] },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
-  { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navTemaBtn" }] },
+  { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navDatosEmpresaBtn", sub: "Nombre, aportante, contacto y precios" }, { id: "navTemaBtn" }] },
   { nombre: "Muelles y Seguros · app aparte ↗", directo: "navAppSegurosBtn", app: true },
   { nombre: "Contabilidad · app aparte ↗", directo: "navAppContaBtn", app: true },
 ];
@@ -18189,6 +18242,46 @@ document.getElementById("rbCuerpo").addEventListener("click", async (e) => {
 });
 document.getElementById("navRespaldosBtn").addEventListener("click", abrirRespaldos);
 
+/* ---------- Pantalla «Datos de la empresa» (solo admin) ---------- */
+const DE_GRUPOS = [
+  ["Empresa", [["marca", "Nombre comercial (marca)"], ["web", "Página web"], ["whatsapp", "WhatsApp de la empresa"], ["correo", "Correo"]]],
+  ["Aportante (quien paga la planilla)", [["aportante_nombre", "Nombre o razón social"], ["aportante_tipo_doc", "Tipo de documento (CC o NIT)"], ["aportante_doc", "Número de documento"], ["telefono_aportante", "Teléfono del aportante (formularios)"]]],
+  ["Dirección", [["oficina", "Oficina (contrato de mandato)"], ["direccion_formularios", "Dirección en los formularios de EPS"], ["municipio", "Municipio"], ["departamento", "Departamento"]]],
+  ["Precios y cobros", [["costo_afiliacion", "Costo de afiliación nueva ($)"], ["costo_mensual", "Costo mensual del servicio ($)"], ["recargo_mora", "Recargo por mora ($)"], ["dia_limite_recargo", "Recargo después del día"], ["caja_minima", "Aporte mínimo a caja si va sin caja ($)"]]],
+  ["Planilla de SUAPORTE", [["pila_sucursal_codigo", "Código de la sucursal"], ["pila_sucursal_nombre", "Nombre de la sucursal"], ["pila_arl", "Código de la ARL del aportante"]]],
+];
+function abrirDatosEmpresa(){
+  if (!esAdmin()) return;
+  document.getElementById("deCampos").innerHTML = DE_GRUPOS.map(([titulo, campos]) => `<h3 class="de-tit">${escHtml(titulo)}</h3><div class="form-grid">${campos.map(([k, txt]) => {
+    const num = EMPRESA_NUMEROS.includes(k);
+    return `<div class="field"><label for="de_${k}">${escHtml(txt)}</label><input id="de_${k}" type="text" ${num ? 'inputmode="numeric"' : ""} value="${escHtml(String(EMPRESA[k] ?? ""))}" placeholder="${escHtml(String(EMPRESA_DEFECTO[k]))}"></div>`;
+  }).join("")}</div>`).join("") + `<div class="de-nota">🔒 La cuenta de consignaciones (*${escHtml(CUENTA_SEGUROS)}) es fija por seguridad y no se cambia aquí.</div>`;
+  document.getElementById("overlayDatosEmpresa").classList.add("show");
+}
+async function guardarDatosEmpresa(){
+  if (!esAdmin() || !cloudDb) { showToast("Solo el administrador, con internet, puede cambiar estos datos."); return; }
+  const v = {};
+  Object.keys(EMPRESA_DEFECTO).forEach(k => {
+    const el = document.getElementById("de_" + k); if (!el) return;
+    const t = el.value.trim();
+    v[k] = EMPRESA_NUMEROS.includes(k) ? (t ? Number(t.replace(/\D/g, "")) || EMPRESA_DEFECTO[k] : EMPRESA_DEFECTO[k]) : (t || EMPRESA_DEFECTO[k]);
+  });
+  if (v.dia_limite_recargo < 1 || v.dia_limite_recargo > 28){ showToast("⚠️ El día del recargo debe estar entre 1 y 28."); return; }
+  const cambios = Object.keys(v).filter(k => String(v[k]) !== String(EMPRESA[k]));
+  if (!cambios.length){ document.getElementById("overlayDatosEmpresa").classList.remove("show"); return; }
+  const precios = cambios.filter(k => EMPRESA_NUMEROS.includes(k));
+  if (precios.length && !(await confirmarApp(`Va a cambiar ${precios.length === 1 ? "un valor de cobro" : "valores de cobro"}. Aplica desde ahora para los cálculos de la app.\n\n¿Guardar?`))) return;
+  const { error } = await sb.from("configuracion").upsert({ clave: "datos_empresa", valor: v, updated_by: currentUserId });
+  if (error){ showToast("No se pudo guardar: " + error.message); return; }
+  aplicarDatosEmpresa(v);
+  document.getElementById("overlayDatosEmpresa").classList.remove("show");
+  renderList(searchInput.value); if (activeCedula) showBreakdown(activeCedula);
+  showToast("✅ Datos de la empresa guardados.");
+}
+document.getElementById("navDatosEmpresaBtn").addEventListener("click", abrirDatosEmpresa);
+document.getElementById("deGuardarBtn").addEventListener("click", guardarDatosEmpresa);
+document.getElementById("deCancelarBtn").addEventListener("click", () => document.getElementById("overlayDatosEmpresa").classList.remove("show"));
+
 /* ---------- 1. Leer la cédula desde la foto ---------- */
 let _ocrCargando = null;
 function cargarTesseract(){
@@ -19079,7 +19172,7 @@ function pilaFila1(filas, aportante){
   // Planilla I: salud y otros riesgos van con el MISMO periodo (mes vencido) y tipo de aportante independiente
   if (aportante) return [1, 1, 1, aportante.nombre, "CC", aportante.cedula, 0, aportante.tipoI ? "I" : "E", "", "", "U", "", "", aportante.arl,
     p, aportante.tipoI ? p : salud, "", "", filas.length, nomina, aportante.tipoI ? 2 : 1, 89];
-  return [1, 1, 1, "NESTOR FABIAN GARZON TORRES", "CC", "1112904783", 0, "E", "", "", "S", "02", "EMPLEADOS", "14-11",
+  return [1, 1, 1, EMPRESA.aportante_nombre.toUpperCase(), EMPRESA.aportante_tipo_doc, String(EMPRESA.aportante_doc).replace(/\D/g, ""), 0, "E", "", "", "S", EMPRESA.pila_sucursal_codigo, EMPRESA.pila_sucursal_nombre, EMPRESA.pila_arl,
     p, salud, "", "", filas.length, nomina, 1, 89];
 }
 const PILA_ENC2 = ["Tipo de registro", "Secuencia", "Tipo documento cotizante", "Documento cotizante", "Tipo de cotizante", "Subtipo de cotizante", "Extranjero", "Colombiano en el exterior", "Departamento", "Municipio", "Primer apellido", "Segundo apellido", "Primer nombre", "Segundo nombre", "ING", "RET", "TDE", "TAE", "TDP", "TAP", "VSP", "Línea", "VST", "SLN", "IGE", "LMA", "VAC-LR", "AVP", "VCT", "IRL", "AFP", "AFP Traslado", "EPS", "EPS Traslado", "CCF", "Días AFP", "Días EPS", "Días ARL", "Días CCF", "Salario básico", "Tipo Salario", "IBC AFP", "IBC EPS", "IBC ARL", "IBC CCF", "Tarifa AFP", "Cotización AFP", "AVP afiliado", "AVP aportante", "Total AFP", "Aporte FSP", "Aporte FSPS", "Valor no retenido", "Tarifa EPS", "Cotización EPS", "Valor UPC", "Número IGE", "Valor IGE", "Número LMA", "Valor LMA", "Tarifa ARL", "Centro de trabajo", "Cotización ARL", "Tarifa CCF", "Aporte CCF", "Tarifa SENA", "Aporte SENA", "Tarifa ICBF", "Aporte ICBF", "Tarifa ESAP", "Aporte ESAP", "Tarifa MEN", "Aporte MEN", "Tipo documento UPC", "Documento UPC", "Exonerado", "ARL", "Clase riesgo", "Tarifa especial AFP", "Fecha ING", "Fecha RET", "Fecha inicio VSP", "Fecha inicio SLN", "Fecha final SLN", "Fecha inicio IGE", "Fecha final IGE", "Fecha inicio LMA", "Fecha final LMA", "Fecha inicio VAC-LR", "Fecha final VAC-LR", "Fecha inicio VCT", "Fecha final VCT", "Fecha inicio IRL", "Fecha final IRL", "IBC otros parafiscales", "Número horas laboradas", "Fecha radicación exterior", "Actividad económica para ARL "];
@@ -19675,7 +19768,7 @@ document.getElementById("pilaDescargarBtn").addEventListener("click", async () =
   const aoa = [PILA_ENC1, pilaFila1(filas), PILA_ENC2, ...filas.map((f, i) => { const v = f.v.slice(); v[1] = i + 1; return v; })];
   // Se escribe con textos compartidos (sharedStrings), igual que los Excel de SUAPORTE: así los lee bien
   const blob = XLSXMin.libro(aoa, "Planilla base");
-  const nombre = `PILA_CC1112904783_${pilaPeriodo().replace("-", "") || "mes"}.xlsx`; // mismo periodo que usa SUAPORTE
+  const nombre = `PILA_CC${String(EMPRESA.aportante_doc).replace(/\D/g, "")}_${pilaPeriodo().replace("-", "") || "mes"}.xlsx`; // mismo periodo que usa SUAPORTE
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   window.__ultimoExcelPila = { aoa, nombre };
