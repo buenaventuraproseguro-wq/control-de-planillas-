@@ -968,7 +968,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   }
   .modal h2{ font-size:17px; margin:0 0 4px; color:var(--titulo); }
   .modal .modal-sub{ font-size:12.5px; color:var(--muted); margin-bottom:16px; }
-  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .form-grid{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 12px; }
+  .form-grid > .field{ min-width:0; }
   @media (max-width:560px){ .form-grid{ grid-template-columns:1fr; } }
   .campo-nomina.oculto{ display:none; }
   .field input.campo-bloqueado{ background:var(--line); color:var(--muted); cursor:not-allowed; }
@@ -2410,7 +2411,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <div class="overlay" id="overlay">
   <div class="modal">
     <h2 id="modalTitle">Agregar cliente</h2>
-    <div class="modal-sub">Los campos de valores aceptan solo números (sin puntos ni signos $). El valor de Pensión ya viene precargado con el valor legal sobre 1 salario mínimo — edítalo solo si el caso es especial (prorrateado, independiente, etc.). Al editar un cliente existente, los cambios se aplican también a los meses siguientes (menos el estado y el costo del mes, que son propios de cada uno). Las fotos se guardan en este dispositivo; si subes muchas, exporta respaldos seguido para no perderlas.</div>
     <div class="form-grid">
       <div class="field span2 campo-nomina ruaf-caja">
         <div class="ruaf-botones">
@@ -2428,10 +2428,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <div id="reingresoAviso" class="reingreso-aviso" hidden></div>
       </div>
       <div class="field"><label><span class="field-num">2</span>Nombre del afiliado *</label><input id="fNombre" type="text"></div>
-      <div class="field"><label for="fFechaNac">Fecha de nacimiento · Sexo <small>(la fecha sale de la foto de la cédula o a mano; el sexo, del RUAF)</small></label>
+      <div class="field"><label for="fFechaNac">Fecha de nacimiento · Sexo</label>
         <div class="nac-fila"><input id="fFechaNac" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" data-fecha-texto="1" autocomplete="off"><select id="fSexo" aria-label="Sexo"><option value="">Sexo</option><option value="M">M (hombre)</option><option value="F">F (mujer)</option></select></div>
       </div>
-      <div class="field"><label for="fLugarNac">Lugar de nacimiento <small>(sale de la foto de la cédula o a mano)</small></label>
+      <div class="field"><label for="fLugarNac">Lugar de nacimiento</label>
         <input id="fLugarNac" type="text" placeholder="Ej: BUENAVENTURA (VALLE DEL CAUCA)" autocomplete="off">
       </div>
 

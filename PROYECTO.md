@@ -364,3 +364,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-24 · Centro de gestión: botones de la ficha (Editar, WhatsApp, Enviar planilla, QR, recibo…) y tarjetas de abajo (Agregar cliente, Cobrar el mes, Consignaciones, Excel SUAPORTE, Subir planilla, Enlace) más pequeños y con más espacio entre ellos (bloque CSS al final del primer <style>). · Por qué: Nestor pidió distinguir mejor cada botón. Solo diseño.
 
 - 2026-11-24 · Botón «🪪 Subir cédula» arriba en Agregar cliente, junto a Subir RUAF; abre la misma casilla «Cédula» de documentos (mismo funcionamiento). · Por qué: Nestor lo quiere a la mano.
+
+- 2026-11-24 · Agregar cliente más ordenado: el formulario ya no se sale de la ventana (columnas que no se estiran), sin el párrafo largo de arriba ni las notas en fecha y lugar de nacimiento. · Por qué: Nestor veía la pantalla rara.
