@@ -18851,6 +18851,8 @@ function ruafReiniciar(){
   const p = document.getElementById("ruafPanel"); if (p){ p.innerHTML = ""; p.hidden = true; }
   const f = document.getElementById("ruafArchivo"); if (f) f.value = "";
   const a = document.getElementById("ruafAvisoTraslado"); if (a) a.remove();
+  // Solo al agregar un cliente nuevo (afiliación); al editar no aparece
+  const caja = document.querySelector(".ruaf-caja"); if (caja) caja.style.display = editingCedula ? "none" : "";
 }
 const ruafActivo = (e) => /ACTIV/i.test(String(e || "")) && !/INACTIV/i.test(String(e || ""));
 function ruafReducir(src, max, calidad){
