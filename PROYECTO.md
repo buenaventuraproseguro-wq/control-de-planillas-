@@ -357,3 +357,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-24 · Cliente nuevo: de la foto de la cédula (aunque esté algo borrosa) solo se toman la fecha y el lugar de nacimiento (municipio y departamento, confirmados con la lista DIVIPOLA y aceptando una o dos letras mal leídas); ya no el sexo, que sale del RUAF. Campo nuevo «Lugar de nacimiento» (`fLugarNac`, se guarda en Datos Extra `lugar_nac`, solo agrega o cambia; vacío no borra). Los formularios de EPS tienen los campos «Municipio de nacimiento» y «Departamento de nacimiento» para marcar.
 
 - 2026-11-24 · Se quitó el botón «Consultar RUAF» en línea (Verifik) por pedido de Nestor, hasta tener cuenta y precio. El código quedó en el commit df58c67 para volver a ponerlo. La función `consultar-ruaf` sigue en Supabase pero sin clave no hace nada.
+
+- 2026-11-24 · Enlace directo a la consulta oficial del RUAF (https://ruaf.sispro.gov.co/Filtro.aspx) en «Agregar cliente», junto a la captura del RUAF. · Por qué: Nestor lo pidió en vez de la consulta pagada de Verifik.
