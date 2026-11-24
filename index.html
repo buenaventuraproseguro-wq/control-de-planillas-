@@ -616,6 +616,20 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .fecha-sistema .fs-paso.pendiente{ color:var(--retiro); font-weight:600; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .tag-reingreso{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--afiliacion-bg); color:var(--afiliacion); vertical-align:middle; }
   .ocr-alerta{ color:var(--retiro); font-weight:600; }
+  .ruaf-caja{ border:1.5px dashed var(--accent); background:var(--accent-bg); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:6px; }
+  .ruaf-caja .ruaf-titulo{ font-weight:700; font-size:14px; }
+  .ruaf-panel{ display:flex; flex-direction:column; gap:6px; font-size:13px; background:var(--panel); border-radius:8px; padding:8px; }
+  .ruaf-rojo, .ruaf-amarillo, .ruaf-verde{ border-radius:8px; padding:7px 9px; line-height:1.4; }
+  .ruaf-rojo{ background:var(--retiro-bg); border:1px solid var(--retiro); }
+  .ruaf-amarillo{ background:#FFF4D6; border:1px solid #E5C25A; color:#5c4300; }
+  .ruaf-verde{ background:var(--pago-bg); border:1px solid var(--pago); }
+  .ruaf-sub{ font-weight:700; margin-top:4px; }
+  .ruaf-fila{ display:grid; grid-template-columns:22px minmax(100px, 32%) 1fr; gap:6px; align-items:start; padding:4px 2px; border-bottom:1px solid var(--line); }
+  .ruaf-fila.dudoso{ background:#FFF4D6; color:#5c4300; }
+  .ruaf-fila.igual{ opacity:.65; }
+  .ruaf-valor{ word-break:break-word; }
+  .ruaf-hecho{ font-weight:600; color:var(--pago); }
+  @media (prefers-color-scheme: dark){ .ruaf-amarillo, .ruaf-fila.dudoso{ background:#3a3010; color:#f3dc8a; border-color:#8a7426; } }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
   .tag-resp-ret{ background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent); }
@@ -2378,6 +2392,12 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <h2 id="modalTitle">Agregar cliente</h2>
     <div class="modal-sub">Los campos de valores aceptan solo números (sin puntos ni signos $). El valor de Pensión ya viene precargado con el valor legal sobre 1 salario mínimo — edítalo solo si el caso es especial (prorrateado, independiente, etc.). Al editar un cliente existente, los cambios se aplican también a los meses siguientes (menos el estado y el costo del mes, que son propios de cada uno). Las fotos se guardan en este dispositivo; si subes muchas, exporta respaldos seguido para no perderlas.</div>
     <div class="form-grid">
+      <div class="field span2 campo-nomina ruaf-caja">
+        <label for="ruafArchivo" class="ruaf-titulo">📋 Subir captura del RUAF y llenar los datos</label>
+        <small>La app lee la captura (cédula, nombre, sexo, EPS, pensión) y le dice si es afiliación nueva o si ya tiene EPS. Usted revisa antes de guardar.</small>
+        <input id="ruafArchivo" type="file" accept="image/*,application/pdf">
+        <div id="ruafPanel" class="ruaf-panel" hidden></div>
+      </div>
       <div class="field">
         <label><span class="field-num">1</span>Cédula *</label>
         <input id="fCedula" type="text" inputmode="numeric">
@@ -12020,6 +12040,7 @@ function fromInputDate(yyyymmdd){
 
 function openModal(record){
   editingCedula = record ? record["Cédula"] : null;
+  try{ ruafReiniciar(); }catch(e){}
   ocultarAvisoReingreso(); _reingresoCedula = "";
   cargarResponsablesCreados();
   { const a = document.getElementById("respSugerencia"); if (a) a.hidden = true; }
@@ -12161,6 +12182,8 @@ async function closeModal(skipConfirm){
 /* ---- Beneficiarios (sección plegable dentro del modal) ---- */
 const beneficiariosSection = document.getElementById("beneficiariosSection");
 const beneficiariosList = document.getElementById("beneficiariosList");
+document.getElementById("ruafArchivo").addEventListener("change", (e) => { const f = (e.target.files || [])[0]; e.target.value = ""; ruafSubir(f); });
+document.getElementById("fEps").addEventListener("change", () => { try{ ruafRevisarCambioEps(); }catch(e){} });
 const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn");
 
 // Comprime una imagen antes de guardarla (máx. 1000px de lado, calidad 0.72) para no llenar
@@ -18690,6 +18713,292 @@ function lineaNacSexoCedula(d){
     if (b) b.onclick = () => { distintos.forEach(x => { x.el.value = x.ced; }); b.replaceWith(Object.assign(document.createElement("span"), { textContent: " (cambiado)" })); };
   } };
 }
+/* ---- 📋 Lectura del RUAF (captura de pantalla) ----
+   Gratis, con el mismo lector de la cédula (Tesseract, en el navegador). Del RUAF salen: cédula, nombres y apellidos,
+   sexo, EPS (régimen, fecha, estado, tipo de afiliado, municipio), pensión, ARL y caja si la captura los trae.
+   Nada se pone en el formulario sin tocar «Poner en el formulario», y nada se guarda sin tocar «Guardar». */
+const RUAF_SECCIONES = [["salud", /^\W{0,3}AFILIACI.N\s*A\s+SALUD/i], ["pension", /^\W{0,3}AFILIACI.N\s*A\s+PENSI/i], ["arl", /^\W{0,3}AFILIACI.N\s*A\s+RIESGOS/i],
+  ["caja", /^\W{0,3}AFILIACI.N\s*A\s+(CAJAS?\s+DE\s+)?COMPENSACI/i], ["cesantias", /^\W{0,3}AFILIACI.N\s*A\s+CESANT/i], ["pensionados", /^\W{0,3}PENSIONADOS\b/i], ["otra", /^\W{0,3}VINCULACI.N|ASISTENCIA\s+SOCIAL/i]];
+const RUAF_FECHA = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{8})\b/;
+const RUAF_ESTADO = /(ACTIVO\s+NO\s+COTIZANTE|ACTIVO\s+COTIZANTE|ACTIVO|INACTIVO|RETIRADO|SUSPENDIDO|DESAFILIADO|AFILIADO\s+FALLECIDO|PROTECCI.N\s+LABORAL|TRASLADADO|ANULADO)/i;
+const RUAF_EPS_ALIAS = [["SOS", /servicio occidental|\bs\.?\s?o\.?\s?s\b/], ["SURA", /suramericana|\bsura\b/], ["NUEVA EPS", /nueva (eps|empresa promotora)/],
+  ["COMFENALCO VALLE", /comfenalco valle|delagente/], ["SALUD TOTAL", /salud total/], ["MUTUAL SER", /mutual ser/], ["SAVIA SALUD", /savia/]];
+const RUAF_AFP = [["COLPENSIONES", /colpensiones|administradora colombiana de pensiones/], ["PORVENIR", /porvenir/], ["PROTECCION", /protecci.n/],
+  ["COLFONDOS", /colfondos/], ["SKANDIA", /skandia|old mutual/]];
+const RUAF_ARL = [["SURA", /sura/], ["POSITIVA", /positiva/], ["COLMENA", /colmena/], ["BOLIVAR", /bol.var/], ["AXA COLPATRIA", /axa|colpatria/],
+  ["EQUIDAD", /equidad/], ["ALFA", /\balfa\b/], ["LA PREVISORA", /previsora/], ["MAPFRE", /mapfre/]];
+function ruafNorm(t){ return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim(); }
+function ruafFecha(t){
+  let m = String(t || "").match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); if (m) return `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3]}`;
+  m = String(t || "").match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/); if (m) return `${m[3].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[1]}`;
+  m = String(t || "").match(/^(\d{2})(\d{2})(\d{4})$/); if (m) return `${m[1]}/${m[2]}/${m[3]}`;
+  return "";
+}
+function ruafEntidad(texto, lista){
+  const n = ruafNorm(texto);
+  const a = lista.find(([, re]) => re.test(n));
+  return a ? a[0] : "";
+}
+function ruafNombreEps(texto){
+  const n = ruafNorm(texto);
+  const a = RUAF_EPS_ALIAS.find(([, re]) => re.test(n)); if (a) return a[0];
+  const lista = (typeof EPS_COLOMBIA !== "undefined" ? EPS_COLOMBIA : []);
+  const x = lista.find(([, k]) => k.length >= 3 && new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(n));
+  return x ? x[0] : "";
+}
+// lineas: [{ text, words: [{ text, x0 }] }] como las da el lector
+function datosDeRuaf(lineas){
+  const L = (lineas || []).map(l => ({ text: String(l.text || "").replace(/\s+/g, " ").trim(), words: l.words || [] })).filter(l => l.text);
+  const res = { esRuaf: false, cedula: "", tipoDoc: "", partes: null, nombresDudosos: false, sexo: "", salud: null, pension: null, arl: null, caja: null, secciones: [] };
+  const todo = L.map(l => l.text).join("\n");
+  res.esRuaf = /INFORMACI.N\s+B.SICA/i.test(todo) || /AFILIACI.N\s+A\s+(SALUD|PENSI)/i.test(todo);
+  // 1. Información básica: «CC 1112904783 NESTOR FABIAN GARZON TORRES M»
+  const iDato = L.findIndex(l => /^\W{0,3}(CC|C\.C\.?|TI|CE|PA|RC|PT|PEP|CD|SC)\s*[:.]?\s*\d{5,11}\b/i.test(l.text));
+  if (iDato >= 0){
+    const lin = L[iDato];
+    const m = lin.text.match(/^\W{0,3}(CC|C\.C\.?|TI|CE|PA|RC|PT|PEP|CD|SC)\s*[:.]?\s*(\d{5,11})\s*(.*)$/i);
+    res.tipoDoc = m[1].replace(/\./g, "").toUpperCase(); res.cedula = m[2];
+    let resto = m[3].replace(/[^A-ZÁÉÍÓÚÑÜ ]/gi, " ").replace(/\s+/g, " ").trim().toUpperCase().split(" ").filter(Boolean);
+    if (resto.length && /^[MF]$/.test(resto[resto.length - 1])) res.sexo = resto.pop();
+    resto = resto.filter(w => w.length > 1 || /^[YE]$/.test(w));
+    // Columnas por la posición de los títulos (Primer Nombre · Segundo Nombre · Primer Apellido · Segundo Apellido · Sexo)
+    const enc = L.slice(Math.max(0, iDato - 3), iDato).reverse().find(l => /NOMBRE/i.test(l.text) && /APELL|SEXO/i.test(l.text));
+    let partes = null;
+    if (enc && enc.words.length && lin.words.length){
+      const cols = [];
+      enc.words.forEach((w, k) => {
+        const t = ruafNorm(w.text), sig = ruafNorm((enc.words[k + 1] || {}).text);
+        if (/^(primer|segundo|pimer|primar)$/.test(t) && /nomb|apel|pelid/.test(sig)) cols.push(w.x0);
+        if (/^sex/.test(t)) cols.push(w.x0);
+      });
+      if (cols.length >= 4){
+        partes = ["", "", "", ""];
+        const tol = 15;
+        lin.words.forEach(w => {
+          const txt = String(w.text || "").toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ]/g, "");
+          if (!txt || w.x0 < cols[0] - tol) return;
+          let c = 0; cols.forEach((x, k) => { if (w.x0 >= x - tol) c = k; });
+          if (c >= 4) return; // columna del sexo
+          partes[c] = (partes[c] ? partes[c] + " " : "") + txt;
+        });
+        // [nombre1, nombre2, apellido1, apellido2] → como en la app: [ap1, ap2, n1, n2]
+        partes = [partes[2], partes[3], partes[0], partes[1]];
+        if (!partes[0] || !partes[2]) partes = null;
+      }
+    }
+    if (!partes && resto.length){
+      if (resto.length === 4) partes = [resto[2], resto[3], resto[0], resto[1]];
+      else if (resto.length === 3){ partes = [resto[1], resto[2], resto[0], ""]; res.nombresDudosos = true; }
+      else if (resto.length === 2) partes = [resto[1], "", resto[0], ""];
+      else { partes = [resto.slice(-2, -1)[0] || "", resto.slice(-1)[0] || "", resto.slice(0, -2).join(" "), ""]; res.nombresDudosos = true; }
+    }
+    res.partes = partes;
+  }
+  // 2. Secciones: cada fila empieza con su fecha; las líneas sin fecha siguen siendo de la fila de arriba
+  let sec = null, filas = {};
+  L.forEach(l => {
+    const s = RUAF_SECCIONES.find(([, re]) => re.test(l.text));
+    if (s){ sec = s[0]; filas[sec] = filas[sec] || []; res.secciones.push(sec); return; }
+    if (!sec || /INFORMACI.N\s+B.SICA/i.test(l.text)) return;
+    if (/ADMINISTRADORA|R.GIMEN\s+FECHA|ESTADO\s+DE\s+AFILIA|FECHA\s+DE\s+CORTE/i.test(l.text) && !RUAF_FECHA.test(l.text.replace(/FECHA\s+DE\s+CORTE.*$/i, ""))) return;
+    const t = l.text.replace(/FECHA\s+DE\s+CORTE\W*\S*/i, "").trim(); if (!t) return;
+    const arr = filas[sec];
+    if (RUAF_FECHA.test(t) || !arr.length) arr.push({ p: t, t }); else arr[arr.length - 1].t += " " + t;
+  });
+  const elegir = (arr) => (arr || []).find(f => /ACTIVO/i.test(f.t) && !/INACTIVO/i.test(f.t)) || (arr || [])[0] || { p: "", t: "" };
+  const base = (r, sinTipo) => { const f = r.t; const fe = (f.match(RUAF_FECHA) || [])[1]; let es = (f.match(RUAF_ESTADO) || [])[1] || ""; if (sinTipo) es = es.replace(/\s+COTIZANTE$/i, "").replace(/\s+NO$/i, ""); return { fila: f, fecha: ruafFecha(fe), estado: es.replace(/\s+/g, " ").toUpperCase() }; };
+  if (filas.salud && filas.salud.length){
+    const r = elegir(filas.salud), b = base(r, true), f = r.t;
+    const reg = (f.match(/CONTRIBUTIVO|SUBSIDIADO|ESPECIAL|EXCEPCI.N/i) || [])[0] || "";
+    const tipo = (f.match(/COTIZANTE|BENEFICIARIO|CABEZA\s+DE\s+FAMILIA|ADICIONAL/i) || [])[0] || "";
+    const mun = tipo ? r.p.split(new RegExp(tipo, "i")).slice(1).join(" ").replace(/[^A-ZÁÉÍÓÚÑ\- >]/gi, " ").replace(/\s+/g, " ").trim() : "";
+    res.salud = { ...b, eps: ruafNombreEps(f), regimen: reg.toUpperCase(), tipo: tipo.toUpperCase(), municipio: mun.replace(/^.*->\s*/, "").toUpperCase(), filas: filas.salud.length };
+  }
+  if (filas.pension && filas.pension.length){
+    const r = elegir(filas.pension), b = base(r), f = r.t;
+    res.pension = { ...b, fondo: ruafEntidad(f, RUAF_AFP), regimen: /AHORRO\s+INDIVIDUAL/i.test(f) ? "AHORRO INDIVIDUAL" : /PRIMA\s+MEDIA/i.test(f) ? "PRIMA MEDIA" : "" };
+  }
+  if (filas.arl && filas.arl.length){
+    const r = elegir(filas.arl), b = base(r), f = r.t;
+    res.arl = { ...b, arl: ruafEntidad(f, RUAF_ARL) };
+  }
+  if (filas.caja && filas.caja.length){
+    const r = elegir(filas.caja), b = base(r), f = r.t;
+    const nombre = (r.p.split(RUAF_FECHA)[0] || "").replace(/[^A-ZÁÉÍÓÚÑ ]/gi, " ").replace(/\s+/g, " ").trim().toUpperCase();
+    res.caja = { ...b, caja: nombre };
+  }
+  return res;
+}
+// Lee la captura con el lector gratis: se agranda y se pasa a gris para que la letra pequeña salga bien
+async function leerRuafConOcr(dataUrl){
+  const T = await cargarTesseract();
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+  const esc = Math.min(4, Math.max(1, 3600 / Math.max(img.width, 1)));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+  const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.filter = "grayscale(1)"; x.drawImage(img, 0, 0, c.width, c.height);
+  const w = await T.createWorker("spa");
+  try{
+    const { data } = await w.recognize(c.toDataURL("image/png"), {}, { text: true, blocks: true });
+    const lineas = [];
+    (data.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => lineas.push({ text: l.text, words: (l.words || []).map(wd => ({ text: wd.text, x0: wd.bbox.x0 })) }))));
+    if (!lineas.length) String(data.text || "").split("\n").forEach(t => lineas.push({ text: t, words: [] }));
+    return { ...datosDeRuaf(lineas), confianza: data.confidence || 0 };
+  } finally { try{ await w.terminate(); }catch(e){} }
+}
+let ruafUltimo = null; // lo último leído del RUAF en este formulario (para avisar traslado si cambian la EPS)
+function ruafReiniciar(){
+  ruafUltimo = null;
+  const p = document.getElementById("ruafPanel"); if (p){ p.innerHTML = ""; p.hidden = true; }
+  const f = document.getElementById("ruafArchivo"); if (f) f.value = "";
+  const a = document.getElementById("ruafAvisoTraslado"); if (a) a.remove();
+}
+const ruafActivo = (e) => /ACTIV/i.test(String(e || "")) && !/INACTIV/i.test(String(e || ""));
+function ruafReducir(src, max, calidad){
+  return new Promise((res) => {
+    const im = new Image();
+    im.onload = () => {
+      const esc = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement("canvas"); c.width = Math.round(im.width * esc); c.height = Math.round(im.height * esc);
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      res(c.toDataURL("image/jpeg", calidad));
+    };
+    im.onerror = () => res(null); im.src = src;
+  });
+}
+async function ruafSubir(file){
+  const panel = document.getElementById("ruafPanel");
+  if (!file) return;
+  panel.hidden = false;
+  panel.innerHTML = `<div>🔎 Leyendo el RUAF… (tarda unos segundos)</div>`;
+  let dataUrl = null;
+  if (esPdfArchivo(file)){ const im = await convertirPdfAImagen(file, { siempre: true, ancho: 1800 }); dataUrl = im && im.dataUrl; }
+  else if (/^image\//.test(file.type || "")) dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(file); });
+  if (!dataUrl){ panel.innerHTML = `<div class="ocr-alerta">No pude abrir ese archivo. Suba la captura como imagen o PDF.</div>`; return; }
+  let d;
+  try{ d = await leerRuafConOcr(dataUrl); }
+  catch(e){ panel.innerHTML = `<div class="ocr-alerta">No se pudo leer: revise que haya internet e intente de nuevo.</div>`; return; }
+  if (!d.esRuaf && !d.salud && !d.cedula){
+    panel.innerHTML = `<div class="ruaf-rojo">📷 <b>No parece un RUAF o no se lee.</b> Puede estar borroso, cortado o muy pequeño. Pida una <b>captura de pantalla</b> (no una foto de la pantalla) donde se vean completas la información básica y la afiliación a salud.</div>`;
+    return;
+  }
+  d.imagen = await ruafReducir(dataUrl, 1400, 0.8);
+  ruafUltimo = d;
+  ruafMostrar(d);
+}
+function ruafPropuestas(d){
+  const out = [];
+  const add = (id, etiqueta, valor, opc = {}) => {
+    valor = String(valor == null ? "" : valor).trim(); if (!valor) return;
+    const el = document.getElementById(id); if (!el) return;
+    const actual = String(el.value || "").trim();
+    const mismo = normalizarTexto(actual) === normalizarTexto(valor);
+    out.push({ id, etiqueta, valor, actual, mismo, mostrar: opc.mostrar || valor, marcado: !mismo && (!actual || !!opc.sugerencia), dudoso: !!opc.dudoso });
+  };
+  add("fCedula", "Cédula", d.cedula, { dudoso: !!problemaCedula(d.cedula) });
+  if (d.partes){
+    const ap = [d.partes[0], d.partes[1]].filter(Boolean).join(" "), no = [d.partes[2], d.partes[3]].filter(Boolean).join(" ");
+    if (ap && no) add("fNombre", "Nombre", `${ap} ${no}`.toLowerCase(), { mostrar: `${ap} ${no}`.toUpperCase(), dudoso: d.nombresDudosos });
+  }
+  add("fSexo", "Sexo", d.sexo, { mostrar: d.sexo === "M" ? "M (hombre)" : "F (mujer)" });
+  const s = d.salud;
+  if (s && s.eps){
+    add("fEps", "EPS", s.eps);
+    add("fEstadoEps", "Estado EPS", ruafActivo(s.estado) ? "aceptado" : "en proceso", { mostrar: ruafActivo(s.estado) ? "Aceptado (está activo)" : "En proceso (afiliación nueva)", sugerencia: true });
+  }
+  const p = d.pension;
+  if (p && p.fondo && ruafActivo(p.estado)){
+    add("fAfp", "Fondo de pensión", p.fondo);
+    add("fEstadoAfp", "Estado pensión", "Activo", { mostrar: "Activo, cotizando", sugerencia: true });
+  }
+  return out;
+}
+function ruafMostrar(d){
+  const panel = document.getElementById("ruafPanel");
+  const lista = ruafPropuestas(d);
+  d.lista = lista;
+  const av = [];
+  // Cédula repetida
+  if (d.cedula){
+    const ya = (records || []).find(r => String(r["Cédula"]) === d.cedula);
+    if (ya && String(editingCedula || "") !== d.cedula)
+      av.push(`<div class="ruaf-rojo">⚠️ <b>${editingCedula ? "Este RUAF es de otra persona" : "Esta cédula ya existe en la app"}:</b> ${escHtml(nombrePropio(ya["Nombre del Afiliado"] || ""))} · CC ${escHtml(d.cedula)} (${escHtml(ya["Estado Trámite"] || "")}).${editingCedula ? "" : " No cree otro cliente: cierre esto y abra el que ya está."}</div>`);
+    else if (editingCedula && d.cedula !== String(editingCedula))
+      av.push(`<div class="ruaf-rojo">⚠️ <b>Este RUAF es de otra cédula</b> (${escHtml(d.cedula)}), no de este cliente (${escHtml(editingCedula)}).</div>`);
+  }
+  // Afiliación nueva o con EPS activa
+  const s = d.salud;
+  if (s && s.eps && ruafActivo(s.estado)){
+    const det = [s.regimen && s.regimen.toLowerCase(), s.tipo && s.tipo.toLowerCase(), s.fecha && `desde ${s.fecha}`, s.municipio && nombrePropio(s.municipio.toLowerCase())].filter(Boolean).map(escHtml).join(" · ");
+    av.push(`<div class="ruaf-verde">✅ <b>Ya tiene EPS activa: ${escHtml(s.eps)}</b> (${det}). Si sigue en ${escHtml(s.eps)} no es traslado. Si pide otra EPS, la app le marca el traslado.${/SUBSID/i.test(s.regimen) ? `<br><b>Está en régimen subsidiado:</b> al cotizar pasa a contributivo en la misma EPS.` : ""}</div>`);
+  } else if (s){
+    av.push(`<div class="ruaf-verde">🆕 <b>Afiliación nueva:</b> no tiene EPS activa${s.eps ? ` (en el RUAF sale ${escHtml(s.eps)} ${escHtml((s.estado || "sin estado").toLowerCase())})` : ""}.</div>`);
+  } else if (d.secciones.length || d.esRuaf){
+    av.push(`<div class="ruaf-amarillo">❔ No encontré la parte de <b>afiliación a salud</b> en la captura. Si no tiene EPS es afiliación nueva; si sí tiene, pida la captura completa.</div>`);
+  }
+  if (s && s.eps === "" ) av.push(`<div class="ruaf-amarillo">🟡 Leí la afiliación a salud pero no reconocí el nombre de la EPS. Escríbala a mano.</div>`);
+  // ARL y caja de otra empresa: solo informan
+  if (d.arl && ruafActivo(d.arl.estado)) av.push(`<div class="ruaf-amarillo">🦺 <b>Tiene ARL activa${d.arl.arl ? " en " + escHtml(d.arl.arl) : ""}</b>${d.arl.fecha ? " desde " + escHtml(d.arl.fecha) : ""}. Puede estar trabajando con otra empresa: pregúntele.</div>`);
+  if (d.caja && ruafActivo(d.caja.estado)) av.push(`<div class="ruaf-amarillo">👪 <b>Tiene caja de compensación activa</b>${d.caja.caja ? ": " + escHtml(d.caja.caja) : ""}${d.caja.fecha ? " desde " + escHtml(d.caja.fecha) : ""}.</div>`);
+  // Lectura mala: borrosa, cortada o pequeña
+  const malo = !d.cedula || problemaCedula(d.cedula) || !d.partes || (d.confianza && d.confianza < 60);
+  if (malo) av.push(`<div class="ruaf-rojo">📷 <b>La captura no se leyó bien</b>${!d.cedula ? " (no encontré la cédula)" : !d.partes ? " (no encontré el nombre)" : ""}. Puede estar borrosa, cortada o muy pequeña: compare con la imagen o pida otra captura de pantalla.</div>`);
+  if (d.nombresDudosos) av.push(`<div class="ruaf-amarillo">🟡 Revise el nombre: no estoy seguro de cuál es nombre y cuál apellido.</div>`);
+  const filas = lista.map((x, i) => `<label class="ruaf-fila${x.dudoso ? " dudoso" : ""}${x.mismo ? " igual" : ""}">
+      <input type="checkbox" data-ruaf-i="${i}" ${x.marcado ? "checked" : ""} ${x.mismo ? "disabled" : ""}>
+      <span>${escHtml(x.etiqueta)}</span>
+      <span class="ruaf-valor"><b>${escHtml(x.mostrar)}</b>${x.mismo ? ` <small>✅ ya está igual</small>` : x.actual ? ` <small>en la app: ${escHtml(x.id === "fNombre" ? x.actual.toUpperCase() : x.actual)}</small>` : ""}</span></label>`).join("");
+  const casillaEps = !docImagenes.Eps;
+  panel.innerHTML = `${av.join("")}
+    ${filas ? `<div class="ruaf-sub">✍️ Datos para el formulario <small>(lo que ya estaba distinto viene sin marcar)</small></div>${filas}` : ""}
+    <div class="ocr-acc"><button type="button" class="btn small primary" id="ruafPoner">Poner en el formulario</button><button type="button" class="btn small ghost" id="ruafCerrar">Cerrar</button></div>
+    <small>Compare con la captura antes de usarlos.${casillaEps ? " La captura queda en la casilla «EPS» de los documentos." : ""} Nada se guarda hasta tocar <b>Guardar</b>.</small>`;
+  document.getElementById("ruafCerrar").onclick = () => { const p = document.getElementById("ruafPanel"); p.innerHTML = ""; p.hidden = true; };
+  document.getElementById("ruafPoner").onclick = () => ruafPoner();
+}
+function ruafPoner(){
+  const d = ruafUltimo; if (!d) return;
+  const panel = document.getElementById("ruafPanel");
+  let n = 0;
+  panel.querySelectorAll("[data-ruaf-i]").forEach(chk => {
+    if (!chk.checked || chk.disabled) return;
+    const x = d.lista[+chk.dataset.ruafI];
+    if (ponerCampo(x.id, x.valor)) n++;
+  });
+  const ced = String(document.getElementById("fCedula").value || "").replace(/\D/g, "");
+  if (ced && d.partes && normalizarTexto(document.getElementById("fNombre").value) === normalizarTexto(d.partes.filter(Boolean).join(" ")))
+    guardarPartesNombre(ced, d.partes.map(x => String(x || "").toUpperCase()));
+  let casilla = false;
+  if (!docImagenes.Eps && d.imagen){
+    const box = document.querySelector('.doc-upload[data-doc="Eps"]');
+    if (box){ docImagenes.Eps = d.imagen; docImagenesCambiados.Eps = true; delete docHuellaOrigen.Eps; mostrarDocPreview(box, d.imagen); casilla = true; }
+  }
+  try{ mostrarCodigoEps(); mostrarCodigoAfp(); }catch(e){}
+  const msg = `✅ Puse ${n} dato${n === 1 ? "" : "s"}${casilla ? " y la captura en la casilla EPS" : ""}. Revise y toque Guardar.`;
+  const b = document.getElementById("ruafPoner"); if (b) b.replaceWith(Object.assign(document.createElement("span"), { className: "ruaf-hecho", textContent: msg }));
+  showToast(msg);
+}
+// Si el RUAF dice que tiene una EPS activa y escriben otra distinta, es traslado: se ofrece marcarlo bien
+function ruafRevisarCambioEps(){
+  const viejo = document.getElementById("ruafAvisoTraslado"); if (viejo) viejo.remove();
+  const s = ruafUltimo && ruafUltimo.salud;
+  if (!s || !s.eps || !ruafActivo(s.estado)) return;
+  const fe = document.getElementById("fEps"), elegida = String(fe.value || "").trim().toUpperCase();
+  if (!elegida || normalizarTexto(elegida) === normalizarTexto(s.eps) || document.getElementById("fTraslado").checked) return;
+  const div = document.createElement("div");
+  div.id = "ruafAvisoTraslado"; div.className = "ocr-aviso";
+  div.innerHTML = `<div>🔁 <b>Esto es un traslado:</b> según el RUAF está activo en <b>${escHtml(s.eps)}</b> y usted escribió <b>${escHtml(elegida)}</b>.</div>
+    <div class="ocr-acc"><button type="button" class="btn small primary" data-si>Sí: dejar ${escHtml(s.eps)} y marcar traslado a ${escHtml(elegida)}</button><button type="button" class="btn small ghost" data-no>No</button></div>`;
+  fe.closest(".field").appendChild(div);
+  div.querySelector("[data-si]").onclick = () => {
+    ponerCampo("fEps", s.eps);
+    const chk = document.getElementById("fTraslado"); chk.checked = true; chk.dispatchEvent(new Event("change", { bubbles: true }));
+    ponerCampo("fTrasladoEps", elegida);
+    ponerCampo("fEstadoEps", "aceptado");
+    div.remove(); showToast("🔁 Traslado marcado. Revise el valor de la gestión y toque Guardar.");
+  };
+  div.querySelector("[data-no]").onclick = () => div.remove();
+}
+
 async function leerCedulaDeImagen(fuente){
   const caja = document.querySelector('.doc-upload[data-doc="Cedula"]');
   if (!caja || !document.getElementById("overlay").classList.contains("show")) return;
@@ -18705,7 +19014,7 @@ async function leerCedulaDeImagen(fuente){
       aviso.innerHTML = `<div>${ln.html || "✅ La fecha de nacimiento y el sexo ya estaban iguales a la cédula."}</div><small>Los cambios quedan al tocar <b>Guardar</b>.</small>`;
       ln.alPintar(aviso); return;
     }
-    if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `No pude leer los datos de la foto. Revise el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 6000); return; }
+    if (!d.cedula && !d.sugerida && !d.nombre){ aviso.innerHTML = `📷 <b>No pude leer la foto.</b> Puede estar borrosa, cortada, oscura o con reflejo: pida otra foto enfocada y con buena luz, o llene el nombre y la cédula a mano.`; setTimeout(() => aviso.remove(), 12000); return; }
     const fc = document.getElementById("fCedula"), fn = document.getElementById("fNombre");
     const cedApp = String(editingCedula || fc.value || "").replace(/\D/g, "");
     const nomApp = fn.value.trim();
