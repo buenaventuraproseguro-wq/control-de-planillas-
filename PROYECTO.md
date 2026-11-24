@@ -366,3 +366,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-24 · Botón «🪪 Subir cédula» arriba en Agregar cliente, junto a Subir RUAF; abre la misma casilla «Cédula» de documentos (mismo funcionamiento). · Por qué: Nestor lo quiere a la mano.
 
 - 2026-11-24 · Agregar cliente más ordenado: el formulario ya no se sale de la ventana (columnas que no se estiran), sin el párrafo largo de arriba ni las notas en fecha y lugar de nacimiento. · Por qué: Nestor veía la pantalla rara.
+
+- 2026-11-24 · Logo de temporada: el escudo de PROSEGUROSNET (cabecera, menú, pantalla de entrada y app Muelles y Seguros) lleva un adorno según la fecha: gorro de Navidad (15-nov a 30-dic), estrella 24-25 dic, Año Nuevo, Reyes, carnaval, Día de la Mujer, Semana Santa, Niñez, Trabajo, Madre, Padre, 20 de julio, 7 de agosto, cometas, Amor y Amistad, Halloween, Difuntos y Velitas. Solo diseño (script «Logo de temporada» al final de index.html y seguros.html, función temporadaDeLogo). Probar otra fecha: ?temporada=2026-12-24. · Por qué: Nestor lo pidió.

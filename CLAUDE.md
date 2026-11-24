@@ -51,6 +51,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Incapacidades: barra lateral `navIncapBtn` (registrar y llenar) y ficha `incFichaBtn` (solo consulta): `abrirIncapacidades(cedula?)`, `INC_TIPOS` (tipos y documentos), tabla `incapacidades` (+ `documentos` jsonb), archivos en `documentos-clientes/incapacidades/<id>/`
 - Datos de la empresa (solo admin): `abrirDatosEmpresa`, `aplicarDatosEmpresa`, `EMPRESA` / `EMPRESA_DEFECTO`; configuracion `datos_empresa` (marca, aportante, contacto, precios, sucursal PILA). La cuenta *8222 no se cambia ahí.
 - Envío de planillas: en pausa con `var ENVIO_PLANILLAS_EN_PAUSA = true` (reactivar cuando llegue la API de Enlace)
+- Logo de temporada (adorno del escudo según la fecha): script al final de `index.html` y `seguros.html`, calendario en `temporadas(a)`, probar con `?temporada=AAAA-MM-DD`
 
 ## Protecciones en la base de datos
 - Trigger `a_bloquear_copia_vieja` en `clients`: ignora escrituras con `ultima_edicion` 12 h más vieja que la nube; las anota en `escrituras_bloqueadas`.
