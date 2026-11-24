@@ -629,6 +629,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .ruaf-fila.igual{ opacity:.65; }
   .ruaf-valor{ word-break:break-word; }
   .ruaf-hecho{ font-weight:600; color:var(--pago); }
+  .ruaf-panel[hidden]{ display:none; }
+  .ruaf-botones{ display:flex; flex-wrap:wrap; gap:8px; }
+  .ruaf-botones .btn{ text-decoration:none; cursor:pointer; }
   @media (prefers-color-scheme: dark){ .ruaf-amarillo, .ruaf-fila.dudoso{ background:#3a3010; color:#f3dc8a; border-color:#8a7426; } }
   .tag-empresa-ret, .tag-resp-ret{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:middle; }
   .tag-empresa-ret{ background:var(--gold-bg); color:var(--gold-deep); border:1px solid var(--gold); }
@@ -2393,10 +2396,11 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="modal-sub">Los campos de valores aceptan solo números (sin puntos ni signos $). El valor de Pensión ya viene precargado con el valor legal sobre 1 salario mínimo — edítalo solo si el caso es especial (prorrateado, independiente, etc.). Al editar un cliente existente, los cambios se aplican también a los meses siguientes (menos el estado y el costo del mes, que son propios de cada uno). Las fotos se guardan en este dispositivo; si subes muchas, exporta respaldos seguido para no perderlas.</div>
     <div class="form-grid">
       <div class="field span2 campo-nomina ruaf-caja">
-        <label for="ruafArchivo" class="ruaf-titulo">📋 Subir captura del RUAF y llenar los datos</label>
-        <small>Con el RUAF se verifican la cédula, el nombre, el sexo, la EPS y la pensión, y la app le dice si es afiliación nueva o si ya tiene EPS. La foto de la cédula (abajo, en documentos) solo se usa para la fecha de nacimiento. Usted revisa antes de guardar.</small>
-        <input id="ruafArchivo" type="file" accept="image/*,application/pdf">
-        <a href="https://ruaf.sispro.gov.co/Filtro.aspx" target="_blank" rel="noopener" class="adres-link">🔗 Consultar el RUAF (página oficial) ↗</a>
+        <div class="ruaf-botones">
+          <label for="ruafArchivo" class="btn small primary">📋 Subir RUAF</label>
+          <a href="https://ruaf.sispro.gov.co/Filtro.aspx" target="_blank" rel="noopener" class="btn small">🔗 Abrir RUAF</a>
+        </div>
+        <input id="ruafArchivo" type="file" accept="image/*,application/pdf" hidden>
         <div id="ruafPanel" class="ruaf-panel" hidden></div>
       </div>
       <div class="field">

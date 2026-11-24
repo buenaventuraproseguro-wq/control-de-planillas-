@@ -359,3 +359,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-24 · Se quitó el botón «Consultar RUAF» en línea (Verifik) por pedido de Nestor, hasta tener cuenta y precio. El código quedó en el commit df58c67 para volver a ponerlo. La función `consultar-ruaf` sigue en Supabase pero sin clave no hace nada.
 
 - 2026-11-24 · Enlace directo a la consulta oficial del RUAF (https://ruaf.sispro.gov.co/Filtro.aspx) en «Agregar cliente», junto a la captura del RUAF. · Por qué: Nestor lo pidió en vez de la consulta pagada de Verifik.
+
+- 2026-11-24 · RUAF en Agregar cliente: solo dos botones («📋 Subir RUAF» y «🔗 Abrir RUAF»), sin texto de explicación. · Por qué: Nestor lo quiere más simple.
