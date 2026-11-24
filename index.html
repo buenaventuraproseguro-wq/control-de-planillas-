@@ -2408,6 +2408,9 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <div class="field"><label for="fFechaNac">Fecha de nacimiento · Sexo <small>(la fecha sale de la foto de la cédula o a mano; el sexo, del RUAF)</small></label>
         <div class="nac-fila"><input id="fFechaNac" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" data-fecha-texto="1" autocomplete="off"><select id="fSexo" aria-label="Sexo"><option value="">Sexo</option><option value="M">M (hombre)</option><option value="F">F (mujer)</option></select></div>
       </div>
+      <div class="field"><label for="fLugarNac">Lugar de nacimiento <small>(sale de la foto de la cédula o a mano)</small></label>
+        <input id="fLugarNac" type="text" placeholder="Ej: BUENAVENTURA (VALLE DEL CAUCA)" autocomplete="off">
+      </div>
 
       <div class="field campo-nomina"><label><span class="field-num">3</span>Responsable / Grupo</label>
         <input id="fResp" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="respSugLista" placeholder="Toque para ver los responsables">
@@ -9716,6 +9719,7 @@ const CAMPOS_FORM_EPS = [
   ["primer_nombre", "Primer nombre"], ["segundo_nombre", "Segundo nombre"], ["nombres", "Nombres (los dos)"],
   ["tipo_doc", "Tipo de documento (CC)"], ["cedula", "Número de cédula"],
   ["fecha_nac", "Fecha de nacimiento"], ["fecha_nac_num", "Nacimiento en casillas (DDMMAAAA)"], ["fecha_nac_d", "Nacimiento: día"], ["fecha_nac_m", "Nacimiento: mes"], ["fecha_nac_a", "Nacimiento: año"],
+  ["municipio_nac", "Municipio de nacimiento"], ["departamento_nac", "Departamento de nacimiento"],
   ["sexo", "Sexo (M o F)"], ["x_sexo_m", "X si es hombre"], ["x_sexo_f", "X si es mujer"], ["estado_civil", "Estado civil"],
   ["direccion", "Dirección"], ["barrio", "Barrio"], ["municipio", "Municipio"], ["departamento", "Departamento"],
   ["telefono", "Teléfono"], ["correo", "Correo"], ["cargo", "Cargo u oficio"], ["salario", "Salario"],
@@ -9811,6 +9815,7 @@ function datosFormulario(r, fechaRadicado){
   return {
     nombre_completo: String(r["Nombre del Afiliado"] || "").toUpperCase(), primer_apellido: ap1, segundo_apellido: ap2, primer_nombre: n1, segundo_nombre: n2,
     nombres: [n1, n2].filter(Boolean).join(" "), tipo_doc: "CC", cedula: String(r["Cédula"] || ""),
+    municipio_nac: String(ex.lugar_nac || "").split("(")[0].trim().toUpperCase(), departamento_nac: /\((.+)\)/.test(ex.lugar_nac || "") ? String(ex.lugar_nac).match(/\((.+)\)/)[1].trim().toUpperCase() : "",
     fecha_nac: nd ? `${nd}/${nm}/${na}` : "", fecha_nac_num: nd ? nd + nm + na : "", fecha_nac_d: nd, fecha_nac_m: nm, fecha_nac_a: na,
     sexo, x_sexo_m: sexo === "M" ? "X" : "", x_sexo_f: sexo === "F" ? "X" : "", estado_civil: String(ex.estado_civil || "").toUpperCase(),
     direccion: String(r["Dirección Completa"] || "").toUpperCase(), barrio: String(ex.barrio || "").toUpperCase(),
@@ -12052,7 +12057,8 @@ function openModal(record){
   getField("Nombre").value = record ? record["Nombre del Afiliado"] || "" : "";
   { const ex = (record && record["Datos Extra"]) || {};
     getField("FechaNac").value = fechaNacValida(ex.fecha_nac) || "";
-    getField("Sexo").value = /^[MF]$/.test(String(ex.sexo || "").toUpperCase()) ? String(ex.sexo).toUpperCase() : ""; }
+    getField("Sexo").value = /^[MF]$/.test(String(ex.sexo || "").toUpperCase()) ? String(ex.sexo).toUpperCase() : "";
+    getField("LugarNac").value = String(ex.lugar_nac || ""); }
   getField("Cedula").value = record ? record["Cédula"] || "" : "";
   getField("Resp").value = record ? record["Responsable / Grupo"] || "" : "";
   getField("Estado").value = record ? (record["Estado Trámite"] || "PAGO") : "AFILIACION";
@@ -13703,7 +13709,9 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     const ex = { ...exAntes };
     if (fn) ex.fecha_nac = fn;
     if (sx) ex.sexo = sx;
-    if (ex.fecha_nac !== exAntes.fecha_nac || ex.sexo !== exAntes.sexo) record["Datos Extra"] = ex;
+    const ln = String(getField("LugarNac").value || "").trim().toUpperCase().replace(/\s+/g, " ");
+    if (ln) ex.lugar_nac = ln;
+    if (ex.fecha_nac !== exAntes.fecha_nac || ex.sexo !== exAntes.sexo || ex.lugar_nac !== exAntes.lugar_nac) record["Datos Extra"] = ex;
   }
   // Desde cuándo está "en proceso" (para saber cuántos días lleva sin confirmar)
   {
@@ -13921,8 +13929,8 @@ function propagarAMesesPosteriores(cedula, cambios, fechaCambio){
       }
       if (cambiosMes["Datos Extra"]){
         // De los datos extra solo pasan la fecha de nacimiento y el sexo; lo demás de cada mes se respeta
-        const { fecha_nac, sexo } = cambiosMes["Datos Extra"];
-        cambiosMes["Datos Extra"] = { ...(mesArr[j]["Datos Extra"] || {}), ...(fecha_nac ? { fecha_nac } : {}), ...(sexo ? { sexo } : {}) };
+        const { fecha_nac, sexo, lugar_nac } = cambiosMes["Datos Extra"];
+        cambiosMes["Datos Extra"] = { ...(mesArr[j]["Datos Extra"] || {}), ...(fecha_nac ? { fecha_nac } : {}), ...(sexo ? { sexo } : {}), ...(lugar_nac ? { lugar_nac } : {}) };
       }
       mesArr[j] = { ...mesArr[j], ...cambiosMes };
       if (fechaCambio) delete mesArr[j]["_prorrateoTransicion"];
@@ -18565,10 +18573,56 @@ function nacimientoYSexoDeCedula(texto){
   return res;
 }
 // Saca número y nombre del texto leído (cédula amarilla, cédula digital y la parte de atrás con <<<)
+// Lugar de nacimiento de la cédula: «BUENAVENTURA (VALLE)» cerca de «LUGAR DE NACIMIENTO». Se confirma con la lista de municipios.
+function lugarNacimientoDeCedula(texto){
+  const T = String(texto || "").toUpperCase().replace(/[|_]/g, " ");
+  const plano = T.replace(/\s+/g, " ");
+  const iNac = plano.search(/LUGAR\s+DE\s+NAC|NACIMIENTO/);
+  const iExp = plano.search(/EXPEDICI|EXPEDIDA/);
+  const cands = [];
+  const re = /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .\-]{2,40}?)\s*\(\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .,\-]{2,40}?)\s*\)/g;
+  let m; while ((m = re.exec(plano))) cands.push({ mpio: m[1], dpto: m[2], pos: m.index });
+  // Cédula digital: «Lugar de nacimiento BUENAVENTURA VALLE DEL CAUCA» sin paréntesis
+  const dig = plano.match(/LUGAR\s+DE\s+NACIMIENTO\s*:?\s*([A-ZÁÉÍÓÚÑ .\-]{3,60})/);
+  const norm = (t) => normalizarTexto(String(t || "").replace(/[.\-]/g, " "));
+  const resolver = (mpioTxt, dptoTxt) => {
+    const nd = norm(dptoTxt), nm = norm(mpioTxt).replace(/^(.*\b)?(lugar de nacimiento|nacimiento)\b/, "").trim();
+    let dep = null;
+    if (nd) dep = DIVIPOLA.find(([, n]) => { const k = norm(n); return k === nd || k.startsWith(nd) || nd.startsWith(k.split(" ")[0]) && nd.length >= 4; });
+    const enDep = (d) => d && d[2].find(([, n]) => { const k = norm(n); return nm === k || nm.endsWith(" " + k) || (k.length >= 5 && nm.includes(k)) || (nm.length >= 5 && k.endsWith(" " + nm)); });
+    // Una o dos letras mal leídas (ej. BUENAVENTUHA): se acepta si el municipio del departamento queda muy parecido
+    const parecido = (d) => { if (!d || nm.length < 5) return null; let mejor = null, md = 99;
+      d[2].forEach(([c, n]) => { const k = norm(n); const dd = distanciaTexto(nm.split(" ").slice(-k.split(" ").length).join(" "), k); if (dd < md){ md = dd; mejor = [c, n]; } });
+      return md <= (nm.length >= 8 ? 2 : 1) ? mejor : null; };
+    let mun = enDep(dep) || parecido(dep);
+    if (!mun && !dep){ for (const d of DIVIPOLA){ const x = enDep(d); if (x){ dep = d; mun = x; break; } } }
+    return dep ? { mpio: mun ? mun[1] : nm.toUpperCase(), dpto: dep[1], seguro: !!mun } : null;
+  };
+  const cerca = (c) => iNac < 0 ? 0 : Math.abs(c.pos - iNac) - (iExp >= 0 && Math.abs(c.pos - iExp) < Math.abs(c.pos - iNac) ? -1000 : 0);
+  cands.sort((a, b) => cerca(a) - cerca(b));
+  for (const c of cands){
+    if (iExp >= 0 && iNac >= 0 && Math.abs(c.pos - iExp) < Math.abs(c.pos - iNac)) continue;
+    const r = resolver(c.mpio, c.dpto); if (r && r.seguro) return r;
+    if (r && r.mpio && !cands.otra) cands.otra = r;
+  }
+  if (cands.otra) return cands.otra;
+  if (dig){
+    const w = norm(dig[1]).split(" ");
+    for (let k = 1; k < w.length; k++){ const r = resolver(w.slice(0, k).join(" "), w.slice(k).join(" ")); if (r && r.seguro) return r; }
+  }
+  return null;
+}
+function distanciaTexto(a, b){
+  const m = a.length, n = b.length; if (Math.abs(m - n) > 3) return 99;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++){ const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; }
+  return prev[n];
+}
+function textoLugarNac(l){ return l ? `${l.mpio ? l.mpio.toUpperCase() : ""} (${l.dpto.toUpperCase()})`.trim() : ""; }
 function datosDeTextoCedula(texto){
   const lineas = String(texto || "").split(/\n+/).map(l => l.replace(/[^\wÁÉÍÓÚÑÜáéíóúñü.<\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
   // completo = se leyeron apellidos Y nombres. "sugerida" = número dudoso que hay que mirar en la foto.
-  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false, tipo: clasificarDocumento(texto), ...nacimientoYSexoDeCedula(texto) };
+  const res = { cedula: "", sugerida: "", nombre: "", partes: null, apellidos: "", nombres: "", completo: false, mrz: false, tipo: clasificarDocumento(texto), ...nacimientoYSexoDeCedula(texto), lugarNac: (() => { try{ return lugarNacimientoDeCedula(texto); }catch(e){ return null; } })() };
   // Partes: [apellido1, apellido2, nombre1, nombre2]; el nombre queda APELLIDOS + NOMBRES como en la app
   const ponPartes = (aps, nos) => {
     aps = aps.filter(Boolean); nos = nos.filter(Boolean);
@@ -18640,7 +18694,7 @@ async function leerCedulaConOcr(fuente){
   const leer = async (f) => { const { data } = await T.recognize(f, "spa"); return datosDeTextoCedula(data && data.text); };
   const uno = await leer(fuente);
   if (uno.tipo && uno.tipo !== "cedula") return uno; // no es una cédula: no se sigue leyendo
-  if (uno.cedula && uno.completo && (uno.fechaNac || !uno.pistaNac)) return uno;
+  if (uno.cedula && uno.completo && (uno.fechaNac || !uno.pistaNac) && (uno.lugarNac || !uno.pistaNac)) return uno;
   let dos = null;
   try{ dos = await leer(await fotoMejoradaParaLeer(fuente)); }catch(e){ return uno; }
   const res = { ...uno };
@@ -18650,6 +18704,7 @@ async function leerCedulaConOcr(fuente){
   }
   if (!res.fechaNac) res.fechaNac = dos.fechaNac;
   if (!res.sexo) res.sexo = dos.sexo;
+  if (!res.lugarNac || (!res.lugarNac.mpio && dos.lugarNac && dos.lugarNac.mpio)) res.lugarNac = dos.lugarNac || res.lugarNac;
   return res;
 }
 // Muestra lo leído en recuadros que se pueden corregir. No pega nada hasta que la cédula sea válida
@@ -19020,7 +19075,10 @@ async function leerCedulaDeImagen(fuente){
       else if (fn && fechaNacValida(ff.value) !== fn) lineas.push(`⚠️ En la foto leí la fecha de nacimiento <b>${escHtml(fn)}</b> y en el formulario está <b>${escHtml(ff.value)}</b>. Revise cuál es la buena.`);
       else if (fn) lineas.push(`✅ La fecha de nacimiento ya estaba igual (${escHtml(fn)}).`);
       else lineas.push(`📷 No pude leer la fecha de nacimiento (está en la parte de atrás de la cédula). Escríbala a mano o suba una foto más clara.`);
-      if (d.sexo && !fs.value){ fs.value = d.sexo; lineas.push(`✅ Puse el sexo <b>${d.sexo}</b>.`); }
+      const fl = document.getElementById("fLugarNac"), lt = textoLugarNac(d.lugarNac);
+      if (lt && !fl.value.trim()){ fl.value = lt; lineas.push(`✅ Puse el lugar de nacimiento <b>${escHtml(lt)}</b>${d.lugarNac.seguro ? "" : " (no reconocí el municipio: complételo)"}.`); }
+      else if (lt && normalizarTexto(fl.value) !== normalizarTexto(lt)) lineas.push(`⚠️ En la foto leí el lugar de nacimiento <b>${escHtml(lt)}</b> y en el formulario está <b>${escHtml(fl.value)}</b>. Revise cuál es el bueno.`);
+      else if (!lt) lineas.push(`📷 No pude leer el lugar de nacimiento. Escríbalo a mano.`);
       const cedForm = String(document.getElementById("fCedula").value || "").replace(/\D/g, "");
       if (d.cedula && cedForm && d.cedula !== cedForm) lineas.push(`⚠️ <b>El número de esta cédula (${escHtml(d.cedula)}) no es el del formulario (${escHtml(cedForm)}).</b> Revise que sea de la misma persona.`);
       if (!cedForm) lineas.push(`<small>La cédula, el nombre y el sexo se llenan con la captura del RUAF (arriba).</small>`);
