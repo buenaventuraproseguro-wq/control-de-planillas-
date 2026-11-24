@@ -2415,6 +2415,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <div class="field span2 campo-nomina ruaf-caja">
         <div class="ruaf-botones">
           <label for="ruafArchivo" class="btn small primary">📋 Subir RUAF</label>
+          <button type="button" class="btn small primary" id="cedulaArribaBtn">🪪 Subir cédula</button>
           <a href="https://ruaf.sispro.gov.co/Filtro.aspx" target="_blank" rel="noopener" class="btn small">🔗 Abrir RUAF</a>
         </div>
         <input id="ruafArchivo" type="file" accept="image/*,application/pdf" hidden>
@@ -12211,6 +12212,8 @@ async function closeModal(skipConfirm){
 const beneficiariosSection = document.getElementById("beneficiariosSection");
 const beneficiariosList = document.getElementById("beneficiariosList");
 document.getElementById("ruafArchivo").addEventListener("change", (e) => { const f = (e.target.files || [])[0]; e.target.value = ""; ruafSubir(f); });
+// Atajo arriba: abre la misma casilla «Cédula» de los documentos (lee fecha y lugar de nacimiento igual que siempre)
+document.getElementById("cedulaArribaBtn").addEventListener("click", () => { const i = document.querySelector('.doc-upload[data-doc="Cedula"] .doc-file'); if (i) i.click(); });
 document.getElementById("fEps").addEventListener("change", () => { try{ ruafRevisarCambioEps(); }catch(e){} });
 const toggleBeneficiariosBtn = document.getElementById("toggleBeneficiariosBtn");
 

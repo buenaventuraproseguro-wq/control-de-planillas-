@@ -362,3 +362,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 
 - 2026-11-24 · RUAF en Agregar cliente: solo dos botones («📋 Subir RUAF» y «🔗 Abrir RUAF»), sin texto de explicación. · Por qué: Nestor lo quiere más simple.
 - 2026-11-24 · Centro de gestión: botones de la ficha (Editar, WhatsApp, Enviar planilla, QR, recibo…) y tarjetas de abajo (Agregar cliente, Cobrar el mes, Consignaciones, Excel SUAPORTE, Subir planilla, Enlace) más pequeños y con más espacio entre ellos (bloque CSS al final del primer <style>). · Por qué: Nestor pidió distinguir mejor cada botón. Solo diseño.
+
+- 2026-11-24 · Botón «🪪 Subir cédula» arriba en Agregar cliente, junto a Subir RUAF; abre la misma casilla «Cédula» de documentos (mismo funcionamiento). · Por qué: Nestor lo quiere a la mano.
