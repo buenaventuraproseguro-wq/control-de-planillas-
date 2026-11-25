@@ -239,7 +239,7 @@ const MUELLES = ["Sociedad", "TC Buen", "Agua Dulce"];
 const EMPRESA_MUELLES = "actualización de muelles";
 const DIAS_VENTANA = 30;
 
-const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null, docs: [], envios: [], correosMuelles: {} };
+const D = { mes: null, clientes: [], polizas: [], responsables: new Map(), usuario: null, docs: [], envios: [], correosMuelles: {}, esAdmin: false };
 let vista = "inicio", filtroAgenda = "toca", filtroMuelle = "", clienteSel = null;
 
 const $ = (id) => document.getElementById(id);
@@ -494,6 +494,7 @@ function vistaEnrol(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="height:36px;font-size:13px">📎 Documentos</button>
         <button type="button" class="${enrolado(c) ? "btn-sec" : "btn-prim"}" data-enrolar="${esc(c.id)}" style="height:36px">${enrolado(c) ? "↩️ Volver a pendiente" : "✅ Marcar enrolado"}</button>
+        ${botonFacturar(c, "height:36px;font-size:13px")}
         ${Object.keys(D.correosMuelles).map(m => botonEnviar(c, m)).join("")}
       </div>
       ${Object.keys(D.correosMuelles).map(m => chipEnvio(c, m)).join("")}
@@ -514,7 +515,7 @@ function vistaOpcionales(){
         <span class="detalle">${esServicioMuelle(c) ? "Independiente" + (c.responsable_grupo ? " · " + esc(propio(c.responsable_grupo)) : "") : "Cliente PROSEGUROSNET"}</span>
         ${chipDocs(c)}
       </div>
-      <div class="pol-acc"><button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos</button></div>
+      <div class="pol-acc"><button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos</button>${botonFacturar(c)}</div>
     </div>`;
   const deben = lista.filter(c => !pagado(c)), pagos = lista.filter(pagado);
   return `<div class="card">
@@ -628,6 +629,7 @@ function vistaCliente(){
         ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>` : ""}
         ${c.id && esServicioMuelle(c) ? `<a class="btn-sec" style="display:inline-flex;align-items:center;text-decoration:none" href="./?pasar=${encodeURIComponent(c.cedula)}" target="_blank" rel="noopener">👤 Pasar a cliente de planillas ↗</a>` : ""}
         ${c.id ? `<button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">🚗 Vehículo</button>` : ""}
+        ${c.id ? botonFacturar(c) : ""}
         <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="${VENTA_SOAT_EN_PAUSA ? "" : "SOAT"}">＋ ${VENTA_SOAT_EN_PAUSA ? "Registrar póliza" : "Vender SOAT o póliza"}</button>
       </div>
       <button type="button" class="pill-btn" data-volver="1" style="align-self:flex-start">← Buscar otro</button>
@@ -667,6 +669,7 @@ function pintarEditor(){
     </div>`).join("")}
     <div class="m-acciones">
       <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>
+      ${botonFacturar(c, "height:40px")}
       <a class="btn-wa" style="height:40px" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>Avisar por WhatsApp</a>
       <button type="button" class="btn-sec" data-m-cancelar="1">Cancelar</button>
       <button type="button" class="btn-prim" data-m-guardar="1">Guardar</button>
@@ -1073,7 +1076,7 @@ async function guardarVehiculo(){
   catch(err){ console.error(err); b.disabled = false; b.textContent = "Guardar"; $("vErr").textContent = "No se pudo guardar (revise el internet). No se cambió nada."; }
 }
 $("modal2").addEventListener("click", (e) => { if (e.target.id === "modal2" || e.target.closest("[data-cerrar2]")) cerrarModal2(); });
-$("modal2").addEventListener("submit", (e) => { e.preventDefault(); if (e.target.id === "formPol") guardarPoliza(); else if (e.target.id === "formVeh") guardarVehiculo(); else if (e.target.id === "formAgregar") guardarAgregar(); });
+$("modal2").addEventListener("submit", (e) => { e.preventDefault(); if (e.target.id === "formFactura") { crearFacturaServicio(); return; } if (e.target.id === "formPol") guardarPoliza(); else if (e.target.id === "formVeh") guardarVehiculo(); else if (e.target.id === "formAgregar") guardarAgregar(); });
 $("modal2").addEventListener("change", (e) => {
   if (e.target.id === "pArchivo") subirArchivoPoliza(e.target.files && e.target.files[0]);
   else if (e.target.id === "pIni" && !$("pVence").value && e.target.value) $("pVence").value = masUnAnio(e.target.value);
@@ -1401,6 +1404,88 @@ $("modal2").addEventListener("click", (e) => {
 });
 $("modalMuelles").addEventListener("click", (e) => { const d = e.target.closest("[data-docs-abrir]"); if (d) abrirDocs(d.dataset.docsAbrir); });
 
+/* ---------- Facturar ahí mismo (curso, actualización o enrolamiento) · 25-nov-2026, pedido de Nestor ----------
+   Solo el administrador. Crea un BORRADOR en Alegra con la función «alegra» (acciones servicio_resumen y servicio_borrador):
+   una línea por servicio, a nombre del cliente o de su responsable (patrón). El contador lo emite en Alegra; nada va a la DIAN.
+   Los valores salen de la base de datos. Si al responsable le faltan datos para facturar, se completan (solo lo vacío). */
+const lineasFactura = (c) => { const sv = (c.servicios_muelle && typeof c.servicios_muelle === "object") ? c.servicios_muelle : {}; return Object.keys(sv).filter(k => !k.startsWith("_") && Number(sv[k]) > 0); };
+function botonFacturar(c, estilo){
+  if (!D.esAdmin || !c || !c.cedula || !lineasFactura(c).length) return "";
+  return `<button type="button" class="btn-sec" data-facturar="${esc(c.cedula)}" style="${estilo || ""}">🧾 Facturar</button>`;
+}
+async function llamarAlegra(cuerpo){
+  const { data: sesion } = await sb.auth.getSession();
+  const token = sesion && sesion.session ? sesion.session.access_token : null;
+  if (!token) throw new Error("No hay sesión activa. Vuelva a entrar.");
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/alegra`, { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  const r = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(r.error || "No se pudo conectar con Alegra.");
+  return r;
+}
+let facEdit = null; // { cedula, mes, res }
+async function abrirFacturar(cedula){
+  const c = D.clientes.find(x => String(x.cedula) === String(cedula)); if (!c || !D.mes) return;
+  facEdit = { cedula: String(c.cedula), mes: D.mes.name, res: null };
+  $("modal2").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="fTit"><h2 id="fTit">🧾 Facturar a ${esc(propio(c.nombre))}</h2><p class="sub">Conectando con Alegra…</p><div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">Cerrar</button></div></div>`;
+  $("modal2").hidden = false;
+  try{ facEdit.res = await llamarAlegra({ accion: "servicio_resumen", cedula: facEdit.cedula, mes: facEdit.mes }); }
+  catch(err){ if (facEdit && facEdit.cedula === String(c.cedula)) $("modal2").querySelector(".sub").outerHTML = `<p class="err">⚠️ ${esc(err.message)}</p>`; return; }
+  pintarFacturar(facEdit.res.sugerido);
+}
+function pintarFacturar(destino){
+  const r = facEdit.res, c = D.clientes.find(x => String(x.cedula) === facEdit.cedula) || { nombre: r.cliente.nombre };
+  const rp = r.responsable;
+  const aResp = destino === "responsable" && rp;
+  const bloqueo = r.yaFacturada ? `✅ Este cliente ya tiene factura de ${esc(facEdit.mes)} en Alegra${r.yaFacturada.numero ? " (" + esc(r.yaFacturada.numero) + ")" : " (borrador)"}${r.yaFacturada.responsable ? " a nombre de " + esc(propio(r.yaFacturada.responsable)) : ""}. Revísela en Alegra.`
+    : !r.pagado ? `Todavía no está pagado (estado: ${esc(r.estado || "sin estado")}). Registre el pago en la app de Planillas y vuelva aquí.` : "";
+  const faltaResp = aResp && rp.faltan.length;
+  const opcion = (v, t, d) => `<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid ${destino === v ? "var(--azul)" : "var(--linea)"};border-radius:10px;cursor:pointer"><input type="radio" name="fDestino" value="${v}" ${destino === v ? "checked" : ""} style="margin-top:3px"><span><b>${t}</b><br><small style="color:var(--suave)">${d}</small></span></label>`;
+  $("modal2").innerHTML = `<form class="modal" id="formFactura" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="fTit">
+    <div><h2 id="fTit">🧾 Facturar a ${esc(propio(c.nombre))}</h2><p class="sub" style="margin:4px 0 0">CC ${esc(facEdit.cedula)} · ${esc(facEdit.mes)} · numeración ${esc(r.prefijo)}. Queda en borrador: su contador la emite en Alegra.</p></div>
+    <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px">${r.lineas.map(l => `<li style="display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--linea);border-radius:10px"><span>${esc(l.texto)}</span><b>${fmt(l.valor)}</b></li>`).join("")}</ul>
+    <div style="text-align:right;font-size:17px;font-weight:800">Total ${fmt(r.total)}</div>
+    ${bloqueo ? `<p class="err" style="font-weight:700">${bloqueo}</p>` : `
+    <div style="display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">¿A nombre de quién?</b>
+      ${opcion("cliente", esc(propio(r.cliente.nombre)), `El mismo cliente · CC ${esc(r.cliente.documento)}${r.cliente.sinCorreo ? " · sin correo" : ""}`)}
+      ${rp ? opcion("responsable", esc(propio(rp.nombre_factura || rp.nombre)), `Su responsable (patrón)${rp.documento ? " · " + esc(rp.tipo_doc) + " " + esc(rp.documento) : ""}${rp.faltan.length ? " · le faltan datos" : ""}`) : ""}
+    </div>
+    ${faltaResp ? `<div class="f-grid" style="border:1px dashed var(--nar-t);border-radius:10px;padding:10px">
+      <p class="sub" style="grid-column:1/-1;margin:0;color:var(--nar-t);font-weight:700">Complete los datos de ${esc(propio(rp.nombre))} para la factura (quedan guardados en Responsables):</p>
+      ${!rp.nombre_factura ? `<label class="f" style="grid-column:1/-1">Nombre o razón social<input class="m-input" id="fRNombre" maxlength="120" value="${esc(String(rp.nombre || "").toUpperCase())}"></label>` : ""}
+      ${!rp.documento ? `<label class="f">Tipo<select class="m-input" id="fRTipo">${["CC","NIT","CE","PP","PEP"].map(t => `<option ${t === (rp.tipo_doc || "CC") ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label class="f">Número (NIT con dígito: 900123456-7)<input class="m-input" id="fRDoc" maxlength="20" inputmode="numeric"></label>` : ""}
+      ${!rp.correo ? `<label class="f" style="grid-column:1/-1">Correo (opcional)<input class="m-input" id="fRCorreo" type="email" maxlength="120"></label>` : ""}
+    </div>` : ""}
+    <label class="f">¿Cómo pagó?<select class="m-input" id="fMedio"><option value="">Escoja cómo pagó</option><option value="BANK_DEPOSIT">Consignación bancaria</option><option value="CREDIT_TRANSFER_BANK">Transferencia bancaria</option><option value="CASH">Efectivo</option><option value="MUTUAL_AGREEMENT">Otro</option></select></label>`}
+    <div class="err" id="fErr"></div>
+    <div class="m-acciones"><button type="button" class="btn-sec" data-cerrar2="1">${bloqueo ? "Cerrar" : "Cancelar"}</button>${bloqueo ? "" : `<button type="submit" class="btn-prim" id="fCrear">Crear borrador en Alegra</button>`}</div>
+  </form>`;
+  $("modal2").hidden = false;
+}
+async function crearFacturaServicio(){
+  if (!facEdit || !facEdit.res) return;
+  const r = facEdit.res, form = $("formFactura");
+  const destino = (form.querySelector('input[name="fDestino"]:checked') || {}).value || "cliente";
+  const medioPago = $("fMedio").value;
+  const err = (m) => { $("fErr").textContent = m; };
+  if (!medioPago) return err("Escoja cómo pagó.");
+  const val = (id) => $(id) ? $(id).value.trim() : "";
+  const datosResponsable = destino === "responsable" ? { nombre_factura: val("fRNombre"), tipo_doc: val("fRTipo"), documento: val("fRDoc"), correo: val("fRCorreo") } : null;
+  if (datosResponsable && r.responsable.faltan.length){
+    if (!r.responsable.nombre_factura && !datosResponsable.nombre_factura) return err("Escriba el nombre o razón social del responsable.");
+    if (!r.responsable.documento && !/^\d{5,12}(-\d)?$/.test(datosResponsable.documento)) return err("Escriba bien la cédula o NIT del responsable (solo números; el NIT con su dígito: 900123456-7).");
+  }
+  const quien = destino === "responsable" ? propio(datosResponsable.nombre_factura || r.responsable.nombre_factura || r.responsable.nombre) : propio(r.cliente.nombre);
+  if (!confirm(`¿Crear en Alegra el borrador por ${fmt(r.total)} a nombre de ${quien}?\n\nNo se envía a la DIAN: su contador lo emite.`)) return;
+  const b = $("fCrear"); b.disabled = true; b.textContent = "Creando…"; err("");
+  try{
+    await llamarAlegra({ accion: "servicio_borrador", cedula: facEdit.cedula, mes: facEdit.mes, destino, medioPago, datosResponsable });
+    cerrarModal2(); facEdit = null;
+    toast(`✅ Borrador creado a nombre de ${quien}. Revíselo en Alegra → Facturas de venta.`);
+  }catch(e){ b.disabled = false; b.textContent = "Crear borrador en Alegra"; err("⚠️ " + e.message); }
+}
+$("modal2").addEventListener("change", (e) => { if (e.target.name === "fDestino" && facEdit && facEdit.res){ const m = $("fMedio") ? $("fMedio").value : ""; pintarFacturar(e.target.value); if ($("fMedio")) $("fMedio").value = m; } });
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", (e) => {
   const n = e.target.closest("[data-vista]");
@@ -1408,6 +1493,7 @@ document.addEventListener("click", (e) => {
   const f = e.target.closest("[data-filtro]"); if (f){ filtroAgenda = f.dataset.filtro; render(); return; }
   const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
   const am = e.target.closest("[data-agregar-muelle]"); if (am){ abrirAgregarMuelle(am.dataset.agregarMuelle === "1" ? "" : am.dataset.agregarMuelle); return; }
+  const fa = e.target.closest("[data-facturar]"); if (fa){ abrirFacturar(fa.dataset.facturar); return; }
   const en = e.target.closest("[data-enrolar]"); if (en){ marcarEnrolado(en.dataset.enrolar); return; }
   const dd = e.target.closest("[data-docs-abrir]"); if (dd && !e.target.closest("#modalMuelles")){ abrirDocs(dd.dataset.docsAbrir); return; }
   const me = e.target.closest("[data-muelle-edit]"); if (me){ abrirEditorMuelles(me.dataset.muelleEdit); return; }
@@ -1448,6 +1534,7 @@ async function pintarUsuario(){
     const f = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
     $("cabIngreso").textContent = f ? `Último ingreso ${f.toLocaleDateString("es-CO")} ${f.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}` : "";
     $("navConta").hidden = $("usuConta").hidden = rol !== "admin";
+    if (rol === "admin" && !D.esAdmin){ D.esAdmin = true; render(); }
   }catch(e){}
 }
 async function entrar(){

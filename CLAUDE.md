@@ -44,6 +44,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Registro de cambios (solo admin): `abrirRegistroCambios`, `renderRegistroCambios`; tabla `registro_cambios`
 - Cierre del mes para el contador (solo admin, solo lee): `abrirCierreContador`, `datosCierreContador`, `descargarCierreContador`
 - Seguros y pólizas: `abrirPolizas`, `renderPolizas`, `mensajePoliza`; tabla `polizas`; la comisión entra en `resumenIngresos`
+- Facturar curso, actualización o enrolamiento desde Muelles y Seguros (solo admin, borrador en Alegra): `abrirFacturar`, `crearFacturaServicio` en `seguros.html`; función `alegra` acciones `servicio_resumen`/`servicio_borrador` (código en `supabase/functions/alegra/`)
 - Venta de SOAT (app Muelles y Seguros): en pausa con `var VENTA_SOAT_EN_PAUSA = true` en `seguros.html`
 - Dinero recibido (💵): el pago NO pasa a PAGO hasta tener planilla y comprobante: `registrarDineroRecibido`, `dineroRecibido`, `aplicarPagosConSoporte`; columna `clients.dinero_recibido`
 - Lectura de la cédula (foto): `leerCedulaDeImagen`, `datosDeTextoCedula`; fecha de nacimiento y sexo: `nacimientoYSexoDeCedula` → campos `fFechaNac`/`fSexo` (en `datos_extra`)
