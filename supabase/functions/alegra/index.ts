@@ -359,7 +359,19 @@ Deno.serve(async (req: Request) => {
       throw e;
     }
   } catch (e) {
-    if (e instanceof ErrorAlegra) return json({ error: e.message }, 502);
+    if (e instanceof ErrorAlegra) {
+      // «Unauthorized» al crear: se averigua con qué usuario de Alegra está conectada la app, para decirlo claro
+      if (/unauthorized/i.test(e.texto)) {
+        let correo = ALEGRA_EMAIL, rol = "";
+        try {
+          const { resp, datos } = await pedirAlegra("/users/self");
+          console.error(`Usuario de la API de Alegra (${resp.status}): ${JSON.stringify(datos).slice(0, 1500)}`);
+          if (resp.ok) { correo = datos?.email || correo; rol = datos?.role?.name || datos?.rol?.name || (typeof datos?.role === "string" ? datos.role : ""); }
+        } catch { /* sin datos del usuario */ }
+        return json({ error: `Alegra no deja crear la factura con el usuario ${correo}${rol ? ` (rol ${rol})` : ""}. En Alegra → Configuración → Usuarios, ese usuario debe estar activo y ser Administrador, o hay que conectar la app con el token de un usuario Administrador.` }, 502);
+      }
+      return json({ error: e.message }, 502);
+    }
     console.error("Error en la función alegra:", (e as Error)?.message);
     return json({ error: "No se pudo completar. Intente de nuevo." }, 500);
   }
