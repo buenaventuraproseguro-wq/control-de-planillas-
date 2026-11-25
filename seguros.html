@@ -261,7 +261,7 @@ async function cargar(){
   if (e1) throw e1;
   D.mes = (meses || [])[0] || null;
   if (!D.mes){ D.clientes = []; return; }
-  const cols = "id,ultima_edicion,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,avisos_vencimiento,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
+  const cols = "id,row_no,ultima_edicion,cedula,nombre,empresa,responsable_grupo,estado_tramite,telefono,muelle,aceptado_por_muelle,venc_por_muelle,avisos_vencimiento,servicios_muelle,placa,venc_licencia,venc_soat,venc_tecno,venc_poliza,costo_servicio,valor_eps,valor_arl,valor_pension,valor_caja";
   const [cl, po, re] = await Promise.all([
     sb.from("clients").select(cols).eq("month_id", D.mes.id).order("row_no"),
     sb.from("polizas").select("*").order("fecha_vencimiento", { ascending: true }),
@@ -494,7 +494,7 @@ function vistaEnrol(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="height:36px;font-size:13px">📎 Documentos</button>
         <button type="button" class="${enrolado(c) ? "btn-sec" : "btn-prim"}" data-enrolar="${esc(c.id)}" style="height:36px">${enrolado(c) ? "↩️ Volver a pendiente" : "✅ Marcar enrolado"}</button>
-        ${botonFacturar(c, "height:36px;font-size:13px")}
+        ${botonesCobro(c, "height:36px;font-size:13px")}
         ${Object.keys(D.correosMuelles).map(m => botonEnviar(c, m)).join("")}
       </div>
       ${Object.keys(D.correosMuelles).map(m => chipEnvio(c, m)).join("")}
@@ -515,7 +515,7 @@ function vistaOpcionales(){
         <span class="detalle">${esServicioMuelle(c) ? "Independiente" + (c.responsable_grupo ? " · " + esc(propio(c.responsable_grupo)) : "") : "Cliente PROSEGUROSNET"}</span>
         ${chipDocs(c)}
       </div>
-      <div class="pol-acc"><button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos</button>${botonFacturar(c)}</div>
+      <div class="pol-acc"><button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos</button>${botonesCobro(c)}</div>
     </div>`;
   const deben = lista.filter(c => !pagado(c)), pagos = lista.filter(pagado);
   return `<div class="card">
@@ -629,7 +629,7 @@ function vistaCliente(){
         ${c.id && tieneMuelle(c) ? `<button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>` : ""}
         ${c.id && esServicioMuelle(c) ? `<a class="btn-sec" style="display:inline-flex;align-items:center;text-decoration:none" href="./?pasar=${encodeURIComponent(c.cedula)}" target="_blank" rel="noopener">👤 Pasar a cliente de planillas ↗</a>` : ""}
         ${c.id ? `<button type="button" class="btn-sec" data-vehiculo="${esc(c.id)}">🚗 Vehículo</button>` : ""}
-        ${c.id ? botonFacturar(c) : ""}
+        ${c.id ? botonesCobro(c) : ""}
         <button type="button" class="btn-prim" style="background:var(--naranja)" data-vender="${esc(c.cedula)}" data-vender-tipo="${VENTA_SOAT_EN_PAUSA ? "" : "SOAT"}">＋ ${VENTA_SOAT_EN_PAUSA ? "Registrar póliza" : "Vender SOAT o póliza"}</button>
       </div>
       <button type="button" class="pill-btn" data-volver="1" style="align-self:flex-start">← Buscar otro</button>
@@ -669,7 +669,7 @@ function pintarEditor(){
     </div>`).join("")}
     <div class="m-acciones">
       <button type="button" class="btn-sec" data-docs-abrir="${esc(c.id)}" style="margin-right:auto">📎 Documentos (${estadoDocs(c).ok}/${estadoDocs(c).total})</button>
-      ${botonFacturar(c, "height:40px")}
+      ${botonesCobro(c, "height:40px")}
       <a class="btn-wa" style="height:40px" ${wa ? `href="${esc(wa)}" target="_blank" rel="noopener"` : `aria-disabled="true" title="Sin teléfono"`}>Avisar por WhatsApp</a>
       <button type="button" class="btn-sec" data-m-cancelar="1">Cancelar</button>
       <button type="button" class="btn-prim" data-m-guardar="1">Guardar</button>
@@ -1486,6 +1486,128 @@ async function crearFacturaServicio(){
 }
 $("modal2").addEventListener("change", (e) => { if (e.target.name === "fDestino" && facEdit && facEdit.res){ const m = $("fMedio") ? $("fMedio").value : ""; pintarFacturar(e.target.value); if ($("fMedio")) $("fMedio").value = m; } });
 
+/* ---------- Soporte de pago (recibo) ahí mismo · 25-nov-2026, pedido de Nestor ----------
+   El mismo recibo de «Servicios en muelles» de la app de Planillas (imagen PNG): verlo, descargarlo o mandarlo por WhatsApp.
+   Solo lee datos: no guarda nada. Lo puede usar todo el equipo. */
+const SRV_NOMBRE = { "act:Sociedad": "Actualización muelle Sociedad", "act:TC Buen": "Actualización muelle TC Buen", "act:Agua Dulce": "Actualización muelle Agua Dulce", actualizacion: "Actualización en muelles", enrolamiento: "Enrolamiento en muelles", curso: "Curso" };
+const MESES_REC = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const LLAVE_BREB = "0078275062";
+function botonesCobro(c, estilo){
+  if (!c || !c.cedula || !lineasFactura(c).length) return "";
+  return `<button type="button" class="btn-sec" data-recibo="${esc(c.cedula)}" style="${estilo || ""}">📤 Recibo</button>` + botonFacturar(c, estilo);
+}
+function numeroRecibo(c){
+  const m = String(D.mes ? D.mes.name : "").match(/^(\S+)\s+de\s+(\d{4})$/);
+  const i = m ? Number(m[2]) * 12 + Math.max(0, MESES_REC.indexOf(m[1].toLowerCase())) : 0;
+  return `MU-${Math.floor(i / 12)}${String(i % 12 + 1).padStart(2, "0")}-${String(c.row_no || 0).padStart(4, "0")}`;
+}
+const fechaLargaRec = (iso) => { const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
+async function imagenRecibo(c, tipo = "image/png"){
+  const W = 1000, pad = 60;
+  const estaPagado = /^PAGO/i.test(String(c.estado_tramite || ""));
+  const sv = (c.servicios_muelle && typeof c.servicios_muelle === "object") ? c.servicios_muelle : {};
+  const cursoTipo = String(sv._cursoTipo || "").trim();
+  const nombreSrv = (k) => k === "curso" && cursoTipo ? `Curso: ${cursoTipo}` : (SRV_NOMBRE[k] || propio(k));
+  const claves = Object.keys(sv).filter(k => !k.startsWith("_"));
+  const ac = c.aceptado_por_muelle || {}, vm = c.venc_por_muelle || {};
+  const enrol = "enrolamiento" in sv && !claves.some(k => k === "actualizacion" || k.startsWith("act:"));
+  const soloCurso = claves.length > 0 && claves.every(k => k === "curso");
+  const filas = [["Recibo No.", numeroRecibo(c)], ["Fecha", new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })], ["Cliente", propio(c.nombre)], ["Cédula", String(c.cedula)], ["Mes", D.mes ? D.mes.name : ""]];
+  if (String(c.responsable_grupo || "").trim()) filas.push(["Empresa por la que paga", propio(c.responsable_grupo)]);
+  if (c.placa) filas.push(["Placa", String(c.placa).toUpperCase()]);
+  const muellesAct = MUELLES.filter(m => ("act:" + m) in sv);
+  const lineasMuelles = soloCurso ? [] : (muellesAct.length ? muellesAct : MUELLES).map(m => `${m}: ${ac[m] ? (enrol ? "enrolado ✓" : "listo ✓") : "pendiente"}${vm[m] ? ` · vence ${fechaLargaRec(vm[m])}` : ""}`);
+  const total = Number(c.costo_servicio) || claves.reduce((a, k) => a + (Number(sv[k]) || 0), 0);
+  const H = 250 + filas.length * 52 + 60 + claves.length * 48 + 70 + lineasMuelles.length * 40 + 230;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, W, H);
+  x.fillStyle = "#C8202F"; x.fillRect(0, 0, W, 140);
+  x.fillStyle = "#FFFFFF"; x.textAlign = "left";
+  x.font = "800 50px Inter, Arial, sans-serif"; x.fillText("PROSEGUROSNET", pad, 78);
+  x.font = "500 24px Inter, Arial, sans-serif"; x.fillText("Recibo de pago · Servicios en muelles", pad, 116);
+  x.save(); x.translate(W - pad - 150, 200); x.rotate(-0.12);
+  x.strokeStyle = estaPagado ? "#2F6F62" : "#B4934C"; x.lineWidth = 5; x.strokeRect(-110, -38, 220, 70);
+  x.fillStyle = estaPagado ? "#2F6F62" : "#8C6F33"; x.font = "800 34px Inter, Arial, sans-serif"; x.textAlign = "center";
+  x.fillText(estaPagado ? "PAGADO" : "PENDIENTE", 0, 10); x.restore();
+  let y = 200;
+  filas.forEach(([k, v]) => {
+    x.textAlign = "left"; x.fillStyle = "#7A7268"; x.font = "500 24px Inter, Arial, sans-serif"; x.fillText(k, pad, y);
+    x.fillStyle = "#181512"; x.font = "700 27px Inter, Arial, sans-serif"; x.fillText(String(v).slice(0, 38), pad + 300, y);
+    y += 52;
+  });
+  y += 10; x.fillStyle = "#EDE9E2"; x.fillRect(pad, y, W - 2 * pad, 2); y += 44;
+  x.fillStyle = "#181512"; x.font = "700 26px Inter, Arial, sans-serif"; x.fillText("Servicios prestados", pad, y); y += 46;
+  claves.forEach(k => {
+    x.textAlign = "left"; x.fillStyle = "#3A342E"; x.font = "500 25px Inter, Arial, sans-serif";
+    x.fillText(`${nombreSrv(k)}${k === "enrolamiento" ? " (una sola vez)" : ""}`.slice(0, 46), pad + 10, y);
+    x.textAlign = "right"; x.fillStyle = "#181512"; x.font = "700 26px Inter, Arial, sans-serif"; x.fillText(fmt(sv[k]), W - pad, y);
+    y += 48;
+  });
+  x.textAlign = "left"; y += 10; x.fillStyle = "#EDE9E2"; x.fillRect(pad, y, W - 2 * pad, 2); y += 44;
+  if (lineasMuelles.length){ x.fillStyle = "#181512"; x.font = "700 26px Inter, Arial, sans-serif"; x.fillText("Muelles", pad, y); y += 40; }
+  lineasMuelles.forEach(l => { x.fillStyle = "#3A342E"; x.font = "500 24px Inter, Arial, sans-serif"; x.fillText("⚓ " + l, pad + 10, y); y += 40; });
+  y += 20;
+  x.fillStyle = estaPagado ? "#2F6F62" : "#C8202F"; x.fillRect(pad - 10, y, W - 2 * pad + 20, 90);
+  x.fillStyle = "#FFFFFF"; x.font = "800 34px Inter, Arial, sans-serif";
+  x.fillText(estaPagado ? "VALOR PAGADO" : "VALOR A PAGAR", pad + 10, y + 58);
+  x.textAlign = "right"; x.fillText(fmt(total), W - pad - 10, y + 58);
+  x.textAlign = "center"; x.fillStyle = "#7A7268"; x.font = "500 21px Inter, Arial, sans-serif";
+  x.fillText(estaPagado ? "Gracias por su pago." : `Pague por Bre-B con la llave ${LLAVE_BREB} y envíenos el comprobante.`, W / 2, y + 140);
+  x.fillText("PROSEGUROSNET · Buenaventura", W / 2, y + 172);
+  return await new Promise(res => cv.toBlob(res, tipo, 0.92));
+}
+let recCliente = null;
+async function abrirRecibo(cedula){
+  const c = D.clientes.find(x => String(x.cedula) === String(cedula)); if (!c) return;
+  recCliente = c;
+  const tel = telValido(c.telefono) || telValido(telDestino(c));
+  const estaPagado = /^PAGO/i.test(String(c.estado_tramite || ""));
+  $("modal2").innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="rTit">
+    <div><h2 id="rTit">📤 Recibo de ${esc(propio(c.nombre))}</h2><p class="sub" style="margin:4px 0 0">${esc(D.mes ? D.mes.name : "")} · ${estaPagado ? "pagado" : "pendiente de pago"}${tel ? " · WhatsApp " + esc(tel) : " · sin teléfono"}</p></div>
+    <div id="rVista" style="border:1px solid var(--linea);border-radius:12px;overflow:hidden;min-height:120px;display:flex;align-items:center;justify-content:center;color:var(--suave)">Armando el recibo…</div>
+    <div class="m-acciones">
+      <button type="button" class="btn-sec" data-cerrar2="1" style="margin-right:auto">Cerrar</button>
+      <button type="button" class="btn-sec" id="rBajar">⬇️ Descargar</button>
+      <button type="button" class="btn-wa" id="rEnviar" style="height:40px" ${tel ? "" : "disabled title=\"Sin teléfono\""}>📲 Enviar por WhatsApp</button>
+    </div>
+  </div>`;
+  $("modal2").hidden = false;
+  const blob = await imagenRecibo(c);
+  if (recCliente === c && $("rVista")) $("rVista").innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Recibo" style="display:block;width:100%;height:auto">`;
+}
+function nombreArchivoRecibo(c){ return `recibo_muelles_${c.cedula}_${String(D.mes ? D.mes.name : "").replace(/\s+/g, "_")}.png`; }
+async function bajarRecibo(){
+  const c = recCliente; if (!c) return;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(await imagenRecibo(c)); a.download = nombreArchivoRecibo(c);
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function enviarRecibo(){
+  const c = recCliente; if (!c) return;
+  const tel = telValido(c.telefono) || telValido(telDestino(c));
+  if (!tel){ toast("Esta persona no tiene teléfono guardado."); return; }
+  const esCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  const sv = (c.servicios_muelle && typeof c.servicios_muelle === "object") ? c.servicios_muelle : {};
+  const servicios = Object.keys(sv).filter(k => !k.startsWith("_")).map(k => k === "enrolamiento" ? "enrolamiento" : k === "curso" ? (sv._cursoTipo ? `curso ${sv._cursoTipo}` : "curso") : k.startsWith("act:") ? `actualización ${k.slice(4)}` : "actualización").join(", ");
+  const estaPagado = /^PAGO/i.test(String(c.estado_tramite || ""));
+  const texto = `🛡️ *PROSEGUROSNET*\nHola ${propio(String(c.nombre).split(" ").slice(0, 2).join(" "))}, le compartimos su recibo de *servicios en los muelles* (${servicios}) de ${D.mes ? D.mes.name : ""}: *${fmt(c.costo_servicio)}*${estaPagado ? " (pagado ✅)" : ""}.`;
+  // En el celular: menú de compartir con la imagen (se escoge WhatsApp). Si no se puede, se copia la imagen y se abre el chat.
+  if (esCelular && navigator.canShare){
+    try{
+      const file = new File([await imagenRecibo(c)], nombreArchivoRecibo(c), { type: "image/png" });
+      if (navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], text: texto }); return; }
+    }catch(err){ if (err && err.name === "AbortError") return; }
+  }
+  let copiada = Promise.resolve(false);
+  try{ if (navigator.clipboard && window.ClipboardItem) copiada = navigator.clipboard.write([new ClipboardItem({ "image/png": imagenRecibo(c) })]).then(() => true, () => false); }catch(e){}
+  const ok = await copiada;
+  const t = `&text=${encodeURIComponent(texto)}`;
+  if (esCelular) location.href = /Android/i.test(navigator.userAgent || "") ? `intent://send?phone=57${tel}${t}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${encodeURIComponent("https://wa.me/57" + tel)};end` : `whatsapp://send?phone=57${tel}${t}`;
+  else window.open(`https://web.whatsapp.com/send?phone=57${tel}${t}`, "whatsapp_prosegurosnet");
+  toast(ok ? "📋 Envíe el mensaje y luego pegue el recibo (ya está copiado)." : "No se pudo copiar la imagen: use «Descargar» y adjúntela.");
+}
+$("modal2").addEventListener("click", (e) => { if (e.target.id === "rBajar") bajarRecibo(); else if (e.target.id === "rEnviar") enviarRecibo(); });
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", (e) => {
   const n = e.target.closest("[data-vista]");
@@ -1494,6 +1616,7 @@ document.addEventListener("click", (e) => {
   const fm = e.target.closest("[data-fmuelle]"); if (fm){ filtroMuelle = fm.dataset.fmuelle; render(); return; }
   const am = e.target.closest("[data-agregar-muelle]"); if (am){ abrirAgregarMuelle(am.dataset.agregarMuelle === "1" ? "" : am.dataset.agregarMuelle); return; }
   const fa = e.target.closest("[data-facturar]"); if (fa){ abrirFacturar(fa.dataset.facturar); return; }
+  const rc = e.target.closest("[data-recibo]"); if (rc){ abrirRecibo(rc.dataset.recibo); return; }
   const en = e.target.closest("[data-enrolar]"); if (en){ marcarEnrolado(en.dataset.enrolar); return; }
   const dd = e.target.closest("[data-docs-abrir]"); if (dd && !e.target.closest("#modalMuelles")){ abrirDocs(dd.dataset.docsAbrir); return; }
   const me = e.target.closest("[data-muelle-edit]"); if (me){ abrirEditorMuelles(me.dataset.muelleEdit); return; }

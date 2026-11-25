@@ -28,7 +28,10 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   status, headers: { "Content-Type": "application/json", ...CORS_HEADERS },
 });
 
-class ErrorAlegra extends Error {}
+class ErrorAlegra extends Error {
+  status = 0; texto = "";
+  constructor(m: string, status = 0, texto = "") { super(m); this.status = status; this.texto = texto; }
+}
 
 async function pedirAlegra(ruta: string, opciones: RequestInit = {}) {
   const resp = await fetch(`${ALEGRA_API}${ruta}`, {
@@ -49,7 +52,11 @@ async function alegra(ruta: string, opciones: RequestInit = {}) {
   if (resp.status === 401 || resp.status === 403) {
     throw new ErrorAlegra("Alegra rechazó el correo o el token. Revise ALEGRA_EMAIL y ALEGRA_TOKEN en Supabase.");
   }
-  if (!resp.ok) throw new ErrorAlegra(`Alegra respondió ${resp.status}: ${datos?.message || datos?.error?.message || texto.slice(0, 300)}`);
+  if (!resp.ok) {
+    // Se anota la respuesta completa en los registros de la función para poder revisar la causa
+    console.error(`Alegra ${opciones.method || "GET"} ${ruta.split("?")[0]} respondió ${resp.status}: ${texto.slice(0, 1500)}`);
+    throw new ErrorAlegra(`Alegra respondió ${resp.status}: ${datos?.message || datos?.error?.message || texto.slice(0, 300)}`, resp.status, texto);
+  }
   return datos;
 }
 
@@ -115,6 +122,22 @@ async function itemDeServicio(admin: any, llave: string, nombre: string, referen
 const itemServicio = (admin: any, precio: number) => itemDeServicio(admin, "item_id", NOMBRE_ITEM, "PSN-SEGSOCIAL", precio);
 const itemMuelles = (admin: any, precio: number) => itemDeServicio(admin, "item_muelle_id", "Servicios de muelles", "PSN-MUELLES", precio);
 
+// Crea el borrador. Si Alegra rechaza el ítem nuevo «Servicios de muelles» (25-nov-2026 respondió 400 «Unauthorized»),
+// se vuelve a intentar con el ítem de servicio que ya funciona; la línea conserva su descripción (Enrolamiento, Curso…).
+async function crearFactura(admin: any, cuerpo: any) {
+  try {
+    return await alegra("/invoices", { method: "POST", body: JSON.stringify(cuerpo) });
+  } catch (e) {
+    const { data: conf } = await admin.from("configuracion").select("valor").eq("clave", "alegra").maybeSingle();
+    const muelleId = conf?.valor?.item_muelle_id;
+    if (!(e instanceof ErrorAlegra) || e.status !== 400 || !muelleId || !cuerpo.items.some((i: any) => String(i.id) === String(muelleId))) throw e;
+    const general = await itemServicio(admin, cuerpo.items[0].price);
+    if (String(general) === String(muelleId)) throw e;
+    console.error("Se reintenta la factura con el ítem general de servicio.");
+    return await alegra("/invoices", { method: "POST", body: JSON.stringify({ ...cuerpo, items: cuerpo.items.map((i: any) => ({ ...i, id: general })) }) });
+  }
+}
+
 // Si un borrador se eliminó en Alegra, el cliente vuelve a quedar libre para facturar
 async function liberarBorradoresEliminados(admin: any, mes: string) {
   const { data: filas } = await admin.from("facturas_alegra").select("alegra_id").eq("mes", mes).eq("estado", "borrador");
@@ -133,7 +156,7 @@ const esFacturable = (x: any, ya: Set<string>) => String(x.estado_tramite || "")
 const hoyBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
 
 // Lo que necesita servicios.ts (facturar cursos, actualizaciones y enrolamientos de muelles)
-const ayudas = { alegra, numeracionFE, contactoDe, itemDeServicio, liberarBorradoresEliminados, partesNombre, normResp, esGrupoGeneral, hoyBogota, MEDIOS_PAGO };
+const ayudas = { alegra, crearFactura, numeracionFE, contactoDe, itemDeServicio, liberarBorradoresEliminados, partesNombre, normResp, esGrupoGeneral, hoyBogota, MEDIOS_PAGO };
 
 // Lo que falta por crear este mes: una fila por responsable y una por cliente sin responsable
 async function pendientesDelMes(admin: any, mes: string) {
@@ -311,9 +334,7 @@ Deno.serve(async (req: Request) => {
       const itemId = lista.some((c: any) => !c.servicios) ? await itemServicio(admin, lista[0].valor) : null;
       const itemMuelleId = lista.some((c: any) => c.servicios) ? await itemMuelles(admin, lista[0].valor) : null;
       const hoy = hoyBogota();
-      const factura = await alegra("/invoices", {
-        method: "POST",
-        body: JSON.stringify({
+      const factura = await crearFactura(admin, {
           status: "draft",
           date: hoy,
           dueDate: hoy,
@@ -330,7 +351,6 @@ Deno.serve(async (req: Request) => {
           paymentMethod: medioPago,
           type: "NATIONAL",
           operationType: "STANDARD",
-        }),
       });
       await admin.from("facturas_alegra").update({ estado: "borrador", alegra_id: String(factura.id) }).eq("mes", mes).in("cedula", cedulas);
       return json({ ok: true, alegra_id: factura.id, total, clientes: lista.length });

@@ -140,13 +140,10 @@ export async function borradorServicio(admin: any, h: any, quien: string, cuerpo
     const itemId = await h.itemDeServicio(admin, "item_muelle_id", "Servicios de muelles", "PSN-MUELLES", d.lineas[0].valor);
     const hoy = h.hoyBogota();
     const nombre = String(d.c.nombre).toUpperCase();
-    const factura = await h.alegra("/invoices", {
-      method: "POST",
-      body: JSON.stringify({
-        status: "draft", date: hoy, dueDate: hoy, client: clienteId, numberTemplate: { id: fe.id },
-        items: d.lineas.map((l: any) => ({ id: itemId, price: l.valor, quantity: 1, description: `${l.texto} - ${nombre} CC ${cedula} - ${mes}` })),
-        paymentForm: "CASH", paymentMethod: medioPago, type: "NATIONAL", operationType: "STANDARD",
-      }),
+    const factura = await h.crearFactura(admin, {
+      status: "draft", date: hoy, dueDate: hoy, client: clienteId, numberTemplate: { id: fe.id },
+      items: d.lineas.map((l: any) => ({ id: itemId, price: l.valor, quantity: 1, description: `${l.texto} - ${nombre} CC ${cedula} - ${mes}` })),
+      paymentForm: "CASH", paymentMethod: medioPago, type: "NATIONAL", operationType: "STANDARD",
     });
     await admin.from("facturas_alegra").update({ estado: "borrador", alegra_id: String(factura.id) }).eq("mes", mes).eq("cedula", cedula);
     return { ok: true, alegra_id: factura.id, total: d.total, destinatario: destino.nombre };
