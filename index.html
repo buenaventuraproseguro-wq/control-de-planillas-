@@ -530,10 +530,34 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .ck .cg-tarjeta .ico{ background:#1F3D70 !important; color:#fff !important; }
   .ck-kpi small{ color:#3F4A5C !important; font-weight:700 !important; }
   .ck-kpi span{ color:#3F4A5C !important; }
+  /* Menú de la izquierda de Contabilidad (26-nov-2026) */
+  .conta-menu, .conta-menu-velo, .ck2-hamb{ display:none; }
+  .modo-conta .conta-menu:not(:empty){ display:block; position:sticky; top:0; align-self:flex-start; width:250px; flex:none; height:100vh; overflow-y:auto; background:#17352E; color:#E9F0EE; padding:14px 10px 20px; box-sizing:border-box; }
+  .cm-marca{ display:flex; gap:10px; align-items:center; padding:4px 8px 14px; border-bottom:1px solid rgba(255,255,255,.12); margin-bottom:10px; }
+  .cm-marca i{ width:34px; height:34px; border-radius:9px; background:#B4934C; display:grid; place-items:center; font-style:normal; font-weight:800; color:#17352E; flex:none; }
+  .cm-marca b{ display:block; font-size:15px; } .cm-marca small{ font-size:11.5px; opacity:.7; }
+  .cm-x{ display:none; margin-left:auto; background:none; border:0; color:#E9F0EE; font-size:18px; cursor:pointer; }
+  .conta-menu .cm-h{ display:flex; align-items:center; gap:8px; width:100%; padding:10px; border:0; border-radius:9px; background:none; color:#E9F0EE; font:inherit; font-size:14px; font-weight:700; text-align:left; cursor:pointer; text-decoration:none; box-sizing:border-box; }
+  .conta-menu .cm-h:hover{ background:rgba(255,255,255,.08); }
+  .conta-menu .cm-solo{ margin-bottom:4px; } .conta-menu .cm-volver{ opacity:.8; margin-top:8px; }
+  .cm-fl{ margin-left:auto; opacity:.7; font-size:12px; }
+  .cm-g{ margin-bottom:4px; }
+  .cm-sub{ margin:2px 0 6px 18px; border-left:2px solid rgba(212,184,115,.35); padding-left:8px; }
+  .cm-g.cerrado .cm-sub{ display:none; }
+  .cm-sub button{ display:flex; justify-content:space-between; align-items:center; width:100%; padding:8px 10px; border:0; border-radius:8px; background:none; color:#CFDCD8; font:inherit; font-size:13.5px; text-align:left; cursor:pointer; }
+  .cm-sub button:hover{ background:#B4934C; color:#17352E; font-weight:700; }
+  .cm-sub em{ font-style:normal; background:#B4232C; color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; font-weight:700; }
+  @media (max-width:860px){
+    .modo-conta .ck2-hamb{ display:inline-flex; align-items:center; gap:6px; background:#17352E; color:#fff; border:0; border-radius:10px; padding:9px 12px; font:inherit; font-weight:700; font-size:14px; cursor:pointer; flex:none; }
+    .modo-conta .conta-menu:not(:empty){ display:none; position:fixed; left:0; top:0; bottom:0; height:auto; width:84%; max-width:310px; z-index:1000; }
+    .modo-conta.conta-menu-abierto .conta-menu:not(:empty){ display:block; }
+    .modo-conta.conta-menu-abierto .conta-menu-velo{ display:block; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:999; }
+    .cm-x{ display:block; }
+  }
   /* Contabilidad: pantalla principal clara (26-nov-2026) */
   .ck2{ --ck-e:#1E7B4F; --ck-e-bg:#DCEFE4; --ck-s:#B4232C; --ck-s-bg:#F6DEDC; --ck-p:#FAF8F4; display:flex; flex-direction:column; gap:14px; }
   .ck2-cab{ display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
-  .ck2-cab > div:first-child{ flex:1 1 260px; }
+  .ck2-cab > div:not(.ck2-botones){ flex:1 1 260px; }
   .ck2-cab h2{ margin:0; font-size:24px; color:var(--titulo); }
   .ck2-cab p{ margin:2px 0 0; font-size:13px; color:var(--muted); }
   .ck2-botones{ display:flex; gap:8px; }
@@ -587,6 +611,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .ck2-volver{ font-size:13.5px; color:var(--titulo); font-weight:700; text-align:center; }
   @media (max-width:860px){
     .ck2-cuerpo{ grid-template-columns:1fr; } .ck2-plata{ display:none; }
+    .ck2-cab{ align-items:center; } .ck2-cab > div:not(.ck2-botones){ flex:1 1 0; min-width:0; } .ck2-cab p{ display:none; }
     .ck2-cab h2{ font-size:20px; }
     .ck2-botones{ display:grid; grid-template-columns:1fr 1fr; width:100%; }
     .ck2-kpis{ grid-template-columns:1fr 1fr; gap:10px; }
@@ -2201,6 +2226,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
 </div>
 <div class="app-shell" id="appRoot" style="display:none;">
+  <nav id="contaMenu" class="conta-menu" aria-label="Menú de Contabilidad"></nav><div id="contaMenuVelo" class="conta-menu-velo"></div>
 
   <div class="menu-velo" id="menuVelo" hidden></div>
   <nav class="menu-cajon" id="menuCajon" aria-label="Menú">
@@ -17998,6 +18024,7 @@ function renderContaPanel(){
   cont.innerHTML = `
     <div class="ck2">
       <div class="ck2-cab">
+        <button type="button" class="ck2-hamb" data-conta-accion="menu" aria-label="Abrir el menú">☰ Menú</button>
         <div><h2>${escHtml(d.mes)}</h2><p>Todo el negocio${EMPRESA.marca ? " de " + escHtml(EMPRESA.marca) : ""} en un solo lugar. Para ver otro mes, cámbielo arriba.</p></div>
         <div class="ck2-botones"><button type="button" class="btn ck2-ent" data-conta-accion="nuevo-ingreso">＋ Entró dinero</button><button type="button" class="btn ck2-sal" data-conta-accion="nuevo-gasto">－ Salió dinero</button></div>
       </div>
@@ -18009,7 +18036,7 @@ function renderContaPanel(){
       ${chips.length ? `<div class="ck2-pend">${chips.map(([a, t, v, n, alerta]) => `<button type="button" class="ck2-chip ${alerta ? "alerta" : ""}" data-conta-accion="${a}">${t} <b>${v}</b>${n ? ` · ${escHtml(n)}` : ""}</button>`).join("")}</div>` : `<div class="ck2-pend"><span class="ck2-chip ok">✅ Nada pendiente este mes</span></div>`}
       <div class="ck2-cuerpo">
         <div class="ck2-card">
-          <div class="ck2-tabs">${tab("movs", "Movimientos")}${tab("cats", "Por categoría")}${tab("meses", "Mes a mes")}<button type="button" data-conta-accion="prestamos">Préstamos</button><button type="button" data-conta-accion="aportes">Aportes</button></div>
+          <div class="ck2-tabs">${tab("movs", "Movimientos")}${tab("cats", "Por categoría")}${tab("meses", "Mes a mes")}</div>
           ${contaVista.tab === "movs" ? `<div class="ck2-buscar"><input type="search" id="ckBuscar" placeholder="🔍 Buscar por nombre, proveedor o valor" value="${escHtml(contaVista.q)}">
             <select id="ckFiltro" aria-label="Mostrar"><option value="">Todo</option><option value="ent">Solo lo que entró</option><option value="sal">Solo lo que salió</option><option value="pend">Pendientes</option></select></div>` : ""}
           <div id="ckLista"></div>
@@ -18018,31 +18045,69 @@ function renderContaPanel(){
           <div class="ck2-card ck2-plata"><h3>¿En qué se fue la plata?</h3>
             ${top.map(([n, v]) => `<div class="ck2-cat"><div class="l"><span>${escHtml(n)}</span><b>${fmt(v)}</b></div><div class="bar"><i style="width:${Math.max(3, Math.round(v / maxCat * 100))}%"></i></div></div>`).join("") || `<div class="ck2-vacio">No hay gastos pagados este mes.</div>`}
           </div>
-          <div class="ck2-card"><h3>Herramientas</h3><div class="ck2-herr">
-            ${herr("gastos", "📒 Libro contable", "Anotar, editar y exportar")}${herr("ingresos", "📈 Ingresos", "Por línea y por día")}
-            ${herr("facturar", "🧾 Facturas", "Borradores en Alegra")}${herr("recibos", "💵 Recibos", "De lo pagado")}
-            ${herr("cierre", "📥 Cierre del mes", "Para el contador")}${herr("aportes", "🏥 Aportes", "Salud, pensión, ARL y caja")}
-          </div></div>
-          <a class="ck2-volver" href="./">← Volver a la app de Planillas</a>
         </aside>
       </div>
     </div>`;
   const sel = document.getElementById("ckFiltro"); if (sel) sel.value = contaVista.filtro;
   pintarContaLista();
+  try{ pintarContaMenu(d); }catch(e){ console.error(e); }
+}
+function contaAccion(a){
+  cerrarContaMenu(a === "menu");
+  if (a === "menu") return;
+  if (a === "resumen"){ document.querySelectorAll(".overlay.show").forEach(o => o.classList.remove("show")); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  if (a === "tab-cats" || a === "tab-meses" || a === "por-pagar"){
+    document.querySelectorAll(".overlay.show").forEach(o => o.classList.remove("show"));
+    contaVista.tab = a === "tab-meses" ? "meses" : a === "tab-cats" ? "cats" : "movs";
+    if (a === "por-pagar"){ contaVista.filtro = "pend"; contaVista.q = ""; }
+    renderContaPanel();
+    const l = document.getElementById("ckLista"); if (l) l.closest(".ck2-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (a === "gastos") document.getElementById("navGastosBtn").click();
+  else if (a === "nuevo-ingreso" || a === "nuevo-gasto"){
+    abrirGastos().then(() => { if (a === "nuevo-ingreso") abrirFormGasto._tipo = "ingreso"; abrirFormGasto(null); });
+  }
+  else if (a === "exportar") abrirGastos().then(() => document.getElementById("gExportarBtn").click());
+  else if (a === "prestamos") abrirPrestamos();
+  else if (a === "nuevo-prestamo") nuevoPrestamo();
+  else abrirInforme(a);
 }
 document.getElementById("contaPanel").addEventListener("click", (e) => {
   const t = e.target.closest("[data-ck-tab]");
   if (t){ contaVista.tab = t.dataset.ckTab; renderContaPanel(); return; }
   if (e.target.closest("#ckVerTodos")){ contaVista.todos = true; pintarContaLista(); return; }
   const b = e.target.closest("[data-conta-accion]"); if (!b) return;
-  const a = b.dataset.contaAccion;
-  if (a === "gastos") document.getElementById("navGastosBtn").click();
-  else if (a === "nuevo-ingreso" || a === "nuevo-gasto"){
-    abrirGastos().then(() => { if (a === "nuevo-ingreso") abrirFormGasto._tipo = "ingreso"; abrirFormGasto(null); });
-  }
-  else if (a === "prestamos") abrirPrestamos();
-  else abrirInforme(a);
+  contaAccion(b.dataset.contaAccion);
 });
+// Menú de la izquierda de Contabilidad (grupos que se abren y se cierran, como en una página web)
+let contaMenuCerrados = {};
+try{ contaMenuCerrados = JSON.parse(localStorage.getItem("contaMenuCerrados") || "{}") || {}; }catch(e){}
+function cerrarContaMenu(abrir){ document.documentElement.classList.toggle("conta-menu-abierto", !!abrir); }
+function pintarContaMenu(d){
+  const nav = document.getElementById("contaMenu"); if (!nav) return;
+  if (!esModoConta() || !esAdmin()){ nav.innerHTML = ""; return; }
+  const gb = document.getElementById("gastosBadge"), nVencen = gb && gb.style.display !== "none" ? Number(gb.textContent) || 0 : 0;
+  const nPagar = nVencen || d.gasPend.length, nPrest = d.pPend.length;
+  const it = (a, t, n) => `<button type="button" data-conta-accion="${a}">${t}${n ? `<em>${n}</em>` : ""}</button>`;
+  const grupo = (k, t, items) => `<div class="cm-g ${contaMenuCerrados[k] ? "cerrado" : ""}"><button type="button" class="cm-h" data-cm-grupo="${k}">${t}<span class="cm-fl">${contaMenuCerrados[k] ? "▸" : "▾"}</span></button><div class="cm-sub">${items}</div></div>`;
+  nav.innerHTML = `<div class="cm-marca"><i>${escHtml(String(EMPRESA.marca || "C").charAt(0))}</i><div><b>Contabilidad</b><small>${escHtml(EMPRESA.marca || "")}</small></div><button type="button" class="cm-x" data-conta-accion="cerrar" aria-label="Cerrar el menú">✕</button></div>
+    <button type="button" class="cm-h cm-solo" data-conta-accion="resumen">📊 Resumen del mes</button>
+    ${grupo("ing", "▲ Ingresos", it("ingresos", "Ingresos del mes") + it("tab-cats", "Por línea y categoría") + it("tab-meses", "Mes a mes") + it("nuevo-ingreso", "Anotar un ingreso"))}
+    ${grupo("gas", "▼ Gastos", it("gastos", "Libro contable") + it("por-pagar", "Por pagar", nPagar) + it("nuevo-gasto", "Anotar un gasto"))}
+    ${grupo("pre", "💸 Préstamos", it("prestamos", "Por recuperar", nPrest) + it("nuevo-prestamo", "Nuevo préstamo"))}
+    ${grupo("doc", "🧾 Alegra y documentos", it("facturar", "Facturas en Alegra") + it("recibos", "Recibos de caja") + it("cierre", "Cierre del mes (contador)") + it("exportar", "Exportar a Excel"))}
+    ${grupo("apo", "🏥 Aportes", it("aportes", "Recibidos y pagados"))}
+    <a class="cm-h cm-solo cm-volver" href="./">← Volver a Planillas</a>`;
+}
+document.getElementById("contaMenu").addEventListener("click", (e) => {
+  const g = e.target.closest("[data-cm-grupo]");
+  if (g){ const k = g.dataset.cmGrupo; contaMenuCerrados[k] = !contaMenuCerrados[k]; try{ localStorage.setItem("contaMenuCerrados", JSON.stringify(contaMenuCerrados)); }catch(e2){} try{ pintarContaMenu(datosConta()); }catch(e2){} return; }
+  const b = e.target.closest("[data-conta-accion]"); if (!b) return;
+  if (b.dataset.contaAccion === "cerrar"){ cerrarContaMenu(false); return; }
+  contaAccion(b.dataset.contaAccion);
+});
+document.getElementById("contaMenuVelo").addEventListener("click", () => cerrarContaMenu(false));
 document.getElementById("contaPanel").addEventListener("input", (e) => {
   if (e.target.id === "ckBuscar"){ contaVista.q = e.target.value; pintarContaLista(); }
 });
