@@ -2521,7 +2521,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
               <div class="actions">
           <div class="acc-grupo"><span class="acc-t">Cliente</span>
             <button class="btn small primary" id="editBtn">Editar</button>
-            <button type="button" class="btn small" id="incFichaBtn" title="Ver las incapacidades de este cliente">🩺 Incapacidades</button>
+            <button type="button" class="btn small" id="incFichaBtn" title="Ver o registrar las incapacidades de este cliente" style="padding:4px 9px;font-size:12px;">🩺 Incapacidades</button>
             <button type="button" class="btn small" id="formEpsBtn" style="display:none;" title="Descarga el formulario de afiliación de la EPS lleno con los datos del cliente"></button>
             <button class="acc-mas btn small" id="facturarBtn" style="display:none;">🧾 Facturar en Alegra</button>
             <button type="button" class="acc-mas btn small" id="salarioClienteBtn" hidden title="Salario con el que cotiza: con él se calculan salud, pensión, ARL y caja">💰 Salario</button>
@@ -5689,8 +5689,8 @@ function pintarBotonIncapFicha(r){
   const b = document.getElementById("incFichaBtn"); if (!b || !r) return;
   const lista = incapacidadesDe(r["Cédula"]), abiertas = lista.filter(i => !i.fecha_pago).length;
   b.textContent = lista.length ? `🩺 Incapacidades (${lista.length})` : "🩺 Incapacidades";
-  // A la vista solo si tiene alguna; si no, queda en «Más acciones»
-  b.classList.toggle("acc-mas", !lista.length);
+  // Siempre a la vista en la ficha (botón pequeño)
+  b.classList.remove("acc-mas");
   b.title = abiertas ? `${abiertas} sin terminar` : "Ver las incapacidades de este cliente";
 }
 function estadoIncap(i){
