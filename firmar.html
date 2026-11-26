@@ -39,7 +39,9 @@
 <script>
 const SUPABASE_URL = "https://jjygarfwdmhzspqonvql.supabase.co";
 const SUPABASE_KEY = "sb_publishable_QbM9pAw14n8SAu1aZr85-w_malVTs1s";
-const token = new URLSearchParams(location.search).get("t") || "";
+const qs = new URLSearchParams(location.search);
+const esPrestamo = qs.has("p"); // ?p=<token>: comprobante de préstamo (26-nov-2026); ?t=<token>: formulario de EPS
+const token = qs.get(esPrestamo ? "p" : "t") || "";
 const caja = document.getElementById("contenido");
 const esc = s => String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 async function rpc(fn, body){
@@ -53,18 +55,25 @@ const MOTIVOS = {
   ya_firmado: ["✅", "Ya firmó", "Su firma ya nos llegó. No tiene que hacer nada más. ¡Gracias!"],
   vencido: ["⏰", "Enlace vencido", "Este enlace ya venció (dura 7 días). Pida uno nuevo a PROSEGUROSNET."],
 };
+const pesos = n => "$" + Number(n || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 });
+const fechaCO = iso => { const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${Number(m[3])} de ${["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][Number(m[2]) - 1]} de ${m[1]}` : ""; };
 async function iniciar(){
   let info;
-  try{ info = await rpc("firma_remota_info", { p_token: token }); }catch(e){ mensaje("📶", "Sin conexión", "No se pudo cargar. Revise su internet y vuelva a abrir el enlace."); return; }
+  try{ info = await rpc(esPrestamo ? "prestamo_firma_info" : "firma_remota_info", { p_token: token }); }catch(e){ mensaje("📶", "Sin conexión", "No se pudo cargar. Revise su internet y vuelva a abrir el enlace."); return; }
   if (!info.ok) return mensaje(...MOTIVOS.no_existe);
   if (info.firmado) return mensaje(...MOTIVOS.ya_firmado);
   if (info.vencido) return mensaje(...MOTIVOS.vencido);
-  caja.innerHTML = `<h1>Hola${info.nombre ? " " + esc(info.nombre) : ""} 👋</h1>
-    <p>Para su afiliación a la EPS <b>${esc(info.eps || "")}</b> necesitamos su firma en el formulario.</p>
+  if (esPrestamo) document.title = "Firma del préstamo · " + (info.marca || "PROSEGUROSNET");
+  caja.innerHTML = (esPrestamo ? `<h1>Hola${info.nombre ? " " + esc(info.nombre.split(" ")[0]) : ""} 👋</h1>
+    <p class="sub">Comprobante de préstamo y compromiso de pago</p>
+    <p>Yo, <b>${esc(info.nombre)}</b>, con cédula n.º <b>${esc(info.cedula)}</b>, declaro que recibí de <b>${esc(info.marca)}</b>${info.responsable ? " (" + esc(String(info.responsable).toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase())) + ")" : ""} la suma de <b>${pesos(info.valor)}</b> en calidad de préstamo, el día ${esc(fechaCO(info.fecha))}${info.motivo ? ", para " + esc(info.motivo) : ""}.</p>
+    <p>Me comprometo a devolverla a más tardar el <b>${esc(fechaCO(info.vence))}</b>, en un solo pago o en abonos. Autorizo que, si a esa fecha queda saldo pendiente, se descuente de los pagos que me deban hacer.</p>`
+  : `<h1>Hola${info.nombre ? " " + esc(info.nombre) : ""} 👋</h1>
+    <p>Para su afiliación a la EPS <b>${esc(info.eps || "")}</b> necesitamos su firma en el formulario.</p>`) + `
     <p class="sub">Firme con el dedo dentro del recuadro, igual a como firma en su cédula. Si queda mal, toque «Borrar».</p>
     <canvas id="lienzo" width="900" height="320"></canvas>
     <div class="fila"><span>✍️ Firme aquí</span><button type="button" class="borrar" id="borrar">Borrar</button></div>
-    <label class="ok"><input type="checkbox" id="acepto"> Soy el titular, esta es mi firma y autorizo a PROSEGUROSNET a ponerla en mi formulario de afiliación a la EPS ${esc(info.eps || "")}.</label>
+    <label class="ok"><input type="checkbox" id="acepto"> ${esPrestamo ? "Soy " + esc(info.nombre) + ", leí el comprobante y estoy de acuerdo. Esta es mi firma." : "Soy el titular, esta es mi firma y autorizo a PROSEGUROSNET a ponerla en mi formulario de afiliación a la EPS " + esc(info.eps || "") + "."}</label>
     <div class="aviso" id="aviso" hidden></div>
     <button type="button" class="enviar" id="enviar">Enviar mi firma</button>`;
   const c = document.getElementById("lienzo"), ctx = c.getContext("2d");
@@ -82,8 +91,8 @@ async function iniciar(){
     if (!document.getElementById("acepto").checked){ aviso.textContent = "Marque la casilla de autorización."; aviso.hidden = false; return; }
     aviso.hidden = true; btn.disabled = true; btn.textContent = "Enviando…";
     try{
-      const res = await rpc("firma_remota_guardar", { p_token: token, p_firma: c.toDataURL("image/png"), p_aparato: navigator.userAgent });
-      if (res.ok) return mensaje("✅", "¡Listo, gracias!", "Su firma llegó a PROSEGUROSNET. Ya puede cerrar esta página.");
+      const res = await rpc(esPrestamo ? "prestamo_firma_guardar" : "firma_remota_guardar", { p_token: token, p_firma: c.toDataURL("image/png"), p_aparato: navigator.userAgent });
+      if (res.ok) return mensaje("✅", "¡Listo, gracias!", esPrestamo ? "Su firma llegó. Le entregamos la copia del comprobante impresa o en PDF. Ya puede cerrar esta página." : "Su firma llegó a PROSEGUROSNET. Ya puede cerrar esta página.");
       if (MOTIVOS[res.motivo]) return mensaje(...MOTIVOS[res.motivo]);
       throw new Error(res.motivo || "error");
     }catch(e){ aviso.textContent = "No se pudo enviar. Revise su internet e intente de nuevo."; aviso.hidden = false; btn.disabled = false; btn.textContent = "Enviar mi firma"; }

@@ -914,6 +914,43 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   @media (max-width:640px){ #polTarjetas{ grid-template-columns:1fr 1fr; } }
   #overlayPolizas [hidden], #overlayAfilTramite [hidden], #overlayMandato [hidden]{ display:none !important; }
   .pol-buscar{ width:100%; font:inherit; font-size:14px; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:inherit; margin-bottom:6px; }
+  /* Préstamos: soporte firmable e informe detallado (se ve en pantalla y al imprimir) */
+  .prs-doc{ background:#fff; color:#111; font-family:"Inter", Arial, sans-serif; font-size:12.5px; line-height:1.45; border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .prs-doc .prs-cab{ display:flex; align-items:center; gap:10px; border-bottom:2px solid #173A5E; padding-bottom:8px; margin-bottom:10px; }
+  .prs-doc .prs-cab img{ width:40px; height:40px; }
+  .prs-doc .prs-cab b{ font-size:16px; color:#173A5E; display:block; } .prs-doc .prs-cab small{ color:#C0272D; font-weight:600; font-size:11px; }
+  .prs-doc .prs-cab .prs-num{ margin-left:auto; text-align:right; font-size:11px; color:#444; }
+  .prs-doc h2{ font-size:14px; text-align:center; margin:4px 0 10px; color:#111; }
+  .prs-doc h3{ font-size:13px; margin:14px 0 6px; color:#173A5E; }
+  .prs-doc p{ margin:0 0 8px; text-align:justify; }
+  .prs-doc .prs-datos{ display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; margin-bottom:10px; }
+  .prs-doc .prs-datos div{ border-bottom:1px dotted #bbb; padding:2px 0; } .prs-doc .prs-datos span{ color:#555; font-size:11px; display:block; }
+  .prs-doc table{ width:100%; border-collapse:collapse; margin:4px 0 8px; }
+  .prs-doc th, .prs-doc td{ border:1px solid #bbb; padding:4px 6px; font-size:11.5px; text-align:left; }
+  .prs-doc th{ background:#EEF1F6; } .prs-doc td.n, .prs-doc th.n{ text-align:right; white-space:nowrap; }
+  .prs-doc tr.prs-tot td{ font-weight:700; background:#F6F7FA; }
+  .prs-doc .prs-firmas{ display:flex; gap:28px; margin-top:22px; break-inside:avoid; }
+  .prs-doc .prs-firmas > div{ flex:1; font-size:11.5px; min-width:0; }
+  .prs-doc .prs-firma-img{ height:70px; display:flex; align-items:flex-end; justify-content:center; }
+  .prs-doc .prs-firma-img img{ max-height:70px; max-width:100%; }
+  .prs-doc .prs-linea{ display:block; border-top:1px solid #111; margin-bottom:4px; }
+  .prs-doc .prs-via{ color:#1E7A46; font-size:10.5px; }
+  .prs-doc .prs-pie{ margin-top:14px; font-size:10px; color:#666; border-top:1px solid #ddd; padding-top:6px; }
+  .prs-doc .prs-persona{ break-inside:avoid; margin-bottom:12px; }
+  .prs-pads{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  @media (max-width:640px){ .prs-pads{ grid-template-columns:1fr; } .prs-doc .prs-datos{ grid-template-columns:1fr; } .prs-doc .prs-firmas{ gap:14px; } }
+  .prs-pads canvas{ display:block; width:100%; height:auto; aspect-ratio:900/300; background:#fff; border:2px dashed #9AA5B4; border-radius:10px; touch-action:none; }
+  .prs-pads .prs-ok{ font-size:12.5px; color:#1E7A46; margin-top:4px; }
+  .prs-campos{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+  .prs-campos input{ width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:inherit; }
+  .prs-campos label{ font-size:12px; color:var(--muted, #666); }
+  .prs-acciones{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  #overlayPrSoporte .modal{ max-width:780px; }
+  @media print{
+    body.imp-contrato > #contratoImprimir .prs-doc{ border:0; padding:0; font-size:11.5px; }
+    #contratoImprimir .prs-doc h3{ break-before:auto; margin:14px 0 6px; } #contratoImprimir .prs-doc h2{ font-size:14px; margin:4px 0 10px; } #contratoImprimir .prs-doc p{ margin:0 0 8px; }
+    body.imp-contrato > #contratoImprimir .prs-doc th{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
   .recibo-imprimir{ display:none; }
   /* Contrato de mandato (solo se ve al imprimir) */
   .contrato-imprimir{ display:none; }
@@ -2188,6 +2225,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="sidebar-section-title" data-conta>Contabilidad</div>
     <button type="button" data-conta class="sidebar-link" id="navResumenNegocio" data-informe="ingresos" style="display:none;" title="Ingresos de todo el negocio: planillas, muelles, SOAT y pólizas, gestiones e incapacidades"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Resumen del mes (Planillas + Muelles y Seguros)</button>
     <button type="button" data-conta class="sidebar-link" id="navGastosBtn"><span class="sidebar-num">16</span><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Libro contable (ingresos y gastos) <span class="sidebar-badge" id="gastosBadge" style="display:none;" title="Facturas vencidas o por vencer">0</span></button>
+    <button type="button" data-conta class="sidebar-link" id="navPrestamosBtn" style="display:none;" title="Plata prestada: informe por trabajador, soporte y firma"><svg class="ico" aria-hidden="true"><use href="#i-monedas"/></svg>Préstamos (informe y firmas)</button>
     <button type="button" data-conta class="sidebar-link" id="navFacturarMes" data-informe="facturar" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Crear borradores en Alegra</button>
     <button type="button" data-conta class="sidebar-link" id="navRecibosCaja" data-informe="recibos" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-recibo"/></svg>Recibos y pagos en Alegra</button>
     <button type="button" data-conta class="sidebar-link" id="navCierreContador" data-informe="cierre" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-libro"/></svg>Cierre del mes para el contador</button>
@@ -3038,6 +3076,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
 </div>
 
+<div class="overlay" id="overlayPrSoporte">
+  <div class="modal">
+    <h2 id="prsTitulo">✍️ Soporte del préstamo</h2>
+    <div class="modal-sub">Revise el documento, firme en los recuadros y guarde. Después puede imprimirlo o guardarlo en PDF para entregárselo al trabajador.</div>
+    <div id="prsContenido"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="prsCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
 <div class="overlay" id="overlayPedir">
   <div class="modal" style="max-width:420px;">
     <h2 id="pedirTitulo"></h2>
@@ -8574,6 +8620,7 @@ function renderMonthTotal(){
   document.getElementById("sidebarTotalGeneral").textContent = fmt(totalProsegurosnet + totalConductores + totalMuelles + totalGestiones);
   document.getElementById("navFacturarMes").style.display = esAdmin() ? "" : "none";
   document.getElementById("navResumenNegocio").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navPrestamosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navAppContaBtn").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("tituloContaApp").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("navCambiosBtn").style.display = esAdmin() ? "" : "none";
@@ -15602,6 +15649,7 @@ function exportarGastosMes(){
 }
 
 document.getElementById("navGastosBtn").addEventListener("click", abrirGastos);
+document.getElementById("navPrestamosBtn").addEventListener("click", () => abrirPrestamos());
 document.getElementById("gCerrarBtn").addEventListener("click", () => { cerrarFormGasto(); document.getElementById("overlayGastos").classList.remove("show"); });
 document.getElementById("overlayGastos").addEventListener("click", (e) => { if (e.target.id === "overlayGastos"){ cerrarFormGasto(); e.target.classList.remove("show"); } });
 document.getElementById("gNuevoBtn").addEventListener("click", () => abrirFormGasto(null));
@@ -17793,17 +17841,15 @@ function renderContaPanel(){
           ${kpi("Gastos pagados", fmt(gasPag), gasPend.length ? `${gasPend.length} por pagar · ${fmt(suma(gasPend))}` : "Sin gastos pendientes")}
           ${kpi("Resultado del mes", fmt(ingresoMes - gasPag - sinRecuperarMes), sinRecuperarMes ? `Ingresos − gastos pagados − ${fmt(sinRecuperarMes)} prestados sin recuperar` : "Ingresos de la empresa menos gastos pagados", ingresoMes - gasPag - sinRecuperarMes < 0 ? "mal" : "bien")}
         </div>
-        <section class="ck-grupo"><h3>Ingresos y cobros</h3><div class="cg-tarjetas">
-          ${acceso("ingresos", "i-grafico", "Resumen del mes", "Ingresos por línea y día")}
+        <section class="ck-grupo"><h3>Ingresos, gastos y préstamos</h3><div class="cg-tarjetas">
+          ${acceso("ingresos", "i-grafico", "Ingresos del mes", "Resumen por línea y día")}
+          ${acceso("gastos", "i-libro", "Gastos y libro contable", "Ingresos, gastos y proveedores", nVencen || "")}
+          ${acceso("prestamos", "i-monedas", "Préstamos", pPend.length ? `${fmt(pPend.reduce((s, p) => s + saldoPrestamo(p), 0))} por recuperar` : "Informe, soporte y firma del trabajador", pPend.length || "")}
           ${acceso("aportes", "i-monedas", "Aportes recibidos y pagados", "Salud, pensión, ARL y caja")}
         </div></section>
-        <section class="ck-grupo"><h3>Alegra</h3><div class="cg-tarjetas">
+        <section class="ck-grupo"><h3>Alegra y cierre</h3><div class="cg-tarjetas">
           ${acceso("facturar", "i-recibo", "Borradores de facturas", "El contador las emite")}
           ${acceso("recibos", "i-billete", "Recibos y pagos", "Recibos de caja de lo pagado")}
-        </div></section>
-        <section class="ck-grupo"><h3>Gastos, préstamos y cierre</h3><div class="cg-tarjetas">
-          ${acceso("prestamos", "i-monedas", "Préstamos", pPend.length ? `${fmt(pPend.reduce((s, p) => s + saldoPrestamo(p), 0))} por recuperar` : "Plata prestada que se recupera a fin de mes", pPend.length || "")}
-          ${acceso("gastos", "i-libro", "Libro contable", "Ingresos, gastos y proveedores", nVencen || "")}
           ${acceso("cierre", "i-bajar", "Cierre del mes", "Archivo para el contador")}
         </div></section>
         ${lineas.length ? `<section class="ck-grupo"><h3>Ingresos por línea</h3><div class="ck-tabla">
@@ -17839,6 +17885,7 @@ async function cargarPrestamos(){
     const { data, error } = await sb.from("prestamos").select("*").order("fecha", { ascending: false });
     if (error) throw error;
     prestamos = (data || []).map(p => ({ ...p, valor: Number(p.valor) || 0, abonos: Array.isArray(p.abonos) ? p.abonos : [] }));
+    await cargarFirmasPrestamos();
     prestamosCargados = true;
   }catch(e){ console.error("No se pudieron cargar los préstamos:", e); }
   prestamosCargando = false;
@@ -17864,8 +17911,8 @@ function pintarPrestamos(){
       <td class="muted">${escHtml(fechaCorta(p.fecha))}</td>
       <td><b>${escHtml(nombrePropio(p.persona || ""))}</b>${p.motivo ? `<br><small class="muted">${escHtml(p.motivo)}</small>` : ""}${(p.abonos || []).length ? `<br><small class="muted">Abonos: ${p.abonos.map(a => `${escHtml(fechaCorta(a.fecha))} ${fmt(a.valor)}`).join(" · ")}</small>` : ""}</td>
       <td class="num">${fmt(p.valor)}</td><td class="num">${fmt(abonado)}</td><td class="num"><b>${fmt(saldoPrestamo(p))}</b></td>
-      <td>${p.vence ? escHtml(fechaCorta(p.vence)) : "—"}<br><small>${estado}</small></td>
-      </tr>${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? `<tr><td></td><td colspan="5" style="padding-top:0"><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn small primary" data-pr-abonar="${escHtml(p.id)}">💵 Registrar abono</button> <button type="button" class="btn small" data-pr-pagado="${escHtml(p.id)}">✓ Pagó todo</button> <button type="button" class="btn small ghost" data-pr-anular="${escHtml(p.id)}">Anular</button></div></td></tr>` : ""}`;
+      <td>${p.vence ? escHtml(fechaCorta(p.vence)) : "—"}<br><small>${estado}</small>${p.estado !== "anulado" ? `<br><small>${firmaDe(p.id, "trabajador") ? '<b style="color:#1E7A46">✍️ Firmado</b>' : enlacePendienteDe(p.id) ? "⏳ Firma pedida" : '<span class="muted">Sin firma</span>'}</small>` : ""}</td>
+      </tr>${p.estado !== "anulado" ? `<tr><td></td><td colspan="5" style="padding-top:0"><div style="display:flex;gap:6px;flex-wrap:wrap">${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? `<button type="button" class="btn small primary" data-pr-abonar="${escHtml(p.id)}">💵 Registrar abono</button> <button type="button" class="btn small" data-pr-pagado="${escHtml(p.id)}">✓ Pagó todo</button> ` : ""}<button type="button" class="btn small" data-pr-soporte="${escHtml(p.id)}">✍️ Soporte y firma</button>${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? ` <button type="button" class="btn small ghost" data-pr-anular="${escHtml(p.id)}">Anular</button>` : ""}</div></td></tr>` : ""}`;
   };
   document.getElementById("informeContenido").innerHTML = `
     <div class="ck-kpis" style="margin-bottom:12px">
@@ -17873,7 +17920,13 @@ function pintarPrestamos(){
       <div class="ck-kpi"><small>Prestado en total</small><b>${fmt(suma(activos, p => Number(p.valor) || 0))}</b><span>Sin contar los anulados</span></div>
       <div class="ck-kpi"><small>Ya recuperado</small><b>${fmt(suma(activos, p => (Number(p.valor) || 0) - saldoPrestamo(p)))}</b><span>Abonos y pagos completos</span></div>
     </div>
-    <button type="button" class="btn primary" id="prNuevoBtn" style="margin-bottom:12px">＋ Nuevo préstamo</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button type="button" class="btn primary" id="prNuevoBtn">＋ Nuevo préstamo</button>${prestamos.length ? `<button type="button" class="btn" id="prInformeBtn">🖨️ Informe detallado</button>` : ""}</div>
+    ${prestamosCargados && prestamos.length ? `<h3 style="font-size:14px;margin:4px 0 6px">Por trabajador</h3><div class="hoy-tabla-caja" style="margin-bottom:14px"><table class="hoy-tabla">
+      <thead><tr><th>Trabajador</th><th class="num">Prestado</th><th class="num">Abonado</th><th class="num">Saldo</th><th>Último movimiento</th><th></th></tr></thead>
+      <tbody>${prestamosPorPersona(prestamos).map(g => `<tr><td><b>${escHtml(g.nombre)}</b>${g.cedula ? `<br><small class="muted">C.C. ${escHtml(g.cedula)}</small>` : ""}<br><small class="muted">${g.activos} préstamo${g.activos === 1 ? "" : "s"}${g.sinFirma ? ` · ${g.sinFirma} sin firma` : ""}</small></td>
+        <td class="num">${fmt(g.prestado)}</td><td class="num">${fmt(g.abonado)}</td><td class="num"><b${g.saldo ? ' style="color:#B42318"' : ""}>${fmt(g.saldo)}</b></td><td>${escHtml(fechaCorta(g.ultimo)) || "—"}</td>
+        <td><button type="button" class="btn small ghost" data-pr-estado="${escHtml(g.clave)}" title="Estado de cuenta para entregarle">🖨️ Estado de cuenta</button></td></tr>`).join("")}</tbody></table></div>
+      <h3 style="font-size:14px;margin:4px 0 6px">Cada préstamo</h3>` : ""}
     ${!prestamosCargados ? `<div class="empty">Cargando préstamos…</div>` : prestamos.length ? `<div class="hoy-tabla-caja"><table class="hoy-tabla">
       <thead><tr><th>Fecha</th><th>A quién y para qué</th><th class="num">Prestado</th><th class="num">Abonado</th><th class="num">Saldo</th><th>Recuperar antes de</th></tr></thead>
       <tbody>${[...pend, ...prestamos.filter(p => !pend.includes(p))].map(fila).join("")}</tbody></table></div>`
@@ -17901,6 +17954,9 @@ async function nuevoPrestamo(){
 }
 document.getElementById("informeContenido").addEventListener("click", async (e) => {
   if (e.target.closest("#prNuevoBtn")){ await nuevoPrestamo(); return; }
+  if (e.target.closest("#prInformeBtn")){ imprimirHtmlPrs(informeDetalladoPrestamos()); return; }
+  const est = e.target.closest("[data-pr-estado]"); if (est){ imprimirHtmlPrs(informeDetalladoPrestamos(est.dataset.prEstado)); return; }
+  const sop = e.target.closest("[data-pr-soporte]"); if (sop){ abrirSoportePrestamo(sop.dataset.prSoporte); return; }
   const ab = e.target.closest("[data-pr-abonar]"), pg = e.target.closest("[data-pr-pagado]"), an = e.target.closest("[data-pr-anular]");
   const id = (ab || pg || an) ? (ab || pg || an).dataset[ab ? "prAbonar" : pg ? "prPagado" : "prAnular"] : null;
   const p = id && prestamos.find(x => x.id === id); if (!p) return;
@@ -17921,6 +17977,252 @@ document.getElementById("informeContenido").addEventListener("click", async (e) 
     if (await guardarPrestamo(p.id, { estado: "anulado" })) showToast("Préstamo anulado.");
   }
   pintarPrestamos(); renderContaPanel();
+});
+
+/* ---------- Préstamos: informe detallado y soporte con firma virtual (26-nov-2026) ----------
+   Tabla «prestamo_firmas» (una fila por firma: trabajador o empresa; en pantalla o por enlace de WhatsApp).
+   Solo agrega filas: nunca cambia el préstamo ni sus abonos. El trabajador firma en firmar.html?p=<token>. */
+let prFirmas = [];
+async function cargarFirmasPrestamos(){
+  try{
+    const { data, error } = await sb.from("prestamo_firmas").select("id, prestamo_id, quien, via, token, nombre, cedula, firma, firmado_at, vence_at, creado_at").order("creado_at", { ascending: true });
+    if (error) throw error; prFirmas = data || [];
+  }catch(e){ console.error("No se pudieron cargar las firmas de préstamos:", e); }
+}
+const firmaDe = (id, quien) => [...prFirmas].reverse().find(f => f.prestamo_id === id && f.quien === quien && f.firma && f.firmado_at) || null;
+const enlacePendienteDe = (id) => [...prFirmas].reverse().find(f => f.prestamo_id === id && f.via === "enlace" && !f.firmado_at && new Date(f.vence_at) > new Date()) || null;
+const ultimaFirmaEmpresa = () => [...prFirmas].reverse().find(f => f.quien === "empresa" && f.firma && f.firmado_at) || null;
+const codigoPrestamo = (p) => String(p.id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
+function fechaEnPalabras(iso){
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return "";
+  return `${Number(m[3])} de ${["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][Number(m[2]) - 1]} de ${m[1]}`;
+}
+// 1250000 → "UN MILLÓN DOSCIENTOS CINCUENTA MIL PESOS"
+function pesosEnLetras(n){
+  n = Math.round(Number(n) || 0);
+  const U = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISÉIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE", "VEINTE", "VEINTIÚN", "VEINTIDÓS", "VEINTITRÉS", "VEINTICUATRO", "VEINTICINCO", "VEINTISÉIS", "VEINTISIETE", "VEINTIOCHO", "VEINTINUEVE"];
+  const D = ["", "", "", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+  const C = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+  const cien = (x) => { if (x === 100) return "CIEN"; const c = Math.floor(x / 100), r = x % 100; let t = C[c];
+    if (r){ t += (t ? " " : "") + (r < 30 ? U[r] : D[Math.floor(r / 10)] + (r % 10 ? " Y " + U[r % 10] : "")); } return t; };
+  if (n === 0) return "CERO PESOS";
+  const mill = Math.floor(n / 1e6), miles = Math.floor((n % 1e6) / 1000), resto = n % 1000;
+  const partes = [];
+  if (mill) partes.push(mill === 1 ? "UN MILLÓN" : cien(mill) + " MILLONES");
+  if (miles) partes.push(miles === 1 ? "MIL" : cien(miles) + " MIL");
+  if (resto) partes.push(cien(resto));
+  return partes.join(" ") + (mill && !miles && !resto ? " DE PESOS" : " PESOS");
+}
+const LOGO_PRS = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 2 L58 12 V30 C58 46 47 57 32 62 C17 57 6 46 6 30 V12 Z' fill='%23C0272D'/%3E%3Crect x='18' y='30' width='28' height='12' rx='2' fill='%23ffffff'/%3E%3Crect x='20' y='24' width='10' height='8' rx='1' fill='%23ffffff'/%3E%3Ccircle cx='24' cy='44' r='3' fill='%23173A5E'/%3E%3Ccircle cx='40' cy='44' r='3' fill='%23173A5E'/%3E%3C/svg%3E";
+function cabeceraPrs(derecha){
+  return `<div class="prs-cab"><img src="${LOGO_PRS}" alt=""><div><b>${escHtml(EMPRESA.marca)}</b><small>${escHtml(lugarPropio(EMPRESA.municipio))} · WhatsApp ${escHtml(EMPRESA.whatsapp)} · ${escHtml(EMPRESA.web)}</small></div><div class="prs-num">${derecha}</div></div>`;
+}
+// Movimientos del préstamo con el saldo después de cada uno
+function movimientosPrestamo(p){
+  let saldo = Number(p.valor) || 0;
+  const filas = [[p.fecha, "Préstamo entregado" + (p.motivo ? ` (${p.motivo})` : ""), saldo, saldo]];
+  [...(p.abonos || [])].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).forEach(a => { saldo -= Number(a.valor) || 0; filas.push([a.fecha, "Abono" + (a.nota ? ` (${a.nota})` : ""), -(Number(a.valor) || 0), Math.max(0, saldo)]); });
+  return filas;
+}
+function tablaMovimientos(p){
+  const filas = movimientosPrestamo(p);
+  return `<table><thead><tr><th>Fecha</th><th>Movimiento</th><th class="n">Valor</th><th class="n">Saldo</th></tr></thead><tbody>
+    ${filas.map(([f, t, v, s]) => `<tr><td>${escHtml(fechaCorta(f))}</td><td>${escHtml(t)}</td><td class="n">${v < 0 ? "− " + fmt(-v) : fmt(v)}</td><td class="n">${fmt(s)}</td></tr>`).join("")}
+    <tr class="prs-tot"><td colspan="2">Saldo a la fecha${p.estado === "anulado" ? " (préstamo anulado)" : ""}</td><td class="n"></td><td class="n">${fmt(p.estado === "anulado" ? 0 : saldoPrestamo(p))}</td></tr></tbody></table>`;
+}
+function bloqueFirma(f, titulo, nombre, doc){
+  const via = f ? (f.via === "enlace" ? "Firmado desde su celular" : "Firmado en pantalla") + " el " + fechaHoraCorta(f.firmado_at) : "";
+  return `<div><div class="prs-firma-img">${f ? `<img src="${escHtml(f.firma)}" alt="Firma">` : ""}</div><span class="prs-linea"></span>
+    <b>${escHtml(titulo)}</b><br>${escHtml(nombre || "")}${doc ? `<br>${escHtml(doc)}` : ""}${via ? `<br><span class="prs-via">✓ ${escHtml(via)}</span>` : ""}</div>`;
+}
+function textoSoportePrestamo(p, datos){
+  const nombre = nombrePropio(datos.nombre || p.persona || ""), ced = datos.cedula || "", tel = datos.telefono || "";
+  const fT = firmaDe(p.id, "trabajador"), fE = firmaDe(p.id, "empresa");
+  return `<div class="prs-doc">${cabeceraPrs(`Comprobante n.º <b>${escHtml(codigoPrestamo(p))}</b><br>${escHtml(fechaCorta(p.fecha))}`)}
+    <h2>COMPROBANTE DE PRÉSTAMO Y COMPROMISO DE PAGO</h2>
+    <div class="prs-datos">
+      <div><span>Trabajador</span><b>${escHtml(nombre)}</b></div>
+      <div><span>Cédula</span>${escHtml(ced) || "____________________"}</div>
+      <div><span>Valor prestado</span><b>${fmt(p.valor)}</b></div>
+      <div><span>Fecha del préstamo</span>${escHtml(fechaCorta(p.fecha))}</div>
+      <div><span>Para qué</span>${escHtml(p.motivo || "—")}</div>
+      <div><span>Pagar a más tardar</span>${escHtml(p.vence ? fechaCorta(p.vence) : "—")}</div>
+      ${tel ? `<div><span>Celular</span>${escHtml(tel)}</div>` : ""}
+    </div>
+    <p>Yo, <b>${escHtml(nombre)}</b>, identificado(a) con cédula de ciudadanía n.º <b>${escHtml(ced) || "____________________"}</b>, declaro que recibí de <b>${escHtml(EMPRESA.marca)}</b> (${escHtml(nombrePropio(EMPRESA.aportante_nombre))}, ${escHtml(EMPRESA.aportante_tipo_doc)} ${escHtml(EMPRESA.aportante_doc)}) la suma de <b>${escHtml(pesosEnLetras(p.valor))} (${fmt(p.valor)})</b> en calidad de préstamo, el día ${escHtml(fechaEnPalabras(p.fecha))}.</p>
+    <p>Me comprometo a devolver esa suma a más tardar el <b>${escHtml(fechaEnPalabras(p.vence))}</b>, en un solo pago o en abonos. Autorizo a ${escHtml(EMPRESA.marca)} para que, si a esa fecha queda saldo pendiente, lo descuente de los pagos que me deba hacer, y acepto que cada abono quede anotado en el estado de cuenta de este comprobante.</p>
+    <h3>Estado de cuenta al ${escHtml(fechaCorta(hoyISO()))}</h3>
+    ${tablaMovimientos(p)}
+    <div class="prs-firmas">
+      ${bloqueFirma(fT, "EL TRABAJADOR", nombre, ced ? "C.C. " + ced : "C.C. ____________________")}
+      ${bloqueFirma(fE, "POR LA EMPRESA", nombrePropio(EMPRESA.aportante_nombre), EMPRESA.marca)}
+    </div>
+    <div class="prs-pie">Documento generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · Código ${escHtml(codigoPrestamo(p))}. Las firmas hechas en pantalla o desde el celular quedan guardadas con su fecha y hora. Datos tratados según la Ley 1581 de 2012 (${escHtml(EMPRESA.web)}/privacidad).</div>
+  </div>`;
+}
+function imprimirHtmlPrs(html){
+  document.getElementById("contratoImprimir").innerHTML = html;
+  document.body.classList.add("imp-contrato");
+  setTimeout(() => window.print(), 150);
+}
+// Agrupa los préstamos por trabajador (por el nombre escrito)
+function prestamosPorPersona(lista){
+  const g = new Map();
+  lista.forEach(p => { const k = normalizarTexto(p.persona || ""); if (!g.has(k)) g.set(k, { clave: k, nombre: nombrePropio(p.persona || ""), cedula: "", lista: [] }); const x = g.get(k); x.lista.push(p); if (!x.cedula && p.cedula) x.cedula = p.cedula; });
+  return [...g.values()].map(x => {
+    const act = x.lista.filter(p => p.estado !== "anulado");
+    const mov = act.flatMap(p => [p.fecha, ...(p.abonos || []).map(a => a.fecha)]).filter(Boolean).sort();
+    return { ...x, prestado: act.reduce((s, p) => s + (Number(p.valor) || 0), 0), saldo: act.reduce((s, p) => s + saldoPrestamo(p), 0),
+      abonado: act.reduce((s, p) => s + (Number(p.valor) || 0) - saldoPrestamo(p), 0), ultimo: mov[mov.length - 1] || "", activos: act.length,
+      sinFirma: act.filter(p => !firmaDe(p.id, "trabajador")).length };
+  }).sort((a, b) => b.saldo - a.saldo || a.nombre.localeCompare(b.nombre));
+}
+function informeDetalladoPrestamos(clave){
+  const grupos = prestamosPorPersona(prestamos).filter(g => !clave || g.clave === clave);
+  const act = grupos.flatMap(g => g.lista).filter(p => p.estado !== "anulado");
+  const tot = (f) => act.reduce((s, p) => s + f(p), 0);
+  const uno = clave && grupos[0];
+  return `<div class="prs-doc">${cabeceraPrs(`Corte al <b>${escHtml(fechaCorta(hoyISO()))}</b>`)}
+    <h2>${uno ? "ESTADO DE CUENTA DE PRÉSTAMOS" : "INFORME DETALLADO DE PRÉSTAMOS"}</h2>
+    ${uno ? `<div class="prs-datos"><div><span>Trabajador</span><b>${escHtml(uno.nombre)}</b></div><div><span>Cédula</span>${escHtml(uno.cedula) || "—"}</div></div>` : ""}
+    <table><thead><tr><th>Resumen</th><th class="n">Prestado</th><th class="n">Abonado</th><th class="n">Saldo</th></tr></thead><tbody>
+      ${uno ? "" : grupos.map(g => `<tr><td>${escHtml(g.nombre)}${g.cedula ? ` · C.C. ${escHtml(g.cedula)}` : ""} (${g.activos} préstamo${g.activos === 1 ? "" : "s"})</td><td class="n">${fmt(g.prestado)}</td><td class="n">${fmt(g.abonado)}</td><td class="n">${fmt(g.saldo)}</td></tr>`).join("")}
+      <tr class="prs-tot"><td>Total${uno ? "" : ` (${grupos.length} persona${grupos.length === 1 ? "" : "s"})`}</td><td class="n">${fmt(tot(p => Number(p.valor) || 0))}</td><td class="n">${fmt(tot(p => (Number(p.valor) || 0) - saldoPrestamo(p)))}</td><td class="n">${fmt(tot(saldoPrestamo))}</td></tr></tbody></table>
+    ${grupos.map(g => `<div class="prs-persona">${uno ? "" : `<h3>${escHtml(g.nombre)}${g.cedula ? ` · C.C. ${escHtml(g.cedula)}` : ""} · saldo ${fmt(g.saldo)}</h3>`}
+      ${[...g.lista].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).map(p => { const f = firmaDe(p.id, "trabajador");
+        return `<p style="margin:8px 0 2px"><b>Préstamo ${escHtml(codigoPrestamo(p))}</b> del ${escHtml(fechaCorta(p.fecha))} · pagar antes del ${escHtml(fechaCorta(p.vence))} · ${p.estado === "anulado" ? "Anulado" : saldoPrestamo(p) === 0 ? "Recuperado" : "Pendiente"} · ${f ? `firmado ${escHtml(fechaHoraCorta(f.firmado_at))}` : "sin firma"}</p>${tablaMovimientos(p)}`; }).join("")}</div>`).join("")}
+    ${uno ? `<div class="prs-firmas">${bloqueFirma(null, "EL TRABAJADOR (recibí copia)", uno.nombre, uno.cedula ? "C.C. " + uno.cedula : "C.C. ____________________")}${bloqueFirma(ultimaFirmaEmpresa(), "POR LA EMPRESA", nombrePropio(EMPRESA.aportante_nombre), EMPRESA.marca)}</div>` : ""}
+    <div class="prs-pie">Generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · No incluye préstamos anulados en los totales.</div></div>`;
+}
+// Recuadro para firmar con el dedo o el mouse
+function crearPadFirma(c){
+  const ctx = c.getContext("2d"); let dib = false, hay = false, ult = null, cargada = false;
+  const pos = (e) => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  const limpiar = () => { ctx.clearRect(0, 0, c.width, c.height); hay = false; cargada = false; };
+  c.addEventListener("pointerdown", (e) => { e.preventDefault(); if (cargada) limpiar(); c.setPointerCapture(e.pointerId); dib = true; ult = pos(e); });
+  c.addEventListener("pointermove", (e) => { if (!dib) return; e.preventDefault(); const p = pos(e);
+    ctx.strokeStyle = "#0D1A4F"; ctx.lineWidth = 6.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(ult[0], ult[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); ult = p; hay = true; });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => c.addEventListener(t, () => { dib = false; }));
+  // Imagen recortada a lo dibujado
+  function dataUrl(){
+    if (!hay) return null;
+    const d = ctx.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 10){ if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 <= x0) return null;
+    const m = 6; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(c.width, x1 + m); y1 = Math.min(c.height, y1 + m);
+    const o = document.createElement("canvas"); o.width = x1 - x0; o.height = y1 - y0;
+    o.getContext("2d").drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
+    return o.toDataURL("image/png");
+  }
+  async function poner(url){
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    limpiar(); const k = Math.min(c.width / img.width, c.height / img.height, 1.6);
+    ctx.drawImage(img, (c.width - img.width * k) / 2, (c.height - img.height * k) / 2, img.width * k, img.height * k); hay = true; cargada = true;
+  }
+  return { limpiar, dataUrl, poner, hay: () => hay };
+}
+let prsActual = null, prsPads = null;
+function abrirSoportePrestamo(id){
+  const p = prestamos.find(x => x.id === id); if (!p) return;
+  prsActual = { id, nombre: p.persona || "", cedula: p.cedula || "", telefono: p.telefono || "" };
+  pintarSoportePrestamo();
+  document.getElementById("overlayPrSoporte").classList.add("show");
+}
+function pintarSoportePrestamo(){
+  const st = prsActual, p = st && prestamos.find(x => x.id === st.id); if (!p) return;
+  const fT = firmaDe(p.id, "trabajador"), fE = firmaDe(p.id, "empresa"), pend = enlacePendienteDe(p.id);
+  document.getElementById("prsTitulo").textContent = `✍️ Soporte del préstamo de ${nombrePropio(p.persona || "")}`;
+  document.getElementById("prsContenido").innerHTML = `
+    <div class="prs-campos">
+      <div><label for="prsCedula">Cédula del trabajador</label><input id="prsCedula" inputmode="numeric" value="${escHtml(st.cedula)}" placeholder="Para que salga en el documento"></div>
+      <div><label for="prsTel">Celular (para pedir la firma por WhatsApp)</label><input id="prsTel" inputmode="numeric" value="${escHtml(st.telefono)}" placeholder="10 números"></div>
+    </div>
+    <div id="prsDoc">${textoSoportePrestamo(p, st)}</div>
+    <div class="prs-pads">
+      <div class="fm-firma-caja">${fT ? `<div class="fm-firma-tit"><b>✅ El trabajador ya firmó</b></div><div class="prs-ok">${escHtml(fT.via === "enlace" ? "Desde su celular" : "En pantalla")}, ${escHtml(fechaHoraCorta(fT.firmado_at))}. La firma queda guardada y no se cambia.</div>`
+        : `<div class="fm-firma-tit"><b>✍️ Firma del trabajador</b><button type="button" class="btn small ghost" data-prs-borrar="t">Borrar</button></div><canvas id="prsPadT" width="900" height="300"></canvas>
+           <label class="fm-firma-ok"><input type="checkbox" id="prsConsT"> El trabajador está presente, leyó el documento y firma él mismo.</label>
+           <div class="fm-remota">${pend ? `<span class="fr-txt">⏳ Se le pidió la firma por WhatsApp el ${escHtml(fechaHoraCorta(pend.creado_at))}; todavía no firma.</span><button type="button" class="btn small ghost" data-prs-revisar>🔄 Revisar</button><button type="button" class="btn small ghost" data-prs-wa="${escHtml(pend.token)}">Reenviar</button>`
+             : `<span class="fr-txt">¿No está aquí?</span><button type="button" class="btn small" data-prs-wa>📲 Pedir la firma por WhatsApp</button>`}</div>`}</div>
+      <div class="fm-firma-caja">${fE ? `<div class="fm-firma-tit"><b>✅ La empresa ya firmó</b></div><div class="prs-ok">${escHtml(fechaHoraCorta(fE.firmado_at))}.</div>`
+        : `<div class="fm-firma-tit"><b>✍️ Firma por la empresa</b><button type="button" class="btn small ghost" data-prs-borrar="e">Borrar</button></div><canvas id="prsPadE" width="900" height="300"></canvas>
+           <div class="prs-ok" id="prsEmpNota">${ultimaFirmaEmpresa() ? "Se puso la última firma de la empresa. Si quiere, bórrela y firme de nuevo." : "Firme una vez; las próximas veces se pone sola."}</div>`}</div>
+    </div>
+    <div class="prs-acciones">
+      ${!fT || !fE ? `<button type="button" class="btn primary" id="prsGuardarBtn">💾 Guardar firmas</button>` : ""}
+      <button type="button" class="btn" id="prsImprimirBtn">🖨️ Imprimir o guardar PDF</button>
+      ${fT && st.telefono ? `<button type="button" class="btn ghost" id="prsEnviarWaBtn">📲 Avisarle por WhatsApp</button>` : ""}
+    </div>`;
+  prsPads = { t: !fT ? crearPadFirma(document.getElementById("prsPadT")) : null, e: !fE ? crearPadFirma(document.getElementById("prsPadE")) : null };
+  const ue = ultimaFirmaEmpresa(); if (prsPads.e && ue) prsPads.e.poner(ue.firma).catch(() => {});
+  ["prsCedula", "prsTel"].forEach(i => document.getElementById(i).addEventListener("change", leerCamposSoporte));
+}
+function leerCamposSoporte(){
+  if (!prsActual) return;
+  prsActual.cedula = soloDigitos(document.getElementById("prsCedula").value);
+  prsActual.telefono = soloDigitos(document.getElementById("prsTel").value);
+  const p = prestamos.find(x => x.id === prsActual.id); if (p) document.getElementById("prsDoc").innerHTML = textoSoportePrestamo(p, prsActual);
+}
+// Completa cédula y celular en el préstamo (solo esos dos datos, y solo si cambiaron)
+async function completarDatosPrestamo(p){
+  const c = {}; if (prsActual.cedula && prsActual.cedula !== (p.cedula || "")) c.cedula = prsActual.cedula; if (prsActual.telefono && prsActual.telefono !== (p.telefono || "")) c.telefono = prsActual.telefono;
+  if (!Object.keys(c).length) return true;
+  return guardarPrestamo(p.id, c);
+}
+async function guardarFirmasPrestamo(){
+  leerCamposSoporte();
+  const p = prestamos.find(x => x.id === prsActual.id); if (!p) return;
+  const filas = [];
+  const t = prsPads.t && prsPads.t.dataUrl(), e = prsPads.e && prsPads.e.dataUrl();
+  if (t){
+    if (!document.getElementById("prsConsT").checked){ await alertApp("Marque la casilla que dice que el trabajador está presente y firma él mismo. No se guardó nada."); return; }
+    if (!prsActual.cedula){ await alertApp("Escriba la cédula del trabajador para que quede en el documento firmado. No se guardó nada."); return; }
+    filas.push({ prestamo_id: p.id, quien: "trabajador", via: "pantalla", nombre: String(p.persona || "").toLowerCase(), cedula: prsActual.cedula, firma: t, firmado_at: new Date().toISOString(), aparato: navigator.userAgent.slice(0, 300) });
+  }
+  if (e) filas.push({ prestamo_id: p.id, quien: "empresa", via: "pantalla", nombre: String(EMPRESA.aportante_nombre || "").toLowerCase(), cedula: EMPRESA.aportante_doc, firma: e, firmado_at: new Date().toISOString(), aparato: navigator.userAgent.slice(0, 300) });
+  if (!filas.length){ showToast("⚠️ No hay ninguna firma nueva en los recuadros."); return; }
+  if (!(await completarDatosPrestamo(p))) return;
+  const { data, error } = await sb.from("prestamo_firmas").insert(filas).select("id, prestamo_id, quien, via, token, nombre, cedula, firma, firmado_at, vence_at, creado_at");
+  if (error){ console.error(error); await alertApp("No se pudieron guardar las firmas (revise el internet). No se guardó nada."); return; }
+  prFirmas.push(...(data || []));
+  showToast(t ? "✅ Firma del trabajador guardada. Ya puede imprimir el soporte." : "✅ Firma de la empresa guardada.");
+  pintarSoportePrestamo(); pintarPrestamos();
+}
+async function pedirFirmaPrestamoWa(tokenExistente){
+  leerCamposSoporte();
+  const p = prestamos.find(x => x.id === prsActual.id); if (!p) return;
+  if ((prsActual.telefono || "").length < 10){ showToast("⚠️ Escriba el celular del trabajador (10 números)."); document.getElementById("prsTel").focus(); return; }
+  if (!prsActual.cedula){ showToast("⚠️ Escriba la cédula del trabajador: sale en el documento que va a firmar."); document.getElementById("prsCedula").focus(); return; }
+  if (!(await completarDatosPrestamo(p))) return;
+  let token = tokenExistente;
+  if (!token){
+    const { data, error } = await sb.from("prestamo_firmas").insert({ prestamo_id: p.id, quien: "trabajador", via: "enlace", nombre: String(p.persona || "").toLowerCase(), cedula: prsActual.cedula }).select("id, prestamo_id, quien, via, token, nombre, cedula, firma, firmado_at, vence_at, creado_at").single();
+    if (error || !data){ showToast("No se pudo crear el enlace: " + ((error && error.message) || "error")); return; }
+    prFirmas.push(data); token = data.token;
+  }
+  const nombre = nombrePropio(String(p.persona || "").split(" ")[0]);
+  abrirWhatsappConMensaje(prsActual.telefono, `Hola ${nombre}, le saluda ${EMPRESA.marca}. Le enviamos el comprobante del préstamo de ${fmt(p.valor)} del ${fechaCorta(p.fecha)} para que lo revise y lo firme con el dedo en este enlace:\n\n${URL_FIRMAR}?p=${token}\n\nEl enlace vence en 7 días. ¡Gracias!`);
+  showToast("📲 Mensaje listo en WhatsApp. Cuando firme, toque «Revisar».");
+  pintarSoportePrestamo();
+}
+document.getElementById("overlayPrSoporte").addEventListener("click", async (e) => {
+  if (e.target.id === "overlayPrSoporte" || e.target.closest("#prsCerrarBtn")){ document.getElementById("overlayPrSoporte").classList.remove("show"); prsActual = null; return; }
+  const b = e.target.closest("[data-prs-borrar]"); if (b && prsPads){ const pad = prsPads[b.dataset.prsBorrar]; if (pad) pad.limpiar(); return; }
+  if (e.target.closest("#prsGuardarBtn")){ await guardarFirmasPrestamo(); return; }
+  const wa = e.target.closest("[data-prs-wa]"); if (wa){ await pedirFirmaPrestamoWa(wa.dataset.prsWa || null); return; }
+  if (e.target.closest("[data-prs-revisar]")){ await cargarFirmasPrestamos(); pintarSoportePrestamo(); pintarPrestamos(); if (!firmaDe(prsActual.id, "trabajador")) showToast("El trabajador todavía no ha firmado."); return; }
+  if (e.target.closest("#prsImprimirBtn")){
+    leerCamposSoporte();
+    const p = prestamos.find(x => x.id === prsActual.id);
+    if ((prsPads.t && prsPads.t.hay()) || (prsPads.e && prsPads.e.hay() && !firmaDe(p.id, "empresa") && !ultimaFirmaEmpresa()))
+      showToast("⚠️ Hay firmas sin guardar: toque «💾 Guardar firmas» para que salgan en el documento.");
+    imprimirHtmlPrs(textoSoportePrestamo(p, prsActual)); return;
+  }
+  if (e.target.closest("#prsEnviarWaBtn")){
+    const p = prestamos.find(x => x.id === prsActual.id);
+    abrirWhatsappConMensaje(prsActual.telefono, `Hola ${nombrePropio(String(p.persona || "").split(" ")[0])}, le saluda ${EMPRESA.marca}. Su comprobante del préstamo de ${fmt(p.valor)} quedó firmado. Saldo a la fecha: ${fmt(saldoPrestamo(p))}. Si quiere la copia, se la entregamos impresa o en PDF.`);
+  }
 });
 
 /* ---------- «Pasar a cliente de planillas» (llega desde Muelles y Seguros con ?pasar=<cédula>) ----------
