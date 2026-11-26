@@ -17698,7 +17698,7 @@ function actualizarBotonRetiro(r){
   const b2 = document.getElementById("retiroSinSoporteBtn");
   if (b2) b2.style.display = r && isRetiro(r) && esOtraEmpresa(r) && retiroSinSoporte(r) ? "" : "none";
   const tiene = r && (isRetiro(r) || retiroProgramado(r) || retiroPendientePlanilla(r));
-  btn.textContent = tiene ? "↩️ Quitar retiro" : (r && !esOtraEmpresa(r) && !esConductorExcluido(r) ? "🚪 Pedir retiro" : "🚪 Retirar");
+  btn.textContent = tiene ? "↩️ Anular retiro" : (r && !esOtraEmpresa(r) && !esConductorExcluido(r) ? "🚪 Pedir retiro" : "🚪 Retirar");
   btn.title = !tiene && r && !esOtraEmpresa(r) ? "PROSEGUROSNET: queda en RETIRO solo cuando se suba la planilla o el soporte del retiro" : "";
 }
 function avisoRetiro(){
@@ -17719,12 +17719,16 @@ document.getElementById("retirarBtn").addEventListener("click", async () => {
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (!r) return;
   if (isRetiro(r) || retiroProgramado(r) || retiroPendientePlanilla(r)){
-    if (!(await confirmarApp(`¿Quitar el retiro de ${r["Nombre del Afiliado"]}? ${isRetiro(r) ? "Vuelve a SIN PAGO en este mes." : "Se cancela el retiro pendiente."}`))) return;
+    if (!(await confirmarApp(`¿Anular el retiro de ${r["Nombre del Afiliado"]} y dejarlo como trabajador activo? ${isRetiro(r) ? "Vuelve a SIN PAGO en este mes" : "Se cancela el retiro pendiente"}, con sus valores de cobro de siempre. Queda anotado en la observación.`))) return;
+    // Constancia: se anota en la observación qué retiro se anuló (fecha y motivo), sin borrar nada más
+    { const motivo = motivoRetiroLimpio(r), cobro = tipoCobroRetiro(r);
+      const obs = `retiro anulado el ${fechaCortaRetiro(fechaHoyISO())}${r["Fecha Retiro"] ? ` (era del ${fechaCortaRetiro(r["Fecha Retiro"])}${motivo ? `, ${motivo.toLowerCase()}` : ""}${cobro === "cero" ? ", sin cobro" : cobro === "undia" ? ", cobro 1 día" : ""})` : ""}`;
+      r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${obs}` : obs; }
     if (isRetiro(r)) r["Estado Trámite"] = "SIN PAGO";
     r["Fecha Retiro"] = ""; r["Motivo Retiro"] = "";
     r["_ultimaEdicion"] = new Date().toISOString();
     saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
-    showToast("Retiro quitado.");
+    showToast(`↩️ Retiro anulado: ${r["Nombre del Afiliado"]} sigue como trabajador activo.`);
     return;
   }
   document.getElementById("retiroQuien").textContent = `${r["Nombre del Afiliado"]} · Cédula ${r["Cédula"]} · ${store.currentMonth}`;
@@ -17809,6 +17813,7 @@ function panelRetiroFicha(r){
       ${tipo !== "normal" ? `<button type="button" class="btn small ghost" data-ret-cobro="normal">↩️ Cobro normal</button>` : ""}
       ${tipo !== "cero" ? `<button type="button" class="btn small ghost" data-ret-cobro="cero" ${puedeCero ? "" : `disabled title="Pasó más de un mes sin pagar: debe pagar mínimo 1 día"`}>💲 Dejar en $0</button>` : ""}
       ${tipo !== "undia" ? `<button type="button" class="btn small ghost" data-ret-cobro="undia">📅 Cobrar 1 día</button>` : ""}
+      <button type="button" class="btn small danger" data-ret-anular="1">↩️ Anular retiro</button>
     </div>
     ${!puedeCero ? `<div class="ret-nota">⚠️ No pagó el mes anterior: el retiro no puede ir en $0, debe pagar mínimo 1 día.</div>` : ""}
     <div>
@@ -17849,10 +17854,11 @@ function textoCartaRetiroEps(r){
   </div>`;
 }
 document.addEventListener("click", async (e) => {
-  const b = e.target.closest("[data-ret-carta],[data-ret-adjuntar],[data-ret-vercarta],[data-ret-cobro]");
+  const b = e.target.closest("[data-ret-carta],[data-ret-adjuntar],[data-ret-vercarta],[data-ret-cobro],[data-ret-anular]");
   if (!b) return;
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (!r) return;
+  if (b.dataset.retAnular){ document.getElementById("retirarBtn").click(); return; } // mismo «Anular retiro» de Más acciones
   if (b.dataset.retCarta){ imprimirHtmlPrs(textoCartaRetiroEps(r), nombreCartaRetiro(r)); return; }
   if (b.dataset.retAdjuntar){
     if (!cloudDb || !navigator.onLine){ alertApp("Sin internet: se necesita conexión para subir la carta."); return; }
