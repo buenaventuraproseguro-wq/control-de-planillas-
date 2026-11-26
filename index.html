@@ -828,8 +828,32 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   #overlayGastos .modal{ max-width:920px; }
   .g-barra{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:12px; }
   .g-barra .field{ min-width:150px; }
-  .g-resumen{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
-  @media (max-width:640px){ .g-resumen{ grid-template-columns:1fr 1fr; } }
+  .g-resumen{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+  .g-resumen .g-tarjeta b{ font-size:20px; } .g-resumen .g-res{ background:#17352E; border-color:#17352E; } .g-resumen .g-res small, .g-resumen .g-res b{ color:#fff !important; }
+  .g-resumen .g-res.alerta{ background:#7A1F25; border-color:#7A1F25; }
+  .g-pend{ grid-column:1 / -1; justify-self:start; background:var(--gold-bg); border:1px solid #E6D6AE; border-radius:999px; padding:6px 12px; font:inherit; font-size:13px; color:#5C4718; cursor:pointer; }
+  .g-pend.alerta{ background:#F6DEDC; border-color:#EBB9B5; color:#7A1F25; }
+  .g-tabs{ display:flex; border-bottom:1px solid var(--line); margin-bottom:10px; overflow-x:auto; }
+  .g-tabs button{ background:none; border:0; border-bottom:3px solid transparent; padding:10px 12px; font:inherit; font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; white-space:nowrap; }
+  .g-tabs button.on{ color:var(--titulo); border-bottom-color:var(--gold); }
+  .g-filtros{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .g-filtros select{ border:1px solid var(--line); border-radius:8px; padding:6px 8px; font:inherit; font-size:13px; background:var(--panel); color:var(--ink); max-width:100%; }
+  @media (max-width:640px){ .g-resumen{ grid-template-columns:1fr 1fr; } .g-resumen .g-res{ grid-column:1 / -1; } }
+  @media (max-width:640px){
+    .g-filtros select{ flex:1 1 45%; }
+    #gTabla thead{ display:none; }
+    #gTabla tbody tr{ display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"desc valor" "cat estado" "fecha acc"; gap:2px 10px; padding:10px 12px; border-bottom:1px solid var(--line); }
+    #gTabla tbody td{ display:block; padding:0 !important; border:0 !important; }
+    #gTabla tbody td:nth-child(1){ grid-area:fecha; font-size:12px; color:var(--muted); align-self:center; }
+    #gTabla tbody td:nth-child(2){ grid-area:cat; font-size:12.5px; }
+    #gTabla tbody td:nth-child(2) br{ display:none; } #gTabla tbody td:nth-child(2) span{ margin-right:4px; }
+    #gTabla tbody td:nth-child(3){ grid-area:desc; font-weight:700; }
+    #gTabla tbody td:nth-child(4){ display:none; }
+    #gTabla tbody td:nth-child(5){ grid-area:valor; font-weight:800; text-align:right; }
+    #gTabla tbody td:nth-child(6){ grid-area:estado; text-align:right; }
+    #gTabla tbody td:nth-child(7){ grid-area:acc; justify-self:end; }
+    #gTabla tbody td.g-vacio{ grid-column:1 / -1; }
+  }
   .g-tarjeta{ border:1px solid var(--line); border-radius:10px; padding:9px 11px; background:var(--bg); }
   .g-tarjeta small{ display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
   .g-tarjeta b{ font-size:17px; font-variant-numeric:tabular-nums; }
@@ -3293,18 +3317,14 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <!-- Gastos de la empresa (solo administrador) -->
 <div class="overlay" id="overlayGastos">
   <div class="modal">
-    <h2>📒 Libro contable · ingresos y gastos</h2>
-    <div class="modal-sub">Registre lo que <b>entra</b> (por ejemplo, clientes que pagan en efectivo) y lo que <b>sale</b> (arriendo, pagos a terceros, facturas, sueldos). Al final del mes vea el cierre: ingresos por medio de pago, gastos por categoría, el efectivo y el resultado. Todo el equipo puede registrar; solo el administrador puede cambiar o eliminar lo ya guardado.</div>
+    <h2>📒 Libro contable</h2>
 
     <div class="g-barra">
       <div class="field"><label>Mes</label><input type="month" id="gMes"></div>
-      <div class="field"><label>Tipo</label><select id="gFiltroTipo"><option value="">Todo</option><option value="ingreso">Ingresos</option><option value="gasto">Gastos</option></select></div>
-      <div class="field"><label>Categoría</label><select id="gFiltroCat"><option value="">Todas</option></select></div>
-      <div class="field"><label>Estado</label><select id="gFiltroEstado"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="pagado">Pagados</option></select></div>
       <div style="flex:1"></div>
-      <button type="button" class="btn ghost small" id="gExportarBtn">⬇️ Exportar mes</button>
-      <button type="button" class="btn primary" id="gNuevoIngresoBtn" style="background:#1E7B4F;border-color:#1E7B4F;">➕ Nuevo ingreso</button>
-      <button type="button" class="btn primary" id="gNuevoBtn">➕ Nuevo gasto</button>
+      <button type="button" class="btn ghost small" id="gExportarBtn">⬇️ Exportar</button>
+      <button type="button" class="btn primary" id="gNuevoIngresoBtn" style="background:#1E7B4F;border-color:#1E7B4F;">＋ Entró dinero</button>
+      <button type="button" class="btn primary" id="gNuevoBtn" style="background:#B4232C;border-color:#B4232C;">－ Salió dinero</button>
     </div>
 
     <form id="gForm" autocomplete="off">
@@ -3331,9 +3351,17 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
     <div id="gFijos"></div>
     <div class="g-resumen" id="gResumen"></div>
-    <div class="g-cierre" id="gCierre"></div>
-    <details class="g-historico" id="gHistoricoBox" open><summary>📈 Resultado mes a mes</summary><div id="gHistorico"></div></details>
-    <div class="g-tabla-wrap"><table class="g-tabla" id="gTabla"></table></div>
+    <div class="g-tabs" id="gTabs"><button type="button" class="on" data-g-tab="movs">Movimientos</button><button type="button" data-g-tab="cierre">Cierre del mes</button><button type="button" data-g-tab="meses">Mes a mes</button></div>
+    <div class="g-panel" data-g-panel="movs">
+      <div class="g-filtros">
+        <select id="gFiltroTipo" aria-label="Tipo"><option value="">Entradas y salidas</option><option value="ingreso">Solo lo que entró</option><option value="gasto">Solo lo que salió</option></select>
+        <select id="gFiltroCat" aria-label="Categoría"><option value="">Todas las categorías</option></select>
+        <select id="gFiltroEstado" aria-label="Estado"><option value="">Pagados y pendientes</option><option value="pendiente">Solo pendientes</option><option value="pagado">Solo pagados</option></select>
+      </div>
+      <div class="g-tabla-wrap"><table class="g-tabla" id="gTabla"></table></div>
+    </div>
+    <div class="g-panel" data-g-panel="cierre" hidden><div class="g-cierre" id="gCierre"></div></div>
+    <div class="g-panel" data-g-panel="meses" hidden><div id="gHistorico"></div></div>
     <div class="g-categorias" id="gPorCategoria"></div>
 
     <div class="modal-actions">
@@ -15370,7 +15398,7 @@ function actualizarBadgeGastos(){
 function llenarSelectCategorias(sel, conTodas, valor){
   const opciones = categoriasGasto.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("");
   const deIngreso = conTodas ? `<optgroup label="Ingresos">${CATEGORIAS_INGRESO.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join("")}</optgroup>` : "";
-  sel.innerHTML = (conTodas ? `<option value="">Todas</option><optgroup label="Gastos">` : "") + opciones + (conTodas ? `</optgroup>` + deIngreso : `<option value="__nueva__">➕ Crear otra categoría…</option>`);
+  sel.innerHTML = (conTodas ? `<option value="">Todas las categorías</option><optgroup label="Gastos">` : "") + opciones + (conTodas ? `</optgroup>` + deIngreso : `<option value="__nueva__">➕ Crear otra categoría…</option>`);
   if (valor !== undefined) sel.value = valor;
 }
 
@@ -15414,12 +15442,12 @@ function renderGastos(){
   const pendientes = delMes.filter(g => g.estado !== "pagado");
   const vencidos = pendientes.filter(g => estadoVisual(g) === "vencido");
   const totIng = suma(ingresosMes), totGasPag = suma(pagados);
+  const res = totIng - totGasPag;
   document.getElementById("gResumen").innerHTML = `
-    <div class="g-tarjeta"><small>Ingresos del mes</small><b class="g-tipo-ing">${fmt(totIng)}</b></div>
-    <div class="g-tarjeta"><small>Gastos pagados</small><b class="g-tipo-gas">${fmt(totGasPag)}</b></div>
-    <div class="g-tarjeta"><small>Gastos pendientes por pagar</small><b>${fmt(suma(pendientes))}</b></div>
-    <div class="g-tarjeta ${totIng - totGasPag < 0 ? "alerta" : ""}"><small>Resultado (ingresos − gastos pagados)</small><b>${fmt(totIng - totGasPag)}</b></div>
-    ${vencidos.length ? `<div class="g-tarjeta alerta"><small>Vencidos</small><b>${vencidos.length} · ${fmt(suma(vencidos))}</b></div>` : ""}`;
+    <div class="g-tarjeta"><small>▲ Entró</small><b class="g-tipo-ing">${fmt(totIng)}</b></div>
+    <div class="g-tarjeta"><small>▼ Salió (pagado)</small><b class="g-tipo-gas">${fmt(totGasPag)}</b></div>
+    <div class="g-tarjeta g-res ${res < 0 ? "alerta" : ""}"><small>= Resultado</small><b>${fmt(res)}</b></div>
+    ${pendientes.length ? `<button type="button" class="g-pend ${vencidos.length ? "alerta" : ""}" data-g-verpend="1">🧾 Por pagar <b>${fmt(suma(pendientes))}</b> · ${pendientes.length}${vencidos.length ? ` · ${vencidos.length} vencido${vencidos.length === 1 ? "" : "s"}` : ""}</button>` : ""}`;
   renderCierreMes(ym, ingresosMes, delMes);
   renderResultadoMesAMes(ym);
 
@@ -15752,6 +15780,16 @@ document.getElementById("overlayGastos").addEventListener("click", (e) => { if (
 document.getElementById("gNuevoBtn").addEventListener("click", () => abrirFormGasto(null));
 document.getElementById("gNuevoIngresoBtn").addEventListener("click", () => { abrirFormGasto._tipo = "ingreso"; abrirFormGasto(null); });
 document.getElementById("gFiltroTipo").addEventListener("change", renderGastos);
+function verPestanaGastos(k){
+  document.querySelectorAll("#gTabs [data-g-tab]").forEach(b => b.classList.toggle("on", b.dataset.gTab === k));
+  document.querySelectorAll("#overlayGastos [data-g-panel]").forEach(p => { p.hidden = p.dataset.gPanel !== k; });
+}
+document.getElementById("gTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-g-tab]"); if (b) verPestanaGastos(b.dataset.gTab); });
+document.getElementById("gResumen").addEventListener("click", (e) => {
+  if (!e.target.closest("[data-g-verpend]")) return;
+  document.getElementById("gFiltroTipo").value = "gasto"; document.getElementById("gFiltroEstado").value = "pendiente";
+  verPestanaGastos("movs"); renderGastos();
+});
 document.getElementById("gTipo").addEventListener("change", (e) => {
   llenarCategoriasSegunTipo(e.target.value, null);
   document.getElementById("gFormTitulo").textContent = (gastoEditando ? "Editar " : "Nuevo ") + (e.target.value === "ingreso" ? "ingreso" : "gasto");
