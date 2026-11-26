@@ -1332,6 +1332,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .inc-abrir{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:0; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
   .inc-soporte{ margin-top:8px; }
   #incSoporteCaja[hidden]{ display:none; }
+  #incTarjetas[hidden]{ display:none !important; }
   .informe-row.total{ font-weight:700; font-size:14.5px; color:var(--titulo); border-top:2px solid var(--navy); margin-top:4px; padding-top:10px; }
   .informe-row.total .ir-valor{ color:var(--pago); font-size:16px; }
   .historial-mes-row{
@@ -5678,7 +5679,8 @@ async function abrirIncapacidades(cedulaConsulta){
   const ov = document.getElementById("overlayIncap");
   ov.classList.toggle("inc-consulta", !!incConsulta);
   document.getElementById("incTarjetas").hidden = !!incConsulta;
-  document.getElementById("incNuevaBtn").parentElement.hidden = !!incConsulta;
+  // Desde la ficha del cliente también se puede registrar una incapacidad nueva (queda con su cédula y nombre)
+  document.getElementById("incNuevaBtn").parentElement.hidden = false;
   const r = incConsulta ? records.find(x => String(x["Cédula"]) === incConsulta) : null;
   ov.querySelector("h2").textContent = incConsulta ? `🩺 Incapacidades · ${nombrePropio((r && r["Nombre del Afiliado"]) || incConsulta)}` : "🩺 Incapacidades";
   renderIncapacidades();
@@ -5740,6 +5742,10 @@ function abrirFormIncap(i){
   incEditando = i || null;
   const v = i || {};
   const pon = (id, x) => { document.getElementById(id).value = x ?? ""; };
+  if (!i && incConsulta){
+    const rc = records.find(x => String(x["Cédula"]) === String(incConsulta));
+    v.cedula = incConsulta; v.nombre = rc ? rc["Nombre del Afiliado"] : "";
+  }
   pon("incCedula", v.cedula); pon("incNombre", v.nombre); pon("incEntidad", v.entidad); pon("incDesde", v.desde); pon("incHasta", v.hasta);
   pon("incRecibido", v.valor_recibido || ""); pon("incFechaRecibido", v.fecha_recibido); pon("incPagado", v.valor_pagado || ""); pon("incFechaPago", v.fecha_pago); pon("incNota", v.nota);
   const sel = document.getElementById("incTipo");
@@ -5762,9 +5768,10 @@ function abrirFormIncap(i){
   document.getElementById("incSoporteCaja").hidden = !(i && i.fecha_pago);
   document.getElementById("incFacturaEstado").textContent = i && i.alegra_id ? "🧾 La comisión ya tiene factura en Alegra. El contador la revisa allá." : "";
   document.getElementById("incForm").hidden = false;
-  document.querySelectorAll("#incForm input, #incForm select").forEach(el => { if (el.id !== "incDocFile") el.disabled = !!incConsulta; });
-  document.querySelector('#incForm button[type="submit"]').hidden = !!incConsulta;
-  if (incConsulta) document.getElementById("incBorrarBtn").hidden = true;
+  const soloVer = !!incConsulta && !!i; // desde la ficha, las ya registradas solo se ven; las nuevas sí se llenan
+  document.querySelectorAll("#incForm input, #incForm select").forEach(el => { if (el.id !== "incDocFile") el.disabled = soloVer; });
+  document.querySelector('#incForm button[type="submit"]').hidden = soloVer;
+  if (soloVer) document.getElementById("incBorrarBtn").hidden = true;
   actualizarComisionIncap();
   document.getElementById("incCedula").focus();
 }
