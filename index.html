@@ -10733,20 +10733,20 @@ function infoResponsable(r){
 }
 function chipResponsable(r){
   const i = infoResponsable(r);
-  if (!i) return `<span class="tag-resp-ret" title="Responsable">👤 Sin responsable</span>`;
+  if (!i) return "";
   if (i.general || normResp(i.nombre) === normResp(r["Nombre del Afiliado"])) return `<span class="tag-resp-ret" title="Responsable">👤 ${i.general ? escHtml(nombrePropio(i.nombre)) : "Paga él mismo"}</span>`;
   return `<span class="tag-resp-ret" title="Responsable">👤 ${escHtml(nombrePropio(i.nombre))}${i.tel ? " · " + escHtml(i.tel) : ""}</span>`;
 }
 function lineaResponsable(r){
   const i = infoResponsable(r);
-  if (!i) return `<span class="resp-linea sin">Paga: sin responsable</span>`;
+  if (!i) return "";
   const mismo = normResp(i.nombre) === normResp(r["Nombre del Afiliado"]);
   if (i.general || mismo) return `<span class="resp-linea">Paga: ${mismo ? "él mismo" : escHtml(nombrePropio(i.nombre))}</span>`;
   return `<span class="resp-linea">Paga: <b>${escHtml(nombrePropio(i.nombre))}</b>${i.tel ? " · " + escHtml(i.tel) : ""}</span>`;
 }
 function tarjetaResponsable(r){
   const i = infoResponsable(r);
-  if (!i) return `<div class="resp-card sin">👤 Este cliente no tiene responsable asignado.</div>`;
+  if (!i) return "";
   if (i.general || normResp(i.nombre) === normResp(r["Nombre del Afiliado"])) return `<div class="resp-card"><div class="rc-tit">👤 Paga: <b>${i.general ? escHtml(nombrePropio(i.nombre)) : "él mismo"}</b></div></div>`;
   const wa = i.tel ? `<button type="button" class="rc-btn" data-resp-wa="${escHtml(i.tel)}" title="WhatsApp">💬</button>` : "";
   const ll = i.tel ? `<a class="rc-btn" href="tel:${escHtml(i.tel)}" title="Llamar">📞</a>` : "";
