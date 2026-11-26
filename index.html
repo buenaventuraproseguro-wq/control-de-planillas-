@@ -398,17 +398,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     padding:1px 6px; border-radius:999px; margin-left:8px; vertical-align:middle;
   }
   .breakdown .meta{ font-size:12.5px; color:var(--muted); margin-bottom:12px; }
-  .resp-linea{ display:block; font-size:12px; color:var(--muted); margin-top:2px; font-weight:400; }
-  .resp-linea b{ color:inherit; font-weight:700; }
-  .resp-linea.sin{ color:#b45309; }
-  .resp-card{ margin:8px 0 4px; padding:10px 12px; border:1px solid var(--border,#d9dee7); border-radius:12px; background:rgba(120,140,170,.08); font-size:13px; line-height:1.5; }
-  .resp-card.sin{ color:#b45309; }
-  .resp-card .rc-tit{ font-size:15px; }
-  .resp-card .rc-tel{ white-space:nowrap; }
-  .resp-card{ border-left:4px solid #2563eb; }
-  .resp-card .rc-debe{ color:#b91c1c; }
-  .resp-card .rc-botones{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-  .resp-card .rc-botones a.btn{ text-decoration:none; }
   .meta-resaltado{ color:var(--titulo); background:var(--accent-bg); padding:1px 6px; border-radius:5px; }
   .ced-copiar{ font:inherit; font-weight:700; border:none; cursor:pointer; line-height:inherit; vertical-align:baseline; }
   .ced-copiar span{ font-size:.85em; opacity:.75; }
@@ -2502,7 +2491,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         <div>
           <div class="who" id="bWho">—<span class="badge" id="bBadge"></span></div>
           <div class="meta" id="bMeta">—</div>
-          <div id="bRespCard"></div>
         </div>
       </div>
       <div class="ficha-muelles" id="fichaMuelles" hidden>
@@ -9324,7 +9312,7 @@ function renderList(filterText){
         const tags = enRetiros
           ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}${tagRetiroTraslado(r)}`
           : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagDineroRecibido(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
-        return `<span class="nm">${r["Nombre del Afiliado"]}</span>${q ? lineaResponsable(r) : ""}${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
+        return `<span class="nm">${r["Nombre del Afiliado"]}</span>${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
       })()}</div>
       <div class="ced">${r["Cédula"]}</div>
       <div class="muelle-dots">${puntosMuelle(r, true)}</div>
@@ -9487,8 +9475,6 @@ function calcularTotalPagar(r, mesActual){
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
   const esDiasProp = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES";
   const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
-  try{ document.getElementById("bRespCard").innerHTML = tarjetaResponsable(r); }catch(e){}
-
   const sinPension = noAportaPension(r);
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("Valor Pensión (AFP)");
@@ -10711,44 +10697,6 @@ document.getElementById("overlayTema").addEventListener("click", (e) => {
 });
 
 // ---- Responsables: cuántos clientes tiene cada uno en el mes ----
-/* ===== Responsable (quien paga) visible al buscar y en la ficha ===== */
-function infoResponsable(r){
-  const nom = limpiarEspacios(r["Responsable / Grupo"]);
-  if (!nom) return null;
-  const k = normResp(nom);
-  if (esGrupoGeneral(k)) return { k, nombre: nom, general: true };
-  const d = responsablesDatos.get(k) || {};
-  const activos = records.filter(x => !esConductorExcluido(x) && estadoClass(x["Estado Trámite"]) !== "RETIRO" && normResp(x["Responsable / Grupo"]) === k);
-  const pend = activos.filter(x => !pagadoEsteMes(x));
-  let debe = 0; try{ debe = pend.reduce((a, x) => a + calcularTotalPagar(x, store.currentMonth), 0); }catch(e){}
-  return { k, nombre: d.nombre_factura || d.nombre || nom, tel: String(d.telefono || "").replace(/[^\d+]/g, ""), correo: d.correo || "", afiliados: activos.length, pendientes: pend.length, debe, general: false };
-}
-function lineaResponsable(r){
-  const i = infoResponsable(r);
-  if (!i) return `<span class="resp-linea sin">Paga: sin responsable</span>`;
-  const mismo = normResp(i.nombre) === normResp(r["Nombre del Afiliado"]);
-  if (i.general || mismo) return `<span class="resp-linea">Paga: ${mismo ? "él mismo" : escHtml(nombrePropio(i.nombre))}</span>`;
-  return `<span class="resp-linea">Paga: <b>${escHtml(nombrePropio(i.nombre))}</b>${i.tel ? " · " + escHtml(i.tel) : ""}</span>`;
-}
-function tarjetaResponsable(r){
-  const i = infoResponsable(r);
-  if (!i) return `<div class="resp-card sin">👤 Este cliente no tiene responsable asignado.</div>`;
-  if (i.general || normResp(i.nombre) === normResp(r["Nombre del Afiliado"])) return `<div class="resp-card"><div class="rc-tit">👤 Paga: <b>${i.general ? escHtml(nombrePropio(i.nombre)) : "él mismo"}</b></div></div>`;
-  const wa = i.tel ? `<button type="button" class="btn small" data-resp-wa="${escHtml(i.tel)}">💬 WhatsApp</button>` : "";
-  const ll = i.tel ? `<a class="btn small" href="tel:${escHtml(i.tel)}">📞 Llamar</a>` : "";
-  return `<div class="resp-card">
-    <div class="rc-tit">👤 Quien paga: <b>${escHtml(nombrePropio(i.nombre))}</b> · <b class="rc-tel">${i.tel ? "📞 " + escHtml(i.tel) : "📞 sin teléfono"}</b></div>
-    ${i.correo ? `<div class="rc-datos">✉️ ${escHtml(i.correo)}</div>` : ""}
-    <div class="rc-datos">${i.afiliados} afiliado${i.afiliados === 1 ? "" : "s"} · ${i.pendientes ? `<b class="rc-debe">debe ${fmt(i.debe)}</b> (${i.pendientes} pendiente${i.pendientes === 1 ? "" : "s"})` : "✅ al día este mes"}</div>
-    <div class="rc-botones">${ll}${wa}<button type="button" class="btn small ghost" data-resp-ver="${escHtml(i.k)}">Ver sus clientes</button></div>
-  </div>`;
-}
-document.addEventListener("click", (e) => {
-  const w = e.target.closest("[data-resp-wa]");
-  if (w){ e.preventDefault(); abrirWhatsappConMensaje(w.dataset.respWa, "Hola, le escribimos de PROSEGUROSNET."); return; }
-  const v = e.target.closest("[data-resp-ver]");
-  if (v){ filtroEstado = "__RESP__:" + v.dataset.respVer; grupoConfirmacionFiltro = ""; searchInput.value = ""; renderList(""); }
-});
 function resumenResponsables(){
   const m = new Map();
   records.filter(r => !esConductorExcluido(r) && estadoClass(r["Estado Trámite"]) !== "RETIRO").forEach(r => {
