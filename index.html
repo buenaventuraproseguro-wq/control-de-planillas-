@@ -9188,6 +9188,28 @@ function afiliacionDeMesAnterior(r, mesActual){
   const ingreso = (+f[3]) * 12 + (+f[2] - 1), actual = (+m[2]) * 12 + MESES.indexOf(m[1]);
   return ingreso < actual ? `${MESES[+f[2] - 1]} de ${f[3]}` : null;
 }
+// Valor de ARL que debería tener según su nivel de riesgo (el mismo que sale en la planilla SUAPORTE).
+// Si el valor guardado no cuadra, la planilla cobra distinto de lo que dice la app (caso 26-nov-2026).
+function arlEsperadaPorNivel(r){
+  try{
+    if (!r || esConductorExcluido(r)) return null;
+    const nivel = Number(r["ARL Nivel"]) || clasificarRiesgoArl(r["ARL (Riesgo/Código)"]) || 0;
+    const tarifa = PILA_TARIFA_ARL[nivel];
+    const guardado = numOrZero(r["Valor ARL"]);
+    if (!tarifa || !guardado) return null;
+    const base = lleveSalario(r) ? (salarioDe(r) || PILA_SALARIO) : PILA_SALARIO;
+    const esperado = techo100(base * tarifa);
+    return Math.abs(esperado - guardado) > 100 ? { nivel, esperado, guardado } : null;
+  }catch(e){ return null; }
+}
+async function corregirArlPorNivel(r){
+  const x = arlEsperadaPorNivel(r); if (!x) return;
+  if (!(await confirmarApp(`La ARL de ${nombrePropio(r["Nombre del Afiliado"] || "")} está en ${fmt(x.guardado)}, pero con riesgo ${x.nivel} la planilla cobra ${fmt(x.esperado)} por el mes completo.\n\n¿Cambiar la ARL a ${fmt(x.esperado)}?`))) return;
+  r["Valor ARL"] = x.esperado;
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  showToast(`✅ ARL corregida a ${fmt(x.esperado)}.`);
+}
 async function pasarADiasProporcionales(r){
   const dia = parseInt(String(r["Fecha de Ingreso"] || "").split("/")[0], 10);
   const dias = !isNaN(dia) && dia >= 1 && dia <= 30 ? 30 - dia + 1 : 30;
@@ -9287,6 +9309,10 @@ function showBreakdown(cedula){
       else if (esDiasPropSinFecha) return ` · ⚠️ Sin fecha de ingreso registrada: se está cobrando el valor completo. Edita este cliente y agrégala para que se prorratee.`;
       if (!texto) return "";
       return esDiasProporcionalesMeta ? ` · <b class="meta-resaltado">${texto}</b>` : ` · ${texto}`;
+    })()) +
+    ((() => {
+      const x = arlEsperadaPorNivel(r);
+      return x ? ` · <b class="meta-resaltado">⚠️ ARL en ${fmt(x.guardado)}, pero con riesgo ${x.nivel} la planilla cobra ${fmt(x.esperado)}.</b> <button type="button" class="btn small primary" data-corregir-arl="1">Corregir ARL</button>` : "";
     })());
 
   const sinPension = noAportaPension(r);
@@ -11990,6 +12016,11 @@ async function copiarTexto(texto){
 }
 document.getElementById("bMeta").addEventListener("click", async (e) => {
   const ap = e.target.closest("[data-abrir-seguros]"); if (ap){ abrirAppSeguros(ap.dataset.abrirSeguros); return; }
+  if (e.target.closest("[data-corregir-arl]")){
+    const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+    if (r) await corregirArlPorNivel(r);
+    return;
+  }
   if (e.target.closest("[data-pasar-diasprop]")){
     const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
     if (r) await pasarADiasProporcionales(r);
