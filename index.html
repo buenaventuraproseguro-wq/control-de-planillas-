@@ -9487,8 +9487,6 @@ function calcularTotalPagar(r, mesActual){
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
   const esDiasProp = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES";
   const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
-  try{ document.getElementById("bRespCard").innerHTML = tarjetaResponsable(r); }catch(e){}
-
   const sinPension = noAportaPension(r);
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
   const valorPension = sinPension ? 0 : valAportes("Valor Pensión (AFP)");
@@ -9575,6 +9573,8 @@ function showBreakdown(cedula){
       const x = arlEsperadaPorNivel(r);
       return x ? ` · <b class="meta-resaltado">⚠️ ARL en ${fmt(x.guardado)}, pero con riesgo ${x.nivel} la planilla cobra ${fmt(x.esperado)}.</b> <button type="button" class="btn small primary" data-corregir-arl="1">Corregir ARL</button>` : "";
     })());
+
+  try{ document.getElementById("bRespCard").innerHTML = tarjetaResponsable(r); }catch(e){}
 
   const sinPension = noAportaPension(r);
   const valAportes = (campo) => Math.round(numOrZero(r[campo]) * factorAportes);
