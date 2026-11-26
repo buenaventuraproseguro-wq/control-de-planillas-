@@ -399,3 +399,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-26 · La ventana de Incapacidades muestra «Quien paga» (responsable) del cliente, desde la ficha y al escribir la cédula en el registro.
 - 2026-11-26 · Quien paga quitado de la ventana de Incapacidades (pedido de Nestor); en la ficha queda compacto (una o dos líneas con botones pequeños).
 - 2026-11-26 · El botón «Incapacidades» (pequeño) queda siempre a la vista en la ficha del cliente, no escondido en «Más acciones».
+- 2026-11-26 · En los filtros «Sin pago» y «Pendientes» cada fila muestra el responsable (y su teléfono) junto a la etiqueta de Mora.

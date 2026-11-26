@@ -9326,9 +9326,12 @@ function renderList(filterText){
       <div class="no">${r["No."]}</div>
       <div class="estado ${cls}">${r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"]}</div>
       <div class="name">${(() => {
+        // En «Sin pago» y «Pendientes» se ve quién paga (responsable) junto a las etiquetas
+        const verResp = !enRetiros && !q && (filtroEstado === "SIN PAGO" || filtroEstado === "__PENDIENTES__");
+        const chipResp = verResp ? chipResponsable(r) : "";
         const tags = enRetiros
           ? `${tagEmpresaResp(r)}${tagDebeRetiro(r)}${tagRetiroTraslado(r)}`
-          : `${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagDineroRecibido(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
+          : `${chipResp}${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagReingreso(r)}${tagConfirmacion(r)}${tagTraslado(r)}${tagRecargo(r)}${tagRecordado(r)}${tagCaja(r)}${tagDineroRecibido(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}${tagIncompleto(r)}`;
         return `<span class="nm">${r["Nombre del Afiliado"]}</span>${q ? lineaResponsable(r) : ""}${tags.trim() ? `<span class="row-tags">${tags}</span>` : ""}`;
       })()}</div>
       <div class="ced">${r["Cédula"]}</div>
@@ -10727,6 +10730,12 @@ function infoResponsable(r){
   const pend = activos.filter(x => !pagadoEsteMes(x));
   let debe = 0; try{ debe = pend.reduce((a, x) => a + calcularTotalPagar(x, store.currentMonth), 0); }catch(e){}
   return { k, nombre: d.nombre_factura || d.nombre || nom, tel: String(d.telefono || "").replace(/[^\d+]/g, ""), correo: d.correo || "", afiliados: activos.length, pendientes: pend.length, debe, general: false };
+}
+function chipResponsable(r){
+  const i = infoResponsable(r);
+  if (!i) return `<span class="tag-resp-ret" title="Responsable">👤 Sin responsable</span>`;
+  if (i.general || normResp(i.nombre) === normResp(r["Nombre del Afiliado"])) return `<span class="tag-resp-ret" title="Responsable">👤 ${i.general ? escHtml(nombrePropio(i.nombre)) : "Paga él mismo"}</span>`;
+  return `<span class="tag-resp-ret" title="Responsable">👤 ${escHtml(nombrePropio(i.nombre))}${i.tel ? " · " + escHtml(i.tel) : ""}</span>`;
 }
 function lineaResponsable(r){
   const i = infoResponsable(r);
