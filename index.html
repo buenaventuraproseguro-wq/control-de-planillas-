@@ -401,14 +401,12 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .resp-linea{ display:block; font-size:12px; color:var(--muted); margin-top:2px; font-weight:400; }
   .resp-linea b{ color:inherit; font-weight:700; }
   .resp-linea.sin{ color:#b45309; }
-  .resp-card{ margin:8px 0 4px; padding:10px 12px; border:1px solid var(--border,#d9dee7); border-radius:12px; background:rgba(120,140,170,.08); font-size:13px; line-height:1.5; }
+  .resp-card{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin:6px 0 2px; padding:5px 10px; border:1px solid var(--border,#d9dee7); border-left:3px solid #2563eb; border-radius:10px; background:rgba(120,140,170,.08); font-size:12.5px; line-height:1.35; }
   .resp-card.sin{ color:#b45309; }
-  .resp-card .rc-tit{ font-size:15px; }
-  .resp-card .rc-tel{ white-space:nowrap; }
-  .resp-card{ border-left:4px solid #2563eb; }
+  .resp-card .rc-tit{ font-size:13px; }
   .resp-card .rc-debe{ color:#b91c1c; }
-  .resp-card .rc-botones{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-  .resp-card .rc-botones a.btn{ text-decoration:none; }
+  .resp-card .rc-botones{ display:inline-flex; gap:4px; margin-left:auto; }
+  .resp-card .rc-btn{ display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:28px; padding:0 6px; border:1px solid var(--border,#d9dee7); border-radius:8px; background:#fff; font-size:14px; text-decoration:none; cursor:pointer; }
   .meta-resaltado{ color:var(--titulo); background:var(--accent-bg); padding:1px 6px; border-radius:5px; }
   .ced-copiar{ font:inherit; font-weight:700; border:none; cursor:pointer; line-height:inherit; vertical-align:baseline; }
   .ced-copiar span{ font-size:.85em; opacity:.75; }
@@ -2960,7 +2958,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <div class="overlay" id="overlayIncap">
   <div class="modal" style="max-width:620px;">
     <h2>🩺 Incapacidades</h2>
-    <div id="incRespInfo"></div>
     <div class="modal-sub">Datos de la incapacidad, documentos que pide la EPS o la ARL, y el pago a la persona. Del dinero solo la comisión cuenta como ingreso.</div>
     <div class="ing-tarjetas" id="incTarjetas"></div>
     <div class="modal-actions" style="justify-content:flex-start;margin:0 0 10px;"><button type="button" class="btn primary" id="incNuevaBtn">➕ Registrar incapacidad</button></div>
@@ -5684,15 +5681,8 @@ async function abrirIncapacidades(cedulaConsulta){
   document.getElementById("incNuevaBtn").parentElement.hidden = false;
   const r = incConsulta ? records.find(x => String(x["Cédula"]) === incConsulta) : null;
   ov.querySelector("h2").textContent = incConsulta ? `🩺 Incapacidades · ${nombrePropio((r && r["Nombre del Afiliado"]) || incConsulta)}` : "🩺 Incapacidades";
-  pintarRespIncap(incConsulta);
   renderIncapacidades();
   ov.classList.add("show");
-}
-// Quien paga por el cliente (el responsable), visible en la ventana de incapacidades
-function pintarRespIncap(cedula){
-  const el = document.getElementById("incRespInfo"); if (!el) return;
-  const r = cedula ? records.find(x => String(x["Cédula"]) === String(cedula).trim()) : null;
-  try{ el.innerHTML = r ? tarjetaResponsable(r) : ""; }catch(e){ el.innerHTML = ""; }
 }
 function incapacidadesDe(cedula){ return incapacidades.filter(i => String(i.cedula) === String(cedula)); }
 function pintarBotonIncapFicha(r){
@@ -5765,7 +5755,6 @@ function abrirFormIncap(i){
   pon("incDias", v.dias || ""); pon("incNumero", v.numero); pon("incDiag", v.diagnostico); pon("incRadicado", v.radicado); pon("incFechaRad", v.fecha_radicado);
   document.getElementById("incProrroga").checked = !!v.prorroga;
   document.getElementById("incEstadoTram").value = v.estado_tramite || "Por radicar";
-  if (!incConsulta) pintarRespIncap(v.cedula);
   incId = i ? i.id : (crypto.randomUUID ? crypto.randomUUID() : null);
   incDocs = { ...((i && i.documentos) || {}) };
   pintarDocsIncap();
@@ -5788,7 +5777,6 @@ function cerrarFormIncap(){ incEditando = null; incId = null; incDocs = {}; docu
 document.getElementById("msIncapBtn").addEventListener("click", () => abrirIncapacidades());
 document.getElementById("navIncapBtn").addEventListener("click", () => abrirIncapacidades());
 document.getElementById("incFichaBtn").addEventListener("click", () => { if (activeCedula) abrirIncapacidades(String(activeCedula)); });
-document.getElementById("incCedula").addEventListener("input", () => { if (!incConsulta) pintarRespIncap(document.getElementById("incCedula").value); });
 document.getElementById("incTipo").addEventListener("change", () => { document.getElementById("incEntidad").value = ""; sugerirEntidadIncap(); pintarDocsIncap(); });
 ["incDesde", "incHasta"].forEach(id => document.getElementById(id).addEventListener("change", () => {
   const d = diasEntre(document.getElementById("incDesde").value, document.getElementById("incHasta").value);
@@ -10751,13 +10739,13 @@ function tarjetaResponsable(r){
   const i = infoResponsable(r);
   if (!i) return `<div class="resp-card sin">👤 Este cliente no tiene responsable asignado.</div>`;
   if (i.general || normResp(i.nombre) === normResp(r["Nombre del Afiliado"])) return `<div class="resp-card"><div class="rc-tit">👤 Paga: <b>${i.general ? escHtml(nombrePropio(i.nombre)) : "él mismo"}</b></div></div>`;
-  const wa = i.tel ? `<button type="button" class="btn small" data-resp-wa="${escHtml(i.tel)}">💬 WhatsApp</button>` : "";
-  const ll = i.tel ? `<a class="btn small" href="tel:${escHtml(i.tel)}">📞 Llamar</a>` : "";
+  const wa = i.tel ? `<button type="button" class="rc-btn" data-resp-wa="${escHtml(i.tel)}" title="WhatsApp">💬</button>` : "";
+  const ll = i.tel ? `<a class="rc-btn" href="tel:${escHtml(i.tel)}" title="Llamar">📞</a>` : "";
+  const deuda = i.pendientes ? `<b class="rc-debe">debe ${fmt(i.debe)}</b>` : "✅ al día";
   return `<div class="resp-card">
-    <div class="rc-tit">👤 Quien paga: <b>${escHtml(nombrePropio(i.nombre))}</b> · <b class="rc-tel">${i.tel ? "📞 " + escHtml(i.tel) : "📞 sin teléfono"}</b></div>
-    ${i.correo ? `<div class="rc-datos">✉️ ${escHtml(i.correo)}</div>` : ""}
-    <div class="rc-datos">${i.afiliados} afiliado${i.afiliados === 1 ? "" : "s"} · ${i.pendientes ? `<b class="rc-debe">debe ${fmt(i.debe)}</b> (${i.pendientes} pendiente${i.pendientes === 1 ? "" : "s"})` : "✅ al día este mes"}</div>
-    <div class="rc-botones">${ll}${wa}<button type="button" class="btn small ghost" data-resp-ver="${escHtml(i.k)}">Ver sus clientes</button></div>
+    <span class="rc-tit">👤 Paga: <b>${escHtml(nombrePropio(i.nombre))}</b>${i.tel ? " · " + escHtml(i.tel) : " · sin teléfono"}</span>
+    <span class="rc-datos">${i.afiliados} afil. · ${deuda}</span>
+    <span class="rc-botones">${ll}${wa}<button type="button" class="rc-btn" data-resp-ver="${escHtml(i.k)}" title="Ver sus clientes">👥</button></span>
   </div>`;
 }
 document.addEventListener("click", (e) => {

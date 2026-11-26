@@ -397,3 +397,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-26 · Incapacidades desde la ficha: el botón «Registrar incapacidad» salía pero los campos estaban bloqueados (modo consulta). Ahora desde la ficha se registra una nueva con cédula y nombre ya puestos; las ya registradas siguen solo de consulta.
 - 2026-11-26 · Incapacidad nueva desde la ficha: ya aparecen los botones para subir los documentos (soportes).
 - 2026-11-26 · La ventana de Incapacidades muestra «Quien paga» (responsable) del cliente, desde la ficha y al escribir la cédula en el registro.
+- 2026-11-26 · Quien paga quitado de la ventana de Incapacidades (pedido de Nestor); en la ficha queda compacto (una o dos líneas con botones pequeños).
