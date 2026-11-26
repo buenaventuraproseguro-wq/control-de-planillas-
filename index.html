@@ -17781,7 +17781,7 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
   if (document.getElementById("retiroCarta").checked){
     // Primero la carta; si es de otra empresa y falta soporte, la pregunta sale al cerrar la impresión.
     if (pideSoporte) window.addEventListener("afterprint", () => setTimeout(() => confirmarRetiroSinSoporte(r), 50), { once: true });
-    setTimeout(() => imprimirHtmlPrs(textoCartaRetiroEps(r)), 300);
+    setTimeout(() => imprimirHtmlPrs(textoCartaRetiroEps(r), nombreCartaRetiro(r)), 300);
     if (pideSoporte) return;
   }
   if (pideSoporte){ setTimeout(() => confirmarRetiroSinSoporte(r), 50); return; }
@@ -17814,6 +17814,11 @@ function panelRetiroFicha(r){
     <div>
     </div>
   </div>`;
+}
+// Nombre del archivo de la carta: «Carta retiro EPS - Nombre - AAAA-MM-DD» (fecha de hoy)
+function nombreCartaRetiro(r){
+  const tipo = tieneMarcaRetiro(r, marcaRetiroSinCobro()) ? "Carta anulacion cobertura EPS" : "Carta retiro EPS";
+  return `${tipo} - ${nombrePropio(r["Nombre del Afiliado"] || "")} - ${hoyISO()}`.replace(/[\\/:*?"<>|]/g, "");
 }
 function textoCartaRetiroEps(r){
   const nombre = nombrePropio(r["Nombre del Afiliado"] || ""), ced = String(r["Cédula"] || "").trim();
@@ -17848,7 +17853,7 @@ document.addEventListener("click", async (e) => {
   if (!b) return;
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (!r) return;
-  if (b.dataset.retCarta){ imprimirHtmlPrs(textoCartaRetiroEps(r)); return; }
+  if (b.dataset.retCarta){ imprimirHtmlPrs(textoCartaRetiroEps(r), nombreCartaRetiro(r)); return; }
   if (b.dataset.retAdjuntar){
     if (!cloudDb || !navigator.onLine){ alertApp("Sin internet: se necesita conexión para subir la carta."); return; }
     const inp = document.getElementById("cartaRetiroFile"); inp.value = ""; inp.click(); return;
@@ -18662,7 +18667,13 @@ function textoSoportePrestamo(p, datos){
     <div class="prs-pie">Documento generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · Código ${escHtml(codigoPrestamo(p))}. Las firmas hechas en pantalla o desde el celular quedan guardadas con su fecha y hora. Datos tratados según la Ley 1581 de 2012 (${escHtml(EMPRESA.web)}/privacidad).</div>
   </div>`;
 }
-function imprimirHtmlPrs(html){
+// titulo (opcional): nombre con el que se guarda el PDF («Guardar como PDF» usa el título de la página)
+function imprimirHtmlPrs(html, titulo){
+  if (titulo){
+    const antes = document.title;
+    document.title = titulo;
+    window.addEventListener("afterprint", () => { document.title = antes; }, { once: true });
+  }
   document.getElementById("contratoImprimir").innerHTML = html;
   document.body.classList.add("imp-contrato");
   setTimeout(() => window.print(), 150);
