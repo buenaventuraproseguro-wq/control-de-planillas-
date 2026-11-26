@@ -1088,12 +1088,16 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .prs-doc .prs-persona{ break-inside:avoid; margin-bottom:12px; }
   .ret-sincobro{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; font-size:13px; }
   .ret-sincobro input{ margin-top:3px; width:18px; height:18px; flex:none; }
+  .ret-cobro-tit{ font-size:12.5px; font-weight:700; margin-top:4px; }
+  .ret-sincobro.bloqueado{ opacity:.55; cursor:not-allowed; }
+  .ret-sincobro.bloqueado small{ color:var(--retiro); font-weight:600; }
   .ret-sincobro small{ display:block; color:var(--muted, #666); font-size:11.5px; margin-top:2px; }
   .ret-panel{ border:1px solid var(--line); border-left:4px solid var(--retiro); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:13px; }
   .ret-panel .ret-tit{ font-weight:700; color:var(--retiro); }
   .ret-panel .ret-estado{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; }
   .ret-panel .ret-chip{ font-size:11.5px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--retiro-bg); color:var(--retiro); }
   .ret-panel .ret-chip.ok{ background:#E3F3EA; color:#1E7A46; }
+  .ret-panel .ret-nota{ font-size:12px; color:var(--retiro); font-weight:600; margin-top:6px; }
   .ret-panel .traslado-acciones{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .prs-doc .cr-dest{ margin:14px 0 12px; } .prs-doc .cr-asunto{ margin:0 0 12px; }
   .prs-doc .cr-firma{ margin-top:46px; max-width:300px; font-size:12px; break-inside:avoid; }
@@ -3100,7 +3104,10 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
         </select>
       </div>
       <div class="field span2"><label>Nota (opcional)</label><input type="text" id="retiroNota" maxlength="150" placeholder="Ej: se va a trabajar con otra empresa"></div>
-      <label class="span2 ret-sincobro"><input type="checkbox" id="retiroSinCobro"> <span><b>Retiro sin cobro ($0)</b><small>Este mes no se le cobra nada: no suma en «Total a cobrar», no sale en cobros ni recordatorios y no cuenta como ingreso.</small></span></label>
+      <div class="span2 ret-cobro-tit">¿Cuánto se le cobra este mes?</div>
+      <label class="span2 ret-sincobro"><input type="radio" name="retiroCobro" value="normal" checked> <span><b>Cobro normal</b><small>Como siempre: se cobra el mes con sus aportes y el servicio.</small></span></label>
+      <label class="span2 ret-sincobro" id="retiroCeroLbl"><input type="radio" name="retiroCobro" value="cero" id="retiroSinCobro"> <span><b>Sin cobro ($0)</b><small id="retiroCeroTxt">No se le cobra nada este mes: no suma en «Total a cobrar», no sale en cobros ni recordatorios y no cuenta como ingreso.</small></span></label>
+      <label class="span2 ret-sincobro"><input type="radio" name="retiroCobro" value="undia"> <span><b>Cobrar 1 día</b><small>Solo 1 día de aportes más el servicio. Es lo mínimo si ya pasó más de un mes sin pagar.</small></span></label>
       <label class="span2 ret-sincobro"><input type="checkbox" id="retiroCarta" checked> <span><b>Armar la carta de retiro para la EPS</b><small id="retiroCartaEps">Al guardar sale la carta membretada, dirigida a la EPS de la ficha y con el motivo, lista para imprimir o guardar en PDF.</small></span></label>
     </div>
     <div class="modal-sub" id="retiroAviso" style="margin-top:10px;"></div>
@@ -9464,7 +9471,7 @@ async function pasarADiasProporcionales(r){
 // prorrateo, la excepción de afiliación y la exclusión de pensión cuando corresponde.
 function calcularTotalPagar(r, mesActual){
   if (retiroSinCobro(r)) return 0; // retiro sin cobro: este mes no se le cobra nada
-  const prorr = calcProrrateo(r, mesActual);
+  const prorr = retiroUnDia(r) ? { factor: 1 / 30, dias: 1, aplica: true } : calcProrrateo(r, mesActual);
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
   const esDiasProp = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES";
   const factorAportes = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
@@ -9482,7 +9489,7 @@ function calcularTotalPagar(r, mesActual){
 // Solo los aportes (salud, pensión, ARL, caja), con el mismo prorrateo que el total a pagar,
 // SIN el costo del servicio. Es lo que debe coincidir con la planilla PILA.
 function calcularAportesApp(r, mesActual){
-  const prorr = calcProrrateo(r, mesActual);
+  const prorr = retiroUnDia(r) ? { factor: 1 / 30, dias: 1, aplica: true } : calcProrrateo(r, mesActual);
   const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
   const sinPension = noAportaPension(r);
   const val = (campo) => Math.round(numOrZero(r[campo]) * factor);
@@ -9516,7 +9523,7 @@ function showBreakdown(cedula){
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
 
-  const prorr = calcProrrateo(r, store.currentMonth);
+  const prorr = retiroUnDia(r) ? { factor: 1 / 30, dias: 1, aplica: true } : calcProrrateo(r, store.currentMonth);
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
 
   // Si este mes no cae la fecha de ingreso pero el estado es DÍAS PROPORCIONALES,
@@ -17425,9 +17432,25 @@ function ponerMarcaRetiro(r, m, si){
   r["Motivo Retiro"] = partes.join(" · ");
 }
 function motivoRetiroLimpio(r){
-  return String(r["Motivo Retiro"] || "").split(" · ").map(p => p.trim()).filter(p => p && ![marcaRetiroSinCobro(), marcaCartaEps(), MARCA_RETIRO_CONFIRMADO].includes(p)).join(" · ");
+  return String(r["Motivo Retiro"] || "").split(" · ").map(p => p.trim()).filter(p => p && ![marcaRetiroSinCobro(), marcaRetiroUnDia(), marcaCartaEps(), MARCA_RETIRO_CONFIRMADO].includes(p)).join(" · ");
 }
 function retiroSinCobro(r){ return !!r && (isRetiro(r) || retiroPendientePlanilla(r)) && tieneMarcaRetiro(r, marcaRetiroSinCobro()); }
+// Retiro con cobro de 1 día: solo 1 de 30 días de aportes (más el servicio). Es lo mínimo que acepta la planilla.
+function marcaRetiroUnDia(){ return "Cobro 1 día"; }
+function retiroUnDia(r){ return !!r && (isRetiro(r) || retiroPendientePlanilla(r)) && tieneMarcaRetiro(r, marcaRetiroUnDia()); }
+// Regla de Nestor (26-nov-2026): el retiro en $0 solo vale si no ha pasado más de un mes, es decir,
+// si pagó el mes anterior o entró a trabajar este mes o el anterior. Si no, debe pagar mínimo 1 día.
+function retiroPuedeIrEnCero(r){
+  const i = indiceMes(store.currentMonth); if (i == null || !r) return true;
+  const ant = `${MESES[(i - 1) % 12]} de ${Math.floor((i - 1) / 12)}`;
+  const prev = (store.months[ant] || []).find(x => String(x["Cédula"]).trim() === String(r["Cédula"]).trim());
+  if (prev && ["PAGO", "PAGO_CONDUCTOR"].includes(estadoClass(prev["Estado Trámite"]))) return true;
+  const fi = String(r["Fecha de Ingreso"] || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (fi){ const k = Number(fi[3]) * 12 + Number(fi[2]) - 1; if (k >= i - 1) return true; }
+  return false;
+}
+function tipoCobroRetiro(r){ return tieneMarcaRetiro(r, marcaRetiroSinCobro()) ? "cero" : tieneMarcaRetiro(r, marcaRetiroUnDia()) ? "undia" : "normal"; }
+function ponerCobroRetiro(r, tipo){ ponerMarcaRetiro(r, marcaRetiroSinCobro(), tipo === "cero"); ponerMarcaRetiro(r, marcaRetiroUnDia(), tipo === "undia"); }
 function rutaCartaRetiro(r){ return `${String(r["Cédula"]).trim()}/carta_retiro_eps_${mesISODe(store.currentMonth)}`; }
 function retiroConfirmadoSinSoporte(r){ return esOtraEmpresa(r) && String(r["Motivo Retiro"] || "").includes(MARCA_RETIRO_CONFIRMADO); }
 function tieneSoporteRetiro(r){
@@ -17708,7 +17731,12 @@ document.getElementById("retirarBtn").addEventListener("click", async () => {
   document.getElementById("retiroFecha").value = fechaHoyISO();
   document.getElementById("retiroMotivo").selectedIndex = 0;
   document.getElementById("retiroNota").value = "";
-  document.getElementById("retiroSinCobro").checked = false;
+  document.querySelector('input[name="retiroCobro"][value="normal"]').checked = true;
+  { const puede = retiroPuedeIrEnCero(r), lbl = document.getElementById("retiroCeroLbl");
+    document.getElementById("retiroSinCobro").disabled = !puede; lbl.classList.toggle("bloqueado", !puede);
+    document.getElementById("retiroCeroTxt").textContent = puede
+      ? "No se le cobra nada este mes: no suma en «Total a cobrar», no sale en cobros ni recordatorios y no cuenta como ingreso."
+      : "No se puede: pasó más de un mes sin pagar (no pagó el mes anterior). Debe pagar mínimo 1 día."; }
   document.getElementById("retiroCarta").checked = true;
   document.getElementById("retiroCartaEps").innerHTML = `Al guardar sale la carta membretada dirigida a <b>${escHtml(String(r["EPS"] || "").trim() || "la EPS (falta en la ficha)")}</b>, con el motivo, lista para imprimir o guardar en PDF.`;
   avisoRetiro();
@@ -17737,7 +17765,9 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
   const nota = document.getElementById("retiroNota").value.trim();
   r["Fecha Retiro"] = fecha;
   r["Motivo Retiro"] = nota ? `${motivo}: ${nota}` : motivo;
-  ponerMarcaRetiro(r, marcaRetiroSinCobro(), document.getElementById("retiroSinCobro").checked);
+  { let tipo = (document.querySelector('input[name="retiroCobro"]:checked') || {}).value || "normal";
+    if (tipo === "cero" && !retiroPuedeIrEnCero(r)) tipo = "undia";
+    ponerCobroRetiro(r, tipo); }
   const programado = indiceMesDeFecha(fecha) > indiceMes(store.currentMonth);
   const esperaPlanilla = !programado && !esOtraEmpresa(r) && !esConductorExcluido(r) && !tieneSoporteRetiro(r);
   if (!programado && !esperaPlanilla) r["Estado Trámite"] = "RETIRO";
@@ -17762,21 +17792,26 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
 /* ---- En la ficha: cuadro del retiro (sin cobro, carta a la EPS) ---- */
 function panelRetiroFicha(r){
   if (!r || esConductorExcluido(r) || !(isRetiro(r) || retiroPendientePlanilla(r) || retiroProgramado(r))) return "";
-  const sinCobro = tieneMarcaRetiro(r, marcaRetiroSinCobro()), carta = tieneMarcaRetiro(r, marcaCartaEps());
+  const tipo = tipoCobroRetiro(r), carta = tieneMarcaRetiro(r, marcaCartaEps()), puedeCero = retiroPuedeIrEnCero(r);
   const estado = isRetiro(r) ? "En RETIRO" : retiroProgramado(r) ? "Retiro programado" : "Retiro pendiente de soporte";
   const motivo = motivoRetiroLimpio(r);
   return `<div class="ret-panel">
     <div class="ret-tit">🚪 ${estado}${r["Fecha Retiro"] ? ` · desde el ${escHtml(fechaCortaRetiro(r["Fecha Retiro"]))}` : ""}</div>
     ${motivo ? `<div>${escHtml(motivo)}</div>` : ""}
     <div class="ret-estado">
-      <span class="ret-chip ${sinCobro ? "ok" : ""}">${sinCobro ? "💲 Sin cobro: total $0 este mes" : `💲 Se cobra este mes: ${fmt(calcularTotalPagar(r, store.currentMonth))}`}</span>
+      <span class="ret-chip ${tipo === "cero" ? "ok" : ""}">${tipo === "cero" ? "💲 Sin cobro: total $0 este mes" : tipo === "undia" ? `💲 Cobro de 1 día: ${fmt(calcularTotalPagar(r, store.currentMonth))}` : `💲 Cobro normal: ${fmt(calcularTotalPagar(r, store.currentMonth))}`}</span>
       <span class="ret-chip ${carta ? "ok" : ""}">${carta ? "✅ Carta a la EPS subida" : "✉️ Falta la carta a la EPS"}</span>
     </div>
     <div class="traslado-acciones">
       <button type="button" class="btn small primary" data-ret-carta="1">📄 Carta de retiro a la EPS</button>
       <button type="button" class="btn small" data-ret-adjuntar="1">📎 ${carta ? "Cambiar carta enviada" : "Subir carta enviada"}</button>
       ${carta ? `<button type="button" class="btn small ghost" data-ret-vercarta="1">👁️ Ver carta enviada</button>` : ""}
-      <button type="button" class="btn small ghost" data-ret-sincobro="1">${sinCobro ? "↩️ Volver a cobrar" : "💲 Dejar en $0 (sin cobro)"}</button>
+      ${tipo !== "normal" ? `<button type="button" class="btn small ghost" data-ret-cobro="normal">↩️ Cobro normal</button>` : ""}
+      ${tipo !== "cero" ? `<button type="button" class="btn small ghost" data-ret-cobro="cero" ${puedeCero ? "" : `disabled title="Pasó más de un mes sin pagar: debe pagar mínimo 1 día"`}>💲 Dejar en $0</button>` : ""}
+      ${tipo !== "undia" ? `<button type="button" class="btn small ghost" data-ret-cobro="undia">📅 Cobrar 1 día</button>` : ""}
+    </div>
+    ${!puedeCero ? `<div class="ret-nota">⚠️ No pagó el mes anterior: el retiro no puede ir en $0, debe pagar mínimo 1 día.</div>` : ""}
+    <div>
     </div>
   </div>`;
 }
@@ -17803,7 +17838,7 @@ function textoCartaRetiroEps(r){
   </div>`;
 }
 document.addEventListener("click", async (e) => {
-  const b = e.target.closest("[data-ret-carta],[data-ret-adjuntar],[data-ret-vercarta],[data-ret-sincobro]");
+  const b = e.target.closest("[data-ret-carta],[data-ret-adjuntar],[data-ret-vercarta],[data-ret-cobro]");
   if (!b) return;
   const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
   if (!r) return;
@@ -17817,15 +17852,15 @@ document.addEventListener("click", async (e) => {
     if (error || !data){ alertApp("No se encontró la carta en la nube para este mes."); return; }
     window.open(data.signedUrl, "_blank"); return;
   }
-  if (b.dataset.retSincobro){
-    const poner = !tieneMarcaRetiro(r, marcaRetiroSinCobro());
-    if (!(await confirmarApp(poner
-      ? `¿Dejar el retiro de ${r["Nombre del Afiliado"]} en $0? Este mes no se le cobra nada y no cuenta como ingreso.`
-      : `¿Volver a cobrar el retiro de ${r["Nombre del Afiliado"]}? Este mes se le cobra lo normal.`))) return;
-    ponerMarcaRetiro(r, marcaRetiroSinCobro(), poner);
+  if (b.dataset.retCobro){
+    const tipo = b.dataset.retCobro;
+    if (tipo === "cero" && !retiroPuedeIrEnCero(r)){ alertApp("No se puede dejar en $0: pasó más de un mes sin pagar. Debe pagar mínimo 1 día."); return; }
+    const txt = { normal: "cobrarle el mes normal", cero: "dejarlo en $0 (sin cobro)", undia: "cobrarle solo 1 día de aportes más el servicio" }[tipo];
+    if (!(await confirmarApp(`¿Retiro de ${r["Nombre del Afiliado"]}: ${txt}?`))) return;
+    ponerCobroRetiro(r, tipo);
     r["_ultimaEdicion"] = new Date().toISOString();
     saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
-    showToast(poner ? "💲 Retiro sin cobro: total $0 este mes." : "Retiro con cobro normal.");
+    showToast(tipo === "cero" ? "💲 Retiro sin cobro: total $0 este mes." : `Retiro: ${fmt(calcularTotalPagar(r, store.currentMonth))} este mes.`);
   }
 });
 document.getElementById("cartaRetiroFile").addEventListener("change", async (e) => {
