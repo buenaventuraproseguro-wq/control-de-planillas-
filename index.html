@@ -1086,6 +1086,17 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .prs-doc .prs-via{ color:#1E7A46; font-size:10.5px; }
   .prs-doc .prs-pie{ margin-top:14px; font-size:10px; color:#666; border-top:1px solid #ddd; padding-top:6px; }
   .prs-doc .prs-persona{ break-inside:avoid; margin-bottom:12px; }
+  .ret-sincobro{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; font-size:13px; }
+  .ret-sincobro input{ margin-top:3px; width:18px; height:18px; flex:none; }
+  .ret-sincobro small{ display:block; color:var(--muted, #666); font-size:11.5px; margin-top:2px; }
+  .ret-panel{ border:1px solid var(--line); border-left:4px solid var(--retiro); border-radius:10px; padding:10px 12px; margin:8px 0; font-size:13px; }
+  .ret-panel .ret-tit{ font-weight:700; color:var(--retiro); }
+  .ret-panel .ret-estado{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; }
+  .ret-panel .ret-chip{ font-size:11.5px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--retiro-bg); color:var(--retiro); }
+  .ret-panel .ret-chip.ok{ background:#E3F3EA; color:#1E7A46; }
+  .ret-panel .traslado-acciones{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .prs-doc .cr-dest{ margin:14px 0 12px; } .prs-doc .cr-asunto{ margin:0 0 12px; }
+  .prs-doc .cr-firma{ margin-top:46px; max-width:300px; font-size:12px; break-inside:avoid; }
   .prs-pads{ display:grid; grid-template-columns:1fr; gap:10px; margin-top:12px; max-width:560px; }
   @media (max-width:640px){ .prs-pads{ grid-template-columns:1fr; } .prs-doc .prs-datos{ grid-template-columns:1fr; } .prs-doc .prs-firmas{ gap:14px; } }
   .prs-pads canvas{ display:block; width:100%; height:auto; aspect-ratio:900/300; background:#fff; border:2px dashed #9AA5B4; border-radius:10px; touch-action:none; }
@@ -3069,6 +3080,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
 </div>
 
+<input type="file" id="cartaRetiroFile" accept="image/*,application/pdf" hidden>
 <!-- Retirar cliente -->
 <div class="overlay" id="overlayRetiro">
   <div class="modal" style="max-width:480px;">
@@ -3081,10 +3093,15 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
           <option>El cliente lo pidió</option>
           <option>El responsable / empleador lo retiró</option>
           <option>Reportado en la planilla</option>
+          <option>Abandono del puesto de trabajo</option>
+          <option>Terminación del contrato</option>
+          <option>Renuncia</option>
           <option>Otro</option>
         </select>
       </div>
       <div class="field span2"><label>Nota (opcional)</label><input type="text" id="retiroNota" maxlength="150" placeholder="Ej: se va a trabajar con otra empresa"></div>
+      <label class="span2 ret-sincobro"><input type="checkbox" id="retiroSinCobro"> <span><b>Retiro sin cobro ($0)</b><small>Este mes no se le cobra nada: no suma en «Total a cobrar», no sale en cobros ni recordatorios y no cuenta como ingreso.</small></span></label>
+      <label class="span2 ret-sincobro"><input type="checkbox" id="retiroCarta" checked> <span><b>Armar la carta de retiro para la EPS</b><small id="retiroCartaEps">Al guardar sale la carta membretada, dirigida a la EPS de la ficha y con el motivo, lista para imprimir o guardar en PDF.</small></span></label>
     </div>
     <div class="modal-sub" id="retiroAviso" style="margin-top:10px;"></div>
     <div class="modal-actions">
@@ -7759,7 +7776,7 @@ function construirInformeProsegurosnet(){
 
   // Si un retiro tiene un valor registrado (algo ya se gastó en él antes de retirarse),
   // ese valor se resta de la ganancia y se suma como gasto — no como ingreso.
-  const gastoRetiros = retiros.reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
+  const gastoRetiros = retiros.filter(r => !retiroSinCobro(r)).reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
 
   const totalAportesTerceros = totalEps + totalArl + totalAfp + totalCaja;
   const totalGananciaReal = totalCosto + totalExtra - gastoRetiros;
@@ -7844,7 +7861,7 @@ function construirInformeGestiones(){
 function construirInformeGeneral(){
   const todosNomina = records.filter(r => !esConductorExcluido(r));
   const retiros = todosNomina.filter(r => estadoClass(r["Estado Trámite"]) === "RETIRO");
-  const gastoRetiros = retiros.reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
+  const gastoRetiros = retiros.filter(r => !retiroSinCobro(r)).reduce((acc, r) => acc + numOrZero(r["Costo Servicio"]), 0);
   const clientes = todosNomina.filter(r => estadoClass(r["Estado Trámite"]) !== "RETIRO");
   let totalPrgRecaudado = 0, totalPrgGanancia = 0;
   clientes.forEach(r => {
@@ -9446,6 +9463,7 @@ async function pasarADiasProporcionales(r){
 // Calcula el total a pagar de un registro para el mes que se está viendo, aplicando
 // prorrateo, la excepción de afiliación y la exclusión de pensión cuando corresponde.
 function calcularTotalPagar(r, mesActual){
+  if (retiroSinCobro(r)) return 0; // retiro sin cobro: este mes no se le cobra nada
   const prorr = calcProrrateo(r, mesActual);
   const esAfiliacion = estadoClass(r["Estado Trámite"]) === "AFILIACION";
   const esDiasProp = estadoClass(r["Estado Trámite"]) === "DIAS_PROPORCIONALES";
@@ -9560,6 +9578,7 @@ function showBreakdown(cedula){
 
   const totalPagar = calcularTotalPagar(r, store.currentMonth);
   document.getElementById("bPagar").textContent = fmt(totalPagar);
+  if (retiroSinCobro(r)) ["bCosto", "bEps", "bArl", "bTotal", "bCaja"].forEach(id => { document.getElementById(id).textContent = fmt(0); });
 
   // Para "Actualización de Conductores" solo interesa el valor del servicio y el total;
   // los cobros de EPS/ARL/Pensión/Caja son propios de PROSEGUROSNET y otras empresas.
@@ -9646,6 +9665,7 @@ function showBreakdown(cedula){
     const fechaTexto = r["Recordatorio"].split("-").reverse().join("/");
     avisosHtml += `<div class="cliente-tarea-aviso vencida">🔔 Recordatorio para hoy/vencido: ${fechaTexto}</div>`;
   }
+  avisosHtml = panelRetiroFicha(r) + avisosHtml;
   document.getElementById("bTareasCliente").innerHTML = avisosHtml;
 
   // Eliminar cliente: solo el administrador (21-nov-2026)
@@ -17392,9 +17412,27 @@ function asegurarSoportesRetiro(){
   cargarSoportesRetiro(store.currentMonth).finally(() => { _cargandoSoportes = false; if (typeof renderList === "function") renderList(searchInput.value); });
 }
 const MARCA_RETIRO_CONFIRMADO = "Confirmado sin soporte";
+/* ---- Retiro sin cobro ($0) y carta de retiro a la EPS (26-nov-2026) ----
+   Se anotan como marcas dentro de «Motivo Retiro» (ya se guarda en la nube), así no hace falta
+   cambiar la base. Retiro sin cobro: ese mes el total a pagar es $0 (no suma en cobros, ni en
+   recordatorios, ni como ingreso). La carta enviada a la EPS cuenta como soporte del retiro. */
+function marcaRetiroSinCobro(){ return "Sin cobro ($0)"; }
+function marcaCartaEps(){ return "Carta a la EPS enviada"; }
+function tieneMarcaRetiro(r, m){ return String((r && r["Motivo Retiro"]) || "").split(" · ").some(p => p.trim() === m); }
+function ponerMarcaRetiro(r, m, si){
+  const partes = String(r["Motivo Retiro"] || "").split(" · ").map(p => p.trim()).filter(p => p && p !== m);
+  if (si) partes.push(m);
+  r["Motivo Retiro"] = partes.join(" · ");
+}
+function motivoRetiroLimpio(r){
+  return String(r["Motivo Retiro"] || "").split(" · ").map(p => p.trim()).filter(p => p && ![marcaRetiroSinCobro(), marcaCartaEps(), MARCA_RETIRO_CONFIRMADO].includes(p)).join(" · ");
+}
+function retiroSinCobro(r){ return !!r && (isRetiro(r) || retiroPendientePlanilla(r)) && tieneMarcaRetiro(r, marcaRetiroSinCobro()); }
+function rutaCartaRetiro(r){ return `${String(r["Cédula"]).trim()}/carta_retiro_eps_${mesISODe(store.currentMonth)}`; }
 function retiroConfirmadoSinSoporte(r){ return esOtraEmpresa(r) && String(r["Motivo Retiro"] || "").includes(MARCA_RETIRO_CONFIRMADO); }
 function tieneSoporteRetiro(r){
   if (retiroConfirmadoSinSoporte(r)) return true; // otra empresa: se confirmó retirar sin soporte
+  if (tieneMarcaRetiro(r, marcaCartaEps())) return true; // se subió la carta de retiro enviada a la EPS
   if (String(r["No. Planilla Pagada"] || "").trim()) return true;
   if (r["Imagen PlanillaPagada"] || r["Imagen ComprobantePago"]) return true;
   return soportesRetiroNube.mes === store.currentMonth && soportesRetiroNube.cedulas.has(String(r["Cédula"]).trim());
@@ -17409,7 +17447,7 @@ function tieneSoporteRetiro(r){
 function estadoPorPagar(r){ const ec = estadoClass(r && r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
 function dineroRecibido(r){ return !!(r && r["Dinero Recibido"]) && estadoPorPagar(r); }
 // Debe todavía este mes (SIN PAGO / DÍAS PROPORCIONALES y sin el dinero recibido)
-function porPagarSinDinero(r){ return estadoPorPagar(r) && !dineroRecibido(r); }
+function porPagarSinDinero(r){ return estadoPorPagar(r) && !dineroRecibido(r) && !retiroSinCobro(r); }
 function tagDineroRecibido(r){
   if (!dineroRecibido(r)) return "";
   const pla = tienePlanillaPago(r), comp = tieneComprobantePago(r);
@@ -17461,7 +17499,9 @@ function tagRetiroPendiente(r){
   if (!retiroSinSoporte(r)) return "";
   return esOtraEmpresa(r)
     ? `<span class="tag-retiro-pend" title="Falta cargar la imagen o la planilla de la novedad de retiro">📎 Falta soporte del retiro</span>`
-    : `<span class="tag-retiro-pend" title="Falta la planilla del retiro: todavía debe pagarse">🚪 Retiro sin planilla · debe pagar</span>`;
+    : retiroSinCobro(r)
+      ? `<span class="tag-retiro-pend" title="Retiro sin cobro ($0): falta la planilla o la carta del retiro">🚪 Retiro sin soporte · $0</span>`
+      : `<span class="tag-retiro-pend" title="Falta la planilla del retiro: todavía debe pagarse">🚪 Retiro sin planilla · debe pagar</span>`;
 }
 // ---- Datos incompletos: lo que le falta a cada cliente activo ----
 function faltantesCliente(r){
@@ -17668,6 +17708,9 @@ document.getElementById("retirarBtn").addEventListener("click", async () => {
   document.getElementById("retiroFecha").value = fechaHoyISO();
   document.getElementById("retiroMotivo").selectedIndex = 0;
   document.getElementById("retiroNota").value = "";
+  document.getElementById("retiroSinCobro").checked = false;
+  document.getElementById("retiroCarta").checked = true;
+  document.getElementById("retiroCartaEps").innerHTML = `Al guardar sale la carta membretada dirigida a <b>${escHtml(String(r["EPS"] || "").trim() || "la EPS (falta en la ficha)")}</b>, con el motivo, lista para imprimir o guardar en PDF.`;
   avisoRetiro();
   document.getElementById("overlayRetiro").classList.add("show");
 });
@@ -17694,18 +17737,109 @@ document.getElementById("retiroGuardarBtn").addEventListener("click", () => {
   const nota = document.getElementById("retiroNota").value.trim();
   r["Fecha Retiro"] = fecha;
   r["Motivo Retiro"] = nota ? `${motivo}: ${nota}` : motivo;
+  ponerMarcaRetiro(r, marcaRetiroSinCobro(), document.getElementById("retiroSinCobro").checked);
   const programado = indiceMesDeFecha(fecha) > indiceMes(store.currentMonth);
   const esperaPlanilla = !programado && !esOtraEmpresa(r) && !esConductorExcluido(r) && !tieneSoporteRetiro(r);
   if (!programado && !esperaPlanilla) r["Estado Trámite"] = "RETIRO";
-  const obs = `retiro ${fechaCortaRetiro(fecha)}: ${r["Motivo Retiro"].toLowerCase()}`;
+  const obs = `retiro ${fechaCortaRetiro(fecha)}: ${r["Motivo Retiro"].toLowerCase()}`; // incluye «sin cobro ($0)» si se marcó
   r["Observación"] = r["Observación"] ? `${r["Observación"]} | ${obs}` : obs;
   r["_ultimaEdicion"] = new Date().toISOString();
   saveStore();
   document.getElementById("overlayRetiro").classList.remove("show");
   renderList(searchInput.value); showBreakdown(r["Cédula"]);
-  if (!programado && !esperaPlanilla && esOtraEmpresa(r) && !tieneSoporteRetiro(r)){ setTimeout(() => confirmarRetiroSinSoporte(r), 50); return; }
+  const pideSoporte = !programado && !esperaPlanilla && esOtraEmpresa(r) && !tieneSoporteRetiro(r);
+  if (document.getElementById("retiroCarta").checked){
+    // Primero la carta; si es de otra empresa y falta soporte, la pregunta sale al cerrar la impresión.
+    if (pideSoporte) window.addEventListener("afterprint", () => setTimeout(() => confirmarRetiroSinSoporte(r), 50), { once: true });
+    setTimeout(() => imprimirHtmlPrs(textoCartaRetiroEps(r)), 300);
+    if (pideSoporte) return;
+  }
+  if (pideSoporte){ setTimeout(() => confirmarRetiroSinSoporte(r), 50); return; }
   if (esperaPlanilla){ showToast(`🧾 Retiro pendiente: ${r["Nombre del Afiliado"]} pasa a RETIRO cuando se suba la planilla o el soporte.`); return; }
   showToast(programado ? `📅 Retiro programado para el ${fechaCortaRetiro(fecha)}.` : `🚪 ${r["Nombre del Afiliado"]} quedó en RETIRO y no pasará al mes siguiente.`);
+});
+
+/* ---- En la ficha: cuadro del retiro (sin cobro, carta a la EPS) ---- */
+function panelRetiroFicha(r){
+  if (!r || esConductorExcluido(r) || !(isRetiro(r) || retiroPendientePlanilla(r) || retiroProgramado(r))) return "";
+  const sinCobro = tieneMarcaRetiro(r, marcaRetiroSinCobro()), carta = tieneMarcaRetiro(r, marcaCartaEps());
+  const estado = isRetiro(r) ? "En RETIRO" : retiroProgramado(r) ? "Retiro programado" : "Retiro pendiente de soporte";
+  const motivo = motivoRetiroLimpio(r);
+  return `<div class="ret-panel">
+    <div class="ret-tit">🚪 ${estado}${r["Fecha Retiro"] ? ` · desde el ${escHtml(fechaCortaRetiro(r["Fecha Retiro"]))}` : ""}</div>
+    ${motivo ? `<div>${escHtml(motivo)}</div>` : ""}
+    <div class="ret-estado">
+      <span class="ret-chip ${sinCobro ? "ok" : ""}">${sinCobro ? "💲 Sin cobro: total $0 este mes" : `💲 Se cobra este mes: ${fmt(calcularTotalPagar(r, store.currentMonth))}`}</span>
+      <span class="ret-chip ${carta ? "ok" : ""}">${carta ? "✅ Carta a la EPS subida" : "✉️ Falta la carta a la EPS"}</span>
+    </div>
+    <div class="traslado-acciones">
+      <button type="button" class="btn small primary" data-ret-carta="1">📄 Carta de retiro a la EPS</button>
+      <button type="button" class="btn small" data-ret-adjuntar="1">📎 ${carta ? "Cambiar carta enviada" : "Subir carta enviada"}</button>
+      ${carta ? `<button type="button" class="btn small ghost" data-ret-vercarta="1">👁️ Ver carta enviada</button>` : ""}
+      <button type="button" class="btn small ghost" data-ret-sincobro="1">${sinCobro ? "↩️ Volver a cobrar" : "💲 Dejar en $0 (sin cobro)"}</button>
+    </div>
+  </div>`;
+}
+function textoCartaRetiroEps(r){
+  const nombre = nombrePropio(r["Nombre del Afiliado"] || ""), ced = String(r["Cédula"] || "").trim();
+  const eps = String(r["EPS"] || "").trim();
+  const fechaRet = r["Fecha Retiro"] || hoyISO();
+  const otra = esOtraEmpresa(r);
+  const aportante = otra ? String(r["Empresa"] || "").trim() : nombrePropio(EMPRESA.aportante_nombre);
+  const docAportante = otra ? "" : `${EMPRESA.aportante_tipo_doc} ${EMPRESA.aportante_doc}`;
+  const motivo = motivoRetiroLimpio(r);
+  const codigo = `RET-${ced}-${String(fechaRet).slice(0, 7).replace("-", "")}`;
+  return `<div class="prs-doc">${cabeceraPrs(`${escHtml(lugarPropio(EMPRESA.municipio))}, ${escHtml(fechaEnPalabras(hoyISO()))}<br>Ref. <b>${escHtml(codigo)}</b>`)}
+    <div class="cr-dest">Señores<br><b>${escHtml(eps ? eps.toUpperCase() : "EPS ____________________")}</b><br>Área de afiliaciones y novedades<br>${escHtml(lugarPropio(EMPRESA.municipio))}</div>
+    <p class="cr-asunto"><b>Asunto:</b> Novedad de retiro del afiliado ${escHtml(nombre)}, C.C. ${escHtml(ced)}</p>
+    <p>Cordial saludo.</p>
+    <p>Por medio de la presente, <b>${escHtml(aportante || "el aportante")}</b>${docAportante ? `, identificado(a) con ${escHtml(docAportante)}` : ""}, en calidad de aportante, informa que el(la) señor(a) <b>${escHtml(nombre)}</b>, identificado(a) con cédula de ciudadanía n.º <b>${escHtml(ced)}</b>, se retira como cotizante a partir del <b>${escHtml(fechaEnPalabras(fechaRet))}</b>.</p>
+    ${motivo ? `<p><b>Motivo del retiro:</b> ${escHtml(motivo)}.</p>` : ""}
+    <p>Solicitamos registrar la novedad de retiro y dejar de causar aportes a su nombre por parte de este aportante desde esa fecha. La novedad se reporta también en la planilla PILA del período correspondiente.</p>
+    <p style="text-align:left">Para cualquier información adicional puede comunicarse al WhatsApp ${escHtml(EMPRESA.whatsapp)} o al correo ${escHtml(EMPRESA.correo)}.</p>
+    <p>Atentamente,</p>
+    <div class="cr-firma"><span class="prs-linea"></span><b>${escHtml(aportante || "")}</b>${docAportante ? `<br>${escHtml(docAportante)}` : ""}<br>Aportante${otra ? "" : ` · ${escHtml(EMPRESA.marca)}`}</div>
+    <div class="prs-pie">Carta generada por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · Ref. ${escHtml(codigo)}. Datos tratados según la Ley 1581 de 2012 (${escHtml(EMPRESA.web)}/privacidad).</div>
+  </div>`;
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-ret-carta],[data-ret-adjuntar],[data-ret-vercarta],[data-ret-sincobro]");
+  if (!b) return;
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  if (!r) return;
+  if (b.dataset.retCarta){ imprimirHtmlPrs(textoCartaRetiroEps(r)); return; }
+  if (b.dataset.retAdjuntar){
+    if (!cloudDb || !navigator.onLine){ alertApp("Sin internet: se necesita conexión para subir la carta."); return; }
+    const inp = document.getElementById("cartaRetiroFile"); inp.value = ""; inp.click(); return;
+  }
+  if (b.dataset.retVercarta){
+    const { data, error } = await sb.storage.from("documentos-clientes").createSignedUrl(rutaCartaRetiro(r), 3600);
+    if (error || !data){ alertApp("No se encontró la carta en la nube para este mes."); return; }
+    window.open(data.signedUrl, "_blank"); return;
+  }
+  if (b.dataset.retSincobro){
+    const poner = !tieneMarcaRetiro(r, marcaRetiroSinCobro());
+    if (!(await confirmarApp(poner
+      ? `¿Dejar el retiro de ${r["Nombre del Afiliado"]} en $0? Este mes no se le cobra nada y no cuenta como ingreso.`
+      : `¿Volver a cobrar el retiro de ${r["Nombre del Afiliado"]}? Este mes se le cobra lo normal.`))) return;
+    ponerMarcaRetiro(r, marcaRetiroSinCobro(), poner);
+    r["_ultimaEdicion"] = new Date().toISOString();
+    saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
+    showToast(poner ? "💲 Retiro sin cobro: total $0 este mes." : "Retiro con cobro normal.");
+  }
+});
+document.getElementById("cartaRetiroFile").addEventListener("change", async (e) => {
+  const archivo = e.target.files && e.target.files[0];
+  const r = records.find(x => String(x["Cédula"]) === String(activeCedula));
+  if (!archivo || !r) return;
+  if (archivo.size > 15 * 1024 * 1024){ alertApp("El archivo pesa más de 15 MB. Súbalo más liviano (una foto o un PDF en calidad normal)."); return; }
+  showToast("Subiendo la carta…");
+  const { error } = await sb.storage.from("documentos-clientes").upload(rutaCartaRetiro(r), archivo, { upsert: true, contentType: archivo.type || "application/octet-stream" });
+  if (error){ alertApp(`No se pudo subir la carta: ${error.message}`); return; }
+  ponerMarcaRetiro(r, marcaCartaEps(), true);
+  r["_ultimaEdicion"] = new Date().toISOString();
+  saveStore(); renderList(searchInput.value); showBreakdown(r["Cédula"]);
+  showToast(`✅ Carta a la EPS guardada como soporte del retiro de ${r["Nombre del Afiliado"]}.`);
 });
 
 /* ================= AYUDAS INTELIGENTES (19–24) ================= */
