@@ -17899,6 +17899,7 @@ function abrirPrestamos(){
   document.getElementById("overlayInforme").classList.add("show");
   if (!prestamosCargados) cargarPrestamos();
 }
+let prVerBorrados = false;
 function pintarPrestamos(){
   const hoy = hoyISO();
   const activos = prestamos.filter(p => p.estado !== "anulado");
@@ -17906,18 +17907,18 @@ function pintarPrestamos(){
   const suma = (a, f) => a.reduce((s, p) => s + f(p), 0);
   const fila = (p) => {
     const abonado = (Number(p.valor) || 0) - saldoPrestamo(p), venc = p.estado === "pendiente" && p.vence && p.vence < hoy;
-    const estado = p.estado === "anulado" ? '<span class="muted">Anulado</span>' : p.estado === "pagado" || saldoPrestamo(p) === 0 ? '<b style="color:#1E7A46">Recuperado ✓</b>' : venc ? '<b style="color:#B42318">Vencido</b>' : "Pendiente";
+    const estado = p.estado === "anulado" ? '<span class="muted">Borrado</span>' : p.estado === "pagado" || saldoPrestamo(p) === 0 ? '<b style="color:#1E7A46">Recuperado ✓</b>' : venc ? '<b style="color:#B42318">Vencido</b>' : "Pendiente";
     return `<tr${p.estado === "anulado" ? ' style="opacity:.55"' : ""}>
       <td class="muted">${escHtml(fechaCorta(p.fecha))}</td>
       <td><b>${escHtml(nombrePropio(p.persona || ""))}</b>${p.motivo ? `<br><small class="muted">${escHtml(p.motivo)}</small>` : ""}${(p.abonos || []).length ? `<br><small class="muted">Abonos: ${p.abonos.map(a => `${escHtml(fechaCorta(a.fecha))} ${fmt(a.valor)}`).join(" · ")}</small>` : ""}</td>
       <td class="num">${fmt(p.valor)}</td><td class="num">${fmt(abonado)}</td><td class="num"><b>${fmt(saldoPrestamo(p))}</b></td>
       <td>${p.vence ? escHtml(fechaCorta(p.vence)) : "—"}<br><small>${estado}</small>${p.estado !== "anulado" ? `<br><small>${firmaDe(p.id, "trabajador") ? '<b style="color:#1E7A46">✍️ Firmado</b>' : enlacePendienteDe(p.id) ? "⏳ Firma pedida" : '<span class="muted">Sin firma</span>'}</small>` : ""}</td>
-      </tr>${p.estado !== "anulado" ? `<tr><td></td><td colspan="5" style="padding-top:0"><div style="display:flex;gap:6px;flex-wrap:wrap">${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? `<button type="button" class="btn small primary" data-pr-abonar="${escHtml(p.id)}">💵 Registrar abono</button> <button type="button" class="btn small" data-pr-pagado="${escHtml(p.id)}">✓ Pagó todo</button> ` : ""}<button type="button" class="btn small" data-pr-soporte="${escHtml(p.id)}">✍️ Soporte y firma</button>${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? ` <button type="button" class="btn small ghost" data-pr-anular="${escHtml(p.id)}">Anular</button>` : ""}</div></td></tr>` : ""}`;
+      </tr>${p.estado !== "anulado" ? `<tr><td></td><td colspan="5" style="padding-top:0"><div style="display:flex;gap:6px;flex-wrap:wrap">${p.estado === "pendiente" && saldoPrestamo(p) > 0 ? `<button type="button" class="btn small primary" data-pr-abonar="${escHtml(p.id)}">💵 Registrar abono</button> <button type="button" class="btn small" data-pr-pagado="${escHtml(p.id)}">✓ Pagó todo</button> ` : ""}<button type="button" class="btn small" data-pr-soporte="${escHtml(p.id)}">✍️ Soporte y firma</button> <button type="button" class="btn small ghost" data-pr-anular="${escHtml(p.id)}" title="Para un préstamo mal creado: deja de contar y se esconde, pero queda guardado">🗑️ Borrar</button></div></td></tr>` : ""}`;
   };
   document.getElementById("informeContenido").innerHTML = `
     <div class="ck-kpis" style="margin-bottom:12px">
       <div class="ck-kpi"><small>Por recuperar</small><b style="color:${pend.length ? "#B42318" : "#1E7A46"}">${fmt(suma(pend, saldoPrestamo))}</b><span>${pend.length} préstamo${pend.length === 1 ? "" : "s"} pendiente${pend.length === 1 ? "" : "s"}</span></div>
-      <div class="ck-kpi"><small>Prestado en total</small><b>${fmt(suma(activos, p => Number(p.valor) || 0))}</b><span>Sin contar los anulados</span></div>
+      <div class="ck-kpi"><small>Prestado en total</small><b>${fmt(suma(activos, p => Number(p.valor) || 0))}</b><span>Sin contar los borrados</span></div>
       <div class="ck-kpi"><small>Ya recuperado</small><b>${fmt(suma(activos, p => (Number(p.valor) || 0) - saldoPrestamo(p)))}</b><span>Abonos y pagos completos</span></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button type="button" class="btn primary" id="prNuevoBtn">＋ Nuevo préstamo</button>${prestamos.length ? `<button type="button" class="btn" id="prInformeBtn">🖨️ Informe detallado</button>` : ""}</div>
@@ -17929,7 +17930,8 @@ function pintarPrestamos(){
       <h3 style="font-size:14px;margin:4px 0 6px">Cada préstamo</h3>` : ""}
     ${!prestamosCargados ? `<div class="empty">Cargando préstamos…</div>` : prestamos.length ? `<div class="hoy-tabla-caja"><table class="hoy-tabla">
       <thead><tr><th>Fecha</th><th>A quién y para qué</th><th class="num">Prestado</th><th class="num">Abonado</th><th class="num">Saldo</th><th>Recuperar antes de</th></tr></thead>
-      <tbody>${[...pend, ...prestamos.filter(p => !pend.includes(p))].map(fila).join("")}</tbody></table></div>`
+      <tbody>${[...pend, ...prestamos.filter(p => !pend.includes(p) && (prVerBorrados || p.estado !== "anulado"))].map(fila).join("")}</tbody></table></div>
+      ${prestamos.some(p => p.estado === "anulado") ? `<button type="button" class="btn small ghost" id="prVerBorradosBtn" style="margin-top:8px">${prVerBorrados ? "Esconder los borrados" : `Ver los borrados (${prestamos.filter(p => p.estado === "anulado").length})`}</button>` : ""}`
       : `<div class="empty">Todavía no hay préstamos. Toque «＋ Nuevo préstamo».</div>`}`;
 }
 async function guardarPrestamo(id, cambios){
@@ -17954,6 +17956,7 @@ async function nuevoPrestamo(){
 }
 document.getElementById("informeContenido").addEventListener("click", async (e) => {
   if (e.target.closest("#prNuevoBtn")){ await nuevoPrestamo(); return; }
+  if (e.target.closest("#prVerBorradosBtn")){ prVerBorrados = !prVerBorrados; pintarPrestamos(); return; }
   if (e.target.closest("#prInformeBtn")){ imprimirHtmlPrs(informeDetalladoPrestamos()); return; }
   const est = e.target.closest("[data-pr-estado]"); if (est){ imprimirHtmlPrs(informeDetalladoPrestamos(est.dataset.prEstado)); return; }
   const sop = e.target.closest("[data-pr-soporte]"); if (sop){ abrirSoportePrestamo(sop.dataset.prSoporte); return; }
@@ -17973,8 +17976,11 @@ document.getElementById("informeContenido").addEventListener("click", async (e) 
     const abonos = [...(p.abonos || []), { fecha: hoyISO(), valor: saldo }];
     if (await guardarPrestamo(p.id, { abonos, estado: "pagado" })) showToast(`✅ Préstamo de ${quien} recuperado.`);
   } else if (an){
-    if (!(await confirmarApp(`¿Anular el préstamo de ${quien} por ${fmt(p.valor)}? No se borra: queda en la lista como anulado y deja de contar.`))) return;
-    if (await guardarPrestamo(p.id, { estado: "anulado" })) showToast("Préstamo anulado.");
+    const d = await pedirDatosApp(`Borrar el préstamo de ${quien} por ${fmt(p.valor)} del ${fechaCorta(p.fecha)}. Deja de contar en saldos, informes y en el resultado del mes. Por seguridad queda guardado aparte («Ver los borrados»).`,
+      [{ id: "por", label: "Por qué se borra", placeholder: "Ej.: mal creado, valor equivocado, repetido" }], "🗑️ Borrar préstamo");
+    if (!d) return;
+    const nota = `Borrado el ${fechaCorta(hoyISO())}: ${d.por}`;
+    if (await guardarPrestamo(p.id, { estado: "anulado", motivo: p.motivo ? `${p.motivo} · ${nota}` : nota })) showToast(`🗑️ Préstamo de ${quien} borrado.`);
   }
   pintarPrestamos(); renderContaPanel();
 });
@@ -18066,7 +18072,7 @@ function imprimirHtmlPrs(html){
 // Agrupa los préstamos por trabajador (por el nombre escrito)
 function prestamosPorPersona(lista){
   const g = new Map();
-  lista.forEach(p => { const k = normalizarTexto(p.persona || ""); if (!g.has(k)) g.set(k, { clave: k, nombre: nombrePropio(p.persona || ""), cedula: "", lista: [] }); const x = g.get(k); x.lista.push(p); if (!x.cedula && p.cedula) x.cedula = p.cedula; });
+  lista.filter(p => p.estado !== "anulado").forEach(p => { const k = normalizarTexto(p.persona || ""); if (!g.has(k)) g.set(k, { clave: k, nombre: nombrePropio(p.persona || ""), cedula: "", lista: [] }); const x = g.get(k); x.lista.push(p); if (!x.cedula && p.cedula) x.cedula = p.cedula; });
   return [...g.values()].map(x => {
     const act = x.lista.filter(p => p.estado !== "anulado");
     const mov = act.flatMap(p => [p.fecha, ...(p.abonos || []).map(a => a.fecha)]).filter(Boolean).sort();
@@ -18090,7 +18096,7 @@ function informeDetalladoPrestamos(clave){
       ${[...g.lista].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).map(p => { const f = firmaDe(p.id, "trabajador");
         return `<p style="margin:8px 0 2px"><b>Préstamo ${escHtml(codigoPrestamo(p))}</b> del ${escHtml(fechaCorta(p.fecha))} · pagar antes del ${escHtml(fechaCorta(p.vence))} · ${p.estado === "anulado" ? "Anulado" : saldoPrestamo(p) === 0 ? "Recuperado" : "Pendiente"} · ${f ? `firmado ${escHtml(fechaHoraCorta(f.firmado_at))}` : "sin firma"}</p>${tablaMovimientos(p)}`; }).join("")}</div>`).join("")}
     ${uno ? `<div class="prs-firmas" style="max-width:340px">${bloqueFirma(null, "EL TRABAJADOR (recibí copia)", uno.nombre, uno.cedula ? "C.C. " + uno.cedula : "C.C. ____________________")}</div>` : ""}
-    <div class="prs-pie">Generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · No incluye préstamos anulados en los totales.</div></div>`;
+    <div class="prs-pie">Generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · No incluye los préstamos borrados.</div></div>`;
 }
 // Recuadro para firmar con el dedo o el mouse
 function crearPadFirma(c){
