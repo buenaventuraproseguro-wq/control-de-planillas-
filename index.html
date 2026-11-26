@@ -530,6 +530,77 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .ck .cg-tarjeta .ico{ background:#1F3D70 !important; color:#fff !important; }
   .ck-kpi small{ color:#3F4A5C !important; font-weight:700 !important; }
   .ck-kpi span{ color:#3F4A5C !important; }
+  /* Contabilidad: pantalla principal clara (26-nov-2026) */
+  .ck2{ --ck-e:#1E7B4F; --ck-e-bg:#DCEFE4; --ck-s:#B4232C; --ck-s-bg:#F6DEDC; --ck-p:#FAF8F4; display:flex; flex-direction:column; gap:14px; }
+  .ck2-cab{ display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .ck2-cab > div:first-child{ flex:1 1 260px; }
+  .ck2-cab h2{ margin:0; font-size:24px; color:var(--titulo); }
+  .ck2-cab p{ margin:2px 0 0; font-size:13px; color:var(--muted); }
+  .ck2-botones{ display:flex; gap:8px; }
+  .ck2-botones .btn{ color:#fff !important; border:0 !important; padding:11px 16px; font-size:14px; font-weight:700; border-radius:10px; }
+  .ck2-ent{ background:var(--ck-e) !important; } .ck2-sal{ background:var(--ck-s) !important; }
+  .ck2-kpis{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; }
+  .ck2-kpi{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; text-align:left; font:inherit; color:var(--ink); display:flex; flex-direction:column; gap:4px; cursor:pointer; }
+  .ck2-kpi small{ font-size:14px; font-weight:700; color:var(--muted); }
+  .ck2-kpi b{ font-size:34px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.5px; line-height:1.15; }
+  .ck2-kpi span{ font-size:13px; color:var(--muted); }
+  .ck2-kpi.e b{ color:var(--ck-e); } .ck2-kpi.s b{ color:var(--ck-s); }
+  .ck2-kpi.r{ background:#17352E; border-color:#17352E; cursor:default; justify-content:space-between; }
+  .ck2-kpi.r small, .ck2-kpi.r span{ color:#CFDCD8; display:block; } .ck2-kpi.r b{ color:#fff; }
+  .ck2-kpi.r.mal{ background:#7A1F25; border-color:#7A1F25; }
+  .ck2-pend{ display:flex; gap:8px; flex-wrap:wrap; }
+  .ck2-chip{ background:var(--gold-bg); border:1px solid #E6D6AE; border-radius:999px; padding:8px 14px; font:inherit; font-size:13.5px; color:#5C4718; cursor:pointer; }
+  .ck2-chip.alerta{ background:var(--ck-s-bg); border-color:#EBB9B5; color:#7A1F25; }
+  .ck2-chip.ok{ background:var(--ck-e-bg); border-color:#B9DEC8; color:#14573A; cursor:default; }
+  .ck2-cuerpo{ display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:16px; align-items:start; }
+  .ck2-card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .ck2-tabs{ display:flex; border-bottom:1px solid var(--line); padding:0 6px; overflow-x:auto; }
+  .ck2-tabs button{ background:none; border:0; border-bottom:3px solid transparent; padding:13px 13px; font:inherit; font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; white-space:nowrap; }
+  .ck2-tabs button.on{ color:var(--titulo); border-bottom-color:var(--gold); }
+  .ck2-buscar{ display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .ck2-buscar input{ flex:1; min-width:0; border:1px solid var(--line); border-radius:9px; padding:9px 12px; font:inherit; font-size:14px; background:var(--ck-p); color:var(--ink); }
+  .ck2-buscar select{ flex:none; max-width:44%; border:1px solid var(--line); border-radius:9px; padding:8px; font:inherit; font-size:13px; background:var(--panel); color:var(--ink); }
+  .ck2-dia{ display:flex; justify-content:space-between; gap:8px; padding:8px 16px; background:var(--ck-p); font-size:12.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; border-top:1px solid var(--line); }
+  .ck2-mov{ display:flex; align-items:center; gap:12px; padding:11px 16px; border-top:1px solid var(--line); }
+  .ck2-mov.clic{ cursor:pointer; } .ck2-mov.clic:hover{ background:var(--ck-p); }
+  .ck2-mov .ic{ width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font-weight:800; flex:none; font-size:13px; }
+  .ck2-mov .ic.e{ background:var(--ck-e-bg); color:var(--ck-e); } .ck2-mov .ic.s{ background:var(--ck-s-bg); color:var(--ck-s); }
+  .ck2-mov .t{ flex:1; min-width:0; } .ck2-mov .t div{ font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ck2-mov .t small{ font-size:12.5px; color:var(--muted); }
+  .ck2-mov .v{ font-weight:800; font-variant-numeric:tabular-nums; font-size:15px; text-align:right; white-space:nowrap; }
+  .ck2-mov .v.e{ color:var(--ck-e); } .ck2-mov .v small{ display:block; font-weight:700; font-size:11.5px; color:#A67C2E; }
+  .ck2-vacio{ padding:18px 16px; color:var(--muted); font-size:14px; }
+  .ck2-ver{ display:block; width:100%; background:none; border:0; border-top:1px solid var(--line); padding:12px; font:inherit; font-size:13.5px; font-weight:700; color:var(--titulo); cursor:pointer; }
+  .ck2-mes{ display:grid; grid-template-columns:140px minmax(0, 1fr) auto; gap:12px; align-items:center; padding:11px 16px; border-top:1px solid var(--line); }
+  .ck2-mes.actual{ background:var(--ck-p); } .ck2-mes .m{ font-weight:700; font-size:14px; }
+  .ck2-mes .barras span{ display:block; height:7px; border-radius:4px; margin:2px 0; } .ck2-mes .b-e{ background:var(--ck-e); } .ck2-mes .b-s{ background:var(--ck-s); opacity:.75; }
+  .ck2-mes .n{ text-align:right; font-variant-numeric:tabular-nums; } .ck2-mes .n small{ display:block; font-size:12px; } .ck2-mes .n b{ font-size:15px; }
+  .ck2-mes .e{ color:var(--ck-e); } .ck2-mes .s{ color:var(--ck-s); }
+  .ck2-lado{ display:flex; flex-direction:column; gap:14px; }
+  .ck2-lado h3{ margin:0; padding:14px 16px 6px; font-size:15px; color:var(--titulo); }
+  .ck2-cat{ padding:7px 16px; } .ck2-cat .l{ display:flex; justify-content:space-between; gap:8px; font-size:13.5px; margin-bottom:5px; }
+  .ck2-cat .bar{ height:8px; background:var(--ck-p); border-radius:5px; } .ck2-cat .bar i{ display:block; height:100%; border-radius:5px; background:var(--ck-s); opacity:.75; }
+  .ck2-lado .ck2-card{ padding-bottom:10px; }
+  .ck2-herr{ display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:6px 12px 2px; }
+  .ck2-herr button{ border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; font-size:13px; font-weight:700; color:var(--titulo); background:var(--ck-p); text-align:left; cursor:pointer; }
+  .ck2-herr button small{ display:block; font-weight:500; color:var(--muted); font-size:11.5px; margin-top:2px; }
+  .ck2-volver{ font-size:13.5px; color:var(--titulo); font-weight:700; text-align:center; }
+  @media (max-width:860px){
+    .ck2-cuerpo{ grid-template-columns:1fr; } .ck2-plata{ display:none; }
+    .ck2-cab h2{ font-size:20px; }
+    .ck2-botones{ display:grid; grid-template-columns:1fr 1fr; width:100%; }
+    .ck2-kpis{ grid-template-columns:1fr 1fr; gap:10px; }
+    .ck2-kpi{ padding:14px; } .ck2-kpi b{ font-size:22px; } .ck2-kpi span{ font-size:12px; }
+    .ck2-kpi.r{ grid-column:1 / -1; flex-direction:row; align-items:center; } .ck2-kpi.r b{ font-size:26px; }
+    .ck2-pend{ flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px; } .ck2-chip{ white-space:nowrap; }
+    .ck2-mov, .ck2-dia{ padding-left:12px; padding-right:12px; }
+    .ck2-mes{ grid-template-columns:96px minmax(0, 1fr) auto; }
+  }
+  @media (prefers-color-scheme: dark){
+    .ck2{ --ck-e:#7BD6A0; --ck-e-bg:#123425; --ck-s:#FF9C93; --ck-s-bg:#3A1917; --ck-p:#1D2A36; }
+    .ck2-chip{ color:var(--gold); border-color:#4A3D1C; } .ck2-chip.alerta{ color:#FFB4A8; border-color:#5A2622; } .ck2-chip.ok{ color:#7BD6A0; border-color:#1F4A33; }
+    .ck2-kpi.r{ background:#0B241E; border-color:#24443B; }
+  }
   .ck-tabla{ background:var(--panel, #fff); border:1px solid var(--line, #E4E7EC); border-radius:14px; overflow:hidden; }
   .ck-fila{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--line, #E4E7EC); font-size:14px; }
   .ck-fila small{ color:var(--muted, #667085); font-size:12.5px; }
@@ -7747,7 +7818,7 @@ function resumenIngresos(mes, fechas){
     if (e === "PAGO" || e === "PAGO_CONDUCTOR" || dineroRecibido(r)){
       const f = dineroRecibido(r) ? { fecha: (() => { const d = new Date(r["Dinero Recibido"]); return isNaN(d) ? "" : isoDia(d); })(), aprox: false } : ((fechas || {})[String(r["Cédula"])] || {});
       res.pagos++; res.ingreso += ingreso; res.total += total; res.aportes += total - ingreso;
-      const l = linea(esEmpresaConductores(r) ? "Conductores" : esServicioMuelles(r) ? "Muelles otras empresas" : "PROSEGUROSNET");
+      const l = linea(esEmpresaConductores(r) ? "Conductores" : esServicioMuelles(r) ? "Muelles otras empresas" : (EMPRESA.marca || "Servicio mensual"));
       l.pagos++; l.ingreso += ingreso;
       res.movimientos.push({ fecha: f.fecha || "", aprox: !!f.aprox, nombre: nombrePropio(r["Nombre del Afiliado"] || ""), ingreso, total, pago: true });
     } else {
@@ -17798,6 +17869,100 @@ if (esModoConta()){
   document.title = "PROSEGUROSNET · Contabilidad";
   try{ document.querySelector(".sidebar-brand-text small").textContent = "Contabilidad"; }catch(e){}
 }
+// Pantalla principal de Contabilidad (26-nov-2026, pedida por Nestor: «menos enredada»).
+// Arriba 3 números grandes (Entró, Salió, Le quedó); debajo lo pendiente; después los movimientos por día
+// y pestañas para lo demás. Solo lee y muestra: no guarda ni cambia nada.
+const contaVista = { tab: "movs", q: "", filtro: "", todos: false, fechas: {}, fechasMes: "", fechasCargando: false };
+function datosConta(){
+  const mes = store.currentMonth || "";
+  let ri = null; try{ ri = resumenIngresos(mes, contaVista.fechasMes === mes ? contaVista.fechas : {}); }catch(e){ console.error(e); }
+  const ym = (() => { try{ return mesISODe(mes); }catch(e){ return ""; } })();
+  const libro = (gastos || []).filter(g => ym && mesDeFecha(g.fecha) === ym);
+  const gas = libro.filter(g => tipoMov(g) === "gasto");
+  const suma = (a) => a.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+  const gasPag = suma(gas.filter(g => g.estado === "pagado")), gasPend = gas.filter(g => g.estado !== "pagado");
+  const pPend = prestamos.filter(p => p.estado === "pendiente" && saldoPrestamo(p) > 0);
+  const pMes = prestamos.filter(p => p.estado !== "anulado" && ym && mesDeFecha(p.fecha) === ym);
+  const sinRecuperarMes = pMes.filter(p => p.estado === "pendiente").reduce((s, p) => s + saldoPrestamo(p), 0);
+  const ingreso = ri ? ri.ingreso : 0;
+  return { mes, ym, ri, libro, gas, gasPag, gasPend, pPend, pMes, sinRecuperarMes, ingreso, salio: gasPag + sinRecuperarMes, suma };
+}
+// Todos los movimientos del mes en una sola lista: pagos de la app, el libro contable y los préstamos.
+function movimientosConta(d){
+  const m = [];
+  (d.ri ? d.ri.movimientos : []).forEach(x => m.push({ fecha: x.fecha || "", tit: x.nombre, sub: x.pago ? "Pago de cliente · se cuenta solo lo de la empresa" : "Ingreso de la empresa", valor: x.ingreso, ent: true, cuenta: true }));
+  d.libro.forEach(g => {
+    const ing = tipoMov(g) === "ingreso", ev = estadoVisual(g);
+    m.push({ fecha: String(g.fecha || "").slice(0, 10), tit: g.descripcion || g.categoria, sub: [g.categoria, g.proveedor, g.medio_pago, g.fijo_mensual ? "🔁 cada mes" : "", ing ? "anotado en el libro" : (ev !== "pagado" && g.vence ? "vence " + fechaCorta(g.vence) : "")].filter(Boolean).join(" · "),
+      valor: Number(g.valor) || 0, ent: ing, cuenta: !ing && ev === "pagado", nota: ing ? "" : ev === "vencido" ? "vencido" : ev === "pendiente" ? "por pagar" : "", libro: true, id: g.id });
+  });
+  d.pMes.forEach(p => {
+    const s = saldoPrestamo(p);
+    m.push({ fecha: String(p.fecha || "").slice(0, 10), tit: "Préstamo a " + nombrePropio(p.persona || ""), sub: ["Préstamos", p.motivo].filter(Boolean).join(" · "), valor: Number(p.valor) || 0, ent: false, cuenta: p.estado === "pendiente" && s > 0, nota: p.estado === "pendiente" && s > 0 ? "por recuperar " + fmt(s) : "recuperado", prestamo: true });
+  });
+  return m;
+}
+function diaLargo(iso){
+  if (!iso) return "Sin fecha";
+  const d = new Date(iso + "T12:00:00");
+  const t = d.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "short" });
+  return (iso === hoyISO() ? "Hoy · " : "") + t;
+}
+function pintarContaLista(){
+  const box = document.getElementById("ckLista"); if (!box) return;
+  const d = datosConta();
+  if (contaVista.tab === "cats"){
+    const lineas = d.ri ? Object.entries(d.ri.lineas).filter(([, l]) => l.ingreso > 0).sort((a, b) => b[1].ingreso - a[1].ingreso) : [];
+    const cats = {}; d.gas.filter(g => g.estado === "pagado").forEach(g => { cats[g.categoria || "Otros"] = (cats[g.categoria || "Otros"] || 0) + (Number(g.valor) || 0); });
+    if (d.sinRecuperarMes) cats["Préstamos sin recuperar"] = d.sinRecuperarMes;
+    const fila = (n, sub, v, cls) => `<div class="ck2-mov"><div class="t"><div>${escHtml(n)}</div>${sub ? `<small>${escHtml(sub)}</small>` : ""}</div><div class="v ${cls}">${fmt(v)}</div></div>`;
+    box.innerHTML = `<div class="ck2-dia"><span>▲ Lo que entró, por línea</span><span>${fmt(d.ingreso)}</span></div>
+      ${lineas.map(([n, l]) => fila(n, l.pagos ? l.pagos + (l.pagos === 1 ? " pago" : " pagos") : "", l.ingreso, "e")).join("") || `<div class="ck2-vacio">Todavía no hay ingresos este mes.</div>`}
+      <div class="ck2-dia"><span>▼ Lo que salió, por categoría</span><span>${fmt(d.salio)}</span></div>
+      ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([n, v]) => fila(n, "", v, "")).join("") || `<div class="ck2-vacio">No hay gastos pagados este mes.</div>`}`;
+    return;
+  }
+  if (contaVista.tab === "meses"){
+    const meses = sortedMonthNames();
+    const filas = meses.map(mes => {
+      let ing = 0; try{ ing = resumenIngresos(mes, {}).ingreso; }catch(e){}
+      const ym = (() => { try{ return mesISODe(mes); }catch(e){ return ""; } })();
+      const gas = (gastos || []).filter(g => tipoMov(g) === "gasto" && g.estado === "pagado" && mesDeFecha(g.fecha) === ym).reduce((s, g) => s + (Number(g.valor) || 0), 0)
+        + prestamos.filter(p => p.estado === "pendiente" && mesDeFecha(p.fecha) === ym).reduce((s, p) => s + saldoPrestamo(p), 0);
+      return { mes, ing, gas, res: ing - gas };
+    }).filter(f => f.ing || f.gas).reverse();
+    const max = Math.max(1, ...filas.map(f => Math.max(f.ing, f.gas)));
+    box.innerHTML = filas.map(f => `<div class="ck2-mes ${f.mes === d.mes ? "actual" : ""}">
+      <div class="m">${escHtml(f.mes)}</div>
+      <div class="barras"><span class="b-e" style="width:${Math.round(f.ing / max * 100)}%"></span><span class="b-s" style="width:${Math.round(f.gas / max * 100)}%"></span></div>
+      <div class="n"><small class="e">▲ ${fmt(f.ing)}</small><small class="s">▼ ${fmt(f.gas)}</small><b class="${f.res < 0 ? "s" : "e"}">${fmt(f.res)}</b></div>
+    </div>`).join("") || `<div class="ck2-vacio">Todavía no hay meses con movimientos.</div>`;
+    return;
+  }
+  // Movimientos por día
+  const q = contaVista.q.trim().toLowerCase(), dig = q.replace(/\D/g, "");
+  let movs = movimientosConta(d).filter(m => {
+    if (contaVista.filtro === "ent" && !m.ent) return false;
+    if (contaVista.filtro === "sal" && m.ent) return false;
+    if (contaVista.filtro === "pend" && !(m.nota && m.nota !== "recuperado")) return false;
+    if (!q) return true;
+    return (m.tit + " " + m.sub).toLowerCase().includes(q) || (dig && String(m.valor).includes(dig));
+  }).sort((a, b) => (b.fecha || "0").localeCompare(a.fecha || "0"));
+  const total = movs.length, LIM = 40;
+  if (!contaVista.todos && !q) movs = movs.slice(0, LIM);
+  const dias = new Map();
+  movs.forEach(m => { const x = dias.get(m.fecha) || []; x.push(m); dias.set(m.fecha, x); });
+  const cargando = contaVista.fechasCargando ? `<div class="ck2-vacio">Buscando las fechas de pago…</div>` : "";
+  box.innerHTML = cargando + ([...dias.entries()].map(([f, xs]) => {
+    const e = xs.filter(m => m.ent).reduce((s, m) => s + m.valor, 0), s = xs.filter(m => !m.ent).reduce((s2, m) => s2 + m.valor, 0);
+    return `<div class="ck2-dia"><span>${escHtml(diaLargo(f))}</span><span>${e ? "+" + fmt(e) : ""}${e && s ? " · " : ""}${s ? "−" + fmt(s) : ""}</span></div>` +
+      xs.map(m => `<div class="ck2-mov ${m.libro ? "clic" : ""}" ${m.libro ? `data-conta-accion="gastos"` : m.prestamo ? `data-conta-accion="prestamos"` : ""}>
+        <span class="ic ${m.ent ? "e" : "s"}">${m.ent ? "▲" : "▼"}</span>
+        <div class="t"><div>${escHtml(m.tit)}</div><small>${escHtml(m.sub)}</small></div>
+        <div class="v ${m.ent ? "e" : ""}">${m.ent ? "+" : "−"}${fmt(m.valor)}${m.nota ? `<small>${escHtml(m.nota)}</small>` : ""}</div></div>`).join("");
+  }).join("") || `<div class="ck2-vacio">${q || contaVista.filtro ? "Nada coincide con la búsqueda." : "Todavía no hay movimientos este mes."}</div>`) +
+    (!contaVista.todos && !q && total > LIM ? `<button type="button" class="ck2-ver" id="ckVerTodos">Ver todos los movimientos del mes (${total})</button>` : "");
+}
 function renderContaPanel(){
   const cont = document.getElementById("contaPanel");
   if (!cont || !esModoConta()) return;
@@ -17806,70 +17971,83 @@ function renderContaPanel(){
       <a class="btn primary" href="./" style="align-self:flex-start">← Ir a la app de Planillas</a>`;
     return;
   }
-  // Mismo estilo del Centro de gestión (tipo Enlace): cifras arriba, accesos por grupos y «Para revisar» al lado.
-  const mes = store.currentMonth || "";
-  let ri = null; try{ ri = resumenIngresos(mes); }catch(e){ console.error(e); }
-  const ym = (() => { try{ return mesISODe(mes); }catch(e){ return ""; } })();
-  const deMes = (gastos || []).filter(g => ym && mesDeFecha(g.fecha) === ym);
-  const gas = deMes.filter(g => (g.tipo || "gasto") === "gasto");
-  const suma = (a) => a.reduce((s, g) => s + (Number(g.valor) || 0), 0);
-  const gasPag = suma(gas.filter(g => g.estado === "pagado")), gasPend = gas.filter(g => g.estado !== "pagado");
-  const ingresoMes = ri ? ri.ingreso : 0;
   if (!prestamosCargados && !prestamosCargando) cargarPrestamos();
-  const pPend = prestamos.filter(p => p.estado === "pendiente" && saldoPrestamo(p) > 0);
-  const pMes = prestamos.filter(p => p.estado !== "anulado" && ym && mesDeFecha(p.fecha) === ym);
-  const sinRecuperarMes = pMes.filter(p => p.estado === "pendiente").reduce((s, p) => s + saldoPrestamo(p), 0);
-  const pVencidos = pPend.filter(p => p.vence && p.vence < hoyISO());
+  const d = datosConta();
+  // Las fechas de los pagos se traen una vez por mes (solo lee)
+  if (d.mes && contaVista.fechasMes !== d.mes && !contaVista.fechasCargando){
+    contaVista.fechasCargando = true;
+    const mes = d.mes;
+    fechasDePago(mes).then(f => { contaVista.fechas = f; contaVista.fechasMes = mes; }).catch(() => { contaVista.fechasMes = mes; })
+      .finally(() => { contaVista.fechasCargando = false; try{ pintarContaLista(); }catch(e){} });
+  }
+  const pVencidos = d.pPend.filter(p => p.vence && p.vence < hoyISO());
   const gb = document.getElementById("gastosBadge"), nVencen = gb && gb.style.display !== "none" ? Number(gb.textContent) || 0 : 0;
-  const ico = (id) => `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`;
-  const acceso = (accion, icono, titulo, sub, badge) => `<button type="button" class="cg-tarjeta" data-conta-accion="${accion}">${ico(icono)}<span class="cg-t">${titulo}<small>${sub}</small></span>${badge ? `<span class="cg-badge">${badge}</span>` : ""}</button>`;
-  const kpi = (titulo, valor, nota, clase) => `<div class="ck-kpi ${clase || ""}"><small>${titulo}</small><b>${valor}</b><span>${nota}</span></div>`;
-  const lineas = ri ? Object.entries(ri.lineas).filter(([, l]) => l.ingreso > 0).sort((a, b) => b[1].ingreso - a[1].ingreso) : [];
-  const revisar = [];
-  if (nVencen) revisar.push(["gastos", "Facturas de proveedores", "Vencidas o vencen en 3 días", nVencen]);
-  if (pPend.length) revisar.push(["prestamos", pVencidos.length ? "Préstamos vencidos sin recuperar" : "Préstamos por recuperar", `${fmt(pPend.reduce((s, p) => s + saldoPrestamo(p), 0))}${pVencidos.length ? " · " + pVencidos.length + " ya pasaron la fecha" : " · antes de fin de mes"}`, pPend.length]);
-  if (gasPend.length) revisar.push(["gastos", "Gastos por pagar del mes", fmt(suma(gasPend)), gasPend.length]);
-  if (ri && ri.porCobrar > 0) revisar.push(["ingresos", "Falta por cobrar", fmt(ri.porCobrar) + " (de eso " + fmt(ri.ingresoPorCobrar) + " es de la empresa)", ""]);
-  revisar.push(["cierre", "Cierre para el contador", "Descárguelo al terminar el mes", ""]);
+  const porRecuperar = d.pPend.reduce((s, p) => s + saldoPrestamo(p), 0);
+  const quedo = d.ingreso - d.salio;
+  const chips = [];
+  if (d.ri && d.ri.ingresoPorCobrar > 0) chips.push(["ingresos", "⏳ Por cobrar", fmt(d.ri.ingresoPorCobrar), "", false]);
+  if (d.gasPend.length) chips.push(["gastos", "🧾 Por pagar", fmt(d.suma(d.gasPend)), nVencen ? `${nVencen} ${nVencen === 1 ? "vence" : "vencen"} pronto` : "", !!nVencen]);
+  if (d.pPend.length) chips.push(["prestamos", "💸 Préstamos por recuperar", fmt(porRecuperar), pVencidos.length ? `${pVencidos.length} ya ${pVencidos.length === 1 ? "pasó" : "pasaron"} la fecha` : "", !!pVencidos.length]);
+  const cats = {}; d.gas.filter(g => g.estado === "pagado").forEach(g => { cats[g.categoria || "Otros"] = (cats[g.categoria || "Otros"] || 0) + (Number(g.valor) || 0); });
+  if (d.sinRecuperarMes) cats["Préstamos"] = d.sinRecuperarMes;
+  const catList = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  const top = catList.slice(0, 5); if (catList.length > 5) top.push(["Otros", catList.slice(5).reduce((s, c) => s + c[1], 0)]);
+  const maxCat = Math.max(1, ...top.map(c => c[1]));
+  const tab = (k, t) => `<button type="button" class="${contaVista.tab === k ? "on" : ""}" data-ck-tab="${k}">${t}</button>`;
+  const herr = (a, t, s) => `<button type="button" data-conta-accion="${a}">${t}<small>${s}</small></button>`;
   cont.innerHTML = `
-    <div class="ck">
-      <div class="ck-izq">
-        <div class="conta-titulo"><div><h2>Centro contable · ${escHtml(mes)}</h2><p>Todo el negocio: Planillas + Muelles y Seguros. Para ver otro mes, cámbielo arriba.</p></div></div>
-        <div class="ck-kpis">
-          ${kpi("Ingresos de la empresa", fmt(ingresoMes), ri ? `${ri.pagos} ${ri.pagos === 1 ? "pago" : "pagos"} del mes` : "")}
-          ${kpi("Aportes de clientes", fmt(ri ? ri.aportes : 0), "Dinero de terceros (salud, pensión, ARL, caja)")}
-          ${kpi("Gastos pagados", fmt(gasPag), gasPend.length ? `${gasPend.length} por pagar · ${fmt(suma(gasPend))}` : "Sin gastos pendientes")}
-          ${kpi("Resultado del mes", fmt(ingresoMes - gasPag - sinRecuperarMes), sinRecuperarMes ? `Ingresos − gastos pagados − ${fmt(sinRecuperarMes)} prestados sin recuperar` : "Ingresos de la empresa menos gastos pagados", ingresoMes - gasPag - sinRecuperarMes < 0 ? "mal" : "bien")}
-        </div>
-        <section class="ck-grupo"><h3>Ingresos, gastos y préstamos</h3><div class="cg-tarjetas">
-          ${acceso("ingresos", "i-grafico", "Ingresos del mes", "Resumen por línea y día")}
-          ${acceso("gastos", "i-libro", "Gastos y libro contable", "Ingresos, gastos y proveedores", nVencen || "")}
-          ${acceso("prestamos", "i-monedas", "Préstamos", pPend.length ? `${fmt(pPend.reduce((s, p) => s + saldoPrestamo(p), 0))} por recuperar` : "Informe, soporte y firma del trabajador", pPend.length || "")}
-          ${acceso("aportes", "i-monedas", "Aportes recibidos y pagados", "Salud, pensión, ARL y caja")}
-        </div></section>
-        <section class="ck-grupo"><h3>Alegra y cierre</h3><div class="cg-tarjetas">
-          ${acceso("facturar", "i-recibo", "Borradores de facturas", "El contador las emite")}
-          ${acceso("recibos", "i-billete", "Recibos y pagos", "Recibos de caja de lo pagado")}
-          ${acceso("cierre", "i-bajar", "Cierre del mes", "Archivo para el contador")}
-        </div></section>
-        ${lineas.length ? `<section class="ck-grupo"><h3>Ingresos por línea</h3><div class="ck-tabla">
-          ${lineas.map(([n, l]) => `<div class="ck-fila"><span>${escHtml(n)}</span><small>${l.pagos ? l.pagos + (l.pagos === 1 ? " pago" : " pagos") : ""}</small><b>${fmt(l.ingreso)}</b></div>`).join("")}
-          <div class="ck-fila ck-total"><span>Total</span><small></small><b>${fmt(ingresoMes)}</b></div>
-        </div></section>` : ""}
+    <div class="ck2">
+      <div class="ck2-cab">
+        <div><h2>${escHtml(d.mes)}</h2><p>Todo el negocio${EMPRESA.marca ? " de " + escHtml(EMPRESA.marca) : ""} en un solo lugar. Para ver otro mes, cámbielo arriba.</p></div>
+        <div class="ck2-botones"><button type="button" class="btn ck2-ent" data-conta-accion="nuevo-ingreso">＋ Entró dinero</button><button type="button" class="btn ck2-sal" data-conta-accion="nuevo-gasto">－ Salió dinero</button></div>
       </div>
-      <aside class="cg-der">
-        <div class="cg-der-h">${ico("i-check")}Para revisar</div>
-        ${revisar.map(([a, tit, sub, n]) => `<button type="button" class="cg-aviso" data-conta-accion="${a}"><span>${escHtml(tit)}<small>${escHtml(sub)}</small></span>${n ? `<b>${n}</b>` : ""}</button>`).join("")}
-        <a class="cg-ver" href="./">← Volver a la app de Planillas</a>
-      </aside>
+      <div class="ck2-kpis">
+        <button type="button" class="ck2-kpi e" data-conta-accion="ingresos"><small>▲ Entró</small><b>${fmt(d.ingreso)}</b><span>${d.ri ? `${d.ri.pagos} ${d.ri.pagos === 1 ? "pago" : "pagos"} · solo lo de la empresa, sin aportes` : ""}</span></button>
+        <button type="button" class="ck2-kpi s" data-ck-tab="cats"><small>▼ Salió</small><b>${fmt(d.salio)}</b><span>${d.sinRecuperarMes ? `Gastos pagados y ${fmt(d.sinRecuperarMes)} prestados sin recuperar` : "Gastos pagados del mes"}</span></button>
+        <div class="ck2-kpi r ${quedo < 0 ? "mal" : ""}"><div><small>= Le quedó a la empresa</small><span>Lo que entró menos lo que salió</span></div><b>${fmt(quedo)}</b></div>
+      </div>
+      ${chips.length ? `<div class="ck2-pend">${chips.map(([a, t, v, n, alerta]) => `<button type="button" class="ck2-chip ${alerta ? "alerta" : ""}" data-conta-accion="${a}">${t} <b>${v}</b>${n ? ` · ${escHtml(n)}` : ""}</button>`).join("")}</div>` : `<div class="ck2-pend"><span class="ck2-chip ok">✅ Nada pendiente este mes</span></div>`}
+      <div class="ck2-cuerpo">
+        <div class="ck2-card">
+          <div class="ck2-tabs">${tab("movs", "Movimientos")}${tab("cats", "Por categoría")}${tab("meses", "Mes a mes")}<button type="button" data-conta-accion="prestamos">Préstamos</button><button type="button" data-conta-accion="aportes">Aportes</button></div>
+          ${contaVista.tab === "movs" ? `<div class="ck2-buscar"><input type="search" id="ckBuscar" placeholder="🔍 Buscar por nombre, proveedor o valor" value="${escHtml(contaVista.q)}">
+            <select id="ckFiltro" aria-label="Mostrar"><option value="">Todo</option><option value="ent">Solo lo que entró</option><option value="sal">Solo lo que salió</option><option value="pend">Pendientes</option></select></div>` : ""}
+          <div id="ckLista"></div>
+        </div>
+        <aside class="ck2-lado">
+          <div class="ck2-card ck2-plata"><h3>¿En qué se fue la plata?</h3>
+            ${top.map(([n, v]) => `<div class="ck2-cat"><div class="l"><span>${escHtml(n)}</span><b>${fmt(v)}</b></div><div class="bar"><i style="width:${Math.max(3, Math.round(v / maxCat * 100))}%"></i></div></div>`).join("") || `<div class="ck2-vacio">No hay gastos pagados este mes.</div>`}
+          </div>
+          <div class="ck2-card"><h3>Herramientas</h3><div class="ck2-herr">
+            ${herr("gastos", "📒 Libro contable", "Anotar, editar y exportar")}${herr("ingresos", "📈 Ingresos", "Por línea y por día")}
+            ${herr("facturar", "🧾 Facturas", "Borradores en Alegra")}${herr("recibos", "💵 Recibos", "De lo pagado")}
+            ${herr("cierre", "📥 Cierre del mes", "Para el contador")}${herr("aportes", "🏥 Aportes", "Salud, pensión, ARL y caja")}
+          </div></div>
+          <a class="ck2-volver" href="./">← Volver a la app de Planillas</a>
+        </aside>
+      </div>
     </div>`;
+  const sel = document.getElementById("ckFiltro"); if (sel) sel.value = contaVista.filtro;
+  pintarContaLista();
 }
 document.getElementById("contaPanel").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-ck-tab]");
+  if (t){ contaVista.tab = t.dataset.ckTab; renderContaPanel(); return; }
+  if (e.target.closest("#ckVerTodos")){ contaVista.todos = true; pintarContaLista(); return; }
   const b = e.target.closest("[data-conta-accion]"); if (!b) return;
   const a = b.dataset.contaAccion;
   if (a === "gastos") document.getElementById("navGastosBtn").click();
+  else if (a === "nuevo-ingreso" || a === "nuevo-gasto"){
+    abrirGastos().then(() => { if (a === "nuevo-ingreso") abrirFormGasto._tipo = "ingreso"; abrirFormGasto(null); });
+  }
   else if (a === "prestamos") abrirPrestamos();
   else abrirInforme(a);
+});
+document.getElementById("contaPanel").addEventListener("input", (e) => {
+  if (e.target.id === "ckBuscar"){ contaVista.q = e.target.value; pintarContaLista(); }
+});
+document.getElementById("contaPanel").addEventListener("change", (e) => {
+  if (e.target.id === "ckFiltro"){ contaVista.filtro = e.target.value; pintarContaLista(); }
 });
 
 /* ---------- Préstamos (solo admin, app de Contabilidad) ----------
