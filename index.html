@@ -2960,6 +2960,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <div class="overlay" id="overlayIncap">
   <div class="modal" style="max-width:620px;">
     <h2>🩺 Incapacidades</h2>
+    <div id="incRespInfo"></div>
     <div class="modal-sub">Datos de la incapacidad, documentos que pide la EPS o la ARL, y el pago a la persona. Del dinero solo la comisión cuenta como ingreso.</div>
     <div class="ing-tarjetas" id="incTarjetas"></div>
     <div class="modal-actions" style="justify-content:flex-start;margin:0 0 10px;"><button type="button" class="btn primary" id="incNuevaBtn">➕ Registrar incapacidad</button></div>
@@ -5683,8 +5684,15 @@ async function abrirIncapacidades(cedulaConsulta){
   document.getElementById("incNuevaBtn").parentElement.hidden = false;
   const r = incConsulta ? records.find(x => String(x["Cédula"]) === incConsulta) : null;
   ov.querySelector("h2").textContent = incConsulta ? `🩺 Incapacidades · ${nombrePropio((r && r["Nombre del Afiliado"]) || incConsulta)}` : "🩺 Incapacidades";
+  pintarRespIncap(incConsulta);
   renderIncapacidades();
   ov.classList.add("show");
+}
+// Quien paga por el cliente (el responsable), visible en la ventana de incapacidades
+function pintarRespIncap(cedula){
+  const el = document.getElementById("incRespInfo"); if (!el) return;
+  const r = cedula ? records.find(x => String(x["Cédula"]) === String(cedula).trim()) : null;
+  try{ el.innerHTML = r ? tarjetaResponsable(r) : ""; }catch(e){ el.innerHTML = ""; }
 }
 function incapacidadesDe(cedula){ return incapacidades.filter(i => String(i.cedula) === String(cedula)); }
 function pintarBotonIncapFicha(r){
@@ -5757,6 +5765,7 @@ function abrirFormIncap(i){
   pon("incDias", v.dias || ""); pon("incNumero", v.numero); pon("incDiag", v.diagnostico); pon("incRadicado", v.radicado); pon("incFechaRad", v.fecha_radicado);
   document.getElementById("incProrroga").checked = !!v.prorroga;
   document.getElementById("incEstadoTram").value = v.estado_tramite || "Por radicar";
+  if (!incConsulta) pintarRespIncap(v.cedula);
   incId = i ? i.id : (crypto.randomUUID ? crypto.randomUUID() : null);
   incDocs = { ...((i && i.documentos) || {}) };
   pintarDocsIncap();
@@ -5779,6 +5788,7 @@ function cerrarFormIncap(){ incEditando = null; incId = null; incDocs = {}; docu
 document.getElementById("msIncapBtn").addEventListener("click", () => abrirIncapacidades());
 document.getElementById("navIncapBtn").addEventListener("click", () => abrirIncapacidades());
 document.getElementById("incFichaBtn").addEventListener("click", () => { if (activeCedula) abrirIncapacidades(String(activeCedula)); });
+document.getElementById("incCedula").addEventListener("input", () => { if (!incConsulta) pintarRespIncap(document.getElementById("incCedula").value); });
 document.getElementById("incTipo").addEventListener("change", () => { document.getElementById("incEntidad").value = ""; sugerirEntidadIncap(); pintarDocsIncap(); });
 ["incDesde", "incHasta"].forEach(id => document.getElementById(id).addEventListener("change", () => {
   const d = diasEntre(document.getElementById("incDesde").value, document.getElementById("incHasta").value);
