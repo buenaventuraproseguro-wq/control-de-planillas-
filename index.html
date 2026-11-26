@@ -17824,13 +17824,19 @@ function textoCartaRetiroEps(r){
   const docAportante = otra ? "" : `${EMPRESA.aportante_tipo_doc} ${EMPRESA.aportante_doc}`;
   const motivo = motivoRetiroLimpio(r);
   const codigo = `RET-${ced}-${String(fechaRet).slice(0, 7).replace("-", "")}`;
+  // Retiro sin cobro ($0): la carta pide anular la cobertura con valores en cero (Nestor, 26-nov-2026)
+  const anula = tieneMarcaRetiro(r, marcaRetiroSinCobro());
   return `<div class="prs-doc">${cabeceraPrs(`${escHtml(lugarPropio(EMPRESA.municipio))}, ${escHtml(fechaEnPalabras(hoyISO()))}<br>Ref. <b>${escHtml(codigo)}</b>`)}
     <div class="cr-dest">Señores<br><b>${escHtml(eps ? eps.toUpperCase() : "EPS ____________________")}</b><br>Área de afiliaciones y novedades<br>${escHtml(lugarPropio(EMPRESA.municipio))}</div>
-    <p class="cr-asunto"><b>Asunto:</b> Novedad de retiro del afiliado ${escHtml(nombre)}, C.C. ${escHtml(ced)}</p>
+    <p class="cr-asunto"><b>Asunto:</b> ${anula ? "Solicitud de anulación de cobertura con valores en cero" : "Novedad de retiro"} del afiliado ${escHtml(nombre)}, C.C. ${escHtml(ced)}</p>
     <p>Cordial saludo.</p>
-    <p>Por medio de la presente, <b>${escHtml(aportante || "el aportante")}</b>${docAportante ? `, identificado(a) con ${escHtml(docAportante)}` : ""}, en calidad de aportante, informa que el(la) señor(a) <b>${escHtml(nombre)}</b>, identificado(a) con cédula de ciudadanía n.º <b>${escHtml(ced)}</b>, se retira como cotizante a partir del <b>${escHtml(fechaEnPalabras(fechaRet))}</b>.</p>
+    ${anula ? `<p>Por medio de la presente, <b>${escHtml(aportante || "el aportante")}</b>${docAportante ? `, identificado(a) con ${escHtml(docAportante)}` : ""}, en calidad de aportante, solicita la <b>anulación de la cobertura con valores en cero</b> del(la) señor(a) <b>${escHtml(nombre)}</b>, identificado(a) con cédula de ciudadanía n.º <b>${escHtml(ced)}</b>, a partir del <b>${escHtml(fechaEnPalabras(fechaRet))}</b>, ya que el colaborador no se presentó a trabajar.</p>
+    ${motivo ? `<p><b>Motivo:</b> ${escHtml(motivo)}.</p>` : ""}
+    <p>Por lo anterior, solicitamos dejar sin efecto la afiliación y la cobertura por parte de este aportante desde esa fecha, sin generar cobro de aportes ni intereses de mora a su nombre.</p>
+` : `    <p>Por medio de la presente, <b>${escHtml(aportante || "el aportante")}</b>${docAportante ? `, identificado(a) con ${escHtml(docAportante)}` : ""}, en calidad de aportante, informa que el(la) señor(a) <b>${escHtml(nombre)}</b>, identificado(a) con cédula de ciudadanía n.º <b>${escHtml(ced)}</b>, se retira como cotizante a partir del <b>${escHtml(fechaEnPalabras(fechaRet))}</b>.</p>
     ${motivo ? `<p><b>Motivo del retiro:</b> ${escHtml(motivo)}.</p>` : ""}
     <p>Solicitamos registrar la novedad de retiro y dejar de causar aportes a su nombre por parte de este aportante desde esa fecha. La novedad se reporta también en la planilla PILA del período correspondiente.</p>
+`}
     <p style="text-align:left">Para cualquier información adicional puede comunicarse al WhatsApp ${escHtml(EMPRESA.whatsapp)} o al correo ${escHtml(EMPRESA.correo)}.</p>
     <p>Atentamente,</p>
     <div class="cr-firma"><span class="prs-linea"></span><b>${escHtml(aportante || "")}</b>${docAportante ? `<br>${escHtml(docAportante)}` : ""}<br>Aportante${otra ? "" : ` · ${escHtml(EMPRESA.marca)}`}</div>
