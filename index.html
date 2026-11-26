@@ -5661,7 +5661,7 @@ function pintarDocsIncap(){
   document.getElementById("incDocs").innerHTML = `<div class="inc-docs-tit"><span>📎 Documentos para ${INC_ENT_TXT[INC_TIPOS[tipo].ent]}</span><span>${hechos} de ${INC_TIPOS[tipo].docs.length}</span></div>` +
     lista.map(([k, n, nota]) => { const d = incDocs[k];
       return `<div class="inc-doc ${d ? "ok" : ""}"><span class="inc-doc-n">${escHtml(n)}${nota ? `<small>${escHtml(nota)}</small>` : ""}${d ? `<small>${escHtml(d.nombre || "")}</small>` : ""}</span>
-        ${d ? `<button type="button" class="btn small ghost" data-inc-ver="${k}">Ver</button>` : ""}${incConsulta ? "" : `<button type="button" class="btn small" data-inc-subir="${k}">${d ? "Cambiar" : "Subir"}</button>`}</div>`; }).filter((x, j) => !incConsulta || incDocs[lista[j][0]] || j < lista.length - 1).join("");
+        ${d ? `<button type="button" class="btn small ghost" data-inc-ver="${k}">Ver</button>` : ""}${(incConsulta && incEditando) ? "" : `<button type="button" class="btn small" data-inc-subir="${k}">${d ? "Cambiar" : "Subir"}</button>`}</div>`; }).filter((x, j) => !incConsulta || incDocs[lista[j][0]] || j < lista.length - 1).join("");
 }
 function sugerirEntidadIncap(){
   const ent = document.getElementById("incEntidad"); if (ent.value.trim()) return;

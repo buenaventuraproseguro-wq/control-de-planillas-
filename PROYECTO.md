@@ -395,3 +395,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-26 · Responsable visible: al buscar, cada resultado muestra «Paga: responsable · teléfono»; la ficha trae tarjeta «Quien paga» (teléfono, correo, afiliados, cuánto debe, Llamar, WhatsApp, Ver sus clientes). Solo pantalla, no toca datos. (`infoResponsable`, `lineaResponsable`, `tarjetaResponsable`)
 
 - 2026-11-26 · Incapacidades desde la ficha: el botón «Registrar incapacidad» salía pero los campos estaban bloqueados (modo consulta). Ahora desde la ficha se registra una nueva con cédula y nombre ya puestos; las ya registradas siguen solo de consulta.
+- 2026-11-26 · Incapacidad nueva desde la ficha: ya aparecen los botones para subir los documentos (soportes).
