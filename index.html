@@ -937,7 +937,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .prs-doc .prs-via{ color:#1E7A46; font-size:10.5px; }
   .prs-doc .prs-pie{ margin-top:14px; font-size:10px; color:#666; border-top:1px solid #ddd; padding-top:6px; }
   .prs-doc .prs-persona{ break-inside:avoid; margin-bottom:12px; }
-  .prs-pads{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .prs-pads{ display:grid; grid-template-columns:1fr; gap:10px; margin-top:12px; max-width:560px; }
   @media (max-width:640px){ .prs-pads{ grid-template-columns:1fr; } .prs-doc .prs-datos{ grid-template-columns:1fr; } .prs-doc .prs-firmas{ gap:14px; } }
   .prs-pads canvas{ display:block; width:100%; height:auto; aspect-ratio:900/300; background:#fff; border:2px dashed #9AA5B4; border-radius:10px; touch-action:none; }
   .prs-pads .prs-ok{ font-size:12.5px; color:#1E7A46; margin-top:4px; }
@@ -3079,7 +3079,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 <div class="overlay" id="overlayPrSoporte">
   <div class="modal">
     <h2 id="prsTitulo">✍️ Soporte del préstamo</h2>
-    <div class="modal-sub">Revise el documento, firme en los recuadros y guarde. Después puede imprimirlo o guardarlo en PDF para entregárselo al trabajador.</div>
+    <div class="modal-sub">Revise el documento con el trabajador, que firme en el recuadro y guarde. Después puede imprimirlo o guardarlo en PDF para entregárselo al trabajador.</div>
     <div id="prsContenido"></div>
     <div class="modal-actions"><button type="button" class="btn ghost" id="prsCerrarBtn">Cerrar</button></div>
   </div>
@@ -17980,7 +17980,7 @@ document.getElementById("informeContenido").addEventListener("click", async (e) 
 });
 
 /* ---------- Préstamos: informe detallado y soporte con firma virtual (26-nov-2026) ----------
-   Tabla «prestamo_firmas» (una fila por firma: trabajador o empresa; en pantalla o por enlace de WhatsApp).
+   Tabla «prestamo_firmas» (una fila por firma del trabajador, en pantalla o por enlace de WhatsApp; Nestor no quiere firma de la empresa).
    Solo agrega filas: nunca cambia el préstamo ni sus abonos. El trabajador firma en firmar.html?p=<token>. */
 let prFirmas = [];
 async function cargarFirmasPrestamos(){
@@ -17991,7 +17991,6 @@ async function cargarFirmasPrestamos(){
 }
 const firmaDe = (id, quien) => [...prFirmas].reverse().find(f => f.prestamo_id === id && f.quien === quien && f.firma && f.firmado_at) || null;
 const enlacePendienteDe = (id) => [...prFirmas].reverse().find(f => f.prestamo_id === id && f.via === "enlace" && !f.firmado_at && new Date(f.vence_at) > new Date()) || null;
-const ultimaFirmaEmpresa = () => [...prFirmas].reverse().find(f => f.quien === "empresa" && f.firma && f.firmado_at) || null;
 const codigoPrestamo = (p) => String(p.id || "").replace(/-/g, "").slice(0, 8).toUpperCase();
 function fechaEnPalabras(iso){
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return "";
@@ -18037,7 +18036,7 @@ function bloqueFirma(f, titulo, nombre, doc){
 }
 function textoSoportePrestamo(p, datos){
   const nombre = nombrePropio(datos.nombre || p.persona || ""), ced = datos.cedula || "", tel = datos.telefono || "";
-  const fT = firmaDe(p.id, "trabajador"), fE = firmaDe(p.id, "empresa");
+  const fT = firmaDe(p.id, "trabajador");
   return `<div class="prs-doc">${cabeceraPrs(`Comprobante n.º <b>${escHtml(codigoPrestamo(p))}</b><br>${escHtml(fechaCorta(p.fecha))}`)}
     <h2>COMPROBANTE DE PRÉSTAMO Y COMPROMISO DE PAGO</h2>
     <div class="prs-datos">
@@ -18053,9 +18052,8 @@ function textoSoportePrestamo(p, datos){
     <p>Me comprometo a devolver esa suma a más tardar el <b>${escHtml(fechaEnPalabras(p.vence))}</b>, en un solo pago o en abonos. Autorizo a ${escHtml(EMPRESA.marca)} para que, si a esa fecha queda saldo pendiente, lo descuente de los pagos que me deba hacer, y acepto que cada abono quede anotado en el estado de cuenta de este comprobante.</p>
     <h3>Estado de cuenta al ${escHtml(fechaCorta(hoyISO()))}</h3>
     ${tablaMovimientos(p)}
-    <div class="prs-firmas">
+    <div class="prs-firmas" style="max-width:340px">
       ${bloqueFirma(fT, "EL TRABAJADOR", nombre, ced ? "C.C. " + ced : "C.C. ____________________")}
-      ${bloqueFirma(fE, "POR LA EMPRESA", nombrePropio(EMPRESA.aportante_nombre), EMPRESA.marca)}
     </div>
     <div class="prs-pie">Documento generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · Código ${escHtml(codigoPrestamo(p))}. Las firmas hechas en pantalla o desde el celular quedan guardadas con su fecha y hora. Datos tratados según la Ley 1581 de 2012 (${escHtml(EMPRESA.web)}/privacidad).</div>
   </div>`;
@@ -18091,7 +18089,7 @@ function informeDetalladoPrestamos(clave){
     ${grupos.map(g => `<div class="prs-persona">${uno ? "" : `<h3>${escHtml(g.nombre)}${g.cedula ? ` · C.C. ${escHtml(g.cedula)}` : ""} · saldo ${fmt(g.saldo)}</h3>`}
       ${[...g.lista].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).map(p => { const f = firmaDe(p.id, "trabajador");
         return `<p style="margin:8px 0 2px"><b>Préstamo ${escHtml(codigoPrestamo(p))}</b> del ${escHtml(fechaCorta(p.fecha))} · pagar antes del ${escHtml(fechaCorta(p.vence))} · ${p.estado === "anulado" ? "Anulado" : saldoPrestamo(p) === 0 ? "Recuperado" : "Pendiente"} · ${f ? `firmado ${escHtml(fechaHoraCorta(f.firmado_at))}` : "sin firma"}</p>${tablaMovimientos(p)}`; }).join("")}</div>`).join("")}
-    ${uno ? `<div class="prs-firmas">${bloqueFirma(null, "EL TRABAJADOR (recibí copia)", uno.nombre, uno.cedula ? "C.C. " + uno.cedula : "C.C. ____________________")}${bloqueFirma(ultimaFirmaEmpresa(), "POR LA EMPRESA", nombrePropio(EMPRESA.aportante_nombre), EMPRESA.marca)}</div>` : ""}
+    ${uno ? `<div class="prs-firmas" style="max-width:340px">${bloqueFirma(null, "EL TRABAJADOR (recibí copia)", uno.nombre, uno.cedula ? "C.C. " + uno.cedula : "C.C. ____________________")}</div>` : ""}
     <div class="prs-pie">Generado por la app de ${escHtml(EMPRESA.marca)} el ${escHtml(fechaHoraCorta(new Date().toISOString()))} · No incluye préstamos anulados en los totales.</div></div>`;
 }
 // Recuadro para firmar con el dedo o el mouse
@@ -18131,7 +18129,7 @@ function abrirSoportePrestamo(id){
 }
 function pintarSoportePrestamo(){
   const st = prsActual, p = st && prestamos.find(x => x.id === st.id); if (!p) return;
-  const fT = firmaDe(p.id, "trabajador"), fE = firmaDe(p.id, "empresa"), pend = enlacePendienteDe(p.id);
+  const fT = firmaDe(p.id, "trabajador"), pend = enlacePendienteDe(p.id);
   document.getElementById("prsTitulo").textContent = `✍️ Soporte del préstamo de ${nombrePropio(p.persona || "")}`;
   document.getElementById("prsContenido").innerHTML = `
     <div class="prs-campos">
@@ -18145,17 +18143,13 @@ function pintarSoportePrestamo(){
            <label class="fm-firma-ok"><input type="checkbox" id="prsConsT"> El trabajador está presente, leyó el documento y firma él mismo.</label>
            <div class="fm-remota">${pend ? `<span class="fr-txt">⏳ Se le pidió la firma por WhatsApp el ${escHtml(fechaHoraCorta(pend.creado_at))}; todavía no firma.</span><button type="button" class="btn small ghost" data-prs-revisar>🔄 Revisar</button><button type="button" class="btn small ghost" data-prs-wa="${escHtml(pend.token)}">Reenviar</button>`
              : `<span class="fr-txt">¿No está aquí?</span><button type="button" class="btn small" data-prs-wa>📲 Pedir la firma por WhatsApp</button>`}</div>`}</div>
-      <div class="fm-firma-caja">${fE ? `<div class="fm-firma-tit"><b>✅ La empresa ya firmó</b></div><div class="prs-ok">${escHtml(fechaHoraCorta(fE.firmado_at))}.</div>`
-        : `<div class="fm-firma-tit"><b>✍️ Firma por la empresa</b><button type="button" class="btn small ghost" data-prs-borrar="e">Borrar</button></div><canvas id="prsPadE" width="900" height="300"></canvas>
-           <div class="prs-ok" id="prsEmpNota">${ultimaFirmaEmpresa() ? "Se puso la última firma de la empresa. Si quiere, bórrela y firme de nuevo." : "Firme una vez; las próximas veces se pone sola."}</div>`}</div>
     </div>
     <div class="prs-acciones">
-      ${!fT || !fE ? `<button type="button" class="btn primary" id="prsGuardarBtn">💾 Guardar firmas</button>` : ""}
+      ${!fT ? `<button type="button" class="btn primary" id="prsGuardarBtn">💾 Guardar firma</button>` : ""}
       <button type="button" class="btn" id="prsImprimirBtn">🖨️ Imprimir o guardar PDF</button>
       ${fT && st.telefono ? `<button type="button" class="btn ghost" id="prsEnviarWaBtn">📲 Avisarle por WhatsApp</button>` : ""}
     </div>`;
-  prsPads = { t: !fT ? crearPadFirma(document.getElementById("prsPadT")) : null, e: !fE ? crearPadFirma(document.getElementById("prsPadE")) : null };
-  const ue = ultimaFirmaEmpresa(); if (prsPads.e && ue) prsPads.e.poner(ue.firma).catch(() => {});
+  prsPads = { t: !fT ? crearPadFirma(document.getElementById("prsPadT")) : null };
   ["prsCedula", "prsTel"].forEach(i => document.getElementById(i).addEventListener("change", leerCamposSoporte));
 }
 function leerCamposSoporte(){
@@ -18174,19 +18168,18 @@ async function guardarFirmasPrestamo(){
   leerCamposSoporte();
   const p = prestamos.find(x => x.id === prsActual.id); if (!p) return;
   const filas = [];
-  const t = prsPads.t && prsPads.t.dataUrl(), e = prsPads.e && prsPads.e.dataUrl();
+  const t = prsPads.t && prsPads.t.dataUrl();
   if (t){
     if (!document.getElementById("prsConsT").checked){ await alertApp("Marque la casilla que dice que el trabajador está presente y firma él mismo. No se guardó nada."); return; }
     if (!prsActual.cedula){ await alertApp("Escriba la cédula del trabajador para que quede en el documento firmado. No se guardó nada."); return; }
     filas.push({ prestamo_id: p.id, quien: "trabajador", via: "pantalla", nombre: String(p.persona || "").toLowerCase(), cedula: prsActual.cedula, firma: t, firmado_at: new Date().toISOString(), aparato: navigator.userAgent.slice(0, 300) });
   }
-  if (e) filas.push({ prestamo_id: p.id, quien: "empresa", via: "pantalla", nombre: String(EMPRESA.aportante_nombre || "").toLowerCase(), cedula: EMPRESA.aportante_doc, firma: e, firmado_at: new Date().toISOString(), aparato: navigator.userAgent.slice(0, 300) });
-  if (!filas.length){ showToast("⚠️ No hay ninguna firma nueva en los recuadros."); return; }
+  if (!filas.length){ showToast("⚠️ El trabajador todavía no ha firmado en el recuadro."); return; }
   if (!(await completarDatosPrestamo(p))) return;
   const { data, error } = await sb.from("prestamo_firmas").insert(filas).select("id, prestamo_id, quien, via, token, nombre, cedula, firma, firmado_at, vence_at, creado_at");
   if (error){ console.error(error); await alertApp("No se pudieron guardar las firmas (revise el internet). No se guardó nada."); return; }
   prFirmas.push(...(data || []));
-  showToast(t ? "✅ Firma del trabajador guardada. Ya puede imprimir el soporte." : "✅ Firma de la empresa guardada.");
+  showToast("✅ Firma del trabajador guardada. Ya puede imprimir el soporte.");
   pintarSoportePrestamo(); pintarPrestamos();
 }
 async function pedirFirmaPrestamoWa(tokenExistente){
@@ -18215,8 +18208,7 @@ document.getElementById("overlayPrSoporte").addEventListener("click", async (e) 
   if (e.target.closest("#prsImprimirBtn")){
     leerCamposSoporte();
     const p = prestamos.find(x => x.id === prsActual.id);
-    if ((prsPads.t && prsPads.t.hay()) || (prsPads.e && prsPads.e.hay() && !firmaDe(p.id, "empresa") && !ultimaFirmaEmpresa()))
-      showToast("⚠️ Hay firmas sin guardar: toque «💾 Guardar firmas» para que salgan en el documento.");
+    if (prsPads.t && prsPads.t.hay()) showToast("⚠️ La firma no se ha guardado: toque «💾 Guardar firma» para que salga en el documento.");
     imprimirHtmlPrs(textoSoportePrestamo(p, prsActual)); return;
   }
   if (e.target.closest("#prsEnviarWaBtn")){
