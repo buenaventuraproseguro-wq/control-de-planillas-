@@ -413,3 +413,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-27 · El filtro «Sin pago» ahora incluye a los de DÍAS PROPORCIONALES (contador y lista; antes solo SIN PAGO). Los recordatorios (WhatsApp por cobrar y correo diario) ya incluían días proporcionales: no se cambiaron. Solo lógica de pantalla, sin tocar datos.
 
 - 2026-11-27 · «Pasar al siguiente mes» vuelve a ser naranja con realce y queda pegado debajo del selector del mes, en el mismo bloque (clase `mes-bloque` en la cabecera). Solo diseño; misma confirmación y misma lógica. Pedido de Nestor.
+- 2026-11-27 · Se quitó el botón «🩺 Incapacidades» de la fila del buscador (junto a Limpiar, `incPrincipalBtn`). Siguen: barra lateral, ficha del cliente y Pagos de incapacidades. Pedido de Nestor.

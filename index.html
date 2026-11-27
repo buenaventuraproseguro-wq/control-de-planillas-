@@ -2503,7 +2503,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     <div class="search-row">
       <input id="searchInput" type="text" inputmode="numeric" placeholder="Cédula, nombre o N.º del cliente (ej.: 45)…" autocomplete="off">
       <button class="btn ghost" id="clearBtn">Limpiar</button>
-      <button type="button" class="btn small" id="incPrincipalBtn" title="Ver todas las incapacidades o registrar una nueva" style="padding:6px 10px;font-size:13px;white-space:nowrap;">🩺 Incapacidades</button>
     </div>
 
     <div class="breakdown" id="breakdown">
@@ -5786,7 +5785,6 @@ function abrirFormIncap(i){
 function cerrarFormIncap(){ incEditando = null; incId = null; incDocs = {}; document.getElementById("incForm").hidden = true; }
 document.getElementById("msIncapBtn").addEventListener("click", () => abrirIncapacidades());
 document.getElementById("navIncapBtn").addEventListener("click", () => abrirIncapacidades());
-document.getElementById("incPrincipalBtn").addEventListener("click", () => abrirIncapacidades());
 document.getElementById("incFichaBtn").addEventListener("click", () => { if (activeCedula) abrirIncapacidades(String(activeCedula)); });
 document.getElementById("incTipo").addEventListener("change", () => { document.getElementById("incEntidad").value = ""; sugerirEntidadIncap(); pintarDocsIncap(); });
 ["incDesde", "incHasta"].forEach(id => document.getElementById(id).addEventListener("change", () => {
