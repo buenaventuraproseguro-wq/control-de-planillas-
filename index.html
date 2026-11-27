@@ -1954,6 +1954,11 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .stat-card:hover{ transform:none; }
   .stat-card .stat-label{ font-size:11.5px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   @media (max-width:760px){ .month-bar > .btn{ flex:1 1 auto; } }
+  /* «Pasar al siguiente mes»: pequeño y discreto, justo debajo del selector del mes */
+  .month-bar > #advanceBtn{ order:2; margin-left:auto; padding:3px 10px; font-size:12px; font-weight:600; line-height:1.3; flex:0 0 auto; background:transparent; color:var(--muted); border:1px solid var(--line); }
+  .month-bar > #advanceBtn:hover{ color:var(--ink); border-color:var(--muted); }
+  .month-bar .recordatorios-bar{ order:1; margin-left:0; }
+  @media (max-width:760px){ .month-bar > #advanceBtn{ flex:0 0 auto; margin-left:auto; } }
   .stat-card .stat-value{ font-size:18px; margin-top:1px; line-height:1.2; }
   .stat-card .stat-detalle, .stat-card .stat-sub{ font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
   @media (max-width:760px){
@@ -2478,7 +2483,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
 
   <div class="month-bar">
-    <button class="btn primary" id="advanceBtn" title="Cierra el mes actual y crea el siguiente (pide confirmación)">Pasar al siguiente mes</button>
+    <button class="btn small ghost" id="advanceBtn" title="Cierra el mes actual y crea el siguiente (pide confirmación)">Pasar al siguiente mes</button>
     <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
       <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
       <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>

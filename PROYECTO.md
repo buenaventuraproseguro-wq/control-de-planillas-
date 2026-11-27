@@ -407,3 +407,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-27 · Menú ☰: «Ventas» pasó de categoría con una sola opción a botón directo «Ventas · CRM» (abre el CRM). Solo menú; no se borró nada.
 
 - 2026-11-27 · Botón «🩺 Incapacidades» también en la pantalla principal (fila del buscador, junto a Limpiar, `incPrincipalBtn`): abre la ventana general de incapacidades. Se mantiene el de la ficha. Pedido de Nestor.
+
+- 2026-11-27 · «Pasar al siguiente mes» pasa a botón pequeño y discreto debajo del selector del mes (solo diseño; misma ventana de confirmación y misma lógica). Pedido de Nestor.
