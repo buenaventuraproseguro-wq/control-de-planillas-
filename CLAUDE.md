@@ -55,7 +55,7 @@ El usuario es Nestor (dueño de PROSEGUROSNET, Buenaventura). **Responder siempr
 - Logo de temporada (adorno del escudo según la fecha): script al final de `index.html` y `seguros.html`, calendario en `temporadas(a)`, probar con `?temporada=AAAA-MM-DD`
 
 ## Regla fija de ARL (Nestor, 27-nov-2026) — NO cambiar
-La ARL se calcula SIEMPRE desde la fecha de ingreso y SIEMPRE se cobra: en el primer mes de aportes (días proporcionales) se cobran los días desde el ingreso hasta fin de mes (sobre 30), con la cuenta de la planilla (IBC = base×días/30, ARL = IBC×tarifa del nivel, techo 100). Código: `arlCobrar`, `valorArlDelMes` (usadas por `calcularTotalPagar` y `calcularAportesApp`). No es configurable. Prueba: `node tests/arl-regla.test.js` (correr antes de publicar). Igual regla fija en la app multiempresa (ProsNet): `app-empresas/servidor/calculos.ts`.
+La ARL se calcula SIEMPRE desde la fecha de ingreso y SIEMPRE se cobra: en el primer mes de aportes (días proporcionales) se cobran los días desde el ingreso hasta fin de mes (sobre 30), con la cuenta de la planilla (IBC = base×días/30, ARL = IBC×tarifa del nivel, techo 100). Código: `arlCobrar`, `valorArlDelMes` (usadas por `calcularTotalPagar` y `calcularAportesApp`). También fijo: el aporte mínimo de caja ($100) nunca se prorratea (`valorCajaDelMes`). No es configurable. Prueba: `node tests/arl-regla.test.js` (correr antes de publicar). Igual regla fija en la app multiempresa (ProsNet): `app-empresas/servidor/calculos.ts`.
 
 ## Protecciones en la base de datos
 - Trigger `a_bloquear_copia_vieja` en `clients`: ignora escrituras con `ultima_edicion` 12 h más vieja que la nube; las anota en `escrituras_bloqueadas`.

@@ -9588,6 +9588,11 @@ function arlCobrar(r, factor){
     return techo100(Math.ceil(base * dias / 30) * tarifa);
   }catch(e){ return null; }
 }
+// REGLA FIJA (Nestor, 27-nov-2026): el aporte mínimo de caja ($100) se cobra siempre completo, sin prorratear.
+function valorCajaDelMes(r, factor){
+  const g = numOrZero(r["Valor Caja"]);
+  return (g > 0 && g <= CAJA_MINIMA) ? g : Math.round(g * factor);
+}
 function valorArlDelMes(r, factor){
   const guardado = numOrZero(r["Valor ARL"]);
   if (factor !== 1 || !guardado){ const c = arlCobrar(r, factor); if (c !== null) return c; }
@@ -9610,7 +9615,7 @@ function calcularTotalPagar(r, mesActual){
   // Si quedó un costo de afiliación atascado en un registro que ya es "días proporcionales"
   // (datos de una versión anterior), se corrige aquí para el cálculo sin perder el dato guardado.
   const costo = (esDiasProp && numOrZero(r["Costo Servicio"]) === COSTO_AFILIACION) ? COSTO_MENSUAL : numOrZero(r["Costo Servicio"]);
-  return costo + valAportes("Valor EPS") + valorArlDelMes(r, factorAportes) + valorPension + valAportes("Valor Caja") + recargo;
+  return costo + valAportes("Valor EPS") + valorArlDelMes(r, factorAportes) + valorPension + valorCajaDelMes(r, factorAportes) + recargo;
 }
 
 // Solo los aportes (salud, pensión, ARL, caja), con el mismo prorrateo que el total a pagar,
@@ -9620,7 +9625,7 @@ function calcularAportesApp(r, mesActual){
   const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
   const sinPension = noAportaPension(r);
   const val = (campo) => Math.round(numOrZero(r[campo]) * factor);
-  const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: valorArlDelMes(r, factor), caja: val("Valor Caja") };
+  const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: valorArlDelMes(r, factor), caja: valorCajaDelMes(r, factor) };
   d.total = d.salud + d.pension + d.arl + d.caja;
   d.dias = Math.round(factor * 30);
   return d;

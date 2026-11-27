@@ -7,9 +7,9 @@ const PILA_TARIFA_ARL = { 1: 0.00522, 2: 0.01044, 3: 0.02436, 4: 0.0435, 5: 0.06
 assert(src.includes("const PILA_TARIFA_ARL = { 1: 0.00522, 2: 0.01044, 3: 0.02436, 4: 0.0435, 5: 0.0696 }"), "tarifas ARL cambiaron");
 const ctx = `const PILA_TARIFA_ARL=${JSON.stringify(PILA_TARIFA_ARL)}; const PILA_SALARIO=1750905;
 const techo100=n=>Math.ceil(n/100)*100; const numOrZero=v=>Number(v)||0; const esConductorExcluido=r=>!!r._cond;
-const clasificarRiesgoArl=()=>0; const lleveSalario=()=>false; const salarioDe=()=>0;
-${trozo("arlCobrar")}\n${trozo("valorArlDelMes")}\n return {arlCobrar, valorArlDelMes};`;
-const { arlCobrar, valorArlDelMes } = new Function(ctx)();
+let CAJA_MINIMA=100; const clasificarRiesgoArl=()=>0; const lleveSalario=()=>false; const salarioDe=()=>0;
+${trozo("arlCobrar")}\n${trozo("valorArlDelMes")}\n${trozo("valorCajaDelMes")}\n return {arlCobrar, valorArlDelMes, valorCajaDelMes};`;
+const { arlCobrar, valorArlDelMes, valorCajaDelMes } = new Function(ctx)();
 // Katerine: nivel 4, ingreso 24-oct → 7 días → igual que la planilla ($17.800)
 assert.strictEqual(arlCobrar({ "ARL Nivel": 4 }, 7 / 30), 17800);
 // Nivel 5, ingreso 20-oct → 11 días
@@ -22,6 +22,10 @@ assert.strictEqual(valorArlDelMes({ "ARL Nivel": 4, "Valor ARL": 0 }, 1), 76200)
 assert.strictEqual(valorArlDelMes({ "ARL Nivel": 4, "Valor ARL": 76200 }, 1), 76200);
 // Conductor excluido: sin ARL, usa lo guardado (0)
 assert.strictEqual(valorArlDelMes({ _cond: 1, "ARL Nivel": 4, "Valor ARL": 0 }, 7 / 30), 0);
+// Caja mínima de $100: siempre completa, sin prorratear; la caja normal sí se prorratea
+assert.strictEqual(valorCajaDelMes({ "Valor Caja": 100 }, 7 / 30), 100);
+assert.strictEqual(valorCajaDelMes({ "Valor Caja": 70100 }, 7 / 30), 16357);
+assert.strictEqual(valorCajaDelMes({ "Valor Caja": 100 }, 1), 100);
 // La app debe usar la regla en total y aportes
-assert(/valorArlDelMes\(r, factorAportes\)/.test(src) && /arl: valorArlDelMes\(r, factor\)/.test(src), "calcularTotalPagar/calcularAportesApp ya no usan la regla fija de ARL");
+assert(/valorArlDelMes\(r, factorAportes\)/.test(src) && /arl: valorArlDelMes\(r, factor\)/.test(src) && /valorCajaDelMes\(r, factorAportes\)/.test(src) && /caja: valorCajaDelMes\(r, factor\)/.test(src), "calcularTotalPagar/calcularAportesApp ya no usan la regla fija de ARL");
 console.log("✅ Regla fija de ARL: todas las pruebas pasan");
