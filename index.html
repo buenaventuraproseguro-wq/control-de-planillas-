@@ -1939,6 +1939,11 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     color:var(--muted); font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .modal-x:hover{ background:var(--bg); color:var(--ink); }
   @media (max-width:560px){ .modal{ padding:18px 16px 16px; } }
+  /* Agregar/Editar cliente: el título y la × quedan fijos arriba aunque se baje en el formulario */
+  #overlay .modal > #modalTitle{ position:sticky; top:-24px; z-index:5; background:var(--panel); margin:-22px -24px 12px; padding:18px 60px 12px 24px;
+    border-bottom:1px solid var(--line); border-radius:16px 16px 0 0; }
+  #overlay .modal > .modal-x{ position:sticky; top:-15px; z-index:6; float:right; margin:-8px -10px -34px 0; }
+  @media (max-width:560px){ #overlay .modal > #modalTitle{ margin:-18px -16px 12px; padding:14px 56px 10px 16px; } #overlay .modal > .modal-x{ margin:-6px -6px -34px 0; } }
 
   /* ===== Paso 3.2 (parte de arriba): mes, botones y resumen en poco espacio ===== */
   .wrap{ max-width:1200px; }
@@ -12624,8 +12629,9 @@ function openModal(record){
   cargarTrasladoEnFormulario(record);
 
   overlay.classList.add("show");
+  overlay.scrollTop = 0; // siempre se abre mostrando el título y el inicio del formulario
   prepararNoAplica();
-  getField("Cedula").focus();
+  try{ getField("Cedula").focus({ preventScroll:true }); }catch(e){ getField("Cedula").focus(); }
   formSnapshotInicial = capturarSnapshotFormulario();
 }
 

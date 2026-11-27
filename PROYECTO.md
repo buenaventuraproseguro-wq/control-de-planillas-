@@ -426,3 +426,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 
 - 2026-11-27 · Regla fija de ARL (pedido de Nestor, caso Katerine Ríos N.º 88, ingreso 24-oct): la ARL se calcula siempre desde la fecha de ingreso y siempre se cobra. Antes el mes de días proporcionales prorrateaba el «Valor ARL» guardado (redondeo distinto a la planilla: $17.780 vs $17.800) y, si ese valor estaba vacío, no se cobraba. Ahora `arlCobrar`/`valorArlDelMes` la calculan por días con la cuenta de la planilla. Prueba `tests/arl-regla.test.js`. No se tocó ningún valor guardado. Misma regla fija en `app-empresas/servidor/calculos.ts`.
 - 2026-11-27 · Caja mínima de $100 se cobra completa, sin prorratear (`valorCajaDelMes`), igual que la planilla (antes se mostraba $23 en días proporcionales). Misma regla en `calculos.ts` (ProsNet). Sin tocar valores guardados.
+
+- 2026-11-27 · Ventana Agregar/Editar cliente: título y × fijos arriba al bajar, siempre abre desde el inicio (sin saltar al enfocar la cédula). Solo diseño.
