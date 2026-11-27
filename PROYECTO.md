@@ -405,3 +405,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-27 · «Pasar al siguiente mes» sale del menú (categoría Planillas quitada) y queda como botón visible en la barra de meses, con confirmación que dice qué mes se cierra y a cuál se pasa. Lógica de avance sin cambios. Pedido de Nestor.
 
 - 2026-11-27 · Menú ☰: «Ventas» pasó de categoría con una sola opción a botón directo «Ventas · CRM» (abre el CRM). Solo menú; no se borró nada.
+
+- 2026-11-27 · Botón «🩺 Incapacidades» también en la pantalla principal (fila del buscador, junto a Limpiar, `incPrincipalBtn`): abre la ventana general de incapacidades. Se mantiene el de la ficha. Pedido de Nestor.
