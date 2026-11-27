@@ -9203,6 +9203,8 @@ const esServicioMuelles = (r) => normalizarEmpresa(r["Empresa"]) === normalizarE
 const esConductorExcluido = (r) => esEmpresaConductores(r) || esServicioMuelles(r);
 const esNombreEmpresaServicio = (nombre) => [NOMBRE_EMPRESA_CONDUCTORES, NOMBRE_EMPRESA_MUELLES].some(n => normalizarEmpresa(n) === normalizarEmpresa(nombre));
 
+// «Sin pago» incluye a los de DÍAS PROPORCIONALES: también están sin pagar (y se les cobra/recuerda igual).
+function esSinPagoOProporcional(r){ const ec = estadoClass(r["Estado Trámite"]); return ec === "SIN_PAGO" || ec === "DIAS_PROPORCIONALES"; }
 function renderFilterPills(){
   const estados = ["", "SIN PAGO", "PAGO", "DIAS PROPORCIONALES", "AFILIACION", "RETIRO", "__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN INICIAR"];
   const EXTRA = ["__CONDUCTORES__", "__SERV_MUELLES__", "__OTRA_EMPRESA__", "__INDEPENDIENTES__", "SIN INICIAR"];
@@ -9216,6 +9218,7 @@ function renderFilterPills(){
     else if (e === "__OTRA_EMPRESA__") count = sinConductores.filter(esOtraEmpresa).length;
     else if (e === "__INDEPENDIENTES__") count = sinConductores.filter(esIndependiente).length;
     else if (e === "RETIRO") count = sinConductores.filter(r => isRetiro(r) || retiroPendientePlanilla(r) || retiroPorTraslado(r)).length;
+    else if (e === "SIN PAGO") count = sinConductores.filter(esSinPagoOProporcional).length;
     else count = sinConductores.filter(r => estadoClass(r["Estado Trámite"]) === estadoClass(e)).length;
     const activo = filtroEstado === e ? "active" : "";
     return `<button type="button" class="filter-pill ${activo}" data-estado="${e}">${etiquetas[e] || e} (${count})</button>`;
@@ -9264,6 +9267,8 @@ function renderList(filterText){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esOtraEmpresa);
   } else if (filtroEstado === "__INDEPENDIENTES__"){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esIndependiente);
+  } else if (filtroEstado === "SIN PAGO"){
+    filtered = filtered.filter(r => !esConductorExcluido(r)).filter(esSinPagoOProporcional);
   } else if (filtroEstado){
     filtered = filtered.filter(r => !esConductorExcluido(r)).filter(r => estadoClass(filtroEstado) === "PAGO" ? pagadoEsteMes(r) : estadoClass(r["Estado Trámite"]) === estadoClass(filtroEstado));
   } else {
