@@ -2478,7 +2478,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
 
   <div class="month-bar">
-    <button class="btn primary" id="advanceBtn" style="display:none;">Avanzar al siguiente mes</button>
+    <button class="btn primary" id="advanceBtn" title="Cierra el mes actual y crea el siguiente (pide confirmación)">Pasar al siguiente mes</button>
     <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
       <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
       <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
@@ -3299,7 +3299,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     </div>
     <div class="ayuda-seccion">
       <b>Avanzar de mes</b>
-      <p>En la barra de mes, toca "Avanzar al siguiente mes". Todos pasan a SIN PAGO (o DÍAS PROPORCIONALES si venían de afiliación), y los que estaban en RETIRO se quitan solos.</p>
+      <p>En la barra de mes, toca "Pasar al siguiente mes". Todos pasan a SIN PAGO (o DÍAS PROPORCIONALES si venían de afiliación), y los que estaban en RETIRO se quitan solos.</p>
     </div>
     <div class="ayuda-seccion">
       <b>Muelles</b>
@@ -8582,7 +8582,7 @@ advanceBtn.addEventListener("click", async () => {
   if (unaSola){
     if (avisoRet) showToast(avisoRet.trim());
   } else {
-    if (!(await confirmarApp(`¿Avanzar de "${current}" a "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN). Los que estén en RETIRO con su planilla o soporte se quitarán.${avisoRet}`))) return;
+    if (!(await confirmarApp(`Se cierra "${current}" y se pasa a "${next}". ¿Seguro que quieres pasar al mes "${next}"? Todos los afiliados pasarán a SIN PAGO (o DÍAS PROPORCIONALES si venían de AFILIACIÓN). Los que estén en RETIRO con su planilla o soporte se quitarán.${avisoRet}`))) return;
     if (!(await confirmarApp(`Última confirmación: se creará el mes "${next}" a partir de "${current}". ¿Estás seguro?`))) return;
   }
 
@@ -18012,7 +18012,6 @@ const MENU_CATS = [
     { sel: '#sidebar [data-informe="general"]', texto: "Suma final (todas las empresas)", valor: "sidebarTotalGeneral" },
     { id: "navGananciasBtn", valor: "sidebarTotalGestiones" }, { id: "navCobroExtraBtn" }, { id: "navMensajeBtn" },
     { id: "navHistAtrasosBtn" }, { id: "navExportCsvBtn" }] },
-  { nombre: "Planillas", items: [{ id: "advanceBtn", texto: "Avanzar al siguiente mes", sub: "Crear el mes nuevo (pide confirmación)", siempre: true }] },
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navIncapBtn", badge: "incapBadge", sub: "Datos, documentos para EPS o ARL y pago" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas", items: [{ id: "navCrmBtn", badge: "crmBadge" }] },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
