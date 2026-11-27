@@ -2552,6 +2552,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
           </div>
           <div class="acc-grupo"><span class="acc-t">Pago y recibos</span>
             <button class="btn small" id="reciboBtn">🧾 Generar recibo (PDF)</button>
+            <button type="button" class="acc-mas btn small" id="quitarConsigBtn" style="display:none;" title="Quita la consignación que se le asignó por error a este cliente (no toca nada más)">↩️ Quitar consignación</button>
             <a class="acc-mas btn small qr-link" id="qrBtn" href="qr_pago_prosegurosnet.jpg?v=2" download="QR_pago_prosegurosnet.jpg" target="_blank">Ver/Descargar QR</a>
           </div>
           <div class="acc-grupo acc-peligro"><span class="acc-t">Retiro</span>
@@ -9624,6 +9625,7 @@ function showBreakdown(cedula){
   try{ pintarTraslado(r); }catch(e){}
   const estadoTexto = r["Estado Trámite"] === "PAGO CONDUCTOR" ? "PAGO" : r["Estado Trámite"];
   document.getElementById("bWho").innerHTML = `${r["Nombre del Afiliado"]}<span class="badge estado ${estadoClass(r["Estado Trámite"])}" id="bBadge">${estadoTexto}</span>${tagOtraEmpresa(r)}${tagTrasladoEmpresa(r)}${tagRetiroTraslado(r)}${tagConfirmacion(r)}${tagDineroRecibido(r)}${tagConsignacion(r)}${tagRetiro(r)}${tagRetiroPendiente(r)}`;
+  try{ const qb = document.getElementById("quitarConsigBtn"); if (qb) qb.style.display = consignacionesDe(r["Cédula"]).length ? "" : "none"; }catch(e){}
   const ubicacion = r["Dirección Completa"]
     ? `Dirección: ${r["Dirección Completa"]}`
     : (r["No. Planilla"] ? `Planilla ${r["No. Planilla"]}` : "Sin dirección registrada");
@@ -17218,8 +17220,23 @@ function tagConsignacion(r){
   const cs = consignacionesDe(r["Cédula"]);
   if (!cs.length) return "";
   const total = cs.reduce((a, c) => a + numOrZero(c.valor), 0);
-  return `<span class="tag-consig" title="Consignó este mes">💰 Consignó ${fmt(total)}</span>`;
+  return `<span class="tag-consig" data-quitar="1" title="Consignó este mes · toque para quitarla si fue un error" style="cursor:pointer">💰 Consignó ${fmt(total)}</span>`;
 }
+/* Quitar una consignación asignada por error a un cliente. Solo cambia la consignación (vuelve a «Por revisar»,
+   guardada con su mensaje del banco, para asignarla al cliente correcto o devolverla). No toca al cliente ni sus pagos. */
+async function quitarConsignacionCliente(cedula){
+  const r = records.find(x => String(x["Cédula"]) === String(cedula));
+  const cs = consignacionesDe(cedula);
+  if (!r || !cs.length){ showToast("Este cliente no tiene consignaciones asignadas."); return; }
+  const lista = cs.map(c => `• ${fmt(numOrZero(c.valor))}${c.nombre ? " · de " + c.nombre : ""}`).join("\n");
+  const ok = await confirmarApp(`¿Quitar ${cs.length === 1 ? "esta consignación" : "estas consignaciones"} de ${nombrePropio(r["Nombre del Afiliado"] || "")} (N.º ${r["No."] || "—"} · cédula ${cedula})?\n\n${lista}\n\nQueda guardada en Consignaciones → «Por revisar» para asignarla al cliente correcto. No se cambia nada más del cliente.`, { ok: "Quitar consignación" });
+  if (!ok) return;
+  for (const c of cs) await cambiarEstadoConsignacion(c.id, "pendiente");
+  try{ showBreakdown(cedula); }catch(e){}
+  showToast(`↩️ Consignación quitada de ${nombrePropio(r["Nombre del Afiliado"] || "")}. Está en Consignaciones → Por revisar.`);
+}
+document.getElementById("quitarConsigBtn").addEventListener("click", () => { if (activeCedula) quitarConsignacionCliente(activeCedula); });
+document.getElementById("bWho").addEventListener("click", (e) => { if (e.target.closest(".tag-consig[data-quitar]") && activeCedula) quitarConsignacionCliente(activeCedula); });
 
 async function cargarConsignaciones(){
   if (!cloudDb || csCargando) return;
