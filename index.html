@@ -9573,6 +9573,27 @@ async function pasarADiasProporcionales(r){
   showToast(`✅ ${nombrePropio(r["Nombre del Afiliado"] || "")}: ahora en DÍAS PROPORCIONALES (${dias} días).`);
 }
 
+// REGLA FIJA DE ARL (Nestor, 27-nov-2026): la ARL SIEMPRE se calcula desde la fecha de ingreso y SIEMPRE se cobra.
+// El primer mes de aportes (días proporcionales) cobra los días desde el ingreso hasta fin de mes (de 30),
+// con la misma cuenta de la planilla: IBC = base × días / 30 y ARL = IBC × tarifa del nivel (techo a 100).
+// No depende de que el «Valor ARL» guardado esté bien o vacío: sale del nivel de riesgo. No es configurable.
+function arlCobrar(r, factor){
+  try{
+    if (!r || esConductorExcluido(r)) return null;
+    const nivel = Number(r["ARL Nivel"]) || clasificarRiesgoArl(r["ARL (Riesgo/Código)"]) || 0;
+    const tarifa = PILA_TARIFA_ARL[nivel];
+    if (!tarifa) return null;
+    const base = lleveSalario(r) ? (salarioDe(r) || PILA_SALARIO) : PILA_SALARIO;
+    const dias = Math.max(1, Math.min(30, Math.round((factor || 1) * 30)));
+    return techo100(Math.ceil(base * dias / 30) * tarifa);
+  }catch(e){ return null; }
+}
+function valorArlDelMes(r, factor){
+  const guardado = numOrZero(r["Valor ARL"]);
+  if (factor !== 1 || !guardado){ const c = arlCobrar(r, factor); if (c !== null) return c; }
+  return Math.round(guardado * factor);
+}
+
 // Calcula el total a pagar de un registro para el mes que se está viendo, aplicando
 // prorrateo, la excepción de afiliación y la exclusión de pensión cuando corresponde.
 function calcularTotalPagar(r, mesActual){
@@ -9589,7 +9610,7 @@ function calcularTotalPagar(r, mesActual){
   // Si quedó un costo de afiliación atascado en un registro que ya es "días proporcionales"
   // (datos de una versión anterior), se corrige aquí para el cálculo sin perder el dato guardado.
   const costo = (esDiasProp && numOrZero(r["Costo Servicio"]) === COSTO_AFILIACION) ? COSTO_MENSUAL : numOrZero(r["Costo Servicio"]);
-  return costo + valAportes("Valor EPS") + valAportes("Valor ARL") + valorPension + valAportes("Valor Caja") + recargo;
+  return costo + valAportes("Valor EPS") + valorArlDelMes(r, factorAportes) + valorPension + valAportes("Valor Caja") + recargo;
 }
 
 // Solo los aportes (salud, pensión, ARL, caja), con el mismo prorrateo que el total a pagar,
@@ -9599,7 +9620,7 @@ function calcularAportesApp(r, mesActual){
   const factor = prorr.factor !== 1 ? prorr.factor : factorDiasProporcionales(r, mesActual);
   const sinPension = noAportaPension(r);
   const val = (campo) => Math.round(numOrZero(r[campo]) * factor);
-  const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: val("Valor ARL"), caja: val("Valor Caja") };
+  const d = { salud: val("Valor EPS"), pension: sinPension ? 0 : val("Valor Pensión (AFP)"), arl: valorArlDelMes(r, factor), caja: val("Valor Caja") };
   d.total = d.salud + d.pension + d.arl + d.caja;
   d.dias = Math.round(factor * 30);
   return d;
