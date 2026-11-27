@@ -2127,6 +2127,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   .breakdown .btn.wa-solido{ background:#FFFFFF !important; border:1.5px solid #25D366 !important; color:#128C3E !important; font-weight:700; display:inline-flex; align-items:center; gap:7px; padding-left:6px; }
   .breakdown .btn.wa-solido:hover{ background:#EAFBF0 !important; }
   .breakdown .btn.wa-solido .wa-ico{ width:22px; height:22px; flex-shrink:0; border-radius:6px; }
+  .cg-tarjeta .wa-ico-cobrar{ width:22px; height:22px; flex-shrink:0; border-radius:6px; margin-left:auto; }
   /* Formularios de EPS (22-nov-2026) */
   .fm-modal{ max-width:1000px !important; width:96vw; }
   .fm-barra{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px; }
@@ -2491,7 +2492,6 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   <div class="month-bar">
     <div class="recordatorios-bar" id="recordatoriosBar" style="display:none;">
-      <button type="button" class="btn small whatsapp" id="recordarPendientesBtn">Enviar recordatorio de WhatsApp por cobrar</button>
       <span class="recordatorios-progreso" id="recordatoriosProgreso" style="display:none;"></span>
       <button type="button" class="btn small whatsapp" id="enviarSoportesBtn" style="display:none;">📤 Enviar planillas pagadas</button>
     </div>
@@ -2566,7 +2566,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   </div>
       <div class="cg-tarjetas">
         <button type="button" class="cg-tarjeta" data-cg="navAddBtn"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Agregar cliente</button>
-        <button type="button" class="cg-tarjeta" data-cg="cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg>Cobrar el mes</button>
+        <button type="button" class="cg-tarjeta" data-cg="cobrar" id="recordarPendientesBtn" title="Cobrar el mes: envía el recordatorio por WhatsApp a los clientes por cobrar"><svg class="ico" aria-hidden="true"><use href="#i-mensaje"/></svg><span class="cg-t" id="cobrarMesTxt">Cobrar el mes</span><img class="wa-ico-cobrar" src="wa-icono.png" alt="WhatsApp" width="22" height="22"></button>
         <button type="button" class="cg-tarjeta" data-cg="navConsigBtn"><svg class="ico" aria-hidden="true"><use href="#i-billete"/></svg><span class="cg-t">Consignaciones<small>Mensajes de la cuenta *8222</small></span><span class="cg-badge" id="cgConsigBadge" hidden>0</span></button>
         <button type="button" class="cg-tarjeta" data-cg="navPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Generar Excel SUAPORTE</button>
         <button type="button" class="cg-tarjeta" data-cg="navImportPilaBtn"><svg class="ico" aria-hidden="true"><use href="#i-subir"/></svg>Subir planilla pagada</button>
@@ -11646,19 +11646,20 @@ function actualizarBarraRecordatorios(){
       bs.title = "En pausa mientras Enlace Operativo entrega la API (ahora las planillas se descargan en el computador). Se puede seguir enviando una por una desde la ficha del cliente.";
     }
   }
-  btn.style.display = pendientes.length ? "" : "none";
+  const txt = document.getElementById("cobrarMesTxt");
   if (!pendientes.length){
+    if (txt) txt.innerHTML = "Cobrar el mes";
     bar.style.display = porEnviar.length || colaSoportes.length ? "flex" : "none";
     progreso.style.display = "none";
     return;
   }
-  bar.style.display = "flex";
+  bar.style.display = porEnviar.length || colaSoportes.length || colaRecordatorios.length ? "flex" : "none";
   if (colaRecordatorios.length){
-    btn.textContent = `Continuar recordatorios (${colaRecordatorios.length} restante(s))`;
+    if (txt) txt.innerHTML = `Cobrar el mes<small>Continuar (${colaRecordatorios.length} restante(s))</small>`;
     progreso.style.display = "inline";
     progreso.textContent = `Enviando recordatorios: queda(n) ${colaRecordatorios.length} de ${pendientes.length} pendiente(s).`;
   } else {
-    btn.textContent = `Enviar recordatorio de WhatsApp por cobrar (${pendientes.length})`;
+    if (txt) txt.innerHTML = `Cobrar el mes<small>${pendientes.length} por cobrar</small>`;
     progreso.style.display = "none";
     progreso.textContent = "";
   }
@@ -13653,7 +13654,6 @@ document.getElementById("editBtn").addEventListener("click", async () => {
   const r = records.find(x => String(x["Cédula"]) === String(ced));
   if (r) openModal(r);
 });
-document.getElementById("recordarPendientesBtn").addEventListener("click", iniciarOContinuarRecordatorios);
 // Dibuja el recibo en un canvas (sin librerías externas) y lo comparte como imagen.
 // En celular, esto abre el menú nativo de compartir donde se puede elegir WhatsApp directo.
 async function compartirReciboComoImagen(){
