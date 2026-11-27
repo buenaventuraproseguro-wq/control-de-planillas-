@@ -2424,6 +2424,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
       <button type="button" class="sidebar-link" id="navHistorialBtn"><span class="sidebar-num">9</span><svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Historial de cliente</button>
       <button type="button" class="sidebar-link" id="navRevisionBtn"><span class="sidebar-num">21</span><svg class="ico" aria-hidden="true"><use href="#i-lupa"/></svg>Revisión de datos</button>
       <button type="button" class="sidebar-link" id="navCambiosBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Registro de cambios</button>
+      <button type="button" class="sidebar-link" id="navEliminadosBtn" style="display:none;"><svg class="ico" aria-hidden="true"><use href="#i-historial"/></svg>Eliminados (recuperar)</button>
       <button type="button" class="sidebar-link" id="navHistAtrasosBtn"><span class="sidebar-num">22</span><svg class="ico" aria-hidden="true"><use href="#i-grafico"/></svg>Quién se atrasa más</button>
       <div class="sidebar-section-title">Respaldos y archivos</div>
       <button type="button" class="sidebar-link" id="navExportBtn"><span class="sidebar-num">11</span><svg class="ico" aria-hidden="true"><use href="#i-bajar"/></svg>Exportar respaldo</button>
@@ -3726,6 +3727,15 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 </div>
 
 <!-- Registro de cambios (solo administrador) -->
+<div class="overlay" id="overlayEliminados">
+  <div class="modal" style="max-width:760px;">
+    <h2>🗑️ Eliminados</h2>
+    <div class="modal-sub">Clientes eliminados. Se guarda una copia completa de cada uno: pulse «Recuperar» y vuelve a su mes con todos sus datos. Solo el administrador ve esto.</div>
+    <div id="elimLista"></div>
+    <div class="modal-actions"><button type="button" class="btn ghost" id="elimCerrarBtn">Cerrar</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlayCambios">
   <div class="modal" style="max-width:820px;">
     <h2>🕘 Registro de cambios</h2>
@@ -4294,14 +4304,34 @@ async function sincronizarClientesMes(nombreMes){
     firmas[ced] = firma;
   }
   if (errorFila){ console.error("Clientes que no se pudieron subir:", errorFila); throw errorFila; } // se reintenta; los demás ya quedaron
+  // PROTECCIÓN: la sincronización NUNCA borra por su cuenta. Solo se quita de la nube un cliente
+  // si alguien lo eliminó a propósito con el botón Eliminar (queda en eliminacionesAutorizadas).
+  // Si este equipo no tiene en su lista a clientes que sí están en la nube (copia vieja o incompleta),
+  // se dejan intactos y la próxima lectura de la nube los vuelve a traer.
+  let omitidos = 0;
   for (const ced of Object.keys(idsMes)){
     if (!vistos.has(ced)){
-      try{ await sb.from("clients").delete().eq("id", idsMes[ced]); }catch(e){ console.error(e); }
-      delete idsMes[ced];
-      delete firmas[ced];
+      const clave = nombreMes + "|" + ced;
+      if (!eliminacionesAutorizadas.has(clave)){ omitidos++; continue; }
+      try{
+        const { error } = await sb.from("clients").delete().eq("id", idsMes[ced]);
+        if (error) throw error;
+        eliminacionesAutorizadas.delete(clave);
+        delete idsMes[ced];
+        delete firmas[ced];
+      }catch(e){ console.error(e); }
+    }
+  }
+  if (omitidos){
+    console.warn(`Sincronización: ${omitidos} cliente(s) de ${nombreMes} están en la nube pero no en este equipo; NO se borraron.`);
+    if (!_avisoOmitidosMostrado){
+      _avisoOmitidosMostrado = true;
+      if (typeof showToast === "function") showToast(`🛡️ Este equipo tenía una lista incompleta (${omitidos} cliente${omitidos === 1 ? "" : "s"} menos). No se borró nada en la nube. Recargue la página (F5) para traerlos.`);
     }
   }
 }
+const eliminacionesAutorizadas = new Set(); // "mes|cédula" de clientes eliminados a propósito con el botón Eliminar
+let _avisoOmitidosMostrado = false;
 
 async function eliminarMesEnSupabase(nombreMes){
   return; // Los meses ya creados no se borran (protección contra pérdida de información).
@@ -4632,7 +4662,7 @@ async function refrescarMesDesdeNube(){
         if (mismaFirma(firmaLocal, firmaNube)){ firmas[ced] = firmaNube; idsMes[ced] = row.id; return; }
         lista[idx] = rec;
       } else {
-        if (idsMes[ced] === row.id) return; // se borró aquí y todavía no se envió
+        if (idsMes[ced] === row.id && eliminacionesAutorizadas.has(mes + "|" + ced)) return; // se eliminó aquí a propósito y todavía no se envió
         lista.push(rec);
       }
       idsMes[ced] = row.id; firmas[ced] = firmaNube; cambios++;
@@ -6904,6 +6934,44 @@ document.getElementById("rcDias").addEventListener("change", (e) => { rcDias = N
 document.getElementById("rcUsuario").addEventListener("change", renderRegistroCambios);
 document.getElementById("rcBuscarForm").addEventListener("submit", (e) => { e.preventDefault(); cargarRegistroCambios(); });
 
+
+/* ---- Eliminados (papelera): copia de cada cliente borrado y botón Recuperar (solo administrador) ---- */
+async function abrirEliminados(){
+  if (!esAdmin()){ showToast("Los eliminados son solo para el administrador."); return; }
+  document.getElementById("overlayEliminados").classList.add("show");
+  const cont = document.getElementById("elimLista");
+  cont.innerHTML = `<div class="empty">Cargando…</div>`;
+  try{
+    const { data: ms } = await sb.from("months").select("id,name");
+    const nomMes = {}; (ms || []).forEach(m => { nomMes[m.id] = m.name; });
+    const { data, error } = await sb.from("clientes_eliminados").select("id,eliminado_en,eliminado_por_correo,month_id,cedula,nombre,recuperado_en").order("eliminado_en", { ascending: false }).limit(200);
+    if (error) throw error;
+    if (!data || !data.length){ cont.innerHTML = `<div class="empty">No hay clientes eliminados.</div>`; return; }
+    cont.innerHTML = data.map(f => {
+      const cuando = new Date(f.eliminado_en).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+      return `<div class="rc-fila"><span class="rc-hora">${escHtml(cuando)}<small>${escHtml(f.eliminado_por_correo || "")}</small></span>
+        <span class="rc-quien"><b>${escHtml(nombrePropio(f.nombre) || "Sin nombre")}</b> <small>${escHtml(f.cedula || "")} · ${escHtml(nomMes[f.month_id] || "")}</small>
+        ${f.recuperado_en ? `<span class="rc-lista">✅ Recuperado</span>` : `<button type="button" class="btn small" data-elim-rec="${escHtml(f.id)}">Recuperar</button>`}</span></div>`;
+    }).join("");
+  }catch(e){
+    console.error(e);
+    cont.innerHTML = `<div class="empty">No se pudo cargar. Si es la primera vez, falta activar la papelera en la base de datos (archivo papelera_clientes.sql). ${escHtml(e.message || "")}</div>`;
+  }
+}
+document.getElementById("navEliminadosBtn").addEventListener("click", abrirEliminados);
+document.getElementById("elimCerrarBtn").addEventListener("click", () => document.getElementById("overlayEliminados").classList.remove("show"));
+document.getElementById("elimLista").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-elim-rec]");
+  if (!b) return;
+  if (!(await confirmarApp("¿Recuperar este cliente? Vuelve a su mes con todos sus datos.", { ok: "Recuperar" }))) return;
+  b.disabled = true;
+  const { data, error } = await sb.rpc("recuperar_cliente_eliminado", { p_id: b.dataset.elimRec });
+  if (error){ b.disabled = false; showToast("No se pudo recuperar: " + (error.message || "error")); return; }
+  showToast(`✅ ${nombrePropio(data && data.nombre) || "Cliente"} recuperado.`);
+  try{ await refrescarMesDesdeNube(); }catch(_){}
+  abrirEliminados();
+});
+
 /* ---- Cierre del mes para el contador (solo administrador) ----
    Junta en una sola hoja lo que ya calcula la app: ingresos propios, aportes de terceros, planillas,
    gastos del libro contable, lo creado en Alegra y lo que falta por cuadrar. Solo lee: no guarda ni cambia nada. */
@@ -8832,6 +8900,7 @@ function renderMonthTotal(){
   document.getElementById("navAppContaBtn").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("tituloContaApp").style.display = esAdmin() && !esModoConta() ? "" : "none";
   document.getElementById("navCambiosBtn").style.display = esAdmin() ? "" : "none";
+  document.getElementById("navEliminadosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navDatosEmpresaBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("cambiosBtn").style.display = esAdmin() ? "" : "none";
   document.getElementById("navRecibosCaja").style.display = esAdmin() ? "" : "none";
@@ -13887,8 +13956,9 @@ document.getElementById("deleteBtn").addEventListener("click", async () => {
   const esConductor = esConductorExcluido(r);
   const tipoTexto = esServicioMuelles(r) ? "actualización de muelles" : esConductor ? "conductor" : estadoClass(r["Estado Trámite"]) === "AFILIACION" ? "afiliación" : "cliente";
   const pagado = /^PAGO/.test(estadoClass(r["Estado Trámite"]));
-  const textoElim = `¿Seguro que quieres eliminar a ${r["Nombre del Afiliado"]}?\n\nCédula ${r["Cédula"]} · ${store.currentMonth}${pagado ? "\n⚠️ Este cliente ya figura como PAGO este mes." : ""}\n\nSe quita su registro de ${store.currentMonth} (pago y planilla de este mes). Los meses anteriores no se tocan. Queda anotado en el registro de cambios y en el respaldo diario.`;
+  const textoElim = `¿Seguro que quieres eliminar a ${r["Nombre del Afiliado"]}?\n\nCédula ${r["Cédula"]} · ${store.currentMonth}${pagado ? "\n⚠️ Este cliente ya figura como PAGO este mes." : ""}\n\nSe quita su registro de ${store.currentMonth} (pago y planilla de este mes). Los meses anteriores no se tocan. Queda en «Eliminados» (menú Respaldos y ajustes) y puedes recuperarlo con un botón.`;
   if (!(await confirmarApp(textoElim, {ok:"Eliminar", peligro:true}))) return;
+  eliminacionesAutorizadas.add(store.currentMonth + "|" + String(r["Cédula"]).trim());
   records = records.filter(x => String(x["Cédula"]) !== String(activeCedula));
   renumber();
   saveStore();
@@ -18037,7 +18107,7 @@ const MENU_CATS = [
   { nombre: "Afiliaciones", items: [{ id: "navAfilTramiteBtn", badge: "afilBadge" }, { id: "navIncapBtn", badge: "incapBadge", sub: "Datos, documentos para EPS o ARL y pago" }, { id: "navSolConBtn", badge: "solConBadge" }, { id: "navGuiaEpsBtn" }, { id: "navPresuncionBtn" }] },
   { nombre: "Ventas · CRM", directo: "navCrmBtn", badge: "crmBadge", sub: "Prospectos y cotizaciones" },
   { nombre: "Tareas y enlaces", items: [{ id: "navTareasBtn", badge: "tareasBadge" }, { enlaces: true }] },
-  { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navDatosEmpresaBtn", sub: "Nombre, aportante, contacto y precios" }, { id: "navTemaBtn" }] },
+  { nombre: "Respaldos y ajustes", items: [{ id: "navExportBtn" }, { id: "navImportBtn" }, { id: "navRespaldosBtn" }, { id: "navCambiosBtn" }, { id: "navEliminadosBtn" }, { id: "navDatosEmpresaBtn", sub: "Nombre, aportante, contacto y precios" }, { id: "navTemaBtn" }] },
   { nombre: "Muelles y Seguros · app aparte ↗", directo: "navAppSegurosBtn", app: true },
   { nombre: "Contabilidad · app aparte ↗", directo: "navAppContaBtn", app: true },
 ];

@@ -416,3 +416,8 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-27 · Se quitó el botón «🩺 Incapacidades» de la fila del buscador (junto a Limpiar, `incPrincipalBtn`). Siguen: barra lateral, ficha del cliente y Pagos de incapacidades. Pedido de Nestor.
 
 - 2026-11-27 · Eliminar cliente: ventana de confirmación propia («¿Seguro que quieres eliminar a …?», Cancelar y Eliminar en rojo) en lugar de las dos preguntas genéricas; confirmarApp acepta opciones {ok, peligro}. La lógica de eliminar no cambió (solo quita el registro del mes actual).
+
+## 2026-11-27 · Protección contra eliminación de clientes
+- Qué pasó: el 26-nov (02:50:50–02:50:53 UTC del 27) se borraron 10 clientes de noviembre, uno por uno cada ~0,25 s, con la cuenta admin. Era el ciclo de `sincronizarClientesMes`, que borraba en la nube todo cliente que no estuviera en la lista local del equipo (copia incompleta). Como cada borrado era de 1 fila, el disparador `impedir_borrado_masivo_clients` (bloquea >3 por instrucción) no lo detuvo.
+- Arreglo: la sincronización ya NO borra por su cuenta; solo borra lo eliminado a propósito con el botón Eliminar (`eliminacionesAutorizadas`). Si faltan clientes en el equipo, avisa y no borra. `refrescarMesDesdeNube` los vuelve a traer.
+- Papelera: `supabase`/archivo `papelera_clientes.sql` (pendiente de pegar en el SQL Editor): tabla `clientes_eliminados`, disparador que guarda copia completa de cada cliente borrado, función `recuperar_cliente_eliminado`. En la app: menú «Eliminados (recuperar)» (`abrirEliminados`).
