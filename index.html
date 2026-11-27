@@ -12629,7 +12629,9 @@ function openModal(record){
   cargarTrasladoEnFormulario(record);
 
   overlay.classList.add("show");
+  delete overlay.dataset.yaBajo;
   overlay.scrollTop = 0; // siempre se abre mostrando el título y el inicio del formulario
+  [60, 250, 600].forEach(ms => setTimeout(() => { if (overlay.classList.contains("show") && !overlay.dataset.yaBajo) overlay.scrollTop = 0; }, ms));
   prepararNoAplica();
   try{ getField("Cedula").focus({ preventScroll:true }); }catch(e){ getField("Cedula").focus(); }
   formSnapshotInicial = capturarSnapshotFormulario();
@@ -13464,6 +13466,7 @@ function actualizarFaltantes(marcar){
   aviso.textContent = faltan.length ? `Faltan ${faltan.length} recuadro${faltan.length === 1 ? "" : "s"}` : "";
   return faltan.length;
 }
+["wheel","touchmove","keydown","pointerdown"].forEach(ev => document.getElementById("overlay").addEventListener(ev, () => { document.getElementById("overlay").dataset.yaBajo = "1"; }, { passive:true }));
 document.getElementById("overlay").addEventListener("change", (e) => {
   const box = e.target.closest && e.target.closest('.doc-upload[data-doc="Cedula"]');
   if (box && e.target.files && e.target.files.length) box.classList.remove("falta-doc");
