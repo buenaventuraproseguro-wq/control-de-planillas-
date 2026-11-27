@@ -932,6 +932,8 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
 
   /* CRM · Prospectos y cotizaciones */
   #overlayConfirm{ z-index:80; }
+  #overlayConfirm .btn.btn-peligro{ background:#C0262D; border-color:#C0262D; color:#fff; }
+  #overlayConfirm .btn.btn-peligro:hover{ background:#A11E24; }
   #overlayPedir{ z-index:78; }
   #overlayCRM .modal{ max-width:980px; }
   #overlayCrmWa{ z-index:70; }
@@ -12247,15 +12249,21 @@ const PALABRAS_ADVERTENCIA = ["inválido","escribe","debe quedar","sin cambios",
 // Reemplazo de window.confirm(): dentro del artefacto los diálogos nativos del navegador
 // (confirm/alert/prompt) quedan bloqueados por el sandbox y la app sigue de largo como si
 // el usuario hubiera cancelado, sin mostrar nada. Este modal propio hace lo mismo pero sí se ve.
-function confirmarApp(mensaje){
+function confirmarApp(mensaje, opc){
   return new Promise((resolve) => {
     document.getElementById("confirmMsg").textContent = mensaje;
     const overlayC = document.getElementById("overlayConfirm");
     const okBtn = document.getElementById("confirmOkBtn");
     const cancelBtn = document.getElementById("confirmCancelBtn");
     cancelBtn.style.display = "";
+    // Opciones: {ok:"Eliminar", peligro:true} → botón de aceptar con otro texto y en rojo
+    const textoOk0 = okBtn.textContent;
+    if (opc && opc.ok) okBtn.textContent = opc.ok;
+    if (opc && opc.peligro) okBtn.classList.add("btn-peligro");
     overlayC.classList.add("show");
     function limpiar(resultado){
+      okBtn.textContent = textoOk0;
+      okBtn.classList.remove("btn-peligro");
       overlayC.classList.remove("show");
       okBtn.removeEventListener("click", onOk);
       cancelBtn.removeEventListener("click", onCancel);
@@ -13879,8 +13887,8 @@ document.getElementById("deleteBtn").addEventListener("click", async () => {
   const esConductor = esConductorExcluido(r);
   const tipoTexto = esServicioMuelles(r) ? "actualización de muelles" : esConductor ? "conductor" : estadoClass(r["Estado Trámite"]) === "AFILIACION" ? "afiliación" : "cliente";
   const pagado = /^PAGO/.test(estadoClass(r["Estado Trámite"]));
-  if (!(await confirmarApp(`¿Eliminar a ${r["Nombre del Afiliado"]} (cédula ${r["Cédula"]}) de ${store.currentMonth}?${pagado ? " ⚠️ Este cliente ya figura como PAGO este mes." : ""} Solo se quita de este mes; los meses anteriores no se tocan. Queda anotado en el registro de cambios y en el respaldo diario.`))) return;
-  if (!(await confirmarApp(`Última confirmación: se borrará a ${r["Nombre del Afiliado"]} de ${store.currentMonth}. ¿Está seguro?`))) return;
+  const textoElim = `¿Seguro que quieres eliminar a ${r["Nombre del Afiliado"]}?\n\nCédula ${r["Cédula"]} · ${store.currentMonth}${pagado ? "\n⚠️ Este cliente ya figura como PAGO este mes." : ""}\n\nSe quita su registro de ${store.currentMonth} (pago y planilla de este mes). Los meses anteriores no se tocan. Queda anotado en el registro de cambios y en el respaldo diario.`;
+  if (!(await confirmarApp(textoElim, {ok:"Eliminar", peligro:true}))) return;
   records = records.filter(x => String(x["Cédula"]) !== String(activeCedula));
   renumber();
   saveStore();

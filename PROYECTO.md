@@ -414,3 +414,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 
 - 2026-11-27 · «Pasar al siguiente mes» vuelve a ser naranja con realce y queda pegado debajo del selector del mes, en el mismo bloque (clase `mes-bloque` en la cabecera). Solo diseño; misma confirmación y misma lógica. Pedido de Nestor.
 - 2026-11-27 · Se quitó el botón «🩺 Incapacidades» de la fila del buscador (junto a Limpiar, `incPrincipalBtn`). Siguen: barra lateral, ficha del cliente y Pagos de incapacidades. Pedido de Nestor.
+
+- 2026-11-27 · Eliminar cliente: ventana de confirmación propia («¿Seguro que quieres eliminar a …?», Cancelar y Eliminar en rojo) en lugar de las dos preguntas genéricas; confirmarApp acepta opciones {ok, peligro}. La lógica de eliminar no cambió (solo quita el registro del mes actual).
