@@ -428,3 +428,4 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 - 2026-11-27 · Caja mínima de $100 se cobra completa, sin prorratear (`valorCajaDelMes`), igual que la planilla (antes se mostraba $23 en días proporcionales). Misma regla en `calculos.ts` (ProsNet). Sin tocar valores guardados.
 
 - 2026-11-27 · Ventana Agregar/Editar cliente: título y × fijos arriba al bajar, siempre abre desde el inicio (sin saltar al enfocar la cédula). Solo diseño.
+- 2026-11-27 · Ventanas (overlay) ahora z-index 65, por encima del encabezado fijo (60); aviso emergente a 120. Causa de la «pantalla cortada» en Agregar cliente. Solo diseño.

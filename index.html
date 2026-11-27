@@ -1167,7 +1167,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
   /* Modal */
   .overlay{
     position:fixed; inset:0; background:rgba(10,16,22,.5); display:none;
-    align-items:flex-start; justify-content:center; z-index:50; padding:24px 12px;
+    align-items:flex-start; justify-content:center; z-index:65; padding:24px 12px;
     overflow-y:auto;
   }
   .overlay.show{ display:flex; animation: overlayFadeIn .15s ease; }
@@ -1468,7 +1468,7 @@ var ENVIO_PLANILLAS_EN_PAUSA = true;
     position:fixed; bottom:calc(20px + env(safe-area-inset-bottom,0px)); left:50%;
     transform:translateX(-50%) translateY(8px);
     background:var(--navy-deep); color:#fff; font-size:13.5px; padding:10px 18px; border-radius:8px;
-    z-index:60; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+    z-index:120; opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
     display:flex; align-items:center; gap:7px;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
