@@ -13062,6 +13062,35 @@ function mostrarDocPreview(box, dataUrl){
   removeBtn.style.display = "inline-block";
 }
 
+// En la ficha: al subir la «Planilla pagada» en PDF se lee su contenido. Si es de Aportes en Línea
+// (la planilla resumen ES el comprobante de pago) o trae páginas de comprobante, se llena sola la casilla
+// «Comprobante de pago» (solo si está vacía) y el número de planilla (solo si está vacío).
+async function comprobanteDesdePlanillaFicha(file){
+  try{
+    if (docImagenes.ComprobantePago) return;
+    const pdfjs = await cargarLectorPDF();
+    const info = await LectorPILA.leerPlanillaPDF(pdfjs, new Uint8Array(await file.arrayBuffer()));
+    if (!info.afiliados.length) return;
+    const nf = document.getElementById("fNoPlanillaPagada");
+    if (nf && !nf.value.trim() && info.numeroPlanilla) nf.value = info.numeroPlanilla;
+    let aportar = null, aviso = "";
+    if (info.comprobante && info.paginasPlanilla && info.paginasPlanilla.length){
+      try{ aportar = (await separarPlanillaYComprobante(file, info)).comprobante; aviso = "se separó el comprobante de pago del PDF"; }catch(e){ aportar = file; aviso = "el PDF completo también quedó como comprobante"; }
+    } else if (info.operador === "Aportes en Línea"){
+      aportar = file; aviso = "en Aportes en Línea este mismo PDF es el comprobante de pago";
+    }
+    if (!aportar) return;
+    const box = document.querySelector('.doc-upload[data-doc="ComprobantePago"]');
+    if (!box || docImagenes.ComprobantePago) return;
+    comprimirImagen(aportar, (dataUrl) => {
+      docImagenes.ComprobantePago = dataUrl;
+      docImagenesCambiados.ComprobantePago = true;
+      mostrarDocPreview(box, dataUrl);
+      showToast(`📎 Planilla N° ${info.numeroPlanilla || ""}: ${aviso}.`);
+    });
+  }catch(e){ console.error("No se pudo revisar la planilla subida:", e); }
+}
+
 document.querySelectorAll(".doc-upload").forEach(box => {
   const doc = box.dataset.doc;
   const fileInput = box.querySelector(".doc-file");
@@ -13072,6 +13101,8 @@ document.querySelectorAll(".doc-upload").forEach(box => {
     if (!file) return;
     box.querySelectorAll(".doc-aviso-dup").forEach(el => el.remove());
     try{ docHuellaOrigen[doc] = await huellaArchivo(await file.arrayBuffer()); }catch(err){ delete docHuellaOrigen[doc]; }
+    // Planilla de Aportes en Línea (u otro operador que entrega planilla + comprobante en un PDF): llena también el comprobante
+    if (doc === "PlanillaPagada" && esPdfArchivo(file)) comprobanteDesdePlanillaFicha(file);
     // Documentos de identificación y afiliación en PDF: se convierten a imagen para que pesen poco.
     // La planilla y el comprobante se dejan en PDF (la app lee su texto).
     const muellesServ = esServicioMuelles({ "Empresa": getField("Empresa").value }) && (doc === "Cedula" || doc === "PlanillaPagada" || doc === "ComprobantePago");
@@ -14952,7 +14983,7 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
       vistos.add(ced);
       // Nombre: texto en mayúsculas entre el documento y el primer número que sigue
       const despues = r.slice(r.indexOf(doc[0]) + doc[0].length);
-      const nombre = (despues.match(/^\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ ]{2,}?)(?=\s+\d|\s+\$|$)/) || [, ""])[1].trim();
+      const nombre = (despues.match(/^\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ ]{2,}?)(?=\s+\d|\s+\$|$)/) || [, ""])[1].trim().replace(/\s+X$/, ""); // la «X» suelta es una novedad (ING/RET), no parte del nombre
       const v = pesos.map(valorPesos);
       const total = v[v.length - 1];
       // Desglose por operador (el orden de las columnas cambia de uno a otro)
