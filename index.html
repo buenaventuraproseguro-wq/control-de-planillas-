@@ -15317,6 +15317,13 @@ async function importarPlanillaPDF(archivo, comprobante){
     }
   }
 
+  // Aportes en Línea (y los operadores que entregan un solo PDF) traen el comprobante dentro del mismo archivo:
+  // si no se pudo separar por páginas, el PDF completo cuenta como comprobante para que el cliente pase a PAGO.
+  if (!comprobante && info.operador === "Aportes en Línea"){
+    comprobante = archivo;
+    avisoUnido = `<br><small>📎 Aportes en Línea entrega la planilla y el comprobante en el mismo PDF; se guardará completo también como comprobante.</small>`;
+  }
+
   const filas = info.afiliados.map(a => {
     const r = records.find(x => String(x["Cédula"]) === String(a.cedula));
     const app = r ? calcularAportesApp(r, store.currentMonth) : null;
