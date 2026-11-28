@@ -429,3 +429,5 @@ Todo cambio a la app debe hacerse SIN afectar la información guardada:
 
 - 2026-11-27 · Ventana Agregar/Editar cliente: título y × fijos arriba al bajar, siempre abre desde el inicio (sin saltar al enfocar la cédula). Solo diseño.
 - 2026-11-27 · Ventanas (overlay) ahora z-index 65, por encima del encabezado fijo (60); aviso emergente a 120. Causa de la «pantalla cortada» en Agregar cliente. Solo diseño.
+
+- 2026-11-28 · Lector de planillas: un PDF con planilla + comprobante juntos (Aportes en Línea y otros operadores) se clasifica por páginas (`clasificarPagina`), se separa con pdf-lib (`separarPlanillaYComprobante`) y el comprobante queda guardado solo; detecta nombre del operador (SOI, Mi Planilla, Asopagos, Simple…). Antes quedaba en «Dinero recibido» por faltar el comprobante. Prueba: `node tests/lector-operadores.test.js`. No toca datos guardados.

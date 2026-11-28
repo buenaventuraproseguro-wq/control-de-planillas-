@@ -15033,18 +15033,80 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
     return res;
   }
 
+  // Operadores de pago autorizados (PILA). Solo sirve para mostrar el nombre; la lectura de valores es genérica.
+  const OPERADORES = [
+    [/aportes\s*en\s*l[ií]nea/i, "Aportes en Línea"],
+    [/SuAporte|Enlace\s*Operativo/i, "Enlace Operativo (SuAporte)"],
+    [/\bSOI\b|Servicio\s*Operativo\s*de\s*Informaci[oó]n/i, "SOI"],
+    [/mi\s*planilla|miplanilla/i, "Mi Planilla"],
+    [/asopagos/i, "Asopagos"],
+    [/\bSimple\b.*PILA|PILA\s*Simple|\bARUS\b/i, "Simple / ARUS"],
+    [/Compensar|Compensar\s*en\s*l[ií]nea/i, "Compensar"],
+    [/Pila\s*Colombia/i, "Pila Colombia"],
+    [/Enlace\s*Digital|Pagos\s*Seguros/i, "Otro operador"]
+  ];
+  function operadorPorTexto(texto){
+    const o = OPERADORES.find(([re]) => re.test(texto));
+    return o ? o[1] : "";
+  }
+
+  // Un mismo PDF puede traer la planilla Y el comprobante de pago (p. ej. Aportes en Línea).
+  // Cada página se clasifica: "planilla" (trae afiliados o encabezado de planilla),
+  // "comprobante" (recibo/transacción del banco, o página sin texto junto a páginas con texto) u "otro".
+  const RE_COMPROBANTE = /comprobante\s+de\s+(?:pago|transacci[oó]n|transferencia)|recibo\s+de\s+(?:pago|caja)|transacci[oó]n\s+(?:aprobada|exitosa|autorizada)|pago\s+(?:aprobado|exitoso)|\bCUS\b|n[uú]mero\s+de\s+(?:aprobaci[oó]n|autorizaci[oó]n|transacci[oó]n)|estado\s+de\s+la\s+transacci[oó]n|\bPSE\b|ACH\s+Colombia/i;
+  const RE_ENCABEZADO_PLANILLA = /Planilla\s+Resumen|LIQUIDACION\s+DETALLADA|PLANILLA\s+INTEGRADA|Tipo\s*Planilla|N[uú]m[eé]ro\s*(?:de\s*)?Planilla|Periodo\s*Cotizaci[oó]n/i;
+  function clasificarPagina(renglonesPagina){
+    const texto = renglonesPagina.join("\n");
+    if (analizarTextoPlanilla(renglonesPagina).afiliados.length) return "planilla";
+    if (renglonesPagina.length < 3) return "sinTexto";
+    if (RE_COMPROBANTE.test(texto)) return "comprobante";
+    if (RE_ENCABEZADO_PLANILLA.test(texto)) return "planilla";
+    return "otro";
+  }
+  // Datos útiles del comprobante: valor pagado y fecha (solo informativos; no se guardan solos)
+  function datosComprobante(renglones){
+    const texto = renglones.join("\n");
+    const out = { valor: 0, fecha: "", numeroPlanilla: "" };
+    let m = texto.match(/(?:valor\s*(?:total\s*)?(?:pagado|a\s*pagar|de\s*la\s*transacci[oó]n)|total\s*pagado|monto)\s*:?\s*\$?\s*([\d.,]{4,})/i);
+    if (m) out.valor = valorPesos(m[1]);
+    m = texto.match(/(\d{4})[\/-](\d{2})[\/-](\d{2})/) || null;
+    if (m) out.fecha = `${m[1]}-${m[2]}-${m[3]}`;
+    else if ((m = texto.match(/(\d{2})[\/-](\d{2})[\/-](\d{4})/))) out.fecha = `${m[3]}-${m[2]}-${m[1]}`;
+    m = texto.match(/Planilla\D{0,25}(\d{8,})/i);
+    if (m) out.numeroPlanilla = m[1];
+    return out;
+  }
+
   async function leerPlanillaPDF(pdfjsLib, datos){
     const pdf = await pdfjsLib.getDocument({ data: datos }).promise;
-    const renglones = [];
+    const paginasRenglones = [];
     const novedades = {};
     for (let i = 1; i <= pdf.numPages; i++){
       const pagina = await pdf.getPage(i);
       const contenido = await pagina.getTextContent();
       const vista = pagina.getViewport({ scale: 1 }).transform;
-      renglones.push(...renglonesDeItems(contenido.items, vista));
+      paginasRenglones.push(renglonesDeItems(contenido.items, vista));
       Object.assign(novedades, novedadesPorCedula(contenido.items, vista));
     }
+    // Clasificar páginas: si hay planilla, el comprobante son las páginas de recibo (o sin texto)
+    let tipos = paginasRenglones.map(clasificarPagina);
+    const hayPlanilla = tipos.includes("planilla");
+    const comprobantePaginas = [], planillaPaginas = [];
+    tipos.forEach((t, i) => {
+      const esComp = hayPlanilla && (t === "comprobante" || (t === "sinTexto" && tipos.some(x => x === "planilla" || x === "otro")));
+      (esComp ? comprobantePaginas : planillaPaginas).push(i);
+    });
+    // Solo se leen los afiliados de las páginas de planilla (un recibo del banco puede nombrar la cédula y los valores)
+    const renglones = (comprobantePaginas.length ? planillaPaginas : paginasRenglones.map((_, i) => i)).flatMap(i => paginasRenglones[i]);
+    const todo = paginasRenglones.flat();
     const res = analizarTextoPlanilla(renglones);
+    if (comprobantePaginas.length){
+      const dc = datosComprobante(comprobantePaginas.flatMap(i => paginasRenglones[i]));
+      res.comprobante = { paginas: comprobantePaginas.map(i => i + 1), ...dc };
+      res.paginasPlanilla = planillaPaginas.map(i => i + 1);
+      if (!res.numeroPlanilla && dc.numeroPlanilla) res.numeroPlanilla = dc.numeroPlanilla;
+    }
+    if (!res.operador) res.operador = operadorPorTexto(todo.join("\n"));
     res.afiliados.forEach(a => {
       const n = novedades[a.cedula] || {};
       a.retiro = !!n.ret;
@@ -15055,7 +15117,7 @@ document.getElementById("navImportPilaBtn").addEventListener("click", () => {
     return res;
   }
 
-  global.LectorPILA = { renglonesDeItems, analizarTextoPlanilla, leerPlanillaPDF, novedadesPorCedula };
+  global.LectorPILA = { renglonesDeItems, analizarTextoPlanilla, leerPlanillaPDF, novedadesPorCedula, clasificarPagina, operadorPorTexto, datosComprobante };
 })(typeof window !== "undefined" ? window : globalThis);
 
 /* ---- Planilla individual: DESACTIVADA (6 nov. 2026) hasta tener acceso o integración con Enlace.
@@ -15208,6 +15270,23 @@ async function cargarLectorPDF(){
 function escHtml(v){ return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
 let pilaEnRevision = null; // { archivo, info, filas }
 
+// Parte un PDF con planilla + comprobante en dos PDF (según las páginas que clasificó LectorPILA)
+async function separarPlanillaYComprobante(archivo, info){
+  const PDFLib = await cargarPdfLib();
+  const origen = await PDFLib.PDFDocument.load(await archivo.arrayBuffer());
+  const crear = async (paginas, nombre) => {
+    const d = await PDFLib.PDFDocument.create();
+    const copiadas = await d.copyPages(origen, paginas.map(p => p - 1));
+    copiadas.forEach(p => d.addPage(p));
+    return new File([await d.save()], nombre, { type: "application/pdf" });
+  };
+  const n = info.numeroPlanilla || "";
+  return {
+    planilla: await crear(info.paginasPlanilla, `planilla${n ? "-" + n : ""}.pdf`),
+    comprobante: await crear(info.comprobante.paginas, `comprobante${n ? "-" + n : ""}.pdf`)
+  };
+}
+
 async function importarPlanillaPDF(archivo, comprobante){
   if (!navigator.onLine && !_pdfjs){ showToast("Sin internet: para leer la planilla en PDF se necesita conexión la primera vez."); return; }
   showToast("Leyendo la planilla…");
@@ -15223,6 +15302,20 @@ async function importarPlanillaPDF(archivo, comprobante){
   }
   if (!info.tieneTexto){ showToast("Este PDF parece una imagen escaneada: no tiene texto que se pueda leer. Descarga la planilla original desde el operador."); return; }
   if (!info.afiliados.length){ showToast("No se encontraron afiliados en esta planilla. Si es de otro operador, envíame un ejemplo para poder leerla."); return; }
+
+  // Un solo PDF con planilla + comprobante (Aportes en Línea y otros): se separa en dos archivos
+  let avisoUnido = "";
+  if (!comprobante && info.comprobante && info.comprobante.paginas.length && info.paginasPlanilla && info.paginasPlanilla.length){
+    try{
+      const sep = await separarPlanillaYComprobante(archivo, info);
+      archivo = sep.planilla; comprobante = sep.comprobante;
+      avisoUnido = `<br><small>📎 Este PDF traía la planilla (pág. ${info.paginasPlanilla.join(", ")}) y el comprobante de pago (pág. ${info.comprobante.paginas.join(", ")}); se separaron solos.</small>`;
+    }catch(err){
+      console.error("No se pudo separar planilla y comprobante:", err);
+      comprobante = archivo; // el mismo PDF sirve como comprobante
+      avisoUnido = `<br><small>📎 Este PDF trae planilla y comprobante juntos; se guardará completo en ambos.</small>`;
+    }
+  }
 
   const filas = info.afiliados.map(a => {
     const r = records.find(x => String(x["Cédula"]) === String(a.cedula));
@@ -15240,7 +15333,7 @@ async function importarPlanillaPDF(archivo, comprobante){
   document.getElementById("pilaResumen").innerHTML = `
     <b>Planilla N° ${escHtml(info.numeroPlanilla || "—")}</b>${info.operador ? ` · ${escHtml(info.operador)}` : ""}<br>
     Pagada el ${escHtml(fechaPago)}${info.periodo ? ` · Período ${escHtml(info.periodo)}` : ""} · ${info.afiliados.length} afiliado(s), ${encontrados} encontrado(s) en <b>${escHtml(store.currentMonth)}</b>.<br>
-    Los clientes marcados quedarán en <b>PAGO</b> con este número de planilla en el mes que estás viendo. Revisa y toca <b>Aplicar</b>.`;
+    Los clientes marcados quedarán en <b>PAGO</b> con este número de planilla en el mes que estás viendo. Revisa y toca <b>Aplicar</b>.${avisoUnido}`;
 
   document.getElementById("pilaTabla").innerHTML = `
     <thead><tr><th></th><th>Cédula</th><th>Cliente</th><th>Estado actual</th><th class="num">Aportes planilla</th><th class="num">Aportes en la app</th></tr></thead>
